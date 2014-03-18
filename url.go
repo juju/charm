@@ -48,12 +48,6 @@ func IsValidName(name string) bool {
 	return validName.MatchString(name)
 }
 
-// IsResolved returns whether a charm URL has been resolved, containing no
-// implciit path components.
-func (url *URL) IsResolved() bool {
-	return url.Series != ""
-}
-
 // WithRevision returns a URL equivalent to url but with Revision set
 // to revision.
 func (url *URL) WithRevision(revision int) *URL {
@@ -111,7 +105,6 @@ func ParseURL(url string) (*URL, error) {
 		}
 		parts = parts[1:]
 	}
-
 	if len(parts) < 1 {
 		return nil, fmt.Errorf("charm URL without charm name: %q", url)
 	}
@@ -160,7 +153,7 @@ func InferURL(src, defaultSeries string) (*URL, error) {
 	if u, err := ParseURL(src); err != nil {
 		return nil, err
 	} else if u.IsResolved() {
-		// src was already a resolved charm URL
+		// src was a valid resolved charm URL already
 		return u, nil
 	}
 	if strings.HasPrefix(src, "~") {
@@ -195,6 +188,12 @@ func InferURL(src, defaultSeries string) (*URL, error) {
 		err = fmt.Errorf("%s (URL inferred from %q)", err, orig)
 	}
 	return u, err
+}
+
+// IsResolved returns whether a charm URL has been resolved, containing no
+// implciit path components.
+func (url *URL) IsResolved() bool {
+	return url.Series != ""
 }
 
 func (u *URL) Path() string {

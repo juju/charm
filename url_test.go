@@ -30,17 +30,16 @@ var urlTests = []struct {
 	{"local:series/name", "", &charm.URL{"local", "", "series", "name", -1}},
 	{"local:series/n0-0n-n0", "", &charm.URL{"local", "", "series", "n0-0n-n0", -1}},
 	{"cs:~user/name", "", &charm.URL{"cs", "user", "", "name", -1}},
+	{"cs:name", "", &charm.URL{"cs", "", "", "name", -1}},
 	{"local:name", "", &charm.URL{"local", "", "", "name", -1}},
 
 	{"bs:~user/series/name-1", "charm URL has invalid schema: .*", nil},
 	{"cs:~1/series/name-1", "charm URL has invalid user name: .*", nil},
-	{"cs:~user", "charm URL without charm name: .*", nil},
 	{"cs:~user/1/name-1", "charm URL has invalid series: .*", nil},
 	{"cs:~user/series/name-1-2", "charm URL has invalid charm name: .*", nil},
 	{"cs:~user/series/name-1-name-2", "charm URL has invalid charm name: .*", nil},
 	{"cs:~user/series/name--name-2", "charm URL has invalid charm name: .*", nil},
 	{"cs:~user/series/huh/name-1", "charm URL has invalid form: .*", nil},
-	{"cs:/name", "charm URL has invalid series: .*", nil},
 	{"local:~user/series/name", "local charm URL with user name: .*", nil},
 	{"local:~user/name", "local charm URL with user name: .*", nil},
 }
@@ -108,15 +107,14 @@ func (s *URLSuite) TestInferURL(c *gc.C) {
 
 var inferNoDefaultSeriesTests = []struct {
 	vague, exact string
-	resolved     bool
 }{
-	{"foo", "", false},
-	{"foo-1", "", false},
-	{"cs:foo", "", false},
-	{"cs:~user/foo", "", false},
-	{"series/foo", "cs:series/foo", true},
-	{"cs:series/foo", "cs:series/foo", true},
-	{"cs:~user/series/foo", "cs:~user/series/foo", true},
+	{"foo", ""},
+	{"foo-1", ""},
+	{"cs:foo", ""},
+	{"cs:~user/foo", ""},
+	{"series/foo", "cs:series/foo"},
+	{"cs:series/foo", "cs:series/foo"},
+	{"cs:~user/series/foo", "cs:~user/series/foo"},
 }
 
 func (s *URLSuite) TestInferURLNoDefaultSeries(c *gc.C) {
@@ -128,16 +126,7 @@ func (s *URLSuite) TestInferURLNoDefaultSeries(c *gc.C) {
 			parsed, err := charm.ParseURL(t.exact)
 			c.Assert(err, gc.IsNil)
 			c.Assert(inferred, gc.DeepEquals, parsed, gc.Commentf(`InferURL(%q, "")`, t.vague))
-			c.Assert(parsed.IsResolved(), gc.Equals, true)
 		}
-	}
-}
-
-func (s *URLSuite) TestParseUnresolved(c *gc.C) {
-	for _, t := range inferNoDefaultSeriesTests {
-		inferred, err := charm.ParseURL(t.vague)
-		c.Assert(err, gc.IsNil)
-		c.Assert(inferred.IsResolved(), gc.Equals, t.resolved)
 	}
 }
 
@@ -195,8 +184,10 @@ func (s *URLSuite) TestValidCheckers(c *gc.C) {
 func (s *URLSuite) TestMustParseURL(c *gc.C) {
 	url := charm.MustParseURL("cs:series/name")
 	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "series", "name", -1})
-	f := func() { charm.MustParseURL("local:@@/name") }
-	c.Assert(f, gc.PanicMatches, "charm URL has invalid series: .*")
+	f := func() { charm.MustParseURL("cs:~user") }
+	c.Assert(f, gc.PanicMatches, "charm URL without charm name: .*")
+	url = charm.MustParseURL("cs:name")
+	c.Assert(url.IsResolved(), gc.Equals, false)
 }
 
 func (s *URLSuite) TestWithRevision(c *gc.C) {
