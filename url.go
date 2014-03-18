@@ -48,6 +48,12 @@ func IsValidName(name string) bool {
 	return validName.MatchString(name)
 }
 
+// IsResolved returns whether a charm URL has been resolved, containing no
+// implciit path components.
+func (url *URL) IsResolved() bool {
+	return url.Series != ""
+}
+
 // WithRevision returns a URL equivalent to url but with Revision set
 // to revision.
 func (url *URL) WithRevision(revision int) *URL {
@@ -188,12 +194,6 @@ func InferURL(src, defaultSeries string) (*URL, error) {
 		err = fmt.Errorf("%s (URL inferred from %q)", err, orig)
 	}
 	return u, err
-}
-
-// IsResolved returns whether a charm URL has been resolved, containing no
-// implciit path components.
-func (url *URL) IsResolved() bool {
-	return url.Series != ""
 }
 
 func (u *URL) Path() string {
