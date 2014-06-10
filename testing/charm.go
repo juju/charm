@@ -35,7 +35,7 @@ func (r *Repo) Path() string {
 // it initializes r.path to the location of the local testing
 // repository.
 func (r *Repo) init() {
-	p, err := build.Import("github.com/juju/juju/testing", "", build.FindOnly)
+	p, err := build.Import("github.com/juju/charm/testing", "", build.FindOnly)
 	check(err)
 	r.path = filepath.Join(p.Dir, "repo")
 }
