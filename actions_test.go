@@ -161,7 +161,7 @@ actions:
    snapshot:
       description: Take a snapshot of the database.
       params:
-         $schema: http://json-schema.org/draft-03/schema#
+         $schema: http://json-schema.org/draft-04/schema#
          outfile:
             description: The file to write out to.
             type: string
@@ -171,7 +171,7 @@ actions:
 			"snapshot": ActionSpec{
 				Description: "Take a snapshot of the database.",
 				Params: map[string]interface{}{
-					"$schema": "http://json-schema.org/draft-03/schema#",
+					"$schema": "http://json-schema.org/draft-04/schema#",
 					"outfile": map[string]interface{}{
 						"description": "The file to write out to.",
 						"type":        "string",
@@ -304,7 +304,7 @@ actions:
             type: string
             default: foo.bz2
 `,
-		expectedError: "invalid params schema for action schema snapshot: $schema must be of type string",
+		expectedError: "invalid params schema for action \"snapshot\": $schema must be of type string",
 	}, {
 		description: "Malformed YAML: missing key in \"outfile\".",
 		yaml: `
@@ -327,7 +327,7 @@ actions:
    description: Take a snapshot of the database.
       params:
          outfile:
-            $schema: http://json-schema.org/draft-03/schema#
+            $schema: http://json-schema.org/draft-04/schema#
             description: The file to write out to.
             type: string
             default: foo.bz2
@@ -342,7 +342,7 @@ actions:
       description: Take a snapshot of the database.
 `,
 
-		expectedError: "bad action name -snapshot",
+		expectedError: "bad action name \"-snapshot\"",
 	}, {
 		description: "Malformed Actions: hyphen after action name.",
 		yaml: `
@@ -351,7 +351,7 @@ actions:
       description: Take a snapshot of the database.
 `,
 
-		expectedError: "bad action name snapshot-",
+		expectedError: "bad action name \"snapshot-\"",
 	}, {
 		description: "Malformed Actions: caps in action name.",
 		yaml: `
@@ -360,7 +360,7 @@ actions:
       description: Take a snapshot of the database.
 `,
 
-		expectedError: "bad action name Snapshot",
+		expectedError: "bad action name \"Snapshot\"",
 	}, {
 		description: "Malformed Params: hyphen before param name.",
 		yaml: `
@@ -372,7 +372,7 @@ actions:
           description: The file to write out to.
 `,
 
-		expectedError: "bad param name -outfile",
+		expectedError: "bad param name \"-outfile\"",
 	}, {
 		description: "Malformed Params: hyphen after param name.",
 		yaml: `
@@ -384,7 +384,7 @@ actions:
           description: The file to write out to.
 `,
 
-		expectedError: "bad param name outfile-",
+		expectedError: "bad param name \"outfile-\"",
 	}, {
 		description: "Malformed Params: caps in param name.",
 		yaml: `
@@ -396,7 +396,7 @@ actions:
           description: The file to write out to.
 `,
 
-		expectedError: "bad param name Outfile",
+		expectedError: "bad param name \"Outfile\"",
 	}}
 
 	for i, test := range badActionsYamlTests {
