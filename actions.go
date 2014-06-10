@@ -9,13 +9,10 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
+	"strings"
 
 	"github.com/binary132/gojsonschema"
 	"launchpad.net/goyaml"
-)
-
-const (
-	schemaVersion = "4-draft"
 )
 
 var actionNameRule = regexp.MustCompile("^[a-z](?:[a-z-]*[a-z])?$")
@@ -84,20 +81,20 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 		}
 
 		// Make sure the new Params doc conforms to JSON-Schema
-		// Draft 4 (http://json-schema.org/latest/json-schema-core.html)
-		jsonSchemaDefinition, err := gojsonschema.NewJsonSchemaDocument(SchemaVersion)
+		jsonSchemaDefinition := fetchJsonSchemaV4()
 		if err != nil {
-			return nil, fmt.Errorf("invalid json-schema at %s: %v", SchemaVersion, err)
+			return nil, err
 		}
 
 		validationResults := jsonSchemaDefinition.Validate(cleansedParams)
 
 		if !validationResults.Valid() {
-			errorStrings := make([]string, 0)
-			for i, schemaError := range validationResults.Errors() {
-				errorStrings = append(errorStrings, "json-schema error "+string(i)+": "+schemaError.String())
+			var errorStrings []string
+			for _, schemaError := range validationResults.Errors() {
+				errorStrings = append(errorStrings, schemaError.String())
 			}
-			return nil, fmt.Errorf("Invalid params schema for action %q: %v", name, errorStrings)
+
+			return nil, fmt.Errorf("cannot validate schema for action %q: %s", name, strings.Join(errorStrings, "; "))
 		}
 	}
 	return &unmarshaledActions, nil
@@ -136,7 +133,7 @@ func cleanse(input interface{}) (interface{}, error) {
 
 	// Recurse
 	case []interface{}:
-		newSlice := make([]interface{}, 0)
+		var newSlice []interface{}
 		for _, sliceValue := range typedInput {
 			newSliceValue, err := cleanse(sliceValue)
 			if err != nil {

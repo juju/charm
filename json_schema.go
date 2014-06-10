@@ -1,3 +1,36 @@
+package charm
+
+import (
+	"encoding/json"
+	"fmt"
+	"sync"
+
+	"github.com/binary132/gojsonschema"
+)
+
+var (
+	readSchemaOnce sync.Once
+	jsonSchemaV4   *gojsonschema.JsonSchemaDocument
+)
+
+func fetchJsonSchemaV4() *gojsonschema.JsonSchemaDocument {
+	readSchemaOnce.Do(func() {
+		var schema map[string]interface{}
+		err := json.Unmarshal(jsonSchemaV4Bytes, &schema)
+		if err != nil {
+			panic(fmt.Errorf("cannot unmarshal raw json-schema definition: %v", err))
+		}
+
+		jsonSchemaV4, err = gojsonschema.NewJsonSchemaDocument(schema)
+		if err != nil {
+			panic(fmt.Errorf("cannot parse json-schema definition: %v", err))
+		}
+	})
+
+	return jsonSchemaV4
+}
+
+var jsonSchemaV4Bytes = []byte(`
 {
     "id": "http://json-schema.org/draft-04/schema#",
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -147,4 +180,4 @@
         "exclusiveMinimum": [ "minimum" ]
     },
     "default": {}
-}
+}`)
