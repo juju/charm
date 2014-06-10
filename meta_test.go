@@ -14,8 +14,8 @@ import (
 
 	gc "launchpad.net/gocheck"
 
-	"github.com/juju/juju/charm"
-	charmtesting "github.com/juju/juju/charm/testing"
+	"github.com/juju/charm"
+	charmtesting "github.com/juju/charm/testing"
 )
 
 func repoMeta(name string) io.Reader {

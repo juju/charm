@@ -12,8 +12,8 @@ import (
 	gc "launchpad.net/gocheck"
 	"launchpad.net/goyaml"
 
-	"github.com/juju/juju/charm"
-	charmtesting "github.com/juju/juju/charm/testing"
+	"github.com/juju/charm"
+	charmtesting "github.com/juju/charm/testing"
 )
 
 func Test(t *stdtesting.T) {

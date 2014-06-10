@@ -12,7 +12,7 @@ import (
 
 	"github.com/juju/utils/fs"
 
-	"github.com/juju/juju/charm"
+	"github.com/juju/charm"
 )
 
 func check(err error) {

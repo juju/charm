@@ -18,7 +18,7 @@ import (
 	"github.com/juju/utils"
 	gc "launchpad.net/gocheck"
 
-	"github.com/juju/juju/charm"
+	"github.com/juju/charm"
 )
 
 var logger = loggo.GetLogger("juju.charm.testing.mockstore")
