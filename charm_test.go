@@ -9,11 +9,10 @@ import (
 	"io/ioutil"
 	stdtesting "testing"
 
-	gc "launchpad.net/gocheck"
-	"launchpad.net/goyaml"
-
 	"github.com/juju/charm"
 	charmtesting "github.com/juju/charm/testing"
+	gc "launchpad.net/gocheck"
+	"launchpad.net/goyaml"
 )
 
 func Test(t *stdtesting.T) {

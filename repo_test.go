@@ -9,11 +9,10 @@ import (
 	"os"
 	"path/filepath"
 
-	gitjujutesting "github.com/juju/testing"
-	gc "launchpad.net/gocheck"
-
 	"github.com/juju/charm"
 	charmtesting "github.com/juju/charm/testing"
+	gitjujutesting "github.com/juju/testing"
+	gc "launchpad.net/gocheck"
 )
 
 type StoreSuite struct {

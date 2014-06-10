@@ -12,10 +12,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	gc "launchpad.net/gocheck"
-
 	"github.com/juju/charm"
 	charmtesting "github.com/juju/charm/testing"
+	gc "launchpad.net/gocheck"
 )
 
 func repoMeta(name string) io.Reader {
