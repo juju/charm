@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
+	"strings"
 
 	"github.com/binary132/gojsonschema"
 	"launchpad.net/goyaml"
@@ -48,14 +49,14 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 
 	for name, actionSpec := range unmarshaledActions.ActionSpecs {
 		if valid := actionNameRule.MatchString(name); !valid {
-			return nil, fmt.Errorf("bad action name %s", name)
+			return nil, fmt.Errorf("bad action name %q", name)
 		}
 
 		// Make sure the parameters are acceptable.
 		cleansedParams := make(map[string]interface{})
-		for paramName, param := range unmarshaledActions.ActionSpecs[name].Params {
+		for paramName, param := range actionSpec.Params {
 			if valid := paramNameRule.MatchString(paramName); !valid {
-				return nil, fmt.Errorf("bad param name %s", paramName)
+				return nil, fmt.Errorf("bad param name %q", paramName)
 			}
 
 			// Clean any map[interface{}]interface{}s out so they don't
@@ -72,13 +73,29 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 		swap.Params = cleansedParams
 		unmarshaledActions.ActionSpecs[name] = swap
 
-		// Make sure the new Params doc conforms to JSON-Schema
-		// Draft 4 (http://json-schema.org/latest/json-schema-core.html)
-		_, err = gojsonschema.NewJsonSchemaDocument(actionSpec.Params)
+		// Make sure the new Params doc can be loaded as a JSON-Schema
+		// document.
+		_, err = gojsonschema.NewJsonSchemaDocument(unmarshaledActions.ActionSpecs[name].Params)
 		if err != nil {
-			return nil, fmt.Errorf("invalid params schema for action schema %s: %v", name, err)
+			return nil, fmt.Errorf("invalid params schema for action %q: %v", name, err)
 		}
 
+		// Make sure the new Params doc conforms to JSON-Schema
+		jsonSchemaDefinition := fetchJsonSchemaV4()
+		if err != nil {
+			return nil, err
+		}
+
+		validationResults := jsonSchemaDefinition.Validate(cleansedParams)
+
+		if !validationResults.Valid() {
+			var errorStrings []string
+			for _, schemaError := range validationResults.Errors() {
+				errorStrings = append(errorStrings, schemaError.String())
+			}
+
+			return nil, fmt.Errorf("cannot validate schema for action %q: %s", name, strings.Join(errorStrings, "; "))
+		}
 	}
 	return &unmarshaledActions, nil
 }
@@ -116,7 +133,7 @@ func cleanse(input interface{}) (interface{}, error) {
 
 	// Recurse
 	case []interface{}:
-		newSlice := make([]interface{}, 0)
+		var newSlice []interface{}
 		for _, sliceValue := range typedInput {
 			newSliceValue, err := cleanse(sliceValue)
 			if err != nil {
