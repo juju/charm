@@ -5,6 +5,7 @@ package charm
 
 import (
 	"bytes"
+	"encoding/json"
 
 	gc "launchpad.net/gocheck"
 )
@@ -18,7 +19,153 @@ func (s *ActionsSuite) TestNewActions(c *gc.C) {
 	c.Assert(emptyAction, gc.DeepEquals, &Actions{})
 }
 
-func (s *ActionsSuite) TestCleanseOK(c *gc.C) {
+func (s *ActionsSuite) TestValidateOk(c *gc.C) {
+	var validActionTests = []struct {
+		description    string
+		actionSpec     *ActionSpec
+		goodActionJson string
+	}{{
+		description: "Validation of one required value.",
+		actionSpec: &ActionSpec{
+			Description: "Take a snapshot of the database.",
+			Params: map[string]interface{}{
+				"title":       "Snapshot params",
+				"description": "Take a snapshot of the database.",
+				"type":        "object",
+				"properties": map[string]interface{}{
+					"outfile": map[string]interface{}{
+						"description": "The file to write out to.",
+						"type":        "string"}},
+				"required": []interface{}{"outfile"}}},
+		goodActionJson: `{"outfile": "out-2014-06-12.bz2"}`,
+	}, {
+		description: "Validation of one required and one optional value.",
+		actionSpec: &ActionSpec{
+			Description: "Take a snapshot of the database.",
+			Params: map[string]interface{}{
+				"title":       "Snapshot params",
+				"description": "Take a snapshot of the database.",
+				"type":        "object",
+				"properties": map[string]interface{}{
+					"outfile": map[string]interface{}{
+						"description": "The file to write out to.",
+						"type":        "string"},
+					"quality": map[string]interface{}{
+						"description": "Compression quality",
+						"type":        "integer",
+						"minimum":     0,
+						"maximum":     9}},
+				"required": []interface{}{"outfile"}}},
+		goodActionJson: `{"outfile": "out-2014-06-12.bz2"}`,
+	}, {
+		description: "Validation of an optional, range limited value.",
+		actionSpec: &ActionSpec{
+			Description: "Take a snapshot of the database.",
+			Params: map[string]interface{}{
+				"title":       "Snapshot params",
+				"description": "Take a snapshot of the database.",
+				"type":        "object",
+				"properties": map[string]interface{}{
+					"outfile": map[string]interface{}{
+						"description": "The file to write out to.",
+						"type":        "string"},
+					"quality": map[string]interface{}{
+						"description": "Compression quality",
+						"type":        "integer",
+						"minimum":     0,
+						"maximum":     9}},
+				"required": []interface{}{"outfile"}}},
+		goodActionJson: `
+{ "outfile": "out-2014-06-12.bz2", "quality": 5 }`,
+	}}
+
+	for i, test := range validActionTests {
+		c.Logf("test %d: %s", i, test.description)
+		var params interface{}
+		jsonBytes := []byte(test.goodActionJson)
+		err := json.Unmarshal(jsonBytes, &params)
+		c.Assert(err, gc.IsNil)
+		_, err = test.actionSpec.ValidateParams(params)
+		c.Assert(err, gc.IsNil)
+	}
+}
+
+func (s *ActionsSuite) TestValidateFail(c *gc.C) {
+	var validActionTests = []struct {
+		description   string
+		actionSpec    *ActionSpec
+		badActionJson string
+		expectedError string
+	}{{
+		description: "Validation of one required value.",
+		actionSpec: &ActionSpec{
+			Description: "Take a snapshot of the database.",
+			Params: map[string]interface{}{
+				"title":       "Snapshot params",
+				"description": "Take a snapshot of the database.",
+				"type":        "object",
+				"properties": map[string]interface{}{
+					"outfile": map[string]interface{}{
+						"description": "The file to write out to.",
+						"type":        "string"}},
+				"required": []interface{}{"outfile"}}},
+		badActionJson: `{"outfile": 5}`,
+		expectedError: "JSON validation failed: (root).outfile : must be of type string, given 5",
+	}, {
+		description: "Validation of one required and one optional value.",
+		actionSpec: &ActionSpec{
+			Description: "Take a snapshot of the database.",
+			Params: map[string]interface{}{
+				"title":       "Snapshot params",
+				"description": "Take a snapshot of the database.",
+				"type":        "object",
+				"properties": map[string]interface{}{
+					"outfile": map[string]interface{}{
+						"description": "The file to write out to.",
+						"type":        "string"},
+					"quality": map[string]interface{}{
+						"description": "Compression quality",
+						"type":        "integer",
+						"minimum":     0,
+						"maximum":     9}},
+				"required": []interface{}{"outfile"}}},
+		badActionJson: `{"quality": 5}`,
+		expectedError: "JSON validation failed: (root) : \"outfile\" property is missing and required, given {\"quality\":5}",
+	}, {
+		description: "Validation of an optional, range limited value.",
+		actionSpec: &ActionSpec{
+			Description: "Take a snapshot of the database.",
+			Params: map[string]interface{}{
+				"title":       "Snapshot params",
+				"description": "Take a snapshot of the database.",
+				"type":        "object",
+				"properties": map[string]interface{}{
+					"outfile": map[string]interface{}{
+						"description": "The file to write out to.",
+						"type":        "string"},
+					"quality": map[string]interface{}{
+						"description": "Compression quality",
+						"type":        "integer",
+						"minimum":     0,
+						"maximum":     9}},
+				"required": []interface{}{"outfile"}}},
+		badActionJson: `
+{ "outfile": "out-2014-06-12.bz2", "quality": "two" }`,
+		expectedError: "JSON validation failed: (root).quality : must be of type integer, given \"two\"",
+	}}
+
+	for i, test := range validActionTests {
+		c.Logf("test %d: %s", i, test.description)
+		var params interface{}
+		jsonBytes := []byte(test.badActionJson)
+		err := json.Unmarshal(jsonBytes, &params)
+		c.Assert(err, gc.IsNil)
+		_, err = test.actionSpec.ValidateParams(params)
+		c.Assert(err.Error(), gc.Equals, test.expectedError)
+	}
+}
+
+func (s *ActionsSuite) TestCleanseOk(c *gc.C) {
 
 	var goodInterfaceTests = []struct {
 		description         string
@@ -141,41 +288,25 @@ actions:
    snapshot:
       description: Take a snapshot of the database.
       params:
-         outfile:
-            description: The file to write out to.
-            type: string
-            default: foo.bz2
+         title: "Snapshot"
+         type: "object"
+         properties:
+            outfile:
+               description: "The file to write out to."
+               type: string
+         required: ["outfile"]
 `,
 		expectedActions: &Actions{map[string]ActionSpec{
 			"snapshot": ActionSpec{
 				Description: "Take a snapshot of the database.",
 				Params: map[string]interface{}{
-					"outfile": map[string]interface{}{
-						"description": "The file to write out to.",
-						"type":        "string",
-						"default":     "foo.bz2"}}}}},
-	}, {
-		description: "An Actions YAML with one parameter and a $schema.",
-		yaml: `
-actions:
-   snapshot:
-      description: Take a snapshot of the database.
-      params:
-         $schema: http://json-schema.org/draft-03/schema#
-         outfile:
-            description: The file to write out to.
-            type: string
-            default: foo.bz2
-`,
-		expectedActions: &Actions{map[string]ActionSpec{
-			"snapshot": ActionSpec{
-				Description: "Take a snapshot of the database.",
-				Params: map[string]interface{}{
-					"$schema": "http://json-schema.org/draft-03/schema#",
-					"outfile": map[string]interface{}{
-						"description": "The file to write out to.",
-						"type":        "string",
-						"default":     "foo.bz2"}}}}},
+					"title": "Snapshot",
+					"type":  "object",
+					"properties": map[string]interface{}{
+						"outfile": map[string]interface{}{
+							"description": "The file to write out to.",
+							"type":        "string"}},
+					"required": []interface{}{"outfile"}}}}},
 	}, {
 		description:     "An empty Actions definition.",
 		yaml:            "",
@@ -185,69 +316,75 @@ actions:
 		yaml: `
 actions:
    snapshot:
-      description: Take a snapshot of the database.
+      description: "Take a snapshot of the database."
       params:
-         outfile:
-            description: The file to write out to.
-            type: string
-            default: foo.bz2
-         compression-quality:
-            description: The compression quality.
-            type: number
-            minimum: 0
-            maximum: 9
-            exclusiveMaximum: false
+         title: "Snapshot"
+         type: "object"
+         properties:
+            outfile:
+               description: "The file to write out to."
+               type: "string"
+            compression-quality:
+               description: "The compression quality."
+               type: "integer"
+               minimum: 0
+               maximum: 9
+               exclusiveMaximum: false
    remote-sync:
-      description: Sync a file to a remote host.
+      description: "Sync a file to a remote host."
       params:
-         file:
-            description: The file to send out.
-            type: string
-            format: uri
-            optional: false
-         remote-uri:
-            description: The host to sync to.
-            type: string
-            format: uri
-            optional: false
-         util:
-            description: The util to perform the sync (rsync or scp.)
-            type: string
-            enum: [rsync, scp]
-            default: rsync
+         title: "Remote sync"
+         type: "object"
+         properties:
+            file:
+               description: "The file to send out."
+               type: "string"
+               format: "uri"
+            remote-uri:
+               description: "The host to sync to."
+               type: "string"
+               format: "uri"
+            util:
+               description: "The util to perform the sync (rsync or scp.)"
+               type: "string"
+               enum: ["rsync", "scp"]
+         required: ["file", "remote-uri"]
 `,
 		expectedActions: &Actions{map[string]ActionSpec{
 			"snapshot": ActionSpec{
 				Description: "Take a snapshot of the database.",
 				Params: map[string]interface{}{
-					"outfile": map[string]interface{}{
-						"description": "The file to write out to.",
-						"type":        "string",
-						"default":     "foo.bz2"},
-					"compression-quality": map[string]interface{}{
-						"description":      "The compression quality.",
-						"type":             "number",
-						"minimum":          0,
-						"maximum":          9,
-						"exclusiveMaximum": false}}},
+					"title": "Snapshot",
+					"type":  "object",
+					"properties": map[string]interface{}{
+						"outfile": map[string]interface{}{
+							"description": "The file to write out to.",
+							"type":        "string"},
+						"compression-quality": map[string]interface{}{
+							"description":      "The compression quality.",
+							"type":             "integer",
+							"minimum":          0,
+							"maximum":          9,
+							"exclusiveMaximum": false}}}},
 			"remote-sync": ActionSpec{
 				Description: "Sync a file to a remote host.",
 				Params: map[string]interface{}{
-					"file": map[string]interface{}{
-						"description": "The file to send out.",
-						"type":        "string",
-						"format":      "uri",
-						"optional":    false},
-					"remote-uri": map[string]interface{}{
-						"description": "The host to sync to.",
-						"type":        "string",
-						"format":      "uri",
-						"optional":    false},
-					"util": map[string]interface{}{
-						"description": "The util to perform the sync (rsync or scp.)",
-						"type":        "string",
-						"enum":        []interface{}{"rsync", "scp"},
-						"default":     "rsync"}}}}},
+					"title": "Remote sync",
+					"type":  "object",
+					"properties": map[string]interface{}{
+						"file": map[string]interface{}{
+							"description": "The file to send out.",
+							"type":        "string",
+							"format":      "uri"},
+						"remote-uri": map[string]interface{}{
+							"description": "The host to sync to.",
+							"type":        "string",
+							"format":      "uri"},
+						"util": map[string]interface{}{
+							"description": "The util to perform the sync (rsync or scp.)",
+							"type":        "string",
+							"enum":        []interface{}{"rsync", "scp"}}},
+					"required": []interface{}{"file", "remote-uri"}}}}},
 	}, {
 		description: "A schema with an empty \"params\" key, implying no options.",
 		yaml: `
@@ -292,19 +429,28 @@ func (s *ActionsSuite) TestReadBadActionsYaml(c *gc.C) {
 		yaml          string
 		expectedError string
 	}{{
-		description: "Invalid JSON-Schema: $schema key not a string.",
+		description: "Reject JSON-Schema containing references.",
 		yaml: `
 actions:
    snapshot:
       description: Take a snapshot of the database.
       params:
-         $schema: 5
-         outfile:
-            description: The file to write out to.
-            type: string
-            default: foo.bz2
+         $schema: "http://json-schema.org/draft-03/schema#"
 `,
-		expectedError: "invalid params schema for action schema snapshot: $schema must be of type string",
+		expectedError: "schema key \"$schema\" not compatible with this version of juju",
+	}, {
+		description: "Reject JSON-Schema containing references.",
+		yaml: `
+actions:
+   snapshot:
+      description: Take a snapshot of the database.
+      params:
+         title: "snapshot"
+         type: "object"
+         properties: 
+            outfile: { $ref: "http://json-schema.org/draft-03/schema#" }
+`,
+		expectedError: "schema key \"$ref\" not compatible with this version of juju",
 	}, {
 		description: "Malformed YAML: missing key in \"outfile\".",
 		yaml: `
@@ -361,42 +507,6 @@ actions:
 `,
 
 		expectedError: "bad action name Snapshot",
-	}, {
-		description: "Malformed Params: hyphen before param name.",
-		yaml: `
-actions:
-   snapshot:
-      description: Take a snapshot of the database.
-      params:
-        -outfile:
-          description: The file to write out to.
-`,
-
-		expectedError: "bad param name -outfile",
-	}, {
-		description: "Malformed Params: hyphen after param name.",
-		yaml: `
-actions:
-   snapshot:
-      description: Take a snapshot of the database.
-      params:
-        outfile-:
-          description: The file to write out to.
-`,
-
-		expectedError: "bad param name outfile-",
-	}, {
-		description: "Malformed Params: caps in param name.",
-		yaml: `
-actions:
-   snapshot:
-      description: Take a snapshot of the database.
-      params:
-        Outfile:
-          description: The file to write out to.
-`,
-
-		expectedError: "bad param name Outfile",
 	}}
 
 	for i, test := range badActionsYamlTests {
