@@ -89,9 +89,9 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 		}
 
 		// Now substitute the cleansed map into the original.
-		var swap = unmarshaledActions.ActionSpecs[name]
-		swap.Params = cleansedParamsMap
-		unmarshaledActions.ActionSpecs[name] = swap
+		var tempSpec = unmarshaledActions.ActionSpecs[name]
+		tempSpec.Params = cleansedParamsMap
+		unmarshaledActions.ActionSpecs[name] = tempSpec
 
 		// Make sure the new Params doc conforms to JSON-Schema
 		// Draft 4 (http://json-schema.org/latest/json-schema-core.html)
