@@ -9,13 +9,15 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
+	"strings"
 
 	"github.com/binary132/gojsonschema"
 	"launchpad.net/goyaml"
 )
 
+var prohibitedSchemaKeys = map[string]bool{"$ref": true, "$schema": true}
+
 var actionNameRule = regexp.MustCompile("^[a-z](?:[a-z-]*[a-z])?$")
-var paramNameRule = regexp.MustCompile("^[a-z$](?:[a-z-]*[a-z])?$")
 
 // Actions defines the available actions for the charm.  Additional params
 // may be added as metadata at a future time (e.g. version.)
@@ -35,6 +37,28 @@ func NewActions() *Actions {
 	return &Actions{}
 }
 
+// ValidateParams tells us whether an unmarshaled JSON object conforms to the
+// Params for the specific ActionSpec.
+// Usage: ok, err := ch.Actions()["snapshot"].Validate(jsonParams)
+func (spec *ActionSpec) ValidateParams(params interface{}) (bool, error) {
+
+	specSchemaDoc, err := gojsonschema.NewJsonSchemaDocument(spec.Params)
+	if err != nil {
+		return false, err
+	}
+
+	results := specSchemaDoc.Validate(params)
+	if results.Valid() {
+		return true, nil
+	}
+
+	var errorStrings []string
+	for _, validationError := range results.Errors() {
+		errorStrings = append(errorStrings, validationError.String())
+	}
+	return false, fmt.Errorf("JSON validation failed: %s", strings.Join(errorStrings, "; "))
+}
+
 // ReadActions builds an Actions spec from a charm's actions.yaml.
 func ReadActionsYaml(r io.Reader) (*Actions, error) {
 	data, err := ioutil.ReadAll(r)
@@ -51,30 +75,27 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 			return nil, fmt.Errorf("bad action name %s", name)
 		}
 
-		// Make sure the parameters are acceptable.
-		cleansedParams := make(map[string]interface{})
-		for paramName, param := range unmarshaledActions.ActionSpecs[name].Params {
-			if valid := paramNameRule.MatchString(paramName); !valid {
-				return nil, fmt.Errorf("bad param name %s", paramName)
-			}
+		// Clean any map[interface{}]interface{}s out so they don't
+		// cause problems with BSON serialization later.
+		cleansedParams, err := cleanse(actionSpec.Params)
+		if err != nil {
+			return nil, err
+		}
 
-			// Clean any map[interface{}]interface{}s out so they don't
-			// cause problems with BSON serialization later.
-			cleansedParam, err := cleanse(param)
-			if err != nil {
-				return nil, err
-			}
-			cleansedParams[paramName] = cleansedParam
+		// JSON-Schema must be a map
+		cleansedParamsMap, ok := cleansedParams.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("the params failed to parse as a map")
 		}
 
 		// Now substitute the cleansed map into the original.
-		var swap = unmarshaledActions.ActionSpecs[name]
-		swap.Params = cleansedParams
-		unmarshaledActions.ActionSpecs[name] = swap
+		var tempSpec = unmarshaledActions.ActionSpecs[name]
+		tempSpec.Params = cleansedParamsMap
+		unmarshaledActions.ActionSpecs[name] = tempSpec
 
 		// Make sure the new Params doc conforms to JSON-Schema
 		// Draft 4 (http://json-schema.org/latest/json-schema-core.html)
-		_, err = gojsonschema.NewJsonSchemaDocument(actionSpec.Params)
+		_, err = gojsonschema.NewJsonSchemaDocument(unmarshaledActions.ActionSpecs[name].Params)
 		if err != nil {
 			return nil, fmt.Errorf("invalid params schema for action schema %s: %v", name, err)
 		}
@@ -83,6 +104,8 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 	return &unmarshaledActions, nil
 }
 
+// cleanse rejects schemas containing references or maps keyed with non-
+// strings, and coerces acceptable maps to contain only maps with string keys.
 func cleanse(input interface{}) (interface{}, error) {
 	switch typedInput := input.(type) {
 
@@ -90,6 +113,11 @@ func cleanse(input interface{}) (interface{}, error) {
 	case map[string]interface{}:
 		newMap := make(map[string]interface{})
 		for key, value := range typedInput {
+
+			if prohibitedSchemaKeys[key] {
+				return nil, fmt.Errorf("schema key %q not compatible with this version of juju", key)
+			}
+
 			newValue, err := cleanse(value)
 			if err != nil {
 				return nil, err
@@ -106,13 +134,9 @@ func cleanse(input interface{}) (interface{}, error) {
 			if !ok {
 				return nil, errors.New("map keyed with non-string value")
 			}
-			newMapValue, err := cleanse(value)
-			if err != nil {
-				return nil, err
-			}
-			newMap[typedKey] = newMapValue
+			newMap[typedKey] = value
 		}
-		return newMap, nil
+		return cleanse(newMap)
 
 	// Recurse
 	case []interface{}:
