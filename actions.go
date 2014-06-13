@@ -11,11 +11,11 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/binary132/gojsonschema.v1"
+	"github.com/binary132/gojsonschema"
 	"launchpad.net/goyaml"
 )
 
-var prohibitedSchemaKeys = []string{"$ref", "$schema"}
+var prohibitedSchemaKeys = map[string]bool{"$ref": true, "$schema": true}
 
 var actionNameRule = regexp.MustCompile("^[a-z](?:[a-z-]*[a-z])?$")
 
@@ -113,10 +113,9 @@ func cleanse(input interface{}) (interface{}, error) {
 	case map[string]interface{}:
 		newMap := make(map[string]interface{})
 		for key, value := range typedInput {
-			for _, badKey := range prohibitedSchemaKeys {
-				if key == badKey {
-					return nil, fmt.Errorf("schema key %q not compatible with this version of juju", badKey)
-				}
+
+			if prohibitedSchemaKeys[key] {
+				return nil, fmt.Errorf("schema key %q not compatible with this version of juju", key)
 			}
 
 			newValue, err := cleanse(value)
