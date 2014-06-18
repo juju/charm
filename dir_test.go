@@ -55,6 +55,22 @@ func (s *DirSuite) TestReadDirWithoutActions(c *gc.C) {
 func (s *DirSuite) TestBundleTo(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := charmtesting.Charms.ClonedDirPath(baseDir, "dummy")
+	s.assertBundleTo(c, baseDir, charmDir)
+}
+
+func (s *DirSuite) TestBundleToWithSymLinkedRootDir(c *gc.C) {
+	dir := c.MkDir()
+	baseDir := filepath.Join(dir, "precise")
+	err := os.MkdirAll(baseDir, 0755)
+	c.Assert(err, gc.IsNil)
+	charmtesting.Charms.ClonedDirPath(dir, "dummy")
+	err = os.Symlink(filepath.Join("..", "dummy"), filepath.Join(baseDir, "dummy"))
+	c.Assert(err, gc.IsNil)
+	charmDir := filepath.Join(baseDir, "dummy")
+	s.assertBundleTo(c, baseDir, charmDir)
+}
+
+func (s *DirSuite) assertBundleTo(c *gc.C, baseDir, charmDir string) {
 	var haveSymlinks = true
 	if err := os.Symlink("../target", filepath.Join(charmDir, "hooks/symlink")); err != nil {
 		haveSymlinks = false
