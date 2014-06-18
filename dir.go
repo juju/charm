@@ -135,12 +135,10 @@ func (dir *Dir) SetDiskRevision(revision int) error {
 func resolveSymlinkedRoot(rootPath string) (string, error) {
 	info, err := os.Lstat(rootPath)
 	if err == nil && info.Mode()&os.ModeSymlink != 0 {
-		target, err := os.Readlink(rootPath)
+		rootPath, err = filepath.EvalSymlinks(rootPath)
 		if err != nil {
 			return "", fmt.Errorf("cannot read path symlink at %q: %v", rootPath, err)
 		}
-		resolvedPath := filepath.Join(rootPath, "..", target)
-		rootPath = filepath.Clean(resolvedPath)
 	}
 	return rootPath, nil
 }
