@@ -11,11 +11,12 @@ const (
 	// None of these hooks are ever associated with a relation; each of them
 	// represents a change to the state of the unit as a whole. The values
 	// themselves are all valid hook names.
-	Install       Kind = "install"
-	Start         Kind = "start"
-	ConfigChanged Kind = "config-changed"
-	UpgradeCharm  Kind = "upgrade-charm"
-	Stop          Kind = "stop"
+	Install         Kind = "install"
+	Start           Kind = "start"
+	ConfigChanged   Kind = "config-changed"
+	UpgradeCharm    Kind = "upgrade-charm"
+	Stop            Kind = "stop"
+	ActionRequested Kind = "action-requested"
 
 	// These hooks require an associated relation, and the name of the relation
 	// unit whose change triggered the hook. The hook file names that these
@@ -35,6 +36,7 @@ var unitHooks = []Kind{
 	Install,
 	Start,
 	ConfigChanged,
+	ActionRequested,
 	UpgradeCharm,
 	Stop,
 }
