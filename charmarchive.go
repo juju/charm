@@ -17,10 +17,10 @@ import (
 	ziputil "github.com/juju/utils/zip"
 )
 
-// The Bundle type encapsulates access to data and operations
-// on a charm bundle.
-type Bundle struct {
-	Path     string // May be empty if Bundle wasn't read from a file
+// The Archive type encapsulates access to data and operations
+// on a charm archive.
+type Archive struct {
+	Path     string // May be empty if Archive wasn't read from a file
 	meta     *Meta
 	config   *Config
 	actions  *Actions
@@ -29,11 +29,11 @@ type Bundle struct {
 	size     int64
 }
 
-// Trick to ensure *Bundle implements the Charm interface.
-var _ Charm = (*Bundle)(nil)
+// Trick to ensure *Archive implements the Charm interface.
+var _ Charm = (*Archive)(nil)
 
-// ReadBundle returns a Bundle for the charm in path.
-func ReadBundle(path string) (bundle *Bundle, err error) {
+// ReadArchive returns a Archive for the charm in path.
+func ReadArchive(path string) (archive *Archive, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return
@@ -43,7 +43,7 @@ func ReadBundle(path string) (bundle *Bundle, err error) {
 	if err != nil {
 		return
 	}
-	b, err := readBundle(f, fi.Size())
+	b, err := readArchive(f, fi.Size())
 	if err != nil {
 		return
 	}
@@ -51,14 +51,14 @@ func ReadBundle(path string) (bundle *Bundle, err error) {
 	return b, nil
 }
 
-// ReadBundleBytes returns a Bundle read from the given data.
-// Make sure the bundle fits in memory before using this.
-func ReadBundleBytes(data []byte) (bundle *Bundle, err error) {
-	return readBundle(readAtBytes(data), int64(len(data)))
+// ReadArchiveBytes returns a Archive read from the given data.
+// Make sure the archive fits in memory before using this.
+func ReadArchiveBytes(data []byte) (archive *Archive, err error) {
+	return readArchive(readAtBytes(data), int64(len(data)))
 }
 
-func readBundle(r io.ReaderAt, size int64) (bundle *Bundle, err error) {
-	b := &Bundle{r: r, size: size}
+func readArchive(r io.ReaderAt, size int64) (archive *Archive, err error) {
+	b := &Archive{r: r, size: size}
 	zipr, err := zip.NewReader(r, size)
 	if err != nil {
 		return
@@ -74,7 +74,7 @@ func readBundle(r io.ReaderAt, size int64) (bundle *Bundle, err error) {
 	}
 
 	reader, err = zipOpen(zipr, "config.yaml")
-	if _, ok := err.(*noBundleFile); ok {
+	if _, ok := err.(*noArchiveFile); ok {
 		b.config = NewConfig()
 	} else if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func readBundle(r io.ReaderAt, size int64) (bundle *Bundle, err error) {
 	}
 
 	reader, err = zipOpen(zipr, "actions.yaml")
-	if _, ok := err.(*noBundleFile); ok {
+	if _, ok := err.(*noArchiveFile); ok {
 		b.actions = NewActions()
 	} else if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func readBundle(r io.ReaderAt, size int64) (bundle *Bundle, err error) {
 
 	reader, err = zipOpen(zipr, "revision")
 	if err != nil {
-		if _, ok := err.(*noBundleFile); !ok {
+		if _, ok := err.(*noArchiveFile); !ok {
 			return
 		}
 		b.revision = b.meta.OldRevision
@@ -121,45 +121,45 @@ func zipOpen(zipr *zip.Reader, path string) (rc io.ReadCloser, err error) {
 			return fh.Open()
 		}
 	}
-	return nil, &noBundleFile{path}
+	return nil, &noArchiveFile{path}
 }
 
-type noBundleFile struct {
+type noArchiveFile struct {
 	path string
 }
 
-func (err noBundleFile) Error() string {
-	return fmt.Sprintf("bundle file not found: %s", err.path)
+func (err noArchiveFile) Error() string {
+	return fmt.Sprintf("archive file not found: %s", err.path)
 }
 
 // Revision returns the revision number for the charm
 // expanded in dir.
-func (b *Bundle) Revision() int {
-	return b.revision
+func (a *Archive) Revision() int {
+	return a.revision
 }
 
 // SetRevision changes the charm revision number. This affects the
 // revision reported by Revision and the revision of the charm
 // directory created by ExpandTo.
-func (b *Bundle) SetRevision(revision int) {
-	b.revision = revision
+func (a *Archive) SetRevision(revision int) {
+	a.revision = revision
 }
 
-// Meta returns the Meta representing the metadata.yaml file from bundle.
-func (b *Bundle) Meta() *Meta {
-	return b.meta
+// Meta returns the Meta representing the metadata.yaml file from archive.
+func (a *Archive) Meta() *Meta {
+	return a.meta
 }
 
 // Config returns the Config representing the config.yaml file
-// for the charm bundle.
-func (b *Bundle) Config() *Config {
-	return b.config
+// for the charm archive.
+func (a *Archive) Config() *Config {
+	return a.config
 }
 
 // Actions returns the Actions map for the actions.yaml file for the charm
-// bundle.
-func (b *Bundle) Actions() *Actions {
-	return b.actions
+// archive.
+func (a *Archive) Actions() *Actions {
+	return a.actions
 }
 
 type zipReadCloser struct {
@@ -168,16 +168,16 @@ type zipReadCloser struct {
 }
 
 // zipOpen returns a zipReadCloser.
-func (b *Bundle) zipOpen() (*zipReadCloser, error) {
+func (a *Archive) zipOpen() (*zipReadCloser, error) {
 	// If we don't have a Path, try to use the original ReaderAt.
-	if b.Path == "" {
-		r, err := zip.NewReader(b.r, b.size)
+	if a.Path == "" {
+		r, err := zip.NewReader(a.r, a.size)
 		if err != nil {
 			return nil, err
 		}
 		return &zipReadCloser{Closer: ioutil.NopCloser(nil), Reader: r}, nil
 	}
-	f, err := os.Open(b.Path)
+	f, err := os.Open(a.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -195,8 +195,8 @@ func (b *Bundle) zipOpen() (*zipReadCloser, error) {
 }
 
 // Manifest returns a set of the charm's contents.
-func (b *Bundle) Manifest() (set.Strings, error) {
-	zipr, err := b.zipOpen()
+func (a *Archive) Manifest() (set.Strings, error) {
+	zipr, err := a.zipOpen()
 	if err != nil {
 		return set.NewStrings(), err
 	}
@@ -207,17 +207,17 @@ func (b *Bundle) Manifest() (set.Strings, error) {
 	}
 	manifest := set.NewStrings(paths...)
 	// We always write out a revision file, even if there isn't one in the
-	// bundle; and we always strip ".", because that's sometimes not present.
+	// archive; and we always strip ".", because that's sometimes not present.
 	manifest.Add("revision")
 	manifest.Remove(".")
 	return manifest, nil
 }
 
-// ExpandTo expands the charm bundle into dir, creating it if necessary.
+// ExpandTo expands the charm archive into dir, creating it if necessary.
 // If any errors occur during the expansion procedure, the process will
 // abort.
-func (b *Bundle) ExpandTo(dir string) (err error) {
-	zipr, err := b.zipOpen()
+func (a *Archive) ExpandTo(dir string) (err error) {
+	zipr, err := a.zipOpen()
 	if err != nil {
 		return err
 	}
@@ -226,7 +226,7 @@ func (b *Bundle) ExpandTo(dir string) (err error) {
 		return err
 	}
 	hooksDir := filepath.Join(dir, "hooks")
-	fixHook := fixHookFunc(hooksDir, b.meta.Hooks())
+	fixHook := fixHookFunc(hooksDir, a.meta.Hooks())
 	if err := filepath.Walk(hooksDir, fixHook); err != nil {
 		if !os.IsNotExist(err) {
 			return err
@@ -236,7 +236,7 @@ func (b *Bundle) ExpandTo(dir string) (err error) {
 	if err != nil {
 		return err
 	}
-	_, err = revFile.Write([]byte(strconv.Itoa(b.revision)))
+	_, err = revFile.Write([]byte(strconv.Itoa(a.revision)))
 	revFile.Close()
 	return err
 }

@@ -111,7 +111,7 @@ func (dir *Dir) Actions() *Actions {
 
 // SetRevision changes the charm revision number. This affects
 // the revision reported by Revision and the revision of the
-// charm bundled by BundleTo.
+// charm archived by ArchiveTo.
 // The revision file in the charm directory is not modified.
 func (dir *Dir) SetRevision(revision int) {
 	dir.revision = revision
@@ -130,9 +130,9 @@ func (dir *Dir) SetDiskRevision(revision int) error {
 	return err
 }
 
-// BundleTo creates a charm file from the charm expanded in dir.
-// By convention a charm bundle should have a ".charm" suffix.
-func (dir *Dir) BundleTo(w io.Writer) (err error) {
+// ArchiveTo creates a charm file from the charm expanded in dir.
+// By convention a charm archive should have a ".charm" suffix.
+func (dir *Dir) ArchiveTo(w io.Writer) (err error) {
 	zipw := zip.NewWriter(w)
 	defer zipw.Close()
 	zp := zipPacker{zipw, dir.Path, dir.Meta().Hooks()}

@@ -106,22 +106,22 @@ func (r *Repo) ClonedURL(dst, series, name string) *charm.URL {
 	}
 }
 
-// BundlePath returns the path to a new charm bundle file created from the
+// ArchivePath returns the path to a new charm archive file created from the
 // charm directory named name, in the directory dst.
-func (r *Repo) BundlePath(dst, name string) string {
+func (r *Repo) ArchivePath(dst, name string) string {
 	dir := r.Dir(name)
-	path := filepath.Join(dst, "bundle.charm")
+	path := filepath.Join(dst, "archive.charm")
 	file, err := os.Create(path)
 	check(err)
 	defer file.Close()
-	check(dir.BundleTo(file))
+	check(dir.ArchiveTo(file))
 	return path
 }
 
-// Bundle returns an actual charm.Bundle created from a new charm bundle file
+// Archive returns an actual charm.Archive created from a new charm archive file
 // created from the charm directory named name, in the directory dst.
-func (r *Repo) Bundle(dst, name string) *charm.Bundle {
-	ch, err := charm.ReadBundle(r.BundlePath(dst, name))
+func (r *Repo) Archive(dst, name string) *charm.Archive {
+	ch, err := charm.ReadArchive(r.ArchivePath(dst, name))
 	check(err)
 	return ch
 }
@@ -129,14 +129,14 @@ func (r *Repo) Bundle(dst, name string) *charm.Bundle {
 // MockCharmStore implements charm.Repository and is used to isolate tests
 // that would otherwise need to hit the real charm store.
 type MockCharmStore struct {
-	charms        map[string]map[int]*charm.Bundle
+	charms        map[string]map[int]*charm.Archive
 	AuthAttrs     string
 	TestMode      bool
 	DefaultSeries string
 }
 
 func NewMockCharmStore() *MockCharmStore {
-	return &MockCharmStore{charms: map[string]map[int]*charm.Bundle{}}
+	return &MockCharmStore{charms: map[string]map[int]*charm.Archive{}}
 }
 
 func (s *MockCharmStore) WithAuthAttrs(auth string) charm.Repository {
@@ -162,27 +162,27 @@ func (s *MockCharmStore) Resolve(ref charm.Reference) (*charm.URL, error) {
 }
 
 // SetCharm adds and removes charms in s. The affected charm is identified by
-// charmURL, which must be revisioned. If bundle is nil, the charm will be
-// removed; otherwise, it will be stored. It is an error to store a bundle
+// charmURL, which must be revisioned. If archive is nil, the charm will be
+// removed; otherwise, it will be stored. It is an error to store a archive
 // under a charmURL that does not share its name and revision.
-func (s *MockCharmStore) SetCharm(charmURL *charm.URL, bundle *charm.Bundle) error {
+func (s *MockCharmStore) SetCharm(charmURL *charm.URL, archive *charm.Archive) error {
 	base := charmURL.WithRevision(-1).String()
 	if charmURL.Revision < 0 {
 		return fmt.Errorf("bad charm url revision")
 	}
-	if bundle == nil {
+	if archive == nil {
 		delete(s.charms[base], charmURL.Revision)
 		return nil
 	}
-	bundleRev := bundle.Revision()
-	bundleName := bundle.Meta().Name
-	if bundleName != charmURL.Name || bundleRev != charmURL.Revision {
-		return fmt.Errorf("charm url %s mismatch with bundle %s-%d", charmURL, bundleName, bundleRev)
+	archiveRev := archive.Revision()
+	archiveName := archive.Meta().Name
+	if archiveName != charmURL.Name || archiveRev != charmURL.Revision {
+		return fmt.Errorf("charm url %s mismatch with archive %s-%d", charmURL, archiveName, archiveRev)
 	}
 	if _, found := s.charms[base]; !found {
-		s.charms[base] = map[int]*charm.Bundle{}
+		s.charms[base] = map[int]*charm.Archive{}
 	}
-	s.charms[base][charmURL.Revision] = bundle
+	s.charms[base][charmURL.Revision] = archive
 	return nil
 }
 

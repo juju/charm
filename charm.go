@@ -22,7 +22,7 @@ type Charm interface {
 	Revision() int
 }
 
-// Read reads a Charm from path, which can point to either a charm bundle or a
+// Read reads a Charm from path, which can point to either a charm archive or a
 // charm directory.
 func Read(path string) (Charm, error) {
 	info, err := os.Stat(path)
@@ -32,7 +32,7 @@ func Read(path string) (Charm, error) {
 	if info.IsDir() {
 		return ReadDir(path)
 	}
-	return ReadBundle(path)
+	return ReadArchive(path)
 }
 
 // InferRepository returns a charm repository inferred from the provided charm

@@ -24,7 +24,7 @@ type CharmSuite struct{}
 var _ = gc.Suite(&CharmSuite{})
 
 func (s *CharmSuite) TestRead(c *gc.C) {
-	bPath := charmtesting.Charms.BundlePath(c.MkDir(), "dummy")
+	bPath := charmtesting.Charms.ArchivePath(c.MkDir(), "dummy")
 	ch, err := charm.Read(bPath)
 	c.Assert(err, gc.IsNil)
 	c.Assert(ch.Meta().Name, gc.Equals, "dummy")
@@ -81,7 +81,7 @@ func checkDummy(c *gc.C, f charm.Charm, path string) {
 							"default":     "foo.bz2",
 						}}}}})
 	switch f := f.(type) {
-	case *charm.Bundle:
+	case *charm.Archive:
 		c.Assert(f.Path, gc.Equals, path)
 	case *charm.Dir:
 		c.Assert(f.Path, gc.Equals, path)

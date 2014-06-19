@@ -52,7 +52,7 @@ func (s *DirSuite) TestReadDirWithoutActions(c *gc.C) {
 	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 0)
 }
 
-func (s *DirSuite) TestBundleTo(c *gc.C) {
+func (s *DirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := charmtesting.Charms.ClonedDirPath(baseDir, "dummy")
 	var haveSymlinks = true
@@ -61,10 +61,10 @@ func (s *DirSuite) TestBundleTo(c *gc.C) {
 	}
 	dir, err := charm.ReadDir(charmDir)
 	c.Assert(err, gc.IsNil)
-	path := filepath.Join(baseDir, "bundle.charm")
+	path := filepath.Join(baseDir, "archive.charm")
 	file, err := os.Create(path)
 	c.Assert(err, gc.IsNil)
-	err = dir.BundleTo(file)
+	err = dir.ArchiveTo(file)
 	file.Close()
 	c.Assert(err, gc.IsNil)
 
@@ -74,7 +74,7 @@ func (s *DirSuite) TestBundleTo(c *gc.C) {
 
 	var metaf, instf, emptyf, revf, symf *zip.File
 	for _, f := range zipr.File {
-		c.Logf("Bundled file: %s", f.Name)
+		c.Logf("Archived file: %s", f.Name)
 		switch f.Name {
 		case "revision":
 			revf = f
@@ -87,9 +87,9 @@ func (s *DirSuite) TestBundleTo(c *gc.C) {
 		case "empty/":
 			emptyf = f
 		case "build/ignored":
-			c.Errorf("bundle includes build/*: %s", f.Name)
+			c.Errorf("archive includes build/*: %s", f.Name)
 		case ".ignored", ".dir/ignored":
-			c.Errorf("bundle includes .* entries: %s", f.Name)
+			c.Errorf("archive includes .* entries: %s", f.Name)
 		}
 	}
 
@@ -133,7 +133,7 @@ func (s *DirSuite) TestBundleTo(c *gc.C) {
 }
 
 // Bug #864164: Must complain if charm hooks aren't executable
-func (s *DirSuite) TestBundleToWithNonExecutableHooks(c *gc.C) {
+func (s *DirSuite) TestArchiveToWithNonExecutableHooks(c *gc.C) {
 	hooks := []string{"install", "start", "config-changed", "upgrade-charm", "stop"}
 	for _, relName := range []string{"foo", "bar", "self"} {
 		for _, kind := range []string{"joined", "changed", "departed", "broken"} {
@@ -142,10 +142,10 @@ func (s *DirSuite) TestBundleToWithNonExecutableHooks(c *gc.C) {
 	}
 
 	dir := charmtesting.Charms.Dir("all-hooks")
-	path := filepath.Join(c.MkDir(), "bundle.charm")
+	path := filepath.Join(c.MkDir(), "archive.charm")
 	file, err := os.Create(path)
 	c.Assert(err, gc.IsNil)
-	err = dir.BundleTo(file)
+	err = dir.ArchiveTo(file)
 	file.Close()
 	c.Assert(err, gc.IsNil)
 
@@ -179,7 +179,7 @@ func (s *DirSuite) TestBundleToWithNonExecutableHooks(c *gc.C) {
 	}
 }
 
-func (s *DirSuite) TestBundleToWithBadType(c *gc.C) {
+func (s *DirSuite) TestArchiveToWithBadType(c *gc.C) {
 	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
 	badFile := filepath.Join(charmDir, "hooks", "badfile")
 
@@ -190,7 +190,7 @@ func (s *DirSuite) TestBundleToWithBadType(c *gc.C) {
 	dir, err := charm.ReadDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
-	err = dir.BundleTo(&bytes.Buffer{})
+	err = dir.ArchiveTo(&bytes.Buffer{})
 	c.Assert(err, gc.ErrorMatches, `symlink "hooks/badfile" links out of charm: "../../target"`)
 
 	// Symlink targeting an absolute path.
@@ -201,10 +201,10 @@ func (s *DirSuite) TestBundleToWithBadType(c *gc.C) {
 	dir, err = charm.ReadDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
-	err = dir.BundleTo(&bytes.Buffer{})
+	err = dir.ArchiveTo(&bytes.Buffer{})
 	c.Assert(err, gc.ErrorMatches, `symlink "hooks/badfile" is absolute: "/target"`)
 
-	// Can't bundle special files either.
+	// Can't archive special files either.
 	os.Remove(badFile)
 	err = syscall.Mkfifo(badFile, 0644)
 	c.Assert(err, gc.IsNil)
@@ -212,7 +212,7 @@ func (s *DirSuite) TestBundleToWithBadType(c *gc.C) {
 	dir, err = charm.ReadDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
-	err = dir.BundleTo(&bytes.Buffer{})
+	err = dir.ArchiveTo(&bytes.Buffer{})
 	c.Assert(err, gc.ErrorMatches, `file is a named pipe: "hooks/badfile"`)
 }
 
@@ -254,11 +254,11 @@ func (s *DirSuite) TestDirSetRevision(c *gc.C) {
 	c.Assert(dir.Revision(), gc.Equals, 42)
 
 	var b bytes.Buffer
-	err := dir.BundleTo(&b)
+	err := dir.ArchiveTo(&b)
 	c.Assert(err, gc.IsNil)
 
-	bundle, err := charm.ReadBundleBytes(b.Bytes())
-	c.Assert(bundle.Revision(), gc.Equals, 42)
+	archive, err := charm.ReadArchiveBytes(b.Bytes())
+	c.Assert(archive.Revision(), gc.Equals, 42)
 }
 
 func (s *DirSuite) TestDirSetDiskRevision(c *gc.C) {

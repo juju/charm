@@ -405,7 +405,7 @@ func (s *CharmStore) Get(curl *URL) (Charm, error) {
 	if err := verify(path, digest); err != nil {
 		return nil, err
 	}
-	return ReadBundle(path)
+	return ReadArchive(path)
 }
 
 // LocalRepository represents a local directory containing subdirectories
