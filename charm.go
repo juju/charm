@@ -30,9 +30,9 @@ func Read(path string) (Charm, error) {
 		return nil, err
 	}
 	if info.IsDir() {
-		return ReadDir(path)
+		return ReadCharmDir(path)
 	}
-	return ReadArchive(path)
+	return ReadCharmArchive(path)
 }
 
 // InferRepository returns a charm repository inferred from the provided charm

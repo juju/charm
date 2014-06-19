@@ -22,15 +22,15 @@ import (
 	"launchpad.net/goyaml"
 )
 
-type ArchiveSuite struct {
+type CharmArchiveSuite struct {
 	repo       *charmtesting.Repo
 	archivePath string
 }
 
-var _ = gc.Suite(&ArchiveSuite{})
+var _ = gc.Suite(&CharmArchiveSuite{})
 
-func (s *ArchiveSuite) SetUpSuite(c *gc.C) {
-	s.archivePath = charmtesting.Charms.ArchivePath(c.MkDir(), "dummy")
+func (s *CharmArchiveSuite) SetUpSuite(c *gc.C) {
+	s.archivePath = charmtesting.Charms.CharmArchivePath(c.MkDir(), "dummy")
 }
 
 var dummyManifest = []string{
@@ -46,17 +46,17 @@ var dummyManifest = []string{
 	"src/hello.c",
 }
 
-func (s *ArchiveSuite) TestReadArchive(c *gc.C) {
-	archive, err := charm.ReadArchive(s.archivePath)
+func (s *CharmArchiveSuite) TestReadCharmArchive(c *gc.C) {
+	archive, err := charm.ReadCharmArchive(s.archivePath)
 	c.Assert(err, gc.IsNil)
 	checkDummy(c, archive, s.archivePath)
 }
 
-func (s *ArchiveSuite) TestReadArchiveWithoutConfig(c *gc.C) {
+func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutConfig(c *gc.C) {
 	// Technically varnish has no config AND no actions.
 	// Perhaps we should make this more orthogonal?
-	path := charmtesting.Charms.ArchivePath(c.MkDir(), "varnish")
-	archive, err := charm.ReadArchive(path)
+	path := charmtesting.Charms.CharmArchivePath(c.MkDir(), "varnish")
+	archive, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
 
 	// A lacking config.yaml file still causes a proper
@@ -64,10 +64,10 @@ func (s *ArchiveSuite) TestReadArchiveWithoutConfig(c *gc.C) {
 	c.Assert(archive.Config().Options, gc.HasLen, 0)
 }
 
-func (s *ArchiveSuite) TestReadArchiveWithoutActions(c *gc.C) {
+func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutActions(c *gc.C) {
 	// Wordpress has config but no actions.
-	path := charmtesting.Charms.ArchivePath(c.MkDir(), "wordpress")
-	archive, err := charm.ReadArchive(path)
+	path := charmtesting.Charms.CharmArchivePath(c.MkDir(), "wordpress")
+	archive, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
 
 	// A lacking actions.yaml file still causes a proper
@@ -75,25 +75,25 @@ func (s *ArchiveSuite) TestReadArchiveWithoutActions(c *gc.C) {
 	c.Assert(archive.Actions().ActionSpecs, gc.HasLen, 0)
 }
 
-func (s *ArchiveSuite) TestReadArchiveBytes(c *gc.C) {
+func (s *CharmArchiveSuite) TestReadCharmArchiveBytes(c *gc.C) {
 	data, err := ioutil.ReadFile(s.archivePath)
 	c.Assert(err, gc.IsNil)
 
-	archive, err := charm.ReadArchiveBytes(data)
+	archive, err := charm.ReadCharmArchiveBytes(data)
 	c.Assert(err, gc.IsNil)
 	checkDummy(c, archive, "")
 }
 
-func (s *ArchiveSuite) TestManifest(c *gc.C) {
-	archive, err := charm.ReadArchive(s.archivePath)
+func (s *CharmArchiveSuite) TestManifest(c *gc.C) {
+	archive, err := charm.ReadCharmArchive(s.archivePath)
 	c.Assert(err, gc.IsNil)
 	manifest, err := archive.Manifest()
 	c.Assert(err, gc.IsNil)
 	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifest...))
 }
 
-func (s *ArchiveSuite) TestManifestNoRevision(c *gc.C) {
-	archive, err := charm.ReadArchive(s.archivePath)
+func (s *CharmArchiveSuite) TestManifestNoRevision(c *gc.C) {
+	archive, err := charm.ReadCharmArchive(s.archivePath)
 	c.Assert(err, gc.IsNil)
 	dirPath := c.MkDir()
 	err = archive.ExpandTo(dirPath)
@@ -101,13 +101,13 @@ func (s *ArchiveSuite) TestManifestNoRevision(c *gc.C) {
 	err = os.Remove(filepath.Join(dirPath, "revision"))
 	c.Assert(err, gc.IsNil)
 
-	archive = extArchiveDir(c, dirPath)
+	archive = extCharmArchiveDir(c, dirPath)
 	manifest, err := archive.Manifest()
 	c.Assert(err, gc.IsNil)
 	c.Assert(manifest, gc.DeepEquals, set.NewStrings(dummyManifest...))
 }
 
-func (s *ArchiveSuite) TestManifestSymlink(c *gc.C) {
+func (s *CharmArchiveSuite) TestManifestSymlink(c *gc.C) {
 	srcPath := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
 	if err := os.Symlink("../target", filepath.Join(srcPath, "hooks/symlink")); err != nil {
 		c.Skip("cannot symlink")
@@ -120,20 +120,20 @@ func (s *ArchiveSuite) TestManifestSymlink(c *gc.C) {
 	c.Assert(manifest, gc.DeepEquals, set.NewStrings(expected...))
 }
 
-func (s *ArchiveSuite) TestExpandTo(c *gc.C) {
-	archive, err := charm.ReadArchive(s.archivePath)
+func (s *CharmArchiveSuite) TestExpandTo(c *gc.C) {
+	archive, err := charm.ReadCharmArchive(s.archivePath)
 	c.Assert(err, gc.IsNil)
 
 	path := filepath.Join(c.MkDir(), "charm")
 	err = archive.ExpandTo(path)
 	c.Assert(err, gc.IsNil)
 
-	dir, err := charm.ReadDir(path)
+	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 	checkDummy(c, dir, path)
 }
 
-func (s *ArchiveSuite) prepareArchive(c *gc.C, charmDir *charm.Dir, archivePath string) {
+func (s *CharmArchiveSuite) prepareCharmArchive(c *gc.C, charmDir *charm.Dir, archivePath string) {
 	file, err := os.Create(archivePath)
 	c.Assert(err, gc.IsNil)
 	defer file.Close()
@@ -170,20 +170,20 @@ func (s *ArchiveSuite) prepareArchive(c *gc.C, charmDir *charm.Dir, archivePath 
 	}
 }
 
-func (s *ArchiveSuite) TestExpandToSetsHooksExecutable(c *gc.C) {
+func (s *CharmArchiveSuite) TestExpandToSetsHooksExecutable(c *gc.C) {
 	charmDir := charmtesting.Charms.ClonedDir(c.MkDir(), "all-hooks")
-	// Archive manually, so we can check ExpandTo(), unaffected
+	// CharmArchive manually, so we can check ExpandTo(), unaffected
 	// by ArchiveTo()'s behavior
 	archivePath := filepath.Join(c.MkDir(), "archive.charm")
-	s.prepareArchive(c, charmDir, archivePath)
-	archive, err := charm.ReadArchive(archivePath)
+	s.prepareCharmArchive(c, charmDir, archivePath)
+	archive, err := charm.ReadCharmArchive(archivePath)
 	c.Assert(err, gc.IsNil)
 
 	path := filepath.Join(c.MkDir(), "charm")
 	err = archive.ExpandTo(path)
 	c.Assert(err, gc.IsNil)
 
-	_, err = charm.ReadDir(path)
+	_, err = charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
 	for name := range archive.Meta().Hooks() {
@@ -195,7 +195,7 @@ func (s *ArchiveSuite) TestExpandToSetsHooksExecutable(c *gc.C) {
 	}
 }
 
-func (s *ArchiveSuite) TestArchiveFileModes(c *gc.C) {
+func (s *CharmArchiveSuite) TestCharmArchiveFileModes(c *gc.C) {
 	// Apply subtler mode differences than can be expressed in Bazaar.
 	srcPath := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
 	modes := []struct {
@@ -215,7 +215,7 @@ func (s *ArchiveSuite) TestArchiveFileModes(c *gc.C) {
 		haveSymlinks = false
 	}
 
-	// Archive and extract the charm to a new directory.
+	// CharmArchive and extract the charm to a new directory.
 	archive := archiveDir(c, srcPath)
 	path := c.MkDir()
 	err := archive.ExpandTo(path)
@@ -243,7 +243,7 @@ func (s *ArchiveSuite) TestArchiveFileModes(c *gc.C) {
 	}
 }
 
-func (s *ArchiveSuite) TestArchiveRevisionFile(c *gc.C) {
+func (s *CharmArchiveSuite) TestCharmArchiveRevisionFile(c *gc.C) {
 	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
 	revPath := filepath.Join(charmDir, "revision")
 
@@ -251,7 +251,7 @@ func (s *ArchiveSuite) TestArchiveRevisionFile(c *gc.C) {
 	err := os.Remove(revPath)
 	c.Assert(err, gc.IsNil)
 
-	archive := extArchiveDir(c, charmDir)
+	archive := extCharmArchiveDir(c, charmDir)
 	c.Assert(archive.Revision(), gc.Equals, 0)
 
 	// Missing revision file with old revision in metadata
@@ -260,21 +260,21 @@ func (s *ArchiveSuite) TestArchiveRevisionFile(c *gc.C) {
 	_, err = file.Write([]byte("\nrevision: 1234\n"))
 	c.Assert(err, gc.IsNil)
 
-	archive = extArchiveDir(c, charmDir)
+	archive = extCharmArchiveDir(c, charmDir)
 	c.Assert(archive.Revision(), gc.Equals, 1234)
 
 	// Revision file with bad content
 	err = ioutil.WriteFile(revPath, []byte("garbage"), 0666)
 	c.Assert(err, gc.IsNil)
 
-	path := extArchiveDirPath(c, charmDir)
-	archive, err = charm.ReadArchive(path)
+	path := extCharmArchiveDirPath(c, charmDir)
+	archive, err = charm.ReadCharmArchive(path)
 	c.Assert(err, gc.ErrorMatches, "invalid revision file")
 	c.Assert(archive, gc.IsNil)
 }
 
-func (s *ArchiveSuite) TestArchiveSetRevision(c *gc.C) {
-	archive, err := charm.ReadArchive(s.archivePath)
+func (s *CharmArchiveSuite) TestCharmArchiveSetRevision(c *gc.C) {
+	archive, err := charm.ReadCharmArchive(s.archivePath)
 	c.Assert(err, gc.IsNil)
 
 	c.Assert(archive.Revision(), gc.Equals, 1)
@@ -285,12 +285,12 @@ func (s *ArchiveSuite) TestArchiveSetRevision(c *gc.C) {
 	err = archive.ExpandTo(path)
 	c.Assert(err, gc.IsNil)
 
-	dir, err := charm.ReadDir(path)
+	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Revision(), gc.Equals, 42)
 }
 
-func (s *ArchiveSuite) TestExpandToWithBadLink(c *gc.C) {
+func (s *CharmArchiveSuite) TestExpandToWithBadLink(c *gc.C) {
 	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
 	badLink := filepath.Join(charmDir, "hooks", "badlink")
 
@@ -298,7 +298,7 @@ func (s *ArchiveSuite) TestExpandToWithBadLink(c *gc.C) {
 	err := os.Symlink("../../target", badLink)
 	c.Assert(err, gc.IsNil)
 
-	archive := extArchiveDir(c, charmDir)
+	archive := extCharmArchiveDir(c, charmDir)
 	c.Assert(err, gc.IsNil)
 
 	path := filepath.Join(c.MkDir(), "charm")
@@ -310,7 +310,7 @@ func (s *ArchiveSuite) TestExpandToWithBadLink(c *gc.C) {
 	err = os.Symlink("/target", badLink)
 	c.Assert(err, gc.IsNil)
 
-	archive = extArchiveDir(c, charmDir)
+	archive = extCharmArchiveDir(c, charmDir)
 	c.Assert(err, gc.IsNil)
 
 	path = filepath.Join(c.MkDir(), "charm")
@@ -318,7 +318,7 @@ func (s *ArchiveSuite) TestExpandToWithBadLink(c *gc.C) {
 	c.Assert(err, gc.ErrorMatches, `cannot extract "hooks/badlink": symlink "/target" is absolute`)
 }
 
-func extArchiveDirPath(c *gc.C, dirpath string) string {
+func extCharmArchiveDirPath(c *gc.C, dirpath string) string {
 	path := filepath.Join(c.MkDir(), "archive.charm")
 	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("cd %s; zip --fifo --symlinks -r %s .", dirpath, path))
 	output, err := cmd.CombinedOutput()
@@ -326,20 +326,20 @@ func extArchiveDirPath(c *gc.C, dirpath string) string {
 	return path
 }
 
-func extArchiveDir(c *gc.C, dirpath string) *charm.Archive {
-	path := extArchiveDirPath(c, dirpath)
-	archive, err := charm.ReadArchive(path)
+func extCharmArchiveDir(c *gc.C, dirpath string) *charm.CharmArchive {
+	path := extCharmArchiveDirPath(c, dirpath)
+	archive, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
 	return archive
 }
 
-func archiveDir(c *gc.C, dirpath string) *charm.Archive {
-	dir, err := charm.ReadDir(dirpath)
+func archiveDir(c *gc.C, dirpath string) *charm.CharmArchive {
+	dir, err := charm.ReadCharmDir(dirpath)
 	c.Assert(err, gc.IsNil)
 	buf := new(bytes.Buffer)
 	err = dir.ArchiveTo(buf)
 	c.Assert(err, gc.IsNil)
-	archive, err := charm.ReadArchiveBytes(buf.Bytes())
+	archive, err := charm.ReadCharmArchiveBytes(buf.Bytes())
 	c.Assert(err, gc.IsNil)
 	return archive
 }

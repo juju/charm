@@ -29,8 +29,8 @@ type Dir struct {
 // Trick to ensure *Dir implements the Charm interface.
 var _ Charm = (*Dir)(nil)
 
-// ReadDir returns a Dir representing an expanded charm directory.
-func ReadDir(path string) (dir *Dir, err error) {
+// ReadCharmDir returns a Dir representing an expanded charm directory.
+func ReadCharmDir(path string) (dir *Dir, err error) {
 	dir = &Dir{Path: path}
 	file, err := os.Open(dir.join("metadata.yaml"))
 	if err != nil {

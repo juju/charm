@@ -384,8 +384,8 @@ func (s *LocalRepoSuite) SetUpTest(c *gc.C) {
 	c.Assert(os.Mkdir(s.seriesPath, 0777), gc.IsNil)
 }
 
-func (s *LocalRepoSuite) addArchive(name string) string {
-	return charmtesting.Charms.ArchivePath(s.seriesPath, name)
+func (s *LocalRepoSuite) addCharmArchive(name string) string {
+	return charmtesting.Charms.CharmArchivePath(s.seriesPath, name)
 }
 
 func (s *LocalRepoSuite) addDir(name string) string {
@@ -457,9 +457,9 @@ func (s *LocalRepoSuite) TestMultipleVersions(c *gc.C) {
 	s.checkNotFoundErr(c, err, badRevCharmURL)
 }
 
-func (s *LocalRepoSuite) TestArchive(c *gc.C) {
+func (s *LocalRepoSuite) TestCharmArchive(c *gc.C) {
 	charmURL := charm.MustParseURL("local:quantal/dummy")
-	s.addArchive("dummy")
+	s.addCharmArchive("dummy")
 
 	rev, err := charm.Latest(s.repo, charmURL)
 	c.Assert(err, gc.IsNil)
@@ -501,7 +501,7 @@ func (s *LocalRepoSuite) TestIgnoresUnpromisingNames(c *gc.C) {
 	err = os.Mkdir(filepath.Join(s.seriesPath, ".blah"), 0666)
 	c.Assert(err, gc.IsNil)
 	renameSibling(c, s.addDir("dummy"), ".dummy")
-	renameSibling(c, s.addArchive("dummy"), "dummy.notacharm")
+	renameSibling(c, s.addCharmArchive("dummy"), "dummy.notacharm")
 	charmURL := charm.MustParseURL("local:quantal/dummy")
 
 	_, err = s.repo.Get(charmURL)

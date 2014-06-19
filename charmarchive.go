@@ -17,10 +17,10 @@ import (
 	ziputil "github.com/juju/utils/zip"
 )
 
-// The Archive type encapsulates access to data and operations
+// The CharmArchive type encapsulates access to data and operations
 // on a charm archive.
-type Archive struct {
-	Path     string // May be empty if Archive wasn't read from a file
+type CharmArchive struct {
+	Path     string // May be empty if CharmArchive wasn't read from a file
 	meta     *Meta
 	config   *Config
 	actions  *Actions
@@ -29,11 +29,11 @@ type Archive struct {
 	size     int64
 }
 
-// Trick to ensure *Archive implements the Charm interface.
-var _ Charm = (*Archive)(nil)
+// Trick to ensure *CharmArchive implements the Charm interface.
+var _ Charm = (*CharmArchive)(nil)
 
-// ReadArchive returns a Archive for the charm in path.
-func ReadArchive(path string) (archive *Archive, err error) {
+// ReadCharmArchive returns a CharmArchive for the charm in path.
+func ReadCharmArchive(path string) (archive *CharmArchive, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return
@@ -43,7 +43,7 @@ func ReadArchive(path string) (archive *Archive, err error) {
 	if err != nil {
 		return
 	}
-	b, err := readArchive(f, fi.Size())
+	b, err := readCharmArchive(f, fi.Size())
 	if err != nil {
 		return
 	}
@@ -51,14 +51,14 @@ func ReadArchive(path string) (archive *Archive, err error) {
 	return b, nil
 }
 
-// ReadArchiveBytes returns a Archive read from the given data.
+// ReadCharmArchiveBytes returns a CharmArchive read from the given data.
 // Make sure the archive fits in memory before using this.
-func ReadArchiveBytes(data []byte) (archive *Archive, err error) {
-	return readArchive(readAtBytes(data), int64(len(data)))
+func ReadCharmArchiveBytes(data []byte) (archive *CharmArchive, err error) {
+	return readCharmArchive(readAtBytes(data), int64(len(data)))
 }
 
-func readArchive(r io.ReaderAt, size int64) (archive *Archive, err error) {
-	b := &Archive{r: r, size: size}
+func readCharmArchive(r io.ReaderAt, size int64) (archive *CharmArchive, err error) {
+	b := &CharmArchive{r: r, size: size}
 	zipr, err := zip.NewReader(r, size)
 	if err != nil {
 		return
@@ -74,7 +74,7 @@ func readArchive(r io.ReaderAt, size int64) (archive *Archive, err error) {
 	}
 
 	reader, err = zipOpen(zipr, "config.yaml")
-	if _, ok := err.(*noArchiveFile); ok {
+	if _, ok := err.(*noCharmArchiveFile); ok {
 		b.config = NewConfig()
 	} else if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func readArchive(r io.ReaderAt, size int64) (archive *Archive, err error) {
 	}
 
 	reader, err = zipOpen(zipr, "actions.yaml")
-	if _, ok := err.(*noArchiveFile); ok {
+	if _, ok := err.(*noCharmArchiveFile); ok {
 		b.actions = NewActions()
 	} else if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func readArchive(r io.ReaderAt, size int64) (archive *Archive, err error) {
 
 	reader, err = zipOpen(zipr, "revision")
 	if err != nil {
-		if _, ok := err.(*noArchiveFile); !ok {
+		if _, ok := err.(*noCharmArchiveFile); !ok {
 			return
 		}
 		b.revision = b.meta.OldRevision
@@ -121,44 +121,44 @@ func zipOpen(zipr *zip.Reader, path string) (rc io.ReadCloser, err error) {
 			return fh.Open()
 		}
 	}
-	return nil, &noArchiveFile{path}
+	return nil, &noCharmArchiveFile{path}
 }
 
-type noArchiveFile struct {
+type noCharmArchiveFile struct {
 	path string
 }
 
-func (err noArchiveFile) Error() string {
+func (err noCharmArchiveFile) Error() string {
 	return fmt.Sprintf("archive file not found: %s", err.path)
 }
 
 // Revision returns the revision number for the charm
 // expanded in dir.
-func (a *Archive) Revision() int {
+func (a *CharmArchive) Revision() int {
 	return a.revision
 }
 
 // SetRevision changes the charm revision number. This affects the
 // revision reported by Revision and the revision of the charm
 // directory created by ExpandTo.
-func (a *Archive) SetRevision(revision int) {
+func (a *CharmArchive) SetRevision(revision int) {
 	a.revision = revision
 }
 
 // Meta returns the Meta representing the metadata.yaml file from archive.
-func (a *Archive) Meta() *Meta {
+func (a *CharmArchive) Meta() *Meta {
 	return a.meta
 }
 
 // Config returns the Config representing the config.yaml file
 // for the charm archive.
-func (a *Archive) Config() *Config {
+func (a *CharmArchive) Config() *Config {
 	return a.config
 }
 
 // Actions returns the Actions map for the actions.yaml file for the charm
 // archive.
-func (a *Archive) Actions() *Actions {
+func (a *CharmArchive) Actions() *Actions {
 	return a.actions
 }
 
@@ -168,7 +168,7 @@ type zipReadCloser struct {
 }
 
 // zipOpen returns a zipReadCloser.
-func (a *Archive) zipOpen() (*zipReadCloser, error) {
+func (a *CharmArchive) zipOpen() (*zipReadCloser, error) {
 	// If we don't have a Path, try to use the original ReaderAt.
 	if a.Path == "" {
 		r, err := zip.NewReader(a.r, a.size)
@@ -195,7 +195,7 @@ func (a *Archive) zipOpen() (*zipReadCloser, error) {
 }
 
 // Manifest returns a set of the charm's contents.
-func (a *Archive) Manifest() (set.Strings, error) {
+func (a *CharmArchive) Manifest() (set.Strings, error) {
 	zipr, err := a.zipOpen()
 	if err != nil {
 		return set.NewStrings(), err
@@ -216,7 +216,7 @@ func (a *Archive) Manifest() (set.Strings, error) {
 // ExpandTo expands the charm archive into dir, creating it if necessary.
 // If any errors occur during the expansion procedure, the process will
 // abort.
-func (a *Archive) ExpandTo(dir string) (err error) {
+func (a *CharmArchive) ExpandTo(dir string) (err error) {
 	zipr, err := a.zipOpen()
 	if err != nil {
 		return err

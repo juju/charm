@@ -25,16 +25,16 @@ type DirSuite struct {
 
 var _ = gc.Suite(&DirSuite{})
 
-func (s *DirSuite) TestReadDir(c *gc.C) {
+func (s *DirSuite) TestReadCharmDir(c *gc.C) {
 	path := charmtesting.Charms.DirPath("dummy")
-	dir, err := charm.ReadDir(path)
+	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 	checkDummy(c, dir, path)
 }
 
-func (s *DirSuite) TestReadDirWithoutConfig(c *gc.C) {
+func (s *DirSuite) TestReadCharmDirWithoutConfig(c *gc.C) {
 	path := charmtesting.Charms.DirPath("varnish")
-	dir, err := charm.ReadDir(path)
+	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
 	// A lacking config.yaml file still causes a proper
@@ -42,9 +42,9 @@ func (s *DirSuite) TestReadDirWithoutConfig(c *gc.C) {
 	c.Assert(dir.Config().Options, gc.HasLen, 0)
 }
 
-func (s *DirSuite) TestReadDirWithoutActions(c *gc.C) {
+func (s *DirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
 	path := charmtesting.Charms.DirPath("wordpress")
-	dir, err := charm.ReadDir(path)
+	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
 	// A lacking actions.yaml file still causes a proper
@@ -59,7 +59,7 @@ func (s *DirSuite) TestArchiveTo(c *gc.C) {
 	if err := os.Symlink("../target", filepath.Join(charmDir, "hooks/symlink")); err != nil {
 		haveSymlinks = false
 	}
-	dir, err := charm.ReadDir(charmDir)
+	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 	path := filepath.Join(baseDir, "archive.charm")
 	file, err := os.Create(path)
@@ -74,7 +74,7 @@ func (s *DirSuite) TestArchiveTo(c *gc.C) {
 
 	var metaf, instf, emptyf, revf, symf *zip.File
 	for _, f := range zipr.File {
-		c.Logf("Archived file: %s", f.Name)
+		c.Logf("CharmArchived file: %s", f.Name)
 		switch f.Name {
 		case "revision":
 			revf = f
@@ -187,7 +187,7 @@ func (s *DirSuite) TestArchiveToWithBadType(c *gc.C) {
 	err := os.Symlink("../../target", badFile)
 	c.Assert(err, gc.IsNil)
 
-	dir, err := charm.ReadDir(charmDir)
+	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
 	err = dir.ArchiveTo(&bytes.Buffer{})
@@ -198,7 +198,7 @@ func (s *DirSuite) TestArchiveToWithBadType(c *gc.C) {
 	err = os.Symlink("/target", badFile)
 	c.Assert(err, gc.IsNil)
 
-	dir, err = charm.ReadDir(charmDir)
+	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
 	err = dir.ArchiveTo(&bytes.Buffer{})
@@ -209,7 +209,7 @@ func (s *DirSuite) TestArchiveToWithBadType(c *gc.C) {
 	err = syscall.Mkfifo(badFile, 0644)
 	c.Assert(err, gc.IsNil)
 
-	dir, err = charm.ReadDir(charmDir)
+	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
 	err = dir.ArchiveTo(&bytes.Buffer{})
@@ -224,7 +224,7 @@ func (s *DirSuite) TestDirRevisionFile(c *gc.C) {
 	err := os.Remove(revPath)
 	c.Assert(err, gc.IsNil)
 
-	dir, err := charm.ReadDir(charmDir)
+	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Revision(), gc.Equals, 0)
 
@@ -234,7 +234,7 @@ func (s *DirSuite) TestDirRevisionFile(c *gc.C) {
 	_, err = file.Write([]byte("\nrevision: 1234\n"))
 	c.Assert(err, gc.IsNil)
 
-	dir, err = charm.ReadDir(charmDir)
+	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Revision(), gc.Equals, 1234)
 
@@ -242,7 +242,7 @@ func (s *DirSuite) TestDirRevisionFile(c *gc.C) {
 	err = ioutil.WriteFile(revPath, []byte("garbage"), 0666)
 	c.Assert(err, gc.IsNil)
 
-	dir, err = charm.ReadDir(charmDir)
+	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.ErrorMatches, "invalid revision file")
 	c.Assert(dir, gc.IsNil)
 }
@@ -257,20 +257,20 @@ func (s *DirSuite) TestDirSetRevision(c *gc.C) {
 	err := dir.ArchiveTo(&b)
 	c.Assert(err, gc.IsNil)
 
-	archive, err := charm.ReadArchiveBytes(b.Bytes())
+	archive, err := charm.ReadCharmArchiveBytes(b.Bytes())
 	c.Assert(archive.Revision(), gc.Equals, 42)
 }
 
 func (s *DirSuite) TestDirSetDiskRevision(c *gc.C) {
 	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
-	dir, err := charm.ReadDir(charmDir)
+	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
 	c.Assert(dir.Revision(), gc.Equals, 1)
 	dir.SetDiskRevision(42)
 	c.Assert(dir.Revision(), gc.Equals, 42)
 
-	dir, err = charm.ReadDir(charmDir)
+	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Revision(), gc.Equals, 42)
 }

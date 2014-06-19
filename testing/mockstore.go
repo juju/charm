@@ -42,7 +42,7 @@ type MockStore struct {
 // NewMockStore creates a mock charm store containing the specified charms.
 func NewMockStore(c *gc.C, charms map[string]int) *MockStore {
 	s := &MockStore{charms: charms, DefaultSeries: "precise"}
-	f, err := os.Open(Charms.ArchivePath(c.MkDir(), "dummy"))
+	f, err := os.Open(Charms.CharmArchivePath(c.MkDir(), "dummy"))
 	c.Assert(err, gc.IsNil)
 	defer f.Close()
 	buf := &bytes.Buffer{}
