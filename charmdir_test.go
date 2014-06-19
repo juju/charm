@@ -19,21 +19,21 @@ import (
 	gc "launchpad.net/gocheck"
 )
 
-type DirSuite struct {
+type CharmDirSuite struct {
 	testing.IsolationSuite
 }
 
-var _ = gc.Suite(&DirSuite{})
+var _ = gc.Suite(&CharmDirSuite{})
 
-func (s *DirSuite) TestReadCharmDir(c *gc.C) {
-	path := charmtesting.Charms.DirPath("dummy")
+func (s *CharmDirSuite) TestReadCharmDir(c *gc.C) {
+	path := charmtesting.Charms.CharmDirPath("dummy")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 	checkDummy(c, dir, path)
 }
 
-func (s *DirSuite) TestReadCharmDirWithoutConfig(c *gc.C) {
-	path := charmtesting.Charms.DirPath("varnish")
+func (s *CharmDirSuite) TestReadCharmDirWithoutConfig(c *gc.C) {
+	path := charmtesting.Charms.CharmDirPath("varnish")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
@@ -42,8 +42,8 @@ func (s *DirSuite) TestReadCharmDirWithoutConfig(c *gc.C) {
 	c.Assert(dir.Config().Options, gc.HasLen, 0)
 }
 
-func (s *DirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
-	path := charmtesting.Charms.DirPath("wordpress")
+func (s *CharmDirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
+	path := charmtesting.Charms.CharmDirPath("wordpress")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
@@ -52,7 +52,7 @@ func (s *DirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
 	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 0)
 }
 
-func (s *DirSuite) TestArchiveTo(c *gc.C) {
+func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := charmtesting.Charms.ClonedDirPath(baseDir, "dummy")
 	var haveSymlinks = true
@@ -133,7 +133,7 @@ func (s *DirSuite) TestArchiveTo(c *gc.C) {
 }
 
 // Bug #864164: Must complain if charm hooks aren't executable
-func (s *DirSuite) TestArchiveToWithNonExecutableHooks(c *gc.C) {
+func (s *CharmDirSuite) TestArchiveToWithNonExecutableHooks(c *gc.C) {
 	hooks := []string{"install", "start", "config-changed", "upgrade-charm", "stop"}
 	for _, relName := range []string{"foo", "bar", "self"} {
 		for _, kind := range []string{"joined", "changed", "departed", "broken"} {
@@ -141,7 +141,7 @@ func (s *DirSuite) TestArchiveToWithNonExecutableHooks(c *gc.C) {
 		}
 	}
 
-	dir := charmtesting.Charms.Dir("all-hooks")
+	dir := charmtesting.Charms.CharmDir("all-hooks")
 	path := filepath.Join(c.MkDir(), "archive.charm")
 	file, err := os.Create(path)
 	c.Assert(err, gc.IsNil)
@@ -179,7 +179,7 @@ func (s *DirSuite) TestArchiveToWithNonExecutableHooks(c *gc.C) {
 	}
 }
 
-func (s *DirSuite) TestArchiveToWithBadType(c *gc.C) {
+func (s *CharmDirSuite) TestArchiveToWithBadType(c *gc.C) {
 	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
 	badFile := filepath.Join(charmDir, "hooks", "badfile")
 
@@ -216,7 +216,7 @@ func (s *DirSuite) TestArchiveToWithBadType(c *gc.C) {
 	c.Assert(err, gc.ErrorMatches, `file is a named pipe: "hooks/badfile"`)
 }
 
-func (s *DirSuite) TestDirRevisionFile(c *gc.C) {
+func (s *CharmDirSuite) TestDirRevisionFile(c *gc.C) {
 	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
 	revPath := filepath.Join(charmDir, "revision")
 
@@ -247,7 +247,7 @@ func (s *DirSuite) TestDirRevisionFile(c *gc.C) {
 	c.Assert(dir, gc.IsNil)
 }
 
-func (s *DirSuite) TestDirSetRevision(c *gc.C) {
+func (s *CharmDirSuite) TestDirSetRevision(c *gc.C) {
 	dir := charmtesting.Charms.ClonedDir(c.MkDir(), "dummy")
 	c.Assert(dir.Revision(), gc.Equals, 1)
 	dir.SetRevision(42)
@@ -261,7 +261,7 @@ func (s *DirSuite) TestDirSetRevision(c *gc.C) {
 	c.Assert(archive.Revision(), gc.Equals, 42)
 }
 
-func (s *DirSuite) TestDirSetDiskRevision(c *gc.C) {
+func (s *CharmDirSuite) TestDirSetDiskRevision(c *gc.C) {
 	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
 	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)

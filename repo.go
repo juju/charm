@@ -501,7 +501,7 @@ func (r *LocalRepository) Get(curl *URL) (Charm, error) {
 		if !mightBeCharm(info) {
 			continue
 		}
-		if ch, err := Read(chPath); err != nil {
+		if ch, err := ReadCharm(chPath); err != nil {
 			logger.Warningf("failed to load charm at %q: %s", chPath, err)
 		} else if ch.Meta().Name == curl.Name {
 			if ch.Revision() == curl.Revision {

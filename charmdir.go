@@ -16,9 +16,9 @@ import (
 	"syscall"
 )
 
-// The Dir type encapsulates access to data and operations
+// The CharmDir type encapsulates access to data and operations
 // on a charm directory.
-type Dir struct {
+type CharmDir struct {
 	Path     string
 	meta     *Meta
 	config   *Config
@@ -26,12 +26,12 @@ type Dir struct {
 	revision int
 }
 
-// Trick to ensure *Dir implements the Charm interface.
-var _ Charm = (*Dir)(nil)
+// Trick to ensure *CharmDir implements the Charm interface.
+var _ Charm = (*CharmDir)(nil)
 
-// ReadCharmDir returns a Dir representing an expanded charm directory.
-func ReadCharmDir(path string) (dir *Dir, err error) {
-	dir = &Dir{Path: path}
+// ReadCharmDir returns a CharmDir representing an expanded charm directory.
+func ReadCharmDir(path string) (dir *CharmDir, err error) {
+	dir = &CharmDir{Path: path}
 	file, err := os.Open(dir.join("metadata.yaml"))
 	if err != nil {
 		return nil, err
@@ -80,32 +80,32 @@ func ReadCharmDir(path string) (dir *Dir, err error) {
 
 // join builds a path rooted at the charm's expanded directory
 // path and the extra path components provided.
-func (dir *Dir) join(parts ...string) string {
+func (dir *CharmDir) join(parts ...string) string {
 	parts = append([]string{dir.Path}, parts...)
 	return filepath.Join(parts...)
 }
 
 // Revision returns the revision number for the charm
 // expanded in dir.
-func (dir *Dir) Revision() int {
+func (dir *CharmDir) Revision() int {
 	return dir.revision
 }
 
 // Meta returns the Meta representing the metadata.yaml file
 // for the charm expanded in dir.
-func (dir *Dir) Meta() *Meta {
+func (dir *CharmDir) Meta() *Meta {
 	return dir.meta
 }
 
 // Config returns the Config representing the config.yaml file
 // for the charm expanded in dir.
-func (dir *Dir) Config() *Config {
+func (dir *CharmDir) Config() *Config {
 	return dir.config
 }
 
 // Actions returns the Actions representing the actions.yaml file
 // for the charm expanded in dir.
-func (dir *Dir) Actions() *Actions {
+func (dir *CharmDir) Actions() *Actions {
 	return dir.actions
 }
 
@@ -113,13 +113,13 @@ func (dir *Dir) Actions() *Actions {
 // the revision reported by Revision and the revision of the
 // charm archived by ArchiveTo.
 // The revision file in the charm directory is not modified.
-func (dir *Dir) SetRevision(revision int) {
+func (dir *CharmDir) SetRevision(revision int) {
 	dir.revision = revision
 }
 
 // SetDiskRevision does the same as SetRevision but also changes
 // the revision file in the charm directory.
-func (dir *Dir) SetDiskRevision(revision int) error {
+func (dir *CharmDir) SetDiskRevision(revision int) error {
 	dir.SetRevision(revision)
 	file, err := os.OpenFile(dir.join("revision"), os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -132,7 +132,7 @@ func (dir *Dir) SetDiskRevision(revision int) error {
 
 // ArchiveTo creates a charm file from the charm expanded in dir.
 // By convention a charm archive should have a ".charm" suffix.
-func (dir *Dir) ArchiveTo(w io.Writer) (err error) {
+func (dir *CharmDir) ArchiveTo(w io.Writer) (err error) {
 	zipw := zip.NewWriter(w)
 	defer zipw.Close()
 	zp := zipPacker{zipw, dir.Path, dir.Meta().Hooks()}

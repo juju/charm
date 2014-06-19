@@ -133,7 +133,7 @@ func (s *CharmArchiveSuite) TestExpandTo(c *gc.C) {
 	checkDummy(c, dir, path)
 }
 
-func (s *CharmArchiveSuite) prepareCharmArchive(c *gc.C, charmDir *charm.Dir, archivePath string) {
+func (s *CharmArchiveSuite) prepareCharmArchive(c *gc.C, charmDir *charm.CharmDir, archivePath string) {
 	file, err := os.Create(archivePath)
 	c.Assert(err, gc.IsNil)
 	defer file.Close()

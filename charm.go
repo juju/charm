@@ -22,9 +22,9 @@ type Charm interface {
 	Revision() int
 }
 
-// Read reads a Charm from path, which can point to either a charm archive or a
+// ReadCharm reads a Charm from path, which can point to either a charm archive or a
 // charm directory.
-func Read(path string) (Charm, error) {
+func ReadCharm(path string) (Charm, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err

@@ -50,15 +50,15 @@ func clone(dst, src string) string {
 	return dst
 }
 
-// DirPath returns the path to a charm directory with the given name in the
+// CharmDirPath returns the path to a charm directory with the given name in the
 // default series
-func (r *Repo) DirPath(name string) string {
+func (r *Repo) CharmDirPath(name string) string {
 	return filepath.Join(r.Path(), "quantal", name)
 }
 
-// Dir returns the actual charm.Dir named name.
-func (r *Repo) Dir(name string) *charm.Dir {
-	ch, err := charm.ReadCharmDir(r.DirPath(name))
+// CharmDir returns the actual charm.CharmDir named name.
+func (r *Repo) CharmDir(name string) *charm.CharmDir {
+	ch, err := charm.ReadCharmDir(r.CharmDirPath(name))
 	check(err)
 	return ch
 }
@@ -66,21 +66,21 @@ func (r *Repo) Dir(name string) *charm.Dir {
 // ClonedDirPath returns the path to a new copy of the default charm directory
 // named name.
 func (r *Repo) ClonedDirPath(dst, name string) string {
-	return clone(dst, r.DirPath(name))
+	return clone(dst, r.CharmDirPath(name))
 }
 
 // RenamedClonedDirPath returns the path to a new copy of the default
 // charm directory named name, renamed to newName.
 func (r *Repo) RenamedClonedDirPath(dst, name, newName string) string {
 	dstPath := filepath.Join(dst, newName)
-	err := fs.Copy(r.DirPath(name), dstPath)
+	err := fs.Copy(r.CharmDirPath(name), dstPath)
 	check(err)
 	return dstPath
 }
 
-// ClonedDir returns an actual charm.Dir based on a new copy of the charm directory
+// ClonedDir returns an actual charm.CharmDir based on a new copy of the charm directory
 // named name, in the directory dst.
-func (r *Repo) ClonedDir(dst, name string) *charm.Dir {
+func (r *Repo) ClonedDir(dst, name string) *charm.CharmDir {
 	ch, err := charm.ReadCharmDir(r.ClonedDirPath(dst, name))
 	check(err)
 	return ch
@@ -95,7 +95,7 @@ func (r *Repo) ClonedURL(dst, series, name string) *charm.URL {
 	if err := os.MkdirAll(dst, os.FileMode(0777)); err != nil {
 		panic(fmt.Errorf("cannot make destination directory: %v", err))
 	}
-	clone(dst, r.DirPath(name))
+	clone(dst, r.CharmDirPath(name))
 	return &charm.URL{
 		Reference: charm.Reference{
 			Schema:   "local",
@@ -109,7 +109,7 @@ func (r *Repo) ClonedURL(dst, series, name string) *charm.URL {
 // CharmArchivePath returns the path to a new charm archive file created from the
 // charm directory named name, in the directory dst.
 func (r *Repo) CharmArchivePath(dst, name string) string {
-	dir := r.Dir(name)
+	dir := r.CharmDir(name)
 	path := filepath.Join(dst, "archive.charm")
 	file, err := os.Create(path)
 	check(err)
