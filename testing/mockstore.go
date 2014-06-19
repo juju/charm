@@ -26,8 +26,8 @@ var logger = loggo.GetLogger("juju.charm.testing.mockstore")
 type MockStore struct {
 	mux                     *http.ServeMux
 	listener                net.Listener
-	archiveBytes             []byte
-	archiveSha256            string
+	archiveBytes            []byte
+	archiveSha256           string
 	Downloads               []*charm.URL
 	DownloadsNoStats        []*charm.URL
 	Authorizations          []string
