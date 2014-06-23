@@ -50,15 +50,15 @@ func clone(dst, src string) string {
 	return dst
 }
 
-// DirPath returns the path to a charm directory with the given name in the
+// CharmDirPath returns the path to a charm directory with the given name in the
 // default series
-func (r *Repo) DirPath(name string) string {
+func (r *Repo) CharmDirPath(name string) string {
 	return filepath.Join(r.Path(), "quantal", name)
 }
 
-// Dir returns the actual charm.Dir named name.
-func (r *Repo) Dir(name string) *charm.Dir {
-	ch, err := charm.ReadDir(r.DirPath(name))
+// CharmDir returns the actual charm.CharmDir named name.
+func (r *Repo) CharmDir(name string) *charm.CharmDir {
+	ch, err := charm.ReadCharmDir(r.CharmDirPath(name))
 	check(err)
 	return ch
 }
@@ -66,22 +66,22 @@ func (r *Repo) Dir(name string) *charm.Dir {
 // ClonedDirPath returns the path to a new copy of the default charm directory
 // named name.
 func (r *Repo) ClonedDirPath(dst, name string) string {
-	return clone(dst, r.DirPath(name))
+	return clone(dst, r.CharmDirPath(name))
 }
 
 // RenamedClonedDirPath returns the path to a new copy of the default
 // charm directory named name, renamed to newName.
 func (r *Repo) RenamedClonedDirPath(dst, name, newName string) string {
 	dstPath := filepath.Join(dst, newName)
-	err := fs.Copy(r.DirPath(name), dstPath)
+	err := fs.Copy(r.CharmDirPath(name), dstPath)
 	check(err)
 	return dstPath
 }
 
-// ClonedDir returns an actual charm.Dir based on a new copy of the charm directory
+// ClonedDir returns an actual charm.CharmDir based on a new copy of the charm directory
 // named name, in the directory dst.
-func (r *Repo) ClonedDir(dst, name string) *charm.Dir {
-	ch, err := charm.ReadDir(r.ClonedDirPath(dst, name))
+func (r *Repo) ClonedDir(dst, name string) *charm.CharmDir {
+	ch, err := charm.ReadCharmDir(r.ClonedDirPath(dst, name))
 	check(err)
 	return ch
 }
@@ -95,7 +95,7 @@ func (r *Repo) ClonedURL(dst, series, name string) *charm.URL {
 	if err := os.MkdirAll(dst, os.FileMode(0777)); err != nil {
 		panic(fmt.Errorf("cannot make destination directory: %v", err))
 	}
-	clone(dst, r.DirPath(name))
+	clone(dst, r.CharmDirPath(name))
 	return &charm.URL{
 		Reference: charm.Reference{
 			Schema:   "local",
@@ -106,22 +106,22 @@ func (r *Repo) ClonedURL(dst, series, name string) *charm.URL {
 	}
 }
 
-// BundlePath returns the path to a new charm bundle file created from the
+// CharmArchivePath returns the path to a new charm archive file created from the
 // charm directory named name, in the directory dst.
-func (r *Repo) BundlePath(dst, name string) string {
-	dir := r.Dir(name)
-	path := filepath.Join(dst, "bundle.charm")
+func (r *Repo) CharmArchivePath(dst, name string) string {
+	dir := r.CharmDir(name)
+	path := filepath.Join(dst, "archive.charm")
 	file, err := os.Create(path)
 	check(err)
 	defer file.Close()
-	check(dir.BundleTo(file))
+	check(dir.ArchiveTo(file))
 	return path
 }
 
-// Bundle returns an actual charm.Bundle created from a new charm bundle file
+// Archive returns an actual charm.Archive created from a new charm archive file
 // created from the charm directory named name, in the directory dst.
-func (r *Repo) Bundle(dst, name string) *charm.Bundle {
-	ch, err := charm.ReadBundle(r.BundlePath(dst, name))
+func (r *Repo) CharmArchive(dst, name string) *charm.CharmArchive {
+	ch, err := charm.ReadCharmArchive(r.CharmArchivePath(dst, name))
 	check(err)
 	return ch
 }
@@ -129,14 +129,14 @@ func (r *Repo) Bundle(dst, name string) *charm.Bundle {
 // MockCharmStore implements charm.Repository and is used to isolate tests
 // that would otherwise need to hit the real charm store.
 type MockCharmStore struct {
-	charms        map[string]map[int]*charm.Bundle
+	charms        map[string]map[int]*charm.CharmArchive
 	AuthAttrs     string
 	TestMode      bool
 	DefaultSeries string
 }
 
 func NewMockCharmStore() *MockCharmStore {
-	return &MockCharmStore{charms: map[string]map[int]*charm.Bundle{}}
+	return &MockCharmStore{charms: map[string]map[int]*charm.CharmArchive{}}
 }
 
 func (s *MockCharmStore) WithAuthAttrs(auth string) charm.Repository {
@@ -162,27 +162,27 @@ func (s *MockCharmStore) Resolve(ref charm.Reference) (*charm.URL, error) {
 }
 
 // SetCharm adds and removes charms in s. The affected charm is identified by
-// charmURL, which must be revisioned. If bundle is nil, the charm will be
-// removed; otherwise, it will be stored. It is an error to store a bundle
+// charmURL, which must be revisioned. If archive is nil, the charm will be
+// removed; otherwise, it will be stored. It is an error to store a archive
 // under a charmURL that does not share its name and revision.
-func (s *MockCharmStore) SetCharm(charmURL *charm.URL, bundle *charm.Bundle) error {
+func (s *MockCharmStore) SetCharm(charmURL *charm.URL, archive *charm.CharmArchive) error {
 	base := charmURL.WithRevision(-1).String()
 	if charmURL.Revision < 0 {
 		return fmt.Errorf("bad charm url revision")
 	}
-	if bundle == nil {
+	if archive == nil {
 		delete(s.charms[base], charmURL.Revision)
 		return nil
 	}
-	bundleRev := bundle.Revision()
-	bundleName := bundle.Meta().Name
-	if bundleName != charmURL.Name || bundleRev != charmURL.Revision {
-		return fmt.Errorf("charm url %s mismatch with bundle %s-%d", charmURL, bundleName, bundleRev)
+	archiveRev := archive.Revision()
+	archiveName := archive.Meta().Name
+	if archiveName != charmURL.Name || archiveRev != charmURL.Revision {
+		return fmt.Errorf("charm url %s mismatch with archive %s-%d", charmURL, archiveName, archiveRev)
 	}
 	if _, found := s.charms[base]; !found {
-		s.charms[base] = map[int]*charm.Bundle{}
+		s.charms[base] = map[int]*charm.CharmArchive{}
 	}
-	s.charms[base][charmURL.Revision] = bundle
+	s.charms[base][charmURL.Revision] = archive
 	return nil
 }
 

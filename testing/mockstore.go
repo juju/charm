@@ -26,8 +26,8 @@ var logger = loggo.GetLogger("juju.charm.testing.mockstore")
 type MockStore struct {
 	mux                     *http.ServeMux
 	listener                net.Listener
-	bundleBytes             []byte
-	bundleSha256            string
+	archiveBytes            []byte
+	archiveSha256           string
 	Downloads               []*charm.URL
 	DownloadsNoStats        []*charm.URL
 	Authorizations          []string
@@ -42,13 +42,13 @@ type MockStore struct {
 // NewMockStore creates a mock charm store containing the specified charms.
 func NewMockStore(c *gc.C, charms map[string]int) *MockStore {
 	s := &MockStore{charms: charms, DefaultSeries: "precise"}
-	f, err := os.Open(Charms.BundlePath(c.MkDir(), "dummy"))
+	f, err := os.Open(Charms.CharmArchivePath(c.MkDir(), "dummy"))
 	c.Assert(err, gc.IsNil)
 	defer f.Close()
 	buf := &bytes.Buffer{}
-	s.bundleSha256, _, err = utils.ReadSHA256(io.TeeReader(f, buf))
+	s.archiveSha256, _, err = utils.ReadSHA256(io.TeeReader(f, buf))
 	c.Assert(err, gc.IsNil)
-	s.bundleBytes = buf.Bytes()
+	s.archiveBytes = buf.Bytes()
 	c.Assert(err, gc.IsNil)
 	s.mux = http.NewServeMux()
 	s.mux.HandleFunc("/charm-info", s.serveInfo)
@@ -124,7 +124,7 @@ func (s *MockStore) serveInfo(w http.ResponseWriter, r *http.Request) {
 				} else {
 					cr.Revision = charmURL.Revision
 				}
-				cr.Sha256 = s.bundleSha256
+				cr.Sha256 = s.archiveSha256
 				cr.CanonicalURL = charmURL.String()
 			} else {
 				cr.Errors = append(cr.Errors, "entry not found")
@@ -204,8 +204,8 @@ func (s *MockStore) serveCharm(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Connection", "close")
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Length", strconv.Itoa(len(s.bundleBytes)))
-	_, err := w.Write(s.bundleBytes)
+	w.Header().Set("Content-Length", strconv.Itoa(len(s.archiveBytes)))
+	_, err := w.Write(s.archiveBytes)
 	if err != nil {
 		panic(err)
 	}
