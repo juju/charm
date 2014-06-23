@@ -55,6 +55,22 @@ func (s *CharmDirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
 func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := charmtesting.Charms.ClonedDirPath(baseDir, "dummy")
+	s.assertArchiveTo(c, baseDir, charmDir)
+}
+
+func (s *CharmDirSuite) TestArchiveToWithSymLinkedRootDir(c *gc.C) {
+	dir := c.MkDir()
+	baseDir := filepath.Join(dir, "precise")
+	err := os.MkdirAll(baseDir, 0755)
+	c.Assert(err, gc.IsNil)
+	charmtesting.Charms.ClonedDirPath(dir, "dummy")
+	err = os.Symlink(filepath.Join("..", "dummy"), filepath.Join(baseDir, "dummy"))
+	c.Assert(err, gc.IsNil)
+	charmDir := filepath.Join(baseDir, "dummy")
+	s.assertArchiveTo(c, baseDir, charmDir)
+}
+
+func (s *CharmDirSuite) assertArchiveTo(c *gc.C, baseDir, charmDir string) {
 	var haveSymlinks = true
 	if err := os.Symlink("../target", filepath.Join(charmDir, "hooks/symlink")); err != nil {
 		haveSymlinks = false
@@ -74,7 +90,7 @@ func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 
 	var metaf, instf, emptyf, revf, symf *zip.File
 	for _, f := range zipr.File {
-		c.Logf("CharmArchived file: %s", f.Name)
+		c.Logf("Archived file: %s", f.Name)
 		switch f.Name {
 		case "revision":
 			revf = f

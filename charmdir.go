@@ -130,14 +130,34 @@ func (dir *CharmDir) SetDiskRevision(revision int) error {
 	return err
 }
 
+// resolveSymlinkedRoot returns the target destination of a
+// charm root directory if the root directory is a symlink.
+func resolveSymlinkedRoot(rootPath string) (string, error) {
+	info, err := os.Lstat(rootPath)
+	if err == nil && info.Mode()&os.ModeSymlink != 0 {
+		rootPath, err = filepath.EvalSymlinks(rootPath)
+		if err != nil {
+			return "", fmt.Errorf("cannot read path symlink at %q: %v", rootPath, err)
+		}
+	}
+	return rootPath, nil
+}
+
 // ArchiveTo creates a charm file from the charm expanded in dir.
 // By convention a charm archive should have a ".charm" suffix.
 func (dir *CharmDir) ArchiveTo(w io.Writer) (err error) {
 	zipw := zip.NewWriter(w)
 	defer zipw.Close()
-	zp := zipPacker{zipw, dir.Path, dir.Meta().Hooks()}
+
+	// The charm root directory may be symlinked elsewhere so
+	// resolve that before creating the zip.
+	rootPath, err := resolveSymlinkedRoot(dir.Path)
+	if err != nil {
+		return err
+	}
+	zp := zipPacker{zipw, rootPath, dir.Meta().Hooks()}
 	zp.AddRevision(dir.revision)
-	return filepath.Walk(dir.Path, zp.WalkFunc())
+	return filepath.Walk(rootPath, zp.WalkFunc())
 }
 
 type zipPacker struct {

@@ -365,6 +365,7 @@ func (s *MetaSuite) TestMetaHooks(c *gc.C) {
 		"install":                           true,
 		"start":                             true,
 		"config-changed":                    true,
+		"action-requested":                  true,
 		"upgrade-charm":                     true,
 		"stop":                              true,
 		"cache-relation-joined":             true,
