@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/juju/charm"
 	"github.com/juju/loggo"
 	"github.com/juju/utils"
+	"gopkg.in/juju/charm.v2"
 	gc "launchpad.net/gocheck"
 )
 

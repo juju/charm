@@ -14,10 +14,10 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/juju/charm"
-	charmtesting "github.com/juju/charm/testing"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils/set"
+	"gopkg.in/juju/charm.v2"
+	charmtesting "gopkg.in/juju/charm.v2/testing"
 	gc "launchpad.net/gocheck"
 	"launchpad.net/goyaml"
 )

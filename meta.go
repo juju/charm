@@ -10,8 +10,8 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/juju/charm/hooks"
 	"github.com/juju/schema"
+	"gopkg.in/juju/charm.v2/hooks"
 	"launchpad.net/goyaml"
 )
 

@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/juju/charm"
 	"github.com/juju/utils/fs"
+	"gopkg.in/juju/charm.v2"
 )
 
 func check(err error) {
