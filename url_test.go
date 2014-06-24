@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/juju/charm"
+	"gopkg.in/juju/charm.v2"
 	"labix.org/v2/mgo/bson"
 	gc "launchpad.net/gocheck"
 )

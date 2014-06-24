@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/juju/charm"
+	"gopkg.in/juju/charm.v2"
 	gc "launchpad.net/gocheck"
 )
 
