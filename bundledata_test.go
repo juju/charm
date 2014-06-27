@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"gopkg.in/juju/charm.v2"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
+	"gopkg.in/juju/charm.v2"
 	gc "launchpad.net/gocheck"
 )
 
@@ -111,6 +111,21 @@ var parseTests = []struct {
 			{"mysql:foo", "mediawiki:bar"},
 		},
 	},
+}, {
+	about: "relations specified with hyphens",
+	data: `
+relations:
+    - - "mediawiki:db"
+      - "mysql:db"
+    - - "mysql:foo"
+      - "mediawiki:bar"
+`,
+	expectedBD: &charm.BundleData{
+		Relations: [][]string{
+			{"mediawiki:db", "mysql:db"},
+			{"mysql:foo", "mediawiki:bar"},
+		},
+	},
 }}
 
 func (*bundleDataSuite) TestParse(c *gc.C) {
@@ -126,7 +141,7 @@ func (*bundleDataSuite) TestParse(c *gc.C) {
 	}
 }
 
-var verifyTests = []struct {
+var verifyErrorsTests = []struct {
 	about  string
 	data   string
 	errors []string
@@ -188,20 +203,23 @@ relations:
 		`invalid constraints "bad constraints" in service "mysql": bad constraint`,
 		`negative number of units specified on service "mediawiki"`,
 		`too many units specified in unit placement for service "mysql"`,
-		`placement "nowhere/3" refers to non-existent service`,
+		`placement "nowhere/3" refers to a service not defined in this bundle`,
 		`placement "mediawiki/0" specifies a unit greater than the -4 unit(s) started by the target service`,
-		`placement "2" refers to non-existent machine`,
+		`placement "2" refers to a machine not defined in this bundle`,
 		`relation ["arble:bar"] has 1 endpoint(s), not 2`,
-		`relation ["arble:bar" "mediawiki:db"] refers to non-existent service "arble"`,
+		`relation ["arble:bar" "mediawiki:db"] refers to service "arble" not defined in this bundle`,
 		`relation ["mysql:foo" "mysql:bar"] relates a service to itself`,
 		`relation ["mysql:db" "mediawiki:db"] is defined more than once`,
 		`invalid placement syntax "bad placement"`,
 		`invalid relation syntax "mediawiki/db"`,
 	},
+}, {
+	about: "mediawiki should be ok",
+	data:  mediawikiBundle,
 }}
 
-func (*bundleDataSuite) TestVerify(c *gc.C) {
-	for i, test := range verifyTests {
+func (*bundleDataSuite) TestVerifyErrors(c *gc.C) {
+	for i, test := range verifyErrorsTests {
 		c.Logf("test %d: %s", i, test.about)
 		bd, err := charm.ReadBundleData(strings.NewReader(test.data))
 		c.Assert(err, gc.IsNil)
@@ -211,6 +229,10 @@ func (*bundleDataSuite) TestVerify(c *gc.C) {
 			}
 			return nil
 		})
+		if len(test.errors) == 0 {
+			c.Assert(err, gc.IsNil)
+			continue
+		}
 		c.Assert(err, gc.FitsTypeOf, (*charm.VerificationError)(nil))
 		errors := err.(*charm.VerificationError).Errors
 		errStrings := make([]string, len(errors))
@@ -220,6 +242,24 @@ func (*bundleDataSuite) TestVerify(c *gc.C) {
 		sort.Strings(errStrings)
 		sort.Strings(test.errors)
 		c.Assert(errStrings, jc.DeepEquals, test.errors)
+	}
+}
+
+func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
+	bd, err := charm.ReadBundleData(strings.NewReader(mediawikiBundle))
+	c.Assert(err, gc.IsNil)
+	for _, u := range []string{
+		"wordpress",
+		"cs:wordpress",
+		"cs:precise/wordpress",
+		"precise/wordpress",
+		"precise/wordpress-2",
+		"local:foo",
+		"local:foo-45",
+	} {
+		bd.Services["mediawiki"].Charm = u
+		err := bd.Verify(func(string) error { return nil })
+		c.Assert(err, gc.IsNil, gc.Commentf("charm url %q", u))
 	}
 }
 

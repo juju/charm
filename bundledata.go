@@ -67,7 +67,9 @@ type ServiceSpec struct {
 	//
 	// If containertype is specified, the unit is deployed
 	// into a new container of that type, otherwise
-	// it will be "hulk-smashed" into the specified location.
+	// it will be "hulk-smashed" into the specified location,
+	// by co-locating it with any other units that happen to
+	// be there, which may result in unintended behavior.
 	//
 	// The second part (after the colon) specifies where
 	// the new unit should be placed - it may refer to
@@ -235,7 +237,7 @@ func (verifier *bundleDataVerifier) verifyServices() {
 		return
 	}
 	for name, svc := range verifier.bd.Services {
-		if _, err := ParseURL(svc.Charm); err != nil {
+		if _, _, err := ParseReference(svc.Charm); err != nil {
 			verifier.addErrorf("invalid charm URL in service %q: %v", name, err)
 		}
 		if err := verifier.verifyConstraints(svc.Constraints); err != nil {
@@ -261,17 +263,17 @@ func (verifier *bundleDataVerifier) verifyPlacement(to []string) {
 		case up.Service != "":
 			spec, ok := verifier.bd.Services[up.Service]
 			if !ok {
-				verifier.addErrorf("placement %q refers to non-existent service", p)
+				verifier.addErrorf("placement %q refers to a service not defined in this bundle", p)
 				continue
 			}
-			if up.Unit >= 0 && up.Unit >= spec.NumUnits-1 {
+			if up.Unit >= 0 && up.Unit >= spec.NumUnits {
 				verifier.addErrorf("placement %q specifies a unit greater than the %d unit(s) started by the target service", p, spec.NumUnits)
 			}
 		case up.Machine == "new":
 		default:
 			_, ok := verifier.bd.Machines[up.Machine]
 			if !ok {
-				verifier.addErrorf("placement %q refers to non-existent machine", p)
+				verifier.addErrorf("placement %q refers to a machine not defined in this bundle", p)
 				continue
 			}
 			verifier.machineRefCounts[up.Machine]++
@@ -296,7 +298,7 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 				continue
 			}
 			if _, ok := verifier.bd.Services[ep.service]; !ok {
-				verifier.addErrorf("relation %q refers to non-existent service %q", relPair, ep.service)
+				verifier.addErrorf("relation %q refers to service %q not defined in this bundle", relPair, ep.service)
 			}
 			epPair[i] = ep
 		}
@@ -369,6 +371,10 @@ var snippetReplacer = strings.NewReplacer(
 	"service", names.ServiceSnippet,
 )
 
+// validPlacement holds regexp that matches valid placement requests. To
+// make the expression easier to comprehend and maintain, we replace
+// symbolic snippet references in the regexp by their actual regexps
+// using snippetReplacer.
 var validPlacement = regexp.MustCompile(
 	snippetReplacer.Replace(
 		"^(?:(container):)?(?:(service)(?:/(number))?|(number))$",
