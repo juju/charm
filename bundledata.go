@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -156,6 +157,8 @@ type bundleDataVerifier struct {
 	// as referred to by placement directives.
 	machineRefCounts map[string]int
 
+	charmMeta map[string]*Meta
+
 	errors            []error
 	verifyConstraints func(c string) error
 }
@@ -175,7 +178,26 @@ func (verifier *bundleDataVerifier) err() error {
 	return nil
 }
 
-// Verify verifies that the bundle is internally consistent.
+// RequiredCharms returns a sorted slice of all the charm URLs
+// required by the bundle.
+func (bd *BundleData) RequiredCharms() []string {
+	req := make([]string, 0, len(bd.Services))
+	for _, svc := range bd.Services {
+		req = append(req, svc.Charm)
+	}
+	sort.Strings(req)
+	return req
+}
+
+// Verify is a convenience method that calls VerifyWithCharms
+// with a nil charmMeta map.
+func (bd *BundleData) Verify(
+	verifyConstraints func(c string) error,
+) error {
+	return bd.VerifyWithCharms(verifyConstraints, nil)
+}
+
+// VerifyWithCharms verifies that the bundle is consistent.
 // The verifyConstraints function is called to verify any constraints
 // that are found.
 //
@@ -186,18 +208,26 @@ func (verifier *bundleDataVerifier) err() error {
 // - All services referred to by relations are specified in the bundle.
 // - All constraints are valid.
 //
+// If charmMeta is non-nil, it should hold a map with an entry for each
+// charm url returned by bd.RequiredCharms. The verification will then
+// also check that services are defined with valid charms,
+// relations are correctly made and options are defined correctly.
+//
 // If the verification fails, Verify returns a *VerificationError describing
 // all the problems found.
-func (bd *BundleData) Verify(verifyConstraints func(c string) error) error {
+func (bd *BundleData) VerifyWithCharms(
+	verifyConstraints func(c string) error,
+	charmMeta map[string]*Meta,
+) error {
 	verifier := &bundleDataVerifier{
 		verifyConstraints: verifyConstraints,
 		bd:                bd,
 		machineRefCounts:  make(map[string]int),
+		charmMeta:         charmMeta,
 	}
 	for id := range bd.Machines {
 		verifier.machineRefCounts[id] = 0
 	}
-
 	if bd.Series != "" && !IsValidSeries(bd.Series) {
 		verifier.addErrorf("bundle declares an invalid series %q", bd.Series)
 	}
@@ -248,6 +278,11 @@ func (verifier *bundleDataVerifier) verifyServices() {
 			verifier.addErrorf("negative number of units specified on service %q", name)
 		} else if len(svc.To) > svc.NumUnits {
 			verifier.addErrorf("too many units specified in unit placement for service %q", name)
+		}
+		if verifier.charmMeta != nil {
+			if _, ok := verifier.charmMeta[svc.Charm]; !ok {
+				verifier.addErrorf("service %q refers to non-existent charm %q", name, svc.Charm)
+			}
 		}
 	}
 }
@@ -318,7 +353,63 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 		if _, ok := seen[epPair]; ok {
 			verifier.addErrorf("relation %q is defined more than once", relPair)
 		}
+		verifier.verifyRelation(epPair[0], epPair[1])
 		seen[epPair] = true
+	}
+}
+
+// verifyRelation verifies a single relation.
+func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
+	if verifier.charmMeta == nil {
+		// No charms to verify against.
+		return
+	}
+	svc0 := verifier.bd.Services[ep0.service]
+	svc1 := verifier.bd.Services[ep1.service]
+	if svc0 == nil || svc1 == nil || svc0 == svc1 {
+		// An error will already have been produced by verifyRelations
+		// in this case.
+		return
+	}
+	charm0 := verifier.charmMeta[svc0.Charm]
+	charm1 := verifier.charmMeta[svc1.Charm]
+	if charm0 == nil || charm1 == nil {
+		// An error will already have been produced by verifyServices
+		// in this case.
+		return
+	}
+	relProv0, okProv0 := charm0.Provides[ep0.relation]
+	relReq0, okReq0 := charm0.Requires[ep0.relation]
+	if !okProv0 && !okReq0 {
+		verifier.addErrorf("charm %q used by service %q does not define relation %q", svc0.Charm, ep0.service, ep0.relation)
+	}
+	relProv1, okProv1 := charm0.Provides[ep1.relation]
+	relReq1, okReq1 := charm0.Requires[ep1.relation]
+	if !okProv1 && !okReq1 {
+		verifier.addErrorf("charm %q used by service %q does not define relation %q", svc1.Charm, ep1.service, ep1.relation)
+	}
+
+	var relProv, relReq Relation
+	var epProv, epReq endpoint
+	switch {
+	case okProv0 && okReq1:
+		relProv, relReq = relProv0, relReq1
+		epProv, epReq = ep0, ep1
+	case okReq0 && okProv1:
+		relProv, relReq = relProv1, relReq0
+		epProv, epReq = ep1, ep0
+	case okProv0 && okProv1:
+		verifier.addErrorf("relation %q to %q relates provider to provider", ep0, ep1)
+		return
+	case okReq0 && okReq1:
+		verifier.addErrorf("relation %q to %q relates requirer to requirer", ep0, ep1)
+		return
+	default:
+		// Errors were added above.
+		return
+	}
+	if relProv.Interface != relReq.Interface {
+		verifier.addErrorf("mismatched interface between %q and %q (%q vs %q)", epProv, epReq, relProv.Interface, relReq.Interface)
 	}
 }
 
@@ -327,6 +418,10 @@ var validServiceRelation = regexp.MustCompile("^(" + names.ServiceSnippet + "):(
 type endpoint struct {
 	service  string
 	relation string
+}
+
+func (ep endpoint) String() string {
+	return fmt.Sprintf("%s:%s", ep.service, ep.relation)
 }
 
 func (ep1 endpoint) less(ep2 endpoint) bool {

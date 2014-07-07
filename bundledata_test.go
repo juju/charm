@@ -221,28 +221,33 @@ relations:
 func (*bundleDataSuite) TestVerifyErrors(c *gc.C) {
 	for i, test := range verifyErrorsTests {
 		c.Logf("test %d: %s", i, test.about)
-		bd, err := charm.ReadBundleData(strings.NewReader(test.data))
-		c.Assert(err, gc.IsNil)
-		err = bd.Verify(func(c string) error {
-			if c == "bad constraints" {
-				return fmt.Errorf("bad constraint")
-			}
-			return nil
-		})
-		if len(test.errors) == 0 {
-			c.Assert(err, gc.IsNil)
-			continue
-		}
-		c.Assert(err, gc.FitsTypeOf, (*charm.VerificationError)(nil))
-		errors := err.(*charm.VerificationError).Errors
-		errStrings := make([]string, len(errors))
-		for i, err := range errors {
-			errStrings[i] = err.Error()
-		}
-		sort.Strings(errStrings)
-		sort.Strings(test.errors)
-		c.Assert(errStrings, jc.DeepEquals, test.errors)
+		assertVerifyWithCharmsErrors(c, test.data, nil, test.errors)
 	}
+}
+
+func assertVerifyWithCharmsErrors(c *gc.C, bundleData string, charmMeta map[string]*charm.Meta, expectErrors []string) {
+	bd, err := charm.ReadBundleData(strings.NewReader(bundleData))
+	c.Assert(err, gc.IsNil)
+
+	err = bd.VerifyWithCharms(func(c string) error {
+		if c == "bad constraints" {
+			return fmt.Errorf("bad constraint")
+		}
+		return nil
+	}, charmMeta)
+	if len(expectErrors) == 0 {
+		c.Assert(err, gc.IsNil)
+		return
+	}
+	c.Assert(err, gc.FitsTypeOf, (*charm.VerificationError)(nil))
+	errors := err.(*charm.VerificationError).Errors
+	errStrings := make([]string, len(errors))
+	for i, err := range errors {
+		errStrings[i] = err.Error()
+	}
+	sort.Strings(errStrings)
+	sort.Strings(expectErrors)
+	c.Assert(errStrings, jc.DeepEquals, expectErrors)
 }
 
 func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
@@ -260,6 +265,183 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 		bd.Services["mediawiki"].Charm = u
 		err := bd.Verify(func(string) error { return nil })
 		c.Assert(err, gc.IsNil, gc.Commentf("charm url %q", u))
+	}
+}
+
+func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
+	bd, err := charm.ReadBundleData(strings.NewReader(mediawikiBundle))
+	c.Assert(err, gc.IsNil)
+	reqCharms := bd.RequiredCharms()
+
+	c.Assert(reqCharms, gc.DeepEquals, []string{"cs:precise/mediawiki-10", "cs:precise/mysql-28"})
+}
+
+var testCharmMeta = func() *charm.Meta {
+	meta := `name: test
+summary: "test charm"
+description: "testing, testing"
+requires:
+    reqa:
+        interface: a
+    reqb:
+        interface: b
+provides:
+    prova:
+        interface: a
+    provb:
+        interface: b
+`
+	m, err := charm.ReadMeta(strings.NewReader(meta))
+	if err != nil {
+		panic(err)
+	}
+	return m
+}()
+
+var verifyWithCharmsErrorsTests = []struct {
+	about     string
+	data      string
+	charmMeta map[string]*charm.Meta
+
+	errors []string
+}{{
+	about:     "no charms",
+	data:      mediawikiBundle,
+	charmMeta: map[string]*charm.Meta{},
+	errors: []string{
+		`service "mediawiki" refers to non-existent charm "cs:precise/mediawiki-10"`,
+		`service "mysql" refers to non-existent charm "cs:precise/mysql-28"`,
+	},
+}, {
+	about: "all present and correct",
+	data: `
+services:
+    service1: 
+        charm: "test"
+    service2: 
+        charm: "test"
+    service3: 
+        charm: "test"
+relations:
+    - ["service1:prova", "service2:reqa"]
+    - ["service1:reqa", "service3:prova"]
+    - ["service3:provb", "service2:reqb"]
+`,
+	charmMeta: map[string]*charm.Meta{
+		"test": testCharmMeta,
+	},
+}, {
+	about: "undefined relations",
+	data: `
+services: 
+    service1: 
+        charm: "test"
+    service2: 
+        charm: "test"
+relations:
+    - ["service1:prova", "service2:blah"]
+    - ["service1:blah", "service2:prova"]
+`,
+	charmMeta: map[string]*charm.Meta{
+		"test": testCharmMeta,
+	},
+	errors: []string{
+		`charm "test" used by service "service1" does not define relation "blah"`,
+		`charm "test" used by service "service2" does not define relation "blah"`,
+	},
+}, {
+	about: "undefined services",
+	data: `
+services: 
+    service1: 
+        charm: "test"
+    service2: 
+        charm: "test"
+relations:
+    - ["unknown:prova", "service2:blah"]
+    - ["service1:blah", "unknown:prova"]
+`,
+	charmMeta: map[string]*charm.Meta{
+		"test": testCharmMeta,
+	},
+	errors: []string{
+		`relation ["service1:blah" "unknown:prova"] refers to service "unknown" not defined in this bundle`,
+		`relation ["unknown:prova" "service2:blah"] refers to service "unknown" not defined in this bundle`,
+	},
+}, {
+	about: "equal services",
+	data: `
+services: 
+    service1: 
+        charm: "test"
+    service2: 
+        charm: "test"
+relations:
+    - ["service2:prova", "service2:reqa"]
+`,
+	charmMeta: map[string]*charm.Meta{
+		"test": testCharmMeta,
+	},
+	errors: []string{
+		`relation ["service2:prova" "service2:reqa"] relates a service to itself`,
+	},
+}, {
+	about: "provider to provider relation",
+	data: `
+services: 
+    service1: 
+        charm: "test"
+    service2: 
+        charm: "test"
+relations:
+    - ["service1:prova", "service2:prova"]
+`,
+	charmMeta: map[string]*charm.Meta{
+		"test": testCharmMeta,
+	},
+	errors: []string{
+		`relation "service1:prova" to "service2:prova" relates provider to provider`,
+	},
+}, {
+	about: "provider to provider relation",
+	data: `
+services: 
+    service1: 
+        charm: "test"
+    service2: 
+        charm: "test"
+relations:
+    - ["service1:reqa", "service2:reqa"]
+`,
+	charmMeta: map[string]*charm.Meta{
+		"test": testCharmMeta,
+	},
+	errors: []string{
+		`relation "service1:reqa" to "service2:reqa" relates requirer to requirer`,
+	},
+}, {
+	about: "interface mismatch",
+	data: `
+services: 
+    service1: 
+        charm: "test"
+    service2: 
+        charm: "test"
+relations:
+    - ["service1:reqa", "service2:provb"]
+`,
+	charmMeta: map[string]*charm.Meta{
+		"test": testCharmMeta,
+	},
+	errors: []string{
+		`mismatched interface between "service2:provb" and "service1:reqa" ("b" vs "a")`,
+	},
+}}
+
+func (*bundleDataSuite) TestVerifyWithCharmsErrors(c *gc.C) {
+	for i, test := range verifyWithCharmsErrorsTests {
+		c.Logf("test %d: %s", i, test.about)
+		assertVerifyWithCharmsErrors(c, test.data, test.charmMeta, test.errors)
 	}
 }
 
