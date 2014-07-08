@@ -359,6 +359,10 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 }
 
 // verifyRelation verifies a single relation.
+// It checks that both endpoints of the relation are
+// defined, and that the relationship is correctly
+// symmetrical (provider to requirer) and shares
+// the same interface.
 func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
 	if verifier.charmMeta == nil {
 		// No charms to verify against.
