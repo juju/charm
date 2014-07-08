@@ -6,9 +6,12 @@ package charm
 import "os"
 
 // The Bundle interface is implemented by any type that
-// may be handled as a bundle.
+// may be handled as a bundle. It encapsulates all
+// the data of a bundle.
 type Bundle interface {
+	// Data returns the contents of the bundle's bundle.yaml file.
 	Data() *BundleData
+	// Data returns the contents of the bundle's README file.
 	ReadMe() string
 }
 
