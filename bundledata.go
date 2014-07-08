@@ -157,7 +157,7 @@ type bundleDataVerifier struct {
 	// as referred to by placement directives.
 	machineRefCounts map[string]int
 
-	charmMeta map[string]*Meta
+	charms map[string]Charm
 
 	errors            []error
 	verifyConstraints func(c string) error
@@ -190,7 +190,7 @@ func (bd *BundleData) RequiredCharms() []string {
 }
 
 // Verify is a convenience method that calls VerifyWithCharms
-// with a nil charmMeta map.
+// with a nil charms map.
 func (bd *BundleData) Verify(
 	verifyConstraints func(c string) error,
 ) error {
@@ -208,7 +208,7 @@ func (bd *BundleData) Verify(
 // - All services referred to by relations are specified in the bundle.
 // - All constraints are valid.
 //
-// If charmMeta is non-nil, it should hold a map with an entry for each
+// If charms is not nil, it should hold a map with an entry for each
 // charm url returned by bd.RequiredCharms. The verification will then
 // also check that services are defined with valid charms,
 // relations are correctly made and options are defined correctly.
@@ -217,13 +217,13 @@ func (bd *BundleData) Verify(
 // all the problems found.
 func (bd *BundleData) VerifyWithCharms(
 	verifyConstraints func(c string) error,
-	charmMeta map[string]*Meta,
+	charms map[string]Charm,
 ) error {
 	verifier := &bundleDataVerifier{
 		verifyConstraints: verifyConstraints,
 		bd:                bd,
 		machineRefCounts:  make(map[string]int),
-		charmMeta:         charmMeta,
+		charms:            charms,
 	}
 	for id := range bd.Machines {
 		verifier.machineRefCounts[id] = 0
@@ -234,6 +234,7 @@ func (bd *BundleData) VerifyWithCharms(
 	verifier.verifyMachines()
 	verifier.verifyServices()
 	verifier.verifyRelations()
+	verifier.verifyOptions()
 
 	for id, count := range verifier.machineRefCounts {
 		if count == 0 {
@@ -279,8 +280,8 @@ func (verifier *bundleDataVerifier) verifyServices() {
 		} else if len(svc.To) > svc.NumUnits {
 			verifier.addErrorf("too many units specified in unit placement for service %q", name)
 		}
-		if verifier.charmMeta != nil {
-			if _, ok := verifier.charmMeta[svc.Charm]; !ok {
+		if verifier.charms != nil {
+			if _, ok := verifier.charms[svc.Charm]; !ok {
 				verifier.addErrorf("service %q refers to non-existent charm %q", name, svc.Charm)
 			}
 		}
@@ -364,7 +365,7 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 // symmetrical (provider to requirer) and shares
 // the same interface.
 func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
-	if verifier.charmMeta == nil {
+	if verifier.charms == nil {
 		// No charms to verify against.
 		return
 	}
@@ -375,20 +376,20 @@ func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
 		// in this case.
 		return
 	}
-	charm0 := verifier.charmMeta[svc0.Charm]
-	charm1 := verifier.charmMeta[svc1.Charm]
+	charm0 := verifier.charms[svc0.Charm]
+	charm1 := verifier.charms[svc1.Charm]
 	if charm0 == nil || charm1 == nil {
 		// An error will already have been produced by verifyServices
 		// in this case.
 		return
 	}
-	relProv0, okProv0 := charm0.Provides[ep0.relation]
-	relReq0, okReq0 := charm0.Requires[ep0.relation]
+	relProv0, okProv0 := charm0.Meta().Provides[ep0.relation]
+	relReq0, okReq0 := charm0.Meta().Requires[ep0.relation]
 	if !okProv0 && !okReq0 {
 		verifier.addErrorf("charm %q used by service %q does not define relation %q", svc0.Charm, ep0.service, ep0.relation)
 	}
-	relProv1, okProv1 := charm0.Provides[ep1.relation]
-	relReq1, okReq1 := charm0.Requires[ep1.relation]
+	relProv1, okProv1 := charm1.Meta().Provides[ep1.relation]
+	relReq1, okReq1 := charm1.Meta().Requires[ep1.relation]
 	if !okProv1 && !okReq1 {
 		verifier.addErrorf("charm %q used by service %q does not define relation %q", svc1.Charm, ep1.service, ep1.relation)
 	}
@@ -414,6 +415,34 @@ func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
 	}
 	if relProv.Interface != relReq.Interface {
 		verifier.addErrorf("mismatched interface between %q and %q (%q vs %q)", epProv, epReq, relProv.Interface, relReq.Interface)
+	}
+}
+
+// verifyOptions verifies that the options are correctly defined
+// with respect to the charm config options.
+func (verifier *bundleDataVerifier) verifyOptions() {
+	if verifier.charms == nil {
+		return
+	}
+	for svcName, svc := range verifier.bd.Services {
+		charm := verifier.charms[svc.Charm]
+		if charm == nil {
+			// An error will already have been generated for
+			// this in verifyServices.
+			continue
+		}
+		config := charm.Config()
+		for name, value := range svc.Options {
+			opt, ok := config.Options[name]
+			if !ok {
+				verifier.addErrorf("cannot validate service %q: configuration option %q not found in charm %q", svcName, name, svc.Charm)
+				continue
+			}
+			_, err := opt.validate(name, value)
+			if err != nil {
+				verifier.addErrorf("cannot validate service %q: %v", svcName, err)
+			}
+		}
 	}
 }
 
