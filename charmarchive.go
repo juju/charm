@@ -5,6 +5,7 @@ package charm
 
 import (
 	"archive/zip"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -20,50 +21,44 @@ import (
 // The CharmArchive type encapsulates access to data and operations
 // on a charm archive.
 type CharmArchive struct {
+	zopen *zipOpener
+
 	Path     string // May be empty if CharmArchive wasn't read from a file
 	meta     *Meta
 	config   *Config
 	actions  *Actions
 	revision int
-	r        io.ReaderAt
-	size     int64
 }
 
 // Trick to ensure *CharmArchive implements the Charm interface.
 var _ Charm = (*CharmArchive)(nil)
 
 // ReadCharmArchive returns a CharmArchive for the charm in path.
-func ReadCharmArchive(path string) (archive *CharmArchive, err error) {
-	f, err := os.Open(path)
+func ReadCharmArchive(path string) (*CharmArchive, error) {
+	a, err := readCharmArchive(newZipOpenerFromPath(path))
 	if err != nil {
-		return
+		return nil, err
 	}
-	defer f.Close()
-	fi, err := f.Stat()
-	if err != nil {
-		return
-	}
-	b, err := readCharmArchive(f, fi.Size())
-	if err != nil {
-		return
-	}
-	b.Path = path
-	return b, nil
+	a.Path = path
+	return a, nil
 }
 
 // ReadCharmArchiveBytes returns a CharmArchive read from the given data.
 // Make sure the archive fits in memory before using this.
 func ReadCharmArchiveBytes(data []byte) (archive *CharmArchive, err error) {
-	return readCharmArchive(readAtBytes(data), int64(len(data)))
+	return readCharmArchive(newZipOpenerFromBytes(data))
 }
 
-func readCharmArchive(r io.ReaderAt, size int64) (archive *CharmArchive, err error) {
-	b := &CharmArchive{r: r, size: size}
-	zipr, err := zip.NewReader(r, size)
-	if err != nil {
-		return
+func readCharmArchive(zopen *zipOpener) (archive *CharmArchive, err error) {
+	b := &CharmArchive{
+		zopen: zopen,
 	}
-	reader, err := zipOpen(zipr, "metadata.yaml")
+	zipr, err := zopen.open()
+	if err != nil {
+		return nil, err
+	}
+	defer zipr.Close()
+	reader, err := zipOpenFile(zipr, "metadata.yaml")
 	if err != nil {
 		return
 	}
@@ -73,7 +68,7 @@ func readCharmArchive(r io.ReaderAt, size int64) (archive *CharmArchive, err err
 		return
 	}
 
-	reader, err = zipOpen(zipr, "config.yaml")
+	reader, err = zipOpenFile(zipr, "config.yaml")
 	if _, ok := err.(*noCharmArchiveFile); ok {
 		b.config = NewConfig()
 	} else if err != nil {
@@ -86,7 +81,7 @@ func readCharmArchive(r io.ReaderAt, size int64) (archive *CharmArchive, err err
 		}
 	}
 
-	reader, err = zipOpen(zipr, "actions.yaml")
+	reader, err = zipOpenFile(zipr, "actions.yaml")
 	if _, ok := err.(*noCharmArchiveFile); ok {
 		b.actions = NewActions()
 	} else if err != nil {
@@ -99,7 +94,7 @@ func readCharmArchive(r io.ReaderAt, size int64) (archive *CharmArchive, err err
 		}
 	}
 
-	reader, err = zipOpen(zipr, "revision")
+	reader, err = zipOpenFile(zipr, "revision")
 	if err != nil {
 		if _, ok := err.(*noCharmArchiveFile); !ok {
 			return
@@ -115,7 +110,7 @@ func readCharmArchive(r io.ReaderAt, size int64) (archive *CharmArchive, err err
 	return b, nil
 }
 
-func zipOpen(zipr *zip.Reader, path string) (rc io.ReadCloser, err error) {
+func zipOpenFile(zipr *zipReadCloser, path string) (rc io.ReadCloser, err error) {
 	for _, fh := range zipr.File {
 		if fh.Name == path {
 			return fh.Open()
@@ -167,17 +162,38 @@ type zipReadCloser struct {
 	*zip.Reader
 }
 
-// zipOpen returns a zipReadCloser.
-func (a *CharmArchive) zipOpen() (*zipReadCloser, error) {
-	// If we don't have a Path, try to use the original ReaderAt.
-	if a.Path == "" {
-		r, err := zip.NewReader(a.r, a.size)
+// zipOpener holds the information needed to open a zip
+// file. The reader and size are used only if path is empty.
+type zipOpener struct {
+	path string
+
+	r    io.ReaderAt
+	size int64
+}
+
+func newZipOpenerFromPath(path string) *zipOpener {
+	return &zipOpener{path: path}
+}
+
+func newZipOpenerFromBytes(data []byte) *zipOpener {
+	return &zipOpener{
+		r:    bytes.NewReader(data),
+		size: int64(len(data)),
+	}
+}
+
+// zipOpen returns a zipReadCloser that can be
+// used to read the archive.
+func (zo *zipOpener) open() (*zipReadCloser, error) {
+	// If we don't have a path, try to use the original ReaderAt.
+	if zo.path == "" {
+		r, err := zip.NewReader(zo.r, zo.size)
 		if err != nil {
 			return nil, err
 		}
 		return &zipReadCloser{Closer: ioutil.NopCloser(nil), Reader: r}, nil
 	}
-	f, err := os.Open(a.Path)
+	f, err := os.Open(zo.path)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +212,7 @@ func (a *CharmArchive) zipOpen() (*zipReadCloser, error) {
 
 // Manifest returns a set of the charm's contents.
 func (a *CharmArchive) Manifest() (set.Strings, error) {
-	zipr, err := a.zipOpen()
+	zipr, err := a.zopen.open()
 	if err != nil {
 		return set.NewStrings(), err
 	}
@@ -217,7 +233,7 @@ func (a *CharmArchive) Manifest() (set.Strings, error) {
 // If any errors occur during the expansion procedure, the process will
 // abort.
 func (a *CharmArchive) ExpandTo(dir string) (err error) {
-	zipr, err := a.zipOpen()
+	zipr, err := a.zopen.open()
 	if err != nil {
 		return err
 	}
@@ -258,11 +274,4 @@ func fixHookFunc(hooksDir string, hookNames map[string]bool) filepath.WalkFunc {
 		}
 		return nil
 	}
-}
-
-// FWIW, being able to do this is awesome.
-type readAtBytes []byte
-
-func (b readAtBytes) ReadAt(out []byte, off int64) (n int, err error) {
-	return copy(out, b[off:]), nil
 }
