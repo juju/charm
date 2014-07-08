@@ -225,7 +225,7 @@ func (*bundleDataSuite) TestVerifyErrors(c *gc.C) {
 	}
 }
 
-func assertVerifyWithCharmsErrors(c *gc.C, bundleData string, charmMeta map[string]*charm.Meta, expectErrors []string) {
+func assertVerifyWithCharmsErrors(c *gc.C, bundleData string, charms map[string]charm.Charm, expectErrors []string) {
 	bd, err := charm.ReadBundleData(strings.NewReader(bundleData))
 	c.Assert(err, gc.IsNil)
 
@@ -234,7 +234,7 @@ func assertVerifyWithCharmsErrors(c *gc.C, bundleData string, charmMeta map[stri
 			return fmt.Errorf("bad constraint")
 		}
 		return nil
-	}, charmMeta)
+	}, charms)
 	if len(expectErrors) == 0 {
 		c.Assert(err, gc.IsNil)
 		return
@@ -276,8 +276,8 @@ func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
 	c.Assert(reqCharms, gc.DeepEquals, []string{"cs:precise/mediawiki-10", "cs:precise/mysql-28"})
 }
 
-var testCharmMeta = func() *charm.Meta {
-	meta := `name: test
+var testCharm = func() charm.Charm {
+	metaStr := `name: test
 summary: "test charm"
 description: "testing, testing"
 requires:
@@ -291,23 +291,66 @@ provides:
     provb:
         interface: b
 `
+	meta, err := charm.ReadMeta(strings.NewReader(metaStr))
+	if err != nil {
+		panic(err)
+	}
+	configStr := `
+options:
+  title: {default: My Title, description: title, type: string}
+  skill-level: {description: skill, type: int}
+`
+	config, err := charm.ReadConfig(strings.NewReader(configStr))
+	if err != nil {
+		panic(err)
+	}
+	return testCharmImpl{
+		meta:   meta,
+		config: config,
+	}
+}()
+
+var testCharmNoRelations = func() charm.Charm {
+	meta := `name: test
+summary: "test charm with no relations"
+description: "testing, testing"
+`
+	// TODO config
 	m, err := charm.ReadMeta(strings.NewReader(meta))
 	if err != nil {
 		panic(err)
 	}
-	return m
+	return testCharmImpl{
+		meta: m,
+	}
 }()
 
+type testCharmImpl struct {
+	meta   *charm.Meta
+	config *charm.Config
+	// Implement charm.Charm, but panic if anything other than
+	// Meta or Config methods are called.
+	charm.Charm
+}
+
+func (c testCharmImpl) Meta() *charm.Meta {
+	return c.meta
+}
+
+func (c testCharmImpl) Config() *charm.Config {
+	return c.config
+}
+
 var verifyWithCharmsErrorsTests = []struct {
-	about     string
-	data      string
-	charmMeta map[string]*charm.Meta
+	about  string
+	data   string
+	charms map[string]charm.Charm
 
 	errors []string
 }{{
-	about:     "no charms",
-	data:      mediawikiBundle,
-	charmMeta: map[string]*charm.Meta{},
+	about:  "no charms",
+	data:   mediawikiBundle,
+	charms: map[string]charm.Charm{},
 	errors: []string{
 		`service "mediawiki" refers to non-existent charm "cs:precise/mediawiki-10"`,
 		`service "mysql" refers to non-existent charm "cs:precise/mysql-28"`,
@@ -327,8 +370,8 @@ relations:
     - ["service1:reqa", "service3:prova"]
     - ["service3:provb", "service2:reqb"]
 `,
-	charmMeta: map[string]*charm.Meta{
-		"test": testCharmMeta,
+	charms: map[string]charm.Charm{
+		"test": testCharm,
 	},
 }, {
 	about: "undefined relations",
@@ -342,8 +385,8 @@ relations:
     - ["service1:prova", "service2:blah"]
     - ["service1:blah", "service2:prova"]
 `,
-	charmMeta: map[string]*charm.Meta{
-		"test": testCharmMeta,
+	charms: map[string]charm.Charm{
+		"test": testCharm,
 	},
 	errors: []string{
 		`charm "test" used by service "service1" does not define relation "blah"`,
@@ -361,8 +404,8 @@ relations:
     - ["unknown:prova", "service2:blah"]
     - ["service1:blah", "unknown:prova"]
 `,
-	charmMeta: map[string]*charm.Meta{
-		"test": testCharmMeta,
+	charms: map[string]charm.Charm{
+		"test": testCharm,
 	},
 	errors: []string{
 		`relation ["service1:blah" "unknown:prova"] refers to service "unknown" not defined in this bundle`,
@@ -379,8 +422,8 @@ services:
 relations:
     - ["service2:prova", "service2:reqa"]
 `,
-	charmMeta: map[string]*charm.Meta{
-		"test": testCharmMeta,
+	charms: map[string]charm.Charm{
+		"test": testCharm,
 	},
 	errors: []string{
 		`relation ["service2:prova" "service2:reqa"] relates a service to itself`,
@@ -396,8 +439,8 @@ services:
 relations:
     - ["service1:prova", "service2:prova"]
 `,
-	charmMeta: map[string]*charm.Meta{
-		"test": testCharmMeta,
+	charms: map[string]charm.Charm{
+		"test": testCharm,
 	},
 	errors: []string{
 		`relation "service1:prova" to "service2:prova" relates provider to provider`,
@@ -413,8 +456,8 @@ services:
 relations:
     - ["service1:reqa", "service2:reqa"]
 `,
-	charmMeta: map[string]*charm.Meta{
-		"test": testCharmMeta,
+	charms: map[string]charm.Charm{
+		"test": testCharm,
 	},
 	errors: []string{
 		`relation "service1:reqa" to "service2:reqa" relates requirer to requirer`,
@@ -430,18 +473,112 @@ services:
 relations:
     - ["service1:reqa", "service2:provb"]
 `,
-	charmMeta: map[string]*charm.Meta{
-		"test": testCharmMeta,
+	charms: map[string]charm.Charm{
+		"test": testCharm,
 	},
 	errors: []string{
 		`mismatched interface between "service2:provb" and "service1:reqa" ("b" vs "a")`,
+	},
+}, {
+	about: "different charms",
+	data: `
+services: 
+    service1: 
+        charm: "test1"
+    service2: 
+        charm: "test2"
+relations:
+    - ["service1:reqa", "service2:prova"]
+`,
+	charms: map[string]charm.Charm{
+		"test1": testCharm,
+		"test2": testCharmNoRelations,
+	},
+	errors: []string{
+		`charm "test2" used by service "service2" does not define relation "prova"`,
+	},
+}, {
+	about: "configuration options specified",
+	data: `
+services: 
+    service1: 
+        charm: "test"
+        options:
+            title: "some title"
+            skill-level: 245
+    service2: 
+        charm: "test"
+        options:
+            title: "another title"
+`,
+	charms: map[string]charm.Charm{
+		"test": testCharm,
+	},
+}, {
+	about: "invalid type for option",
+	data: `
+services: 
+    service1: 
+        charm: "test"
+        options:
+            title: "some title"
+            skill-level: "too much"
+    service2: 
+        charm: "test"
+        options:
+            title: "another title"
+`,
+	charms: map[string]charm.Charm{
+		"test": testCharm,
+	},
+	errors: []string{
+		`cannot validate service "service1": option "skill-level" expected int, got "too much"`,
+	},
+}, {
+	about: "unknown option",
+	data: `
+services: 
+    service1: 
+        charm: "test"
+        options:
+            title: "some title"
+            unknown-option: 2345
+`,
+	charms: map[string]charm.Charm{
+		"test": testCharm,
+	},
+	errors: []string{
+		`cannot validate service "service1": configuration option "unknown-option" not found in charm "test"`,
+	},
+}, {
+	about: "multiple config problems",
+	data: `
+services: 
+    service1: 
+        charm: "test"
+        options:
+            title: "some title"
+            unknown-option: 2345
+    service2: 
+        charm: "test"
+        options:
+            title: 123
+            another-unknown: 2345
+`,
+	charms: map[string]charm.Charm{
+		"test": testCharm,
+	},
+	errors: []string{
+		`cannot validate service "service1": configuration option "unknown-option" not found in charm "test"`,
+		`cannot validate service "service2": configuration option "another-unknown" not found in charm "test"`,
+		`cannot validate service "service2": option "title" expected string, got 123`,
 	},
 }}
 
 func (*bundleDataSuite) TestVerifyWithCharmsErrors(c *gc.C) {
 	for i, test := range verifyWithCharmsErrorsTests {
 		c.Logf("test %d: %s", i, test.about)
-		assertVerifyWithCharmsErrors(c, test.data, test.charmMeta, test.errors)
+		assertVerifyWithCharmsErrors(c, test.data, test.charms, test.errors)
 	}
 }
 
