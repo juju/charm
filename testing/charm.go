@@ -50,6 +50,19 @@ func clone(dst, src string) string {
 	return dst
 }
 
+// BundleDirPath returns the path to a bundle directory with the given name in the
+// default series
+func (r *Repo) BundleDirPath(name string) string {
+	return filepath.Join(r.Path(), "bundle", name)
+}
+
+// BundleDir returns the actual charm.BundleDir named name.
+func (r *Repo) BundleDir(name string) *charm.BundleDir {
+	b, err := charm.ReadBundleDir(r.BundleDirPath(name), func(string) error { return nil })
+	check(err)
+	return b
+}
+
 // CharmDirPath returns the path to a charm directory with the given name in the
 // default series
 func (r *Repo) CharmDirPath(name string) string {
@@ -67,6 +80,12 @@ func (r *Repo) CharmDir(name string) *charm.CharmDir {
 // named name.
 func (r *Repo) ClonedDirPath(dst, name string) string {
 	return clone(dst, r.CharmDirPath(name))
+}
+
+// ClonedDirPath returns the path to a new copy of the default bundle directory
+// named name.
+func (r *Repo) ClonedBundleDirPath(dst, name string) string {
+	return clone(dst, r.BundleDirPath(name))
 }
 
 // RenamedClonedDirPath returns the path to a new copy of the default
