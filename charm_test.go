@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"path/filepath"
 	stdtesting "testing"
 
 	"gopkg.in/juju/charm.v2"
@@ -32,6 +33,21 @@ func (s *CharmSuite) TestReadCharm(c *gc.C) {
 	ch, err = charm.ReadCharm(dPath)
 	c.Assert(err, gc.IsNil)
 	c.Assert(ch.Meta().Name, gc.Equals, "dummy")
+}
+
+func (s *CharmSuite) TestReadCharmDirError(c *gc.C) {
+	ch, err := charm.ReadCharm(c.MkDir())
+	c.Assert(err, gc.NotNil)
+	c.Assert(ch, gc.Equals, nil)
+}
+
+func (s *CharmSuite) TestReadCharmArchiveError(c *gc.C) {
+	path := filepath.Join(c.MkDir(), "path")
+	err := ioutil.WriteFile(path, []byte("foo"), 0644)
+	c.Assert(err, gc.IsNil)
+	ch, err := charm.ReadCharm(path)
+	c.Assert(err, gc.NotNil)
+	c.Assert(ch, gc.Equals, nil)
 }
 
 var inferRepoTests = []struct {

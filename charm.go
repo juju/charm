@@ -24,19 +24,24 @@ type Charm interface {
 
 // ReadCharm reads a Charm from path, which can point to either a charm archive or a
 // charm directory.
-func ReadCharm(path string) (Charm, error) {
+func ReadCharm(path string) (charm Charm, err error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
 	if info.IsDir() {
-		return ReadCharmDir(path)
+		charm, err = ReadCharmDir(path)
+	} else {
+		charm, err = ReadCharmArchive(path)
 	}
-	return ReadCharmArchive(path)
+	if err != nil {
+		return nil, err
+	}
+	return charm, nil
 }
 
 // InferRepository returns a charm repository inferred from the provided charm
-// reference. Local references will use the provided path.
+// or bundle reference. Local references will use the provided path.
 func InferRepository(ref Reference, localRepoPath string) (repo Repository, err error) {
 	switch ref.Schema {
 	case "cs":
@@ -47,6 +52,7 @@ func InferRepository(ref Reference, localRepoPath string) (repo Repository, err 
 		}
 		repo = &LocalRepository{Path: localRepoPath}
 	default:
+		// TODO fix this error message to reference bundles too?
 		return nil, fmt.Errorf("unknown schema for charm reference %q", ref)
 	}
 	return

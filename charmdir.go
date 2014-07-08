@@ -145,18 +145,24 @@ func resolveSymlinkedRoot(rootPath string) (string, error) {
 
 // ArchiveTo creates a charm file from the charm expanded in dir.
 // By convention a charm archive should have a ".charm" suffix.
-func (dir *CharmDir) ArchiveTo(w io.Writer) (err error) {
+func (dir *CharmDir) ArchiveTo(w io.Writer) error {
+	return writeArchive(w, dir.Path, dir.revision, dir.Meta().Hooks())
+}
+
+func writeArchive(w io.Writer, path string, revision int, hooks map[string]bool) error {
 	zipw := zip.NewWriter(w)
 	defer zipw.Close()
 
-	// The charm root directory may be symlinked elsewhere so
+	// The root directory may be symlinked elsewhere so
 	// resolve that before creating the zip.
-	rootPath, err := resolveSymlinkedRoot(dir.Path)
+	rootPath, err := resolveSymlinkedRoot(path)
 	if err != nil {
 		return err
 	}
-	zp := zipPacker{zipw, rootPath, dir.Meta().Hooks()}
-	zp.AddRevision(dir.revision)
+	zp := zipPacker{zipw, rootPath, hooks}
+	if revision != -1 {
+		zp.AddRevision(revision)
+	}
 	return filepath.Walk(rootPath, zp.WalkFunc())
 }
 
@@ -226,7 +232,7 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 	}
 	if filepath.Dir(relpath) == "hooks" {
 		hookName := filepath.Base(relpath)
-		if _, ok := zp.hooks[hookName]; !fi.IsDir() && ok && mode&0100 == 0 {
+		if _, ok := zp.hooks[hookName]; ok && !fi.IsDir() && mode&0100 == 0 {
 			logger.Warningf("making %q executable in charm", path)
 			perm = perm | 0100
 		}
