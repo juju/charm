@@ -4,9 +4,6 @@
 package charm_test
 
 import (
-	"io/ioutil"
-	"path/filepath"
-
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "launchpad.net/gocheck"
@@ -23,19 +20,18 @@ type BundleSuite struct {
 
 func (*BundleSuite) TestReadBundleDir(c *gc.C) {
 	path := charmtesting.Charms.BundleDirPath("wordpress")
-	b, err := charm.ReadBundle(path, func(string) error { return nil })
+	b, err := charm.ReadBundle(path, verifyOk)
 	c.Assert(err, gc.IsNil)
 	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
 	checkWordpressBundle(c, b, path)
 }
 
 func (*BundleSuite) TestReadBundleArchive(c *gc.C) {
-	path := filepath.Join(c.MkDir(), "something")
-	err := ioutil.WriteFile(path, []byte("oh yeah"), 0644)
+	path := charmtesting.Charms.BundleDirPath("wordpress")
+	b, err := charm.ReadBundle(path, verifyOk)
 	c.Assert(err, gc.IsNil)
-	c.Assert(func() {
-		charm.ReadBundle(path, func(string) error { return nil })
-	}, gc.PanicMatches, "unimplemented")
+	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
+	checkWordpressBundle(c, b, path)
 }
 
 func checkWordpressBundle(c *gc.C, b charm.Bundle, path string) {
@@ -50,7 +46,7 @@ func checkWordpressBundle(c *gc.C, b charm.Bundle, path string) {
 		"wordpress": wordpressCharm,
 		"mysql":     mysqlCharm,
 	}
-	err := bd.VerifyWithCharms(func(string) error { return nil }, charms)
+	err := bd.VerifyWithCharms(verifyOk, charms)
 	c.Assert(err, gc.IsNil)
 
 	c.Assert(bd.Services, jc.DeepEquals, map[string]*charm.ServiceSpec{
@@ -73,4 +69,8 @@ func checkWordpressBundle(c *gc.C, b charm.Bundle, path string) {
 	case *charm.BundleDir:
 		c.Assert(b.Path, gc.Equals, path)
 	}
+}
+
+func verifyOk(string) error {
+	return nil
 }
