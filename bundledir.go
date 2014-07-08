@@ -58,8 +58,7 @@ func (dir *BundleDir) ReadMe() string {
 }
 
 func (dir *BundleDir) ArchiveTo(w io.Writer) error {
-	// return writeArchive(w, dir.Path, -1, nil)
-	panic("unimplemented")
+	return writeArchive(w, dir.Path, -1, nil)
 }
 
 // join builds a path rooted at the bundle's expanded directory

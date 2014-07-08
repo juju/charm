@@ -24,7 +24,6 @@ import (
 )
 
 type CharmArchiveSuite struct {
-	repo        *charmtesting.Repo
 	archivePath string
 }
 

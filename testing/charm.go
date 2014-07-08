@@ -125,8 +125,8 @@ func (r *Repo) ClonedURL(dst, series, name string) *charm.URL {
 	}
 }
 
-// CharmArchivePath returns the path to a new charm archive file created from the
-// charm directory named name, in the directory dst.
+// CharmArchivePath returns the path to a new charm archive file
+// in the directory dst, created from the charm directory named name.
 func (r *Repo) CharmArchivePath(dst, name string) string {
 	dir := r.CharmDir(name)
 	path := filepath.Join(dst, "archive.charm")
@@ -137,8 +137,21 @@ func (r *Repo) CharmArchivePath(dst, name string) string {
 	return path
 }
 
-// Archive returns an actual charm.Archive created from a new charm archive file
-// created from the charm directory named name, in the directory dst.
+// BundleArchivePath returns the path to a new bundle archive file
+// in the directory dst, created from the bundle directory named name.
+func (r *Repo) BundleArchivePath(dst, name string) string {
+	dir := r.BundleDir(name)
+	path := filepath.Join(dst, "archive.bundle")
+	file, err := os.Create(path)
+	check(err)
+	defer file.Close()
+	check(dir.ArchiveTo(file))
+	return path
+}
+
+// CharmArchive returns an actual charm.CharmArchive created from a new
+// charm archive file created from the charm directory named name, in
+// the directory dst.
 func (r *Repo) CharmArchive(dst, name string) *charm.CharmArchive {
 	ch, err := charm.ReadCharmArchive(r.CharmArchivePath(dst, name))
 	check(err)
