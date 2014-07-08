@@ -372,15 +372,13 @@ func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
 	svc0 := verifier.bd.Services[ep0.service]
 	svc1 := verifier.bd.Services[ep1.service]
 	if svc0 == nil || svc1 == nil || svc0 == svc1 {
-		// An error will already have been produced by verifyRelations
-		// in this case.
+		// An error will be produced by verifyRelations for this case.
 		return
 	}
 	charm0 := verifier.charms[svc0.Charm]
 	charm1 := verifier.charms[svc1.Charm]
 	if charm0 == nil || charm1 == nil {
-		// An error will already have been produced by verifyServices
-		// in this case.
+		// An error will be produced by verifyServices for this case.
 		return
 	}
 	relProv0, okProv0 := charm0.Meta().Provides[ep0.relation]
@@ -427,8 +425,7 @@ func (verifier *bundleDataVerifier) verifyOptions() {
 	for svcName, svc := range verifier.bd.Services {
 		charm := verifier.charms[svc.Charm]
 		if charm == nil {
-			// An error will already have been generated for
-			// this in verifyServices.
+			// An error will be produced by verifyServices for this case.
 			continue
 		}
 		config := charm.Config()
