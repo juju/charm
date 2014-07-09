@@ -34,7 +34,7 @@ func (s *BundleArchiveSuite) TestReadBundleArchiveWithoutBundleYAML(c *gc.C) {
 }
 
 func (s *BundleArchiveSuite) TestReadBundleArchiveWithoutREADME(c *gc.C) {
-	testReadBundleArchiveWithoutFile(c, "README")
+	testReadBundleArchiveWithoutFile(c, "README.md")
 }
 
 func testReadBundleArchiveWithoutFile(c *gc.C, fileToRemove string) {

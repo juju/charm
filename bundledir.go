@@ -41,7 +41,7 @@ func ReadBundleDir(
 	if err := dir.data.Verify(verifyConstraints); err != nil {
 		return nil, err
 	}
-	readMe, err := ioutil.ReadFile(dir.join("README"))
+	readMe, err := ioutil.ReadFile(dir.join("README.md"))
 	if err != nil {
 		return nil, fmt.Errorf("cannot read README file: %v", err)
 	}

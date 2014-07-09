@@ -60,7 +60,7 @@ func readBundleArchive(zopen zipOpener, verifyConstraints func(c string) error) 
 	if err != nil {
 		return nil, err
 	}
-	reader, err = zipOpenFile(zipr, "README")
+	reader, err = zipOpenFile(zipr, "README.md")
 	if err != nil {
 		return nil, err
 	}

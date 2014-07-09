@@ -29,7 +29,7 @@ func (s *BundleDirSuite) TestReadBundleDir(c *gc.C) {
 
 func (s *BundleDirSuite) TestReadBundleDirWithoutREADME(c *gc.C) {
 	path := charmtesting.Charms.ClonedBundleDirPath(c.MkDir(), "wordpress")
-	err := os.Remove(filepath.Join(path, "README"))
+	err := os.Remove(filepath.Join(path, "README.md"))
 	c.Assert(err, gc.IsNil)
 	dir, err := charm.ReadBundleDir(path, verifyOk)
 	c.Assert(err, gc.ErrorMatches, "cannot read README file: .*")
