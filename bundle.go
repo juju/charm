@@ -11,7 +11,7 @@ import "os"
 type Bundle interface {
 	// Data returns the contents of the bundle's bundle.yaml file.
 	Data() *BundleData
-	// Data returns the contents of the bundle's README file.
+	// Data returns the contents of the bundle's README.md file.
 	ReadMe() string
 }
 

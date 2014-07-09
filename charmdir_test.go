@@ -71,7 +71,7 @@ func (s *CharmDirSuite) TestArchiveToWithSymLinkedRootDir(c *gc.C) {
 }
 
 func (s *CharmDirSuite) assertArchiveTo(c *gc.C, baseDir, charmDir string) {
-	var haveSymlinks = true
+	haveSymlinks := true
 	if err := os.Symlink("../target", filepath.Join(charmDir, "hooks/symlink")); err != nil {
 		haveSymlinks = false
 	}

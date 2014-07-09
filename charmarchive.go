@@ -60,12 +60,12 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	defer zipr.Close()
 	reader, err := zipOpenFile(zipr, "metadata.yaml")
 	if err != nil {
-		return
+		return nil, err
 	}
 	b.meta, err = ReadMeta(reader)
 	reader.Close()
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	reader, err = zipOpenFile(zipr, "config.yaml")
@@ -97,7 +97,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	reader, err = zipOpenFile(zipr, "revision")
 	if err != nil {
 		if _, ok := err.(*noCharmArchiveFile); !ok {
-			return
+			return nil, err
 		}
 		b.revision = b.meta.OldRevision
 	} else {
@@ -124,7 +124,7 @@ type noCharmArchiveFile struct {
 }
 
 func (err noCharmArchiveFile) Error() string {
-	return fmt.Sprintf("archive file not found: %s", err.path)
+	return fmt.Sprintf("archive file %q not found", err.path)
 }
 
 // Revision returns the revision number for the charm
@@ -240,7 +240,7 @@ func (a *CharmArchive) Manifest() (set.Strings, error) {
 // ExpandTo expands the charm archive into dir, creating it if necessary.
 // If any errors occur during the expansion procedure, the process will
 // abort.
-func (a *CharmArchive) ExpandTo(dir string) (err error) {
+func (a *CharmArchive) ExpandTo(dir string) error {
 	zipr, err := a.zopen.openZip()
 	if err != nil {
 		return err

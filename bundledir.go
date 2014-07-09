@@ -41,7 +41,7 @@ func ReadBundleDir(
 	if err := dir.data.Verify(verifyConstraints); err != nil {
 		return nil, err
 	}
-	readMe, err := ioutil.ReadFile(dir.join("README"))
+	readMe, err := ioutil.ReadFile(dir.join("README.md"))
 	if err != nil {
 		return nil, fmt.Errorf("cannot read README file: %v", err)
 	}
@@ -58,8 +58,7 @@ func (dir *BundleDir) ReadMe() string {
 }
 
 func (dir *BundleDir) ArchiveTo(w io.Writer) error {
-	// return writeArchive(w, dir.Path, -1, nil)
-	panic("unimplemented")
+	return writeArchive(w, dir.Path, -1, nil)
 }
 
 // join builds a path rooted at the bundle's expanded directory
