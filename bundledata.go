@@ -40,6 +40,9 @@ type BundleData struct {
 	// (service, relation) pairs - the relation is made between
 	// each.
 	Relations [][]string `yaml:",omitempty"`
+
+	// White listed set of tags to categorize bundles as we do charms.
+	Tags []string `yaml:",omitempty"`
 }
 
 // MachineSpec represents a notional machine that will be mapped
