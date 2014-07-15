@@ -56,6 +56,9 @@ machines:
          constraints: 'arch=amd64 mem=4g'
          annotations:
              foo: bar
+tags:
+    - super
+    - awesome
 `
 
 var parseTests = []struct {
@@ -113,6 +116,7 @@ var parseTests = []struct {
 			{"mediawiki:db", "mysql:db"},
 			{"mysql:foo", "mediawiki:bar"},
 		},
+		Tags: []string{"super", "awesome"},
 	},
 }, {
 	about: "relations specified with hyphens",
