@@ -59,6 +59,9 @@ machines:
 tags:
     - super
     - awesome
+description: |
+    Everthing is awesome. Everything is cool when we work as a team.
+    Lovely day.
 `
 
 var parseTests = []struct {
@@ -117,6 +120,9 @@ var parseTests = []struct {
 			{"mysql:foo", "mediawiki:bar"},
 		},
 		Tags: []string{"super", "awesome"},
+		Description: `Everthing is awesome. Everything is cool when we work as a team.
+Lovely day.
+`,
 	},
 }, {
 	about: "relations specified with hyphens",
