@@ -43,6 +43,9 @@ type BundleData struct {
 
 	// White listed set of tags to categorize bundles as we do charms.
 	Tags []string `yaml:",omitempty"`
+
+	// Short paragraph explaining what the bundle is useful for.
+	Description string `yaml:",omitempty"`
 }
 
 // MachineSpec represents a notional machine that will be mapped
