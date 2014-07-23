@@ -28,31 +28,31 @@ type BundleData struct {
 	// machines at bundle deployment time.
 	// It is an error if a machine is specified but
 	// not referred to by a unit placement directive.
-	Machines map[string]*MachineSpec `yaml:",omitempty"`
+	Machines map[string]*MachineSpec `yaml:",omitempty" json:",omitempty"`
 
 	// Series holds the default series to use when
 	// the bundle chooses charms.
-	Series string `yaml:",omitempty"`
+	Series string `yaml:",omitempty" json:",omitempty"`
 
 	// Relations holds a slice of 2-element slices,
 	// each specifying a relation between two services.
 	// Each two-element slice holds two colon-separated
 	// (service, relation) pairs - the relation is made between
 	// each.
-	Relations [][]string `yaml:",omitempty"`
+	Relations [][]string `yaml:",omitempty" json:",omitempty"`
 
 	// White listed set of tags to categorize bundles as we do charms.
-	Tags []string `yaml:",omitempty"`
+	Tags []string `yaml:",omitempty" json:",omitempty"`
 
 	// Short paragraph explaining what the bundle is useful for.
-	Description string `yaml:",omitempty"`
+	Description string `yaml:",omitempty" json:",omitempty"`
 }
 
 // MachineSpec represents a notional machine that will be mapped
 // onto an actual machine at bundle deployment time.
 type MachineSpec struct {
-	Constraints string            `yaml:",omitempty"`
-	Annotations map[string]string `yaml:",omitempty"`
+	Constraints string            `yaml:",omitempty" json:",omitempty"`
+	Annotations map[string]string `yaml:",omitempty" json:",omitempty"`
 }
 
 // ServiceSpec represents a single service that will
@@ -76,7 +76,7 @@ type ServiceSpec struct {
 	//      (<containertype>:)?(<unit>|<machine>|new)
 	//
 	// If containertype is specified, the unit is deployed
-	// into a new container of that type, otherwise
+	// into a new container of that type, otherwisev
 	// it will be "hulk-smashed" into the specified location,
 	// by co-locating it with any other units that happen to
 	// be there, which may result in unintended behavior.
@@ -111,16 +111,16 @@ type ServiceSpec struct {
 	// The above example is the same as this:
 	//
 	//     wordpress wordpress lxc:0 kvm:new
-	To []string `yaml:",omitempty"`
+	To []string `yaml:",omitempty" json:",omitempty"`
 
 	// Options holds the configuration values
 	// to apply to the new service. They should
 	// be compatible with the charm configuration.
-	Options map[string]interface{} `yaml:",omitempty"`
+	Options map[string]interface{} `yaml:",omitempty" json:",omitempty"`
 
 	// Annotations holds any annotations to apply to the
 	// service when deployed.
-	Annotations map[string]string `yaml:",omitempty"`
+	Annotations map[string]string `yaml:",omitempty" json:",omitempty"`
 
 	// Constraints holds the default constraints to apply
 	// when creating new machines for units of the service.
