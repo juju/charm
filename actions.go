@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/binary132/gojsonschema"
+	"github.com/juju/gojsonschema"
 	"launchpad.net/goyaml"
 )
 
