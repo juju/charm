@@ -2,7 +2,7 @@
 
 See README for information about gopkg.in
 
-## Deveoping
+## Developing
 
 If you are to develop on a versioned branch, use gopkg.in.
 

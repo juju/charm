@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/juju/charm"
-	charmtesting "github.com/juju/charm/testing"
 	gitjujutesting "github.com/juju/testing"
+	"gopkg.in/juju/charm.v2"
+	charmtesting "gopkg.in/juju/charm.v2/testing"
 	gc "launchpad.net/gocheck"
 )
 
@@ -384,8 +384,8 @@ func (s *LocalRepoSuite) SetUpTest(c *gc.C) {
 	c.Assert(os.Mkdir(s.seriesPath, 0777), gc.IsNil)
 }
 
-func (s *LocalRepoSuite) addBundle(name string) string {
-	return charmtesting.Charms.BundlePath(s.seriesPath, name)
+func (s *LocalRepoSuite) addCharmArchive(name string) string {
+	return charmtesting.Charms.CharmArchivePath(s.seriesPath, name)
 }
 
 func (s *LocalRepoSuite) addDir(name string) string {
@@ -457,9 +457,9 @@ func (s *LocalRepoSuite) TestMultipleVersions(c *gc.C) {
 	s.checkNotFoundErr(c, err, badRevCharmURL)
 }
 
-func (s *LocalRepoSuite) TestBundle(c *gc.C) {
+func (s *LocalRepoSuite) TestCharmArchive(c *gc.C) {
 	charmURL := charm.MustParseURL("local:quantal/dummy")
-	s.addBundle("dummy")
+	s.addCharmArchive("dummy")
 
 	rev, err := charm.Latest(s.repo, charmURL)
 	c.Assert(err, gc.IsNil)
@@ -501,7 +501,7 @@ func (s *LocalRepoSuite) TestIgnoresUnpromisingNames(c *gc.C) {
 	err = os.Mkdir(filepath.Join(s.seriesPath, ".blah"), 0666)
 	c.Assert(err, gc.IsNil)
 	renameSibling(c, s.addDir("dummy"), ".dummy")
-	renameSibling(c, s.addBundle("dummy"), "dummy.notacharm")
+	renameSibling(c, s.addCharmArchive("dummy"), "dummy.notacharm")
 	charmURL := charm.MustParseURL("local:quantal/dummy")
 
 	_, err = s.repo.Get(charmURL)

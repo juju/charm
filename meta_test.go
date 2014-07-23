@@ -12,13 +12,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/juju/charm"
-	charmtesting "github.com/juju/charm/testing"
+	"gopkg.in/juju/charm.v2"
+	charmtesting "gopkg.in/juju/charm.v2/testing"
 	gc "launchpad.net/gocheck"
 )
 
 func repoMeta(name string) io.Reader {
-	charmDir := charmtesting.Charms.DirPath(name)
+	charmDir := charmtesting.Charms.CharmDirPath(name)
 	file, err := os.Open(filepath.Join(charmDir, "metadata.yaml"))
 	if err != nil {
 		panic(err)

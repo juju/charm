@@ -13,28 +13,28 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/juju/charm"
-	charmtesting "github.com/juju/charm/testing"
 	"github.com/juju/testing"
+	"gopkg.in/juju/charm.v2"
+	charmtesting "gopkg.in/juju/charm.v2/testing"
 	gc "launchpad.net/gocheck"
 )
 
-type DirSuite struct {
+type CharmDirSuite struct {
 	testing.IsolationSuite
 }
 
-var _ = gc.Suite(&DirSuite{})
+var _ = gc.Suite(&CharmDirSuite{})
 
-func (s *DirSuite) TestReadDir(c *gc.C) {
-	path := charmtesting.Charms.DirPath("dummy")
-	dir, err := charm.ReadDir(path)
+func (s *CharmDirSuite) TestReadCharmDir(c *gc.C) {
+	path := charmtesting.Charms.CharmDirPath("dummy")
+	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 	checkDummy(c, dir, path)
 }
 
-func (s *DirSuite) TestReadDirWithoutConfig(c *gc.C) {
-	path := charmtesting.Charms.DirPath("varnish")
-	dir, err := charm.ReadDir(path)
+func (s *CharmDirSuite) TestReadCharmDirWithoutConfig(c *gc.C) {
+	path := charmtesting.Charms.CharmDirPath("varnish")
+	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
 	// A lacking config.yaml file still causes a proper
@@ -42,9 +42,9 @@ func (s *DirSuite) TestReadDirWithoutConfig(c *gc.C) {
 	c.Assert(dir.Config().Options, gc.HasLen, 0)
 }
 
-func (s *DirSuite) TestReadDirWithoutActions(c *gc.C) {
-	path := charmtesting.Charms.DirPath("wordpress")
-	dir, err := charm.ReadDir(path)
+func (s *CharmDirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
+	path := charmtesting.Charms.CharmDirPath("wordpress")
+	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
 	// A lacking actions.yaml file still causes a proper
@@ -52,13 +52,13 @@ func (s *DirSuite) TestReadDirWithoutActions(c *gc.C) {
 	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 0)
 }
 
-func (s *DirSuite) TestBundleTo(c *gc.C) {
+func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := charmtesting.Charms.ClonedDirPath(baseDir, "dummy")
-	s.assertBundleTo(c, baseDir, charmDir)
+	s.assertArchiveTo(c, baseDir, charmDir)
 }
 
-func (s *DirSuite) TestBundleToWithSymLinkedRootDir(c *gc.C) {
+func (s *CharmDirSuite) TestArchiveToWithSymLinkedRootDir(c *gc.C) {
 	dir := c.MkDir()
 	baseDir := filepath.Join(dir, "precise")
 	err := os.MkdirAll(baseDir, 0755)
@@ -67,20 +67,20 @@ func (s *DirSuite) TestBundleToWithSymLinkedRootDir(c *gc.C) {
 	err = os.Symlink(filepath.Join("..", "dummy"), filepath.Join(baseDir, "dummy"))
 	c.Assert(err, gc.IsNil)
 	charmDir := filepath.Join(baseDir, "dummy")
-	s.assertBundleTo(c, baseDir, charmDir)
+	s.assertArchiveTo(c, baseDir, charmDir)
 }
 
-func (s *DirSuite) assertBundleTo(c *gc.C, baseDir, charmDir string) {
-	var haveSymlinks = true
+func (s *CharmDirSuite) assertArchiveTo(c *gc.C, baseDir, charmDir string) {
+	haveSymlinks := true
 	if err := os.Symlink("../target", filepath.Join(charmDir, "hooks/symlink")); err != nil {
 		haveSymlinks = false
 	}
-	dir, err := charm.ReadDir(charmDir)
+	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
-	path := filepath.Join(baseDir, "bundle.charm")
+	path := filepath.Join(baseDir, "archive.charm")
 	file, err := os.Create(path)
 	c.Assert(err, gc.IsNil)
-	err = dir.BundleTo(file)
+	err = dir.ArchiveTo(file)
 	file.Close()
 	c.Assert(err, gc.IsNil)
 
@@ -90,7 +90,7 @@ func (s *DirSuite) assertBundleTo(c *gc.C, baseDir, charmDir string) {
 
 	var metaf, instf, emptyf, revf, symf *zip.File
 	for _, f := range zipr.File {
-		c.Logf("Bundled file: %s", f.Name)
+		c.Logf("Archived file: %s", f.Name)
 		switch f.Name {
 		case "revision":
 			revf = f
@@ -103,9 +103,9 @@ func (s *DirSuite) assertBundleTo(c *gc.C, baseDir, charmDir string) {
 		case "empty/":
 			emptyf = f
 		case "build/ignored":
-			c.Errorf("bundle includes build/*: %s", f.Name)
+			c.Errorf("archive includes build/*: %s", f.Name)
 		case ".ignored", ".dir/ignored":
-			c.Errorf("bundle includes .* entries: %s", f.Name)
+			c.Errorf("archive includes .* entries: %s", f.Name)
 		}
 	}
 
@@ -149,7 +149,7 @@ func (s *DirSuite) assertBundleTo(c *gc.C, baseDir, charmDir string) {
 }
 
 // Bug #864164: Must complain if charm hooks aren't executable
-func (s *DirSuite) TestBundleToWithNonExecutableHooks(c *gc.C) {
+func (s *CharmDirSuite) TestArchiveToWithNonExecutableHooks(c *gc.C) {
 	hooks := []string{"install", "start", "config-changed", "upgrade-charm", "stop"}
 	for _, relName := range []string{"foo", "bar", "self"} {
 		for _, kind := range []string{"joined", "changed", "departed", "broken"} {
@@ -157,11 +157,11 @@ func (s *DirSuite) TestBundleToWithNonExecutableHooks(c *gc.C) {
 		}
 	}
 
-	dir := charmtesting.Charms.Dir("all-hooks")
-	path := filepath.Join(c.MkDir(), "bundle.charm")
+	dir := charmtesting.Charms.CharmDir("all-hooks")
+	path := filepath.Join(c.MkDir(), "archive.charm")
 	file, err := os.Create(path)
 	c.Assert(err, gc.IsNil)
-	err = dir.BundleTo(file)
+	err = dir.ArchiveTo(file)
 	file.Close()
 	c.Assert(err, gc.IsNil)
 
@@ -195,7 +195,7 @@ func (s *DirSuite) TestBundleToWithNonExecutableHooks(c *gc.C) {
 	}
 }
 
-func (s *DirSuite) TestBundleToWithBadType(c *gc.C) {
+func (s *CharmDirSuite) TestArchiveToWithBadType(c *gc.C) {
 	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
 	badFile := filepath.Join(charmDir, "hooks", "badfile")
 
@@ -203,10 +203,10 @@ func (s *DirSuite) TestBundleToWithBadType(c *gc.C) {
 	err := os.Symlink("../../target", badFile)
 	c.Assert(err, gc.IsNil)
 
-	dir, err := charm.ReadDir(charmDir)
+	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
-	err = dir.BundleTo(&bytes.Buffer{})
+	err = dir.ArchiveTo(&bytes.Buffer{})
 	c.Assert(err, gc.ErrorMatches, `symlink "hooks/badfile" links out of charm: "../../target"`)
 
 	// Symlink targeting an absolute path.
@@ -214,25 +214,25 @@ func (s *DirSuite) TestBundleToWithBadType(c *gc.C) {
 	err = os.Symlink("/target", badFile)
 	c.Assert(err, gc.IsNil)
 
-	dir, err = charm.ReadDir(charmDir)
+	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
-	err = dir.BundleTo(&bytes.Buffer{})
+	err = dir.ArchiveTo(&bytes.Buffer{})
 	c.Assert(err, gc.ErrorMatches, `symlink "hooks/badfile" is absolute: "/target"`)
 
-	// Can't bundle special files either.
+	// Can't archive special files either.
 	os.Remove(badFile)
 	err = syscall.Mkfifo(badFile, 0644)
 	c.Assert(err, gc.IsNil)
 
-	dir, err = charm.ReadDir(charmDir)
+	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
-	err = dir.BundleTo(&bytes.Buffer{})
+	err = dir.ArchiveTo(&bytes.Buffer{})
 	c.Assert(err, gc.ErrorMatches, `file is a named pipe: "hooks/badfile"`)
 }
 
-func (s *DirSuite) TestDirRevisionFile(c *gc.C) {
+func (s *CharmDirSuite) TestDirRevisionFile(c *gc.C) {
 	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
 	revPath := filepath.Join(charmDir, "revision")
 
@@ -240,7 +240,7 @@ func (s *DirSuite) TestDirRevisionFile(c *gc.C) {
 	err := os.Remove(revPath)
 	c.Assert(err, gc.IsNil)
 
-	dir, err := charm.ReadDir(charmDir)
+	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Revision(), gc.Equals, 0)
 
@@ -250,7 +250,7 @@ func (s *DirSuite) TestDirRevisionFile(c *gc.C) {
 	_, err = file.Write([]byte("\nrevision: 1234\n"))
 	c.Assert(err, gc.IsNil)
 
-	dir, err = charm.ReadDir(charmDir)
+	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Revision(), gc.Equals, 1234)
 
@@ -258,35 +258,35 @@ func (s *DirSuite) TestDirRevisionFile(c *gc.C) {
 	err = ioutil.WriteFile(revPath, []byte("garbage"), 0666)
 	c.Assert(err, gc.IsNil)
 
-	dir, err = charm.ReadDir(charmDir)
+	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.ErrorMatches, "invalid revision file")
 	c.Assert(dir, gc.IsNil)
 }
 
-func (s *DirSuite) TestDirSetRevision(c *gc.C) {
+func (s *CharmDirSuite) TestDirSetRevision(c *gc.C) {
 	dir := charmtesting.Charms.ClonedDir(c.MkDir(), "dummy")
 	c.Assert(dir.Revision(), gc.Equals, 1)
 	dir.SetRevision(42)
 	c.Assert(dir.Revision(), gc.Equals, 42)
 
 	var b bytes.Buffer
-	err := dir.BundleTo(&b)
+	err := dir.ArchiveTo(&b)
 	c.Assert(err, gc.IsNil)
 
-	bundle, err := charm.ReadBundleBytes(b.Bytes())
-	c.Assert(bundle.Revision(), gc.Equals, 42)
+	archive, err := charm.ReadCharmArchiveBytes(b.Bytes())
+	c.Assert(archive.Revision(), gc.Equals, 42)
 }
 
-func (s *DirSuite) TestDirSetDiskRevision(c *gc.C) {
+func (s *CharmDirSuite) TestDirSetDiskRevision(c *gc.C) {
 	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
-	dir, err := charm.ReadDir(charmDir)
+	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
 	c.Assert(dir.Revision(), gc.Equals, 1)
 	dir.SetDiskRevision(42)
 	c.Assert(dir.Revision(), gc.Equals, 42)
 
-	dir, err = charm.ReadDir(charmDir)
+	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Revision(), gc.Equals, 42)
 }

@@ -7,10 +7,11 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"path/filepath"
 	stdtesting "testing"
 
-	"github.com/juju/charm"
-	charmtesting "github.com/juju/charm/testing"
+	"gopkg.in/juju/charm.v2"
+	charmtesting "gopkg.in/juju/charm.v2/testing"
 	gc "launchpad.net/gocheck"
 	"launchpad.net/goyaml"
 )
@@ -23,15 +24,30 @@ type CharmSuite struct{}
 
 var _ = gc.Suite(&CharmSuite{})
 
-func (s *CharmSuite) TestRead(c *gc.C) {
-	bPath := charmtesting.Charms.BundlePath(c.MkDir(), "dummy")
-	ch, err := charm.Read(bPath)
+func (s *CharmSuite) TestReadCharm(c *gc.C) {
+	bPath := charmtesting.Charms.CharmArchivePath(c.MkDir(), "dummy")
+	ch, err := charm.ReadCharm(bPath)
 	c.Assert(err, gc.IsNil)
 	c.Assert(ch.Meta().Name, gc.Equals, "dummy")
-	dPath := charmtesting.Charms.DirPath("dummy")
-	ch, err = charm.Read(dPath)
+	dPath := charmtesting.Charms.CharmDirPath("dummy")
+	ch, err = charm.ReadCharm(dPath)
 	c.Assert(err, gc.IsNil)
 	c.Assert(ch.Meta().Name, gc.Equals, "dummy")
+}
+
+func (s *CharmSuite) TestReadCharmDirError(c *gc.C) {
+	ch, err := charm.ReadCharm(c.MkDir())
+	c.Assert(err, gc.NotNil)
+	c.Assert(ch, gc.Equals, nil)
+}
+
+func (s *CharmSuite) TestReadCharmArchiveError(c *gc.C) {
+	path := filepath.Join(c.MkDir(), "path")
+	err := ioutil.WriteFile(path, []byte("foo"), 0644)
+	c.Assert(err, gc.IsNil)
+	ch, err := charm.ReadCharm(path)
+	c.Assert(err, gc.NotNil)
+	c.Assert(ch, gc.Equals, nil)
 }
 
 var inferRepoTests = []struct {
@@ -81,9 +97,9 @@ func checkDummy(c *gc.C, f charm.Charm, path string) {
 							"default":     "foo.bz2",
 						}}}}})
 	switch f := f.(type) {
-	case *charm.Bundle:
+	case *charm.CharmArchive:
 		c.Assert(f.Path, gc.Equals, path)
-	case *charm.Dir:
+	case *charm.CharmDir:
 		c.Assert(f.Path, gc.Equals, path)
 	}
 }
