@@ -52,11 +52,6 @@ var (
 	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
 
-// IsValidUser returns whether user is a valid username in charm URLs.
-func IsValidUser(user string) bool {
-	return names.IsUser(user)
-}
-
 // IsValidSeries returns whether series is a valid series in charm URLs.
 func IsValidSeries(series string) bool {
 	return validSeries.MatchString(series)
@@ -124,7 +119,7 @@ func ParseReference(url string) (Reference, string, error) {
 			return Reference{}, "", fmt.Errorf("local charm URL with user name: %q", url)
 		}
 		r.User = parts[0][1:]
-		if !IsValidUser(r.User) {
+		if !names.IsValidUser(r.User) {
 			return Reference{}, "", fmt.Errorf("charm URL has invalid user name: %q", url)
 		}
 		parts = parts[1:]
