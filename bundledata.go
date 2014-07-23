@@ -125,7 +125,7 @@ type ServiceSpec struct {
 	// Constraints holds the default constraints to apply
 	// when creating new machines for units of the service.
 	// This is ignored for units with explicit placement directives.
-	Constraints string `yaml:",omitempty"`
+	Constraints string `yaml:",omitempty" json:",omitempty"`
 }
 
 // ReadBundleData reads bundle data from the given reader.
