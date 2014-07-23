@@ -76,7 +76,7 @@ type ServiceSpec struct {
 	//      (<containertype>:)?(<unit>|<machine>|new)
 	//
 	// If containertype is specified, the unit is deployed
-	// into a new container of that type, otherwisev
+	// into a new container of that type, otherwise
 	// it will be "hulk-smashed" into the specified location,
 	// by co-locating it with any other units that happen to
 	// be there, which may result in unintended behavior.
