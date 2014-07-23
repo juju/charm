@@ -28,31 +28,31 @@ type BundleData struct {
 	// machines at bundle deployment time.
 	// It is an error if a machine is specified but
 	// not referred to by a unit placement directive.
-	Machines map[string]*MachineSpec `yaml:",omitempty" json:",omitempty"`
+	Machines map[string]*MachineSpec `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Series holds the default series to use when
 	// the bundle chooses charms.
-	Series string `yaml:",omitempty" json:",omitempty"`
+	Series string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Relations holds a slice of 2-element slices,
 	// each specifying a relation between two services.
 	// Each two-element slice holds two colon-separated
 	// (service, relation) pairs - the relation is made between
 	// each.
-	Relations [][]string `yaml:",omitempty" json:",omitempty"`
+	Relations [][]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// White listed set of tags to categorize bundles as we do charms.
-	Tags []string `yaml:",omitempty" json:",omitempty"`
+	Tags []string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Short paragraph explaining what the bundle is useful for.
-	Description string `yaml:",omitempty" json:",omitempty"`
+	Description string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 }
 
 // MachineSpec represents a notional machine that will be mapped
 // onto an actual machine at bundle deployment time.
 type MachineSpec struct {
-	Constraints string            `yaml:",omitempty" json:",omitempty"`
-	Annotations map[string]string `yaml:",omitempty" json:",omitempty"`
+	Constraints string            `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+	Annotations map[string]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 }
 
 // ServiceSpec represents a single service that will
@@ -111,21 +111,21 @@ type ServiceSpec struct {
 	// The above example is the same as this:
 	//
 	//     wordpress wordpress lxc:0 kvm:new
-	To []string `yaml:",omitempty" json:",omitempty"`
+	To []string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Options holds the configuration values
 	// to apply to the new service. They should
 	// be compatible with the charm configuration.
-	Options map[string]interface{} `yaml:",omitempty" json:",omitempty"`
+	Options map[string]interface{} `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Annotations holds any annotations to apply to the
 	// service when deployed.
-	Annotations map[string]string `yaml:",omitempty" json:",omitempty"`
+	Annotations map[string]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Constraints holds the default constraints to apply
 	// when creating new machines for units of the service.
 	// This is ignored for units with explicit placement directives.
-	Constraints string `yaml:",omitempty"`
+	Constraints string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 }
 
 // ReadBundleData reads bundle data from the given reader.
