@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/juju/names"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // Location represents a charm location, which must declare a path component
