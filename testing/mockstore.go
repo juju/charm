@@ -6,7 +6,6 @@ package testing
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -16,7 +15,7 @@ import (
 
 	"github.com/juju/loggo"
 	"github.com/juju/utils"
-	"gopkg.in/juju/charm.v2"
+	"gopkg.in/juju/charm.v3"
 	gc "launchpad.net/gocheck"
 )
 
@@ -100,14 +99,14 @@ func (s *MockStore) serveInfo(w http.ResponseWriter, r *http.Request) {
 		response[url] = cr
 		charmURL, err := charm.ParseURL(url)
 		if err == charm.ErrUnresolvedUrl {
-			ref, _, err := charm.ParseReference(url)
+			ref, err := charm.ParseReference(url)
 			if err != nil {
 				panic(err)
 			}
-			if s.DefaultSeries == "" {
-				panic(fmt.Errorf("mock store lacks a default series cannot resolve charm URL: %q", url))
+			charmURL, err = ref.URL(s.DefaultSeries)
+			if err != nil {
+				panic(err)
 			}
-			charmURL = &charm.URL{Reference: ref, Series: s.DefaultSeries}
 		}
 		switch charmURL.Name {
 		case "borken":

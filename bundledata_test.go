@@ -10,7 +10,7 @@ import (
 
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
-	"gopkg.in/juju/charm.v2"
+	"gopkg.in/juju/charm.v3"
 	gc "launchpad.net/gocheck"
 )
 
@@ -266,7 +266,7 @@ func assertVerifyWithCharmsErrors(c *gc.C, bundleData string, charms map[string]
 func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 	bd, err := charm.ReadBundleData(strings.NewReader(mediawikiBundle))
 	c.Assert(err, gc.IsNil)
-	for _, u := range []string{
+	for i, u := range []string{
 		"wordpress",
 		"cs:wordpress",
 		"cs:precise/wordpress",
@@ -275,6 +275,7 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 		"local:foo",
 		"local:foo-45",
 	} {
+		c.Logf("test %d: %s", i, u)
 		bd.Services["mediawiki"].Charm = u
 		err := bd.Verify(func(string) error { return nil })
 		c.Assert(err, gc.IsNil, gc.Commentf("charm url %q", u))

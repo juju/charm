@@ -42,7 +42,7 @@ func ReadCharm(path string) (charm Charm, err error) {
 
 // InferRepository returns a charm repository inferred from the provided charm
 // or bundle reference. Local references will use the provided path.
-func InferRepository(ref Reference, localRepoPath string) (repo Repository, err error) {
+func InferRepository(ref *Reference, localRepoPath string) (repo Repository, err error) {
 	switch ref.Schema {
 	case "cs":
 		repo = Store

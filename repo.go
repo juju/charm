@@ -53,7 +53,7 @@ type CharmRevision struct {
 type Repository interface {
 	Get(curl *URL) (Charm, error)
 	Latest(curls ...*URL) ([]CharmRevision, error)
-	Resolve(ref Reference) (*URL, error)
+	Resolve(ref *Reference) (*URL, error)
 }
 
 // Latest returns the latest revision of the charm referenced by curl, regardless
@@ -139,7 +139,7 @@ func (s *CharmStore) get(url string) (resp *http.Response, err error) {
 }
 
 // Resolve canonicalizes charm URLs, resolving references and implied series.
-func (s *CharmStore) Resolve(ref Reference) (*URL, error) {
+func (s *CharmStore) Resolve(ref *Reference) (*URL, error) {
 	infos, err := s.Info(ref)
 	if err != nil {
 		return nil, err
@@ -430,11 +430,8 @@ func (r *LocalRepository) WithDefaultSeries(defaultSeries string) Repository {
 }
 
 // Resolve canonicalizes charm URLs, resolving references and implied series.
-func (r *LocalRepository) Resolve(ref Reference) (*URL, error) {
-	if r.defaultSeries == "" {
-		return nil, fmt.Errorf("cannot resolve, repository has no default series: %q", ref)
-	}
-	return &URL{Reference: ref, Series: r.defaultSeries}, nil
+func (r *LocalRepository) Resolve(ref *Reference) (*URL, error) {
+	return ref.URL(r.defaultSeries)
 }
 
 // Latest returns the latest revision of the charm referenced by curl, regardless
