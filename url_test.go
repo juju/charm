@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/juju/charm"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	gc "launchpad.net/gocheck"
 )
 
