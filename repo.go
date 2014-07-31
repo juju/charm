@@ -138,7 +138,7 @@ func (s *CharmStore) get(url string) (resp *http.Response, err error) {
 	return http.DefaultClient.Do(req)
 }
 
-// Resolve canonicalizes charm URLs, resolving references and implied series.
+// Resolve canonicalizes charm URLs any implied series in the reference.
 func (s *CharmStore) Resolve(ref *Reference) (*URL, error) {
 	infos, err := s.Info(ref)
 	if err != nil {

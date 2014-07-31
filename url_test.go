@@ -310,37 +310,43 @@ func (s *URLSuite) TestURLCodecs(c *gc.C) {
 		c.Logf("codec %d", i)
 		type doc struct {
 			URL *charm.URL
+			Ref *charm.Reference
 		}
 		url := charm.MustParseURL("cs:series/name")
-		data, err := codec.Marshal(doc{url})
+		v0 := doc{url, url.Reference()}
+		data, err := codec.Marshal(v0)
 		c.Assert(err, gc.IsNil)
 		var v doc
 		err = codec.Unmarshal(data, &v)
-		c.Assert(v.URL, gc.DeepEquals, url)
+		c.Assert(v, gc.DeepEquals, v0)
+
+		// Check that the underlying representation
+		// is a string.
+		type strDoc struct {
+			URL string
+			Ref string
+		}
+		var vs strDoc
+		err = codec.Unmarshal(data, &vs)
+		c.Assert(err, gc.IsNil)
+		c.Assert(vs.URL, gc.Equals, "cs:series/name")
+		c.Assert(vs.Ref, gc.Equals, "cs:series/name")
 
 		data, err = codec.Marshal(doc{})
 		c.Assert(err, gc.IsNil)
 		err = codec.Unmarshal(data, &v)
 		c.Assert(err, gc.IsNil)
 		c.Assert(v.URL, gc.IsNil)
+		c.Assert(v.Ref, gc.IsNil)
 	}
 }
 
-func (s *URLSuite) TestReferenceJSON(c *gc.C) {
-	ref, err := charm.ParseReference("cs:series/name")
-	c.Assert(err, gc.IsNil)
-	data, err := json.Marshal(&ref)
-	c.Assert(err, gc.IsNil)
-	c.Check(string(data), gc.Equals, `"cs:series/name"`)
-
-	var parsed charm.Reference
-	err = json.Unmarshal(data, &parsed)
-	c.Assert(err, gc.IsNil)
-	c.Check(&parsed, gc.DeepEquals, ref)
-
-	// unmarshalling json gibberish and invalid charm reference strings
+func (s *URLSuite) TestJSONGarbage(c *gc.C) {
+	// unmarshalling json gibberish
 	for _, value := range []string{":{", `"cs:{}+<"`, `"cs:~_~/f00^^&^/baaaar$%-?"`} {
-		err = json.Unmarshal([]byte(value), &parsed)
+		err := json.Unmarshal([]byte(value), new(struct{ URL *charm.URL }))
+		c.Check(err, gc.NotNil)
+		err = json.Unmarshal([]byte(value), new(struct{ Ref *charm.Reference }))
 		c.Check(err, gc.NotNil)
 	}
 }

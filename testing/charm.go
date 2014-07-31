@@ -184,6 +184,7 @@ func (s *MockCharmStore) WithDefaultSeries(series string) charm.Repository {
 	return s
 }
 
+// Resolve implements charm.Repository.Resolve.
 func (s *MockCharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
 	return ref.URL(s.DefaultSeries)
 }

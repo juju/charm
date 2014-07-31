@@ -310,6 +310,34 @@ func (u *URL) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// GetBSON turns r into a bson.Getter so it can be saved directly
+// on a MongoDB database with mgo.
+func (r *Reference) GetBSON() (interface{}, error) {
+	if r == nil {
+		return nil, nil
+	}
+	return r.String(), nil
+}
+
+// SetBSON turns u into a bson.Setter so it can be loaded directly
+// from a MongoDB database with mgo.
+func (r *Reference) SetBSON(raw bson.Raw) error {
+	if raw.Kind == 10 {
+		return bson.SetZero
+	}
+	var s string
+	err := raw.Unmarshal(&s)
+	if err != nil {
+		return err
+	}
+	ref, err := ParseReference(s)
+	if err != nil {
+		return err
+	}
+	*r = *ref
+	return nil
+}
+
 func (r *Reference) MarshalJSON() ([]byte, error) {
 	return json.Marshal(r.String())
 }
