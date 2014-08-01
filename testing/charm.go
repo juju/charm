@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/juju/utils/fs"
-	"gopkg.in/juju/charm.v2"
+	"gopkg.in/juju/charm.v3"
 )
 
 func check(err error) {
@@ -116,11 +116,9 @@ func (r *Repo) ClonedURL(dst, series, name string) *charm.URL {
 	}
 	clone(dst, r.CharmDirPath(name))
 	return &charm.URL{
-		Reference: charm.Reference{
-			Schema:   "local",
-			Name:     name,
-			Revision: -1,
-		},
+		Schema:   "local",
+		Name:     name,
+		Revision: -1,
 		Series: series,
 	}
 }
@@ -186,11 +184,9 @@ func (s *MockCharmStore) WithDefaultSeries(series string) charm.Repository {
 	return s
 }
 
-func (s *MockCharmStore) Resolve(ref charm.Reference) (*charm.URL, error) {
-	if s.DefaultSeries == "" {
-		return nil, fmt.Errorf("missing default series, cannot resolve charm url: %q", ref)
-	}
-	return &charm.URL{Reference: ref, Series: s.DefaultSeries}, nil
+// Resolve implements charm.Repository.Resolve.
+func (s *MockCharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
+	return ref.URL(s.DefaultSeries)
 }
 
 // SetCharm adds and removes charms in s. The affected charm is identified by

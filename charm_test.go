@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	stdtesting "testing"
 
-	"gopkg.in/juju/charm.v2"
-	charmtesting "gopkg.in/juju/charm.v2/testing"
+	"gopkg.in/juju/charm.v3"
+	charmtesting "gopkg.in/juju/charm.v3/testing"
 	gc "launchpad.net/gocheck"
 	"launchpad.net/goyaml"
 )
@@ -61,9 +61,9 @@ var inferRepoTests = []struct {
 func (s *CharmSuite) TestInferRepository(c *gc.C) {
 	for i, t := range inferRepoTests {
 		c.Logf("test %d", i)
-		curl, err := charm.InferURL(t.url, "precise")
+		ref, err := charm.ParseReference(t.url)
 		c.Assert(err, gc.IsNil)
-		repo, err := charm.InferRepository(curl.Reference, "/some/path")
+		repo, err := charm.InferRepository(ref, "/some/path")
 		c.Assert(err, gc.IsNil)
 		switch repo := repo.(type) {
 		case *charm.LocalRepository:
@@ -72,12 +72,12 @@ func (s *CharmSuite) TestInferRepository(c *gc.C) {
 			c.Assert(repo, gc.Equals, charm.Store)
 		}
 	}
-	curl, err := charm.InferURL("local:whatever", "precise")
+	ref, err := charm.ParseReference("local:whatever")
 	c.Assert(err, gc.IsNil)
-	_, err = charm.InferRepository(curl.Reference, "")
+	_, err = charm.InferRepository(ref, "")
 	c.Assert(err, gc.ErrorMatches, "path to local repository not specified")
-	curl.Schema = "foo"
-	_, err = charm.InferRepository(curl.Reference, "")
+	ref.Schema = "foo"
+	_, err = charm.InferRepository(ref, "")
 	c.Assert(err, gc.ErrorMatches, "unknown schema for charm reference.*")
 }
 
