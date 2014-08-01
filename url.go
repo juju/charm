@@ -170,7 +170,9 @@ func parseReference(url string) (*Reference, error) {
 		}
 		parts = parts[1:]
 	}
-
+	if len(parts) > 2 {
+		return nil, fmt.Errorf("charm URL has invalid form: %q", url)
+	}
 	// <series>
 	if len(parts) == 2 {
 		r.Series = parts[0]
