@@ -5,9 +5,9 @@ package testing
 
 import (
 	"fmt"
-	"go/build"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 
 	"github.com/juju/utils/fs"
@@ -35,9 +35,15 @@ func (r *Repo) Path() string {
 // it initializes r.path to the location of the local testing
 // repository.
 func (r *Repo) init() {
-	p, err := build.Import("gopkg.in/juju/charm.v2/testing", "", build.FindOnly)
-	check(err)
-	r.path = filepath.Join(p.Dir, "repo")
+	// Find the repo directory. This is only OK to do
+	// because this is running in a test context
+	// so we know the source is available.
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("cannot get caller")
+	}
+	dir := filepath.Dir(file)
+	r.path = filepath.Join(dir, "repo")
 }
 
 // Charms represents the specific charm repository stored in this package and
@@ -119,7 +125,7 @@ func (r *Repo) ClonedURL(dst, series, name string) *charm.URL {
 		Schema:   "local",
 		Name:     name,
 		Revision: -1,
-		Series: series,
+		Series:   series,
 	}
 }
 
