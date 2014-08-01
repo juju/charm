@@ -117,6 +117,12 @@ var urlTests = []struct {
 	exact: "cs:series/foo",
 	ref:   &charm.Reference{"cs", "", "foo", -1, "series"},
 	err:   `charm URL has no schema: "series/foo"`,
+}, {
+	s:   "series/foo/bar",
+	err: `charm URL has invalid form: "series/foo/bar"`,
+}, {
+	s:   "cs:foo/~blah",
+	err: `charm URL has invalid charm name: "cs:foo/~blah"`,
 }}
 
 func (s *URLSuite) TestParseURL(c *gc.C) {
