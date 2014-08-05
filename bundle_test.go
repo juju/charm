@@ -6,10 +6,9 @@ package charm_test
 import (
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
-	gc "launchpad.net/gocheck"
-
 	"gopkg.in/juju/charm.v3"
 	charmtesting "gopkg.in/juju/charm.v3/testing"
+	gc "launchpad.net/gocheck"
 )
 
 var _ = gc.Suite(&BundleSuite{})

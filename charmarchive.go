@@ -46,7 +46,18 @@ func ReadCharmArchive(path string) (*CharmArchive, error) {
 // ReadCharmArchiveBytes returns a CharmArchive read from the given data.
 // Make sure the archive fits in memory before using this.
 func ReadCharmArchiveBytes(data []byte) (archive *CharmArchive, err error) {
-	return readCharmArchive(newZipOpenerFromBytes(data))
+	zopener := newZipOpenerFromReader(bytes.NewReader(data), int64(len(data)))
+	return readCharmArchive(zopener)
+}
+
+// ReadCharmArchiveFromReader returns a CharmArchive that uses
+// r to read the charm. The given size must hold the number
+// of available bytes in the file.
+//
+// Note that the caller is responsible for closing r - methods on
+// the returned CharmArchive may fail after that.
+func ReadCharmArchiveFromReader(r io.ReaderAt, size int64) (archive *CharmArchive, err error) {
+	return readCharmArchive(newZipOpenerFromReader(r, size))
 }
 
 func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
@@ -174,12 +185,13 @@ func newZipOpenerFromPath(path string) zipOpener {
 	return &zipPathOpener{path: path}
 }
 
-// newZipOpenerFromBytes returns a zipOpener that can be
-// used to read the archive from the given byte slice.
-func newZipOpenerFromBytes(data []byte) zipOpener {
-	return &zipBytesOpener{
-		r:    bytes.NewReader(data),
-		size: int64(len(data)),
+// newZipOpenerFromReader returns a zipOpener that can be
+// used to read the archive from the given ReaderAt
+// holding the given number of bytes.
+func newZipOpenerFromReader(r io.ReaderAt, size int64) zipOpener {
+	return &zipReaderOpener{
+		r:    r,
+		size: size,
 	}
 }
 
@@ -205,12 +217,12 @@ func (zo *zipPathOpener) openZip() (*zipReadCloser, error) {
 	return &zipReadCloser{Closer: f, Reader: r}, nil
 }
 
-type zipBytesOpener struct {
+type zipReaderOpener struct {
 	r    io.ReaderAt
 	size int64
 }
 
-func (zo *zipBytesOpener) openZip() (*zipReadCloser, error) {
+func (zo *zipReaderOpener) openZip() (*zipReadCloser, error) {
 	r, err := zip.NewReader(zo.r, zo.size)
 	if err != nil {
 		return nil, err

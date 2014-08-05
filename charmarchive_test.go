@@ -16,11 +16,10 @@ import (
 
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils/set"
-	gc "launchpad.net/gocheck"
-	"launchpad.net/goyaml"
-
 	"gopkg.in/juju/charm.v3"
 	charmtesting "gopkg.in/juju/charm.v3/testing"
+	gc "launchpad.net/gocheck"
+	"launchpad.net/goyaml"
 )
 
 type CharmArchiveSuite struct {
@@ -80,6 +79,17 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveBytes(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	archive, err := charm.ReadCharmArchiveBytes(data)
+	c.Assert(err, gc.IsNil)
+	checkDummy(c, archive, "")
+}
+
+func (s *CharmArchiveSuite) TestReadCharmArchiveFromReader(c *gc.C) {
+	f, err := os.Open(s.archivePath)
+	c.Assert(err, gc.IsNil)
+	info, err := f.Stat()
+	c.Assert(err, gc.IsNil)
+
+	archive, err := charm.ReadCharmArchiveFromReader(f, info.Size())
 	c.Assert(err, gc.IsNil)
 	checkDummy(c, archive, "")
 }

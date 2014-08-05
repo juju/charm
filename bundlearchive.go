@@ -4,6 +4,8 @@
 package charm
 
 import (
+	"bytes"
+	"io"
 	"io/ioutil"
 
 	ziputil "github.com/juju/utils/zip"
@@ -39,7 +41,22 @@ func ReadBundleArchiveBytes(
 	data []byte,
 	verifyConstraints func(c string) error,
 ) (*BundleArchive, error) {
-	return readBundleArchive(newZipOpenerFromBytes(data), verifyConstraints)
+	zopener := newZipOpenerFromReader(bytes.NewReader(data), int64(len(data)))
+	return readBundleArchive(zopener, verifyConstraints)
+}
+
+// ReadBundleArchiveFromReader returns a BundleArchive that uses
+// r to read the bundle. The given size must hold the number
+// of available bytes in the file.
+//
+// Note that the caller is responsible for closing r - methods on
+// the returned BundleArchive may fail after that.
+func ReadBundleArchiveFromReader(
+	r io.ReaderAt,
+	size int64,
+	verifyConstraints func(c string) error,
+) (*BundleArchive, error) {
+	return readBundleArchive(newZipOpenerFromReader(r, size), verifyConstraints)
 }
 
 func readBundleArchive(zopen zipOpener, verifyConstraints func(c string) error) (*BundleArchive, error) {
