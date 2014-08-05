@@ -86,6 +86,7 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveBytes(c *gc.C) {
 func (s *CharmArchiveSuite) TestReadCharmArchiveFromReader(c *gc.C) {
 	f, err := os.Open(s.archivePath)
 	c.Assert(err, gc.IsNil)
+	defer f.Close()
 	info, err := f.Stat()
 	c.Assert(err, gc.IsNil)
 

@@ -42,6 +42,7 @@ func (s *BundleArchiveSuite) TestReadBundleArchiveBytes(c *gc.C) {
 func (s *BundleArchiveSuite) TestReadBundleArchiveFromReader(c *gc.C) {
 	f, err := os.Open(s.archivePath)
 	c.Assert(err, gc.IsNil)
+	defer f.Close()
 	info, err := f.Stat()
 	c.Assert(err, gc.IsNil)
 
