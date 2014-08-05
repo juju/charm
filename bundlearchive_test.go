@@ -5,12 +5,13 @@ package charm_test
 
 import (
 	"fmt"
-	gc "launchpad.net/gocheck"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"gopkg.in/juju/charm.v3"
 	charmtesting "gopkg.in/juju/charm.v3/testing"
+	gc "launchpad.net/gocheck"
 )
 
 var _ = gc.Suite(&BundleArchiveSuite{})
@@ -27,6 +28,27 @@ func (s *BundleArchiveSuite) TestReadBundleArchive(c *gc.C) {
 	archive, err := charm.ReadBundleArchive(s.archivePath, verifyOk)
 	c.Assert(err, gc.IsNil)
 	checkWordpressBundle(c, archive, s.archivePath)
+}
+
+func (s *BundleArchiveSuite) TestReadBundleArchiveBytes(c *gc.C) {
+	data, err := ioutil.ReadFile(s.archivePath)
+	c.Assert(err, gc.IsNil)
+
+	archive, err := charm.ReadBundleArchiveBytes(data, verifyOk)
+	c.Assert(err, gc.IsNil)
+	checkWordpressBundle(c, archive, "")
+}
+
+func (s *BundleArchiveSuite) TestReadBundleArchiveFromReader(c *gc.C) {
+	f, err := os.Open(s.archivePath)
+	c.Assert(err, gc.IsNil)
+	defer f.Close()
+	info, err := f.Stat()
+	c.Assert(err, gc.IsNil)
+
+	archive, err := charm.ReadBundleArchiveFromReader(f, info.Size(), verifyOk)
+	c.Assert(err, gc.IsNil)
+	checkWordpressBundle(c, archive, "")
 }
 
 func (s *BundleArchiveSuite) TestReadBundleArchiveWithoutBundleYAML(c *gc.C) {
