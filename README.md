@@ -1,5 +1,7 @@
 # WARNING: UNSTABLE DEVELOPMENT VERSION
 
+The latest stable version is gopkg.in/juju/charm.v2.
+
 Juju charms
 ===========
 
