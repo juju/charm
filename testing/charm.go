@@ -70,7 +70,7 @@ func (r *Repo) BundleDirPath(name string) string {
 
 // BundleDir returns the actual charm.BundleDir named name.
 func (r *Repo) BundleDir(name string) *charm.BundleDir {
-	b, err := charm.ReadBundleDir(r.BundleDirPath(name), func(string) error { return nil })
+	b, err := charm.ReadBundleDir(r.BundleDirPath(name))
 	check(err)
 	return b
 }

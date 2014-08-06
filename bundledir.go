@@ -21,13 +21,8 @@ type BundleDir struct {
 var _ Bundle = (*BundleDir)(nil)
 
 // ReadBundleDir returns a BundleDir representing an expanded
-// bundle directory. It verifies that the bundle is internally consistent.
-// The verifyConstraints function is called to verify any constraints
-// that are found in the bundle.
-func ReadBundleDir(
-	path string,
-	verifyConstraints func(c string) error,
-) (dir *BundleDir, err error) {
+// bundle directory. It does not verify the bundle data.
+func ReadBundleDir(path string) (dir *BundleDir, err error) {
 	dir = &BundleDir{Path: path}
 	file, err := os.Open(dir.join("bundle.yaml"))
 	if err != nil {
@@ -36,9 +31,6 @@ func ReadBundleDir(
 	dir.data, err = ReadBundleData(file)
 	file.Close()
 	if err != nil {
-		return nil, err
-	}
-	if err := dir.data.Verify(verifyConstraints); err != nil {
 		return nil, err
 	}
 	readMe, err := ioutil.ReadFile(dir.join("README.md"))
