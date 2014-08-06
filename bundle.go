@@ -17,16 +17,13 @@ type Bundle interface {
 
 // ReadBundle reads a Bundle from path, which can point to either a
 // bundle archive or a bundle directory.
-func ReadBundle(
-	path string,
-	verifyConstraints func(c string) error,
-) (Bundle, error) {
+func ReadBundle(path string) (Bundle, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
 	if info.IsDir() {
-		return ReadBundleDir(path, verifyConstraints)
+		return ReadBundleDir(path)
 	}
-	return ReadBundleArchive(path, verifyConstraints)
+	return ReadBundleArchive(path)
 }

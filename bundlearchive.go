@@ -19,14 +19,9 @@ type BundleArchive struct {
 	readMe string
 }
 
-// ReadBundleArchive reads a bundle archive from the given file
-// path, using verifyConstraints to verify any constraints found
-// in the bundle.yaml file.
-func ReadBundleArchive(
-	path string,
-	verifyConstraints func(c string) error,
-) (*BundleArchive, error) {
-	a, err := readBundleArchive(newZipOpenerFromPath(path), verifyConstraints)
+// ReadBundleArchive reads a bundle archive from the given file path.
+func ReadBundleArchive(path string) (*BundleArchive, error) {
+	a, err := readBundleArchive(newZipOpenerFromPath(path))
 	if err != nil {
 		return nil, err
 	}
@@ -35,14 +30,10 @@ func ReadBundleArchive(
 }
 
 // ReadBundleArchiveBytes reads a bundle archive from the given byte
-// slice, using verifyConstraints to verify any constraints found in the
-// bundle.yaml file.
-func ReadBundleArchiveBytes(
-	data []byte,
-	verifyConstraints func(c string) error,
-) (*BundleArchive, error) {
+// slice.
+func ReadBundleArchiveBytes(data []byte) (*BundleArchive, error) {
 	zopener := newZipOpenerFromReader(bytes.NewReader(data), int64(len(data)))
-	return readBundleArchive(zopener, verifyConstraints)
+	return readBundleArchive(zopener)
 }
 
 // ReadBundleArchiveFromReader returns a BundleArchive that uses
@@ -51,15 +42,11 @@ func ReadBundleArchiveBytes(
 //
 // Note that the caller is responsible for closing r - methods on
 // the returned BundleArchive may fail after that.
-func ReadBundleArchiveFromReader(
-	r io.ReaderAt,
-	size int64,
-	verifyConstraints func(c string) error,
-) (*BundleArchive, error) {
-	return readBundleArchive(newZipOpenerFromReader(r, size), verifyConstraints)
+func ReadBundleArchiveFromReader(r io.ReaderAt, size int64) (*BundleArchive, error) {
+	return readBundleArchive(newZipOpenerFromReader(r, size))
 }
 
-func readBundleArchive(zopen zipOpener, verifyConstraints func(c string) error) (*BundleArchive, error) {
+func readBundleArchive(zopen zipOpener) (*BundleArchive, error) {
 	a := &BundleArchive{
 		zopen: zopen,
 	}
