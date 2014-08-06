@@ -1,3 +1,5 @@
+# WARNING: UNSTABLE DEVELOPMENT VERSION
+
 Juju charms
 ===========
 
