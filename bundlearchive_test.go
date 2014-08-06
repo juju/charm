@@ -25,7 +25,7 @@ func (s *BundleArchiveSuite) SetUpSuite(c *gc.C) {
 }
 
 func (s *BundleArchiveSuite) TestReadBundleArchive(c *gc.C) {
-	archive, err := charm.ReadBundleArchive(s.archivePath, verifyOk)
+	archive, err := charm.ReadBundleArchive(s.archivePath)
 	c.Assert(err, gc.IsNil)
 	checkWordpressBundle(c, archive, s.archivePath)
 }
@@ -34,7 +34,7 @@ func (s *BundleArchiveSuite) TestReadBundleArchiveBytes(c *gc.C) {
 	data, err := ioutil.ReadFile(s.archivePath)
 	c.Assert(err, gc.IsNil)
 
-	archive, err := charm.ReadBundleArchiveBytes(data, verifyOk)
+	archive, err := charm.ReadBundleArchiveBytes(data)
 	c.Assert(err, gc.IsNil)
 	checkWordpressBundle(c, archive, "")
 }
@@ -46,7 +46,7 @@ func (s *BundleArchiveSuite) TestReadBundleArchiveFromReader(c *gc.C) {
 	info, err := f.Stat()
 	c.Assert(err, gc.IsNil)
 
-	archive, err := charm.ReadBundleArchiveFromReader(f, info.Size(), verifyOk)
+	archive, err := charm.ReadBundleArchiveFromReader(f, info.Size())
 	c.Assert(err, gc.IsNil)
 	checkWordpressBundle(c, archive, "")
 }
@@ -61,7 +61,7 @@ func (s *BundleArchiveSuite) TestReadBundleArchiveWithoutREADME(c *gc.C) {
 
 func testReadBundleArchiveWithoutFile(c *gc.C, fileToRemove string) {
 	path := charmtesting.Charms.ClonedBundleDirPath(c.MkDir(), "wordpress")
-	dir, err := charm.ReadBundleDir(path, verifyOk)
+	dir, err := charm.ReadBundleDir(path)
 	c.Assert(err, gc.IsNil)
 
 	// Remove the file from the bundle directory.
@@ -78,7 +78,7 @@ func testReadBundleArchiveWithoutFile(c *gc.C, fileToRemove string) {
 	err = dir.ArchiveTo(dstf)
 	dstf.Close()
 
-	archive, err := charm.ReadBundleArchive(archivePath, verifyOk)
+	archive, err := charm.ReadBundleArchive(archivePath)
 	// Slightly dubious assumption: the quoted file name has no
 	// regexp metacharacters worth worrying about.
 	c.Assert(err, gc.ErrorMatches, fmt.Sprintf("archive file %q not found", fileToRemove))
@@ -87,11 +87,11 @@ func testReadBundleArchiveWithoutFile(c *gc.C, fileToRemove string) {
 
 func (s *BundleArchiveSuite) TestExpandTo(c *gc.C) {
 	dir := c.MkDir()
-	archive, err := charm.ReadBundleArchive(s.archivePath, verifyOk)
+	archive, err := charm.ReadBundleArchive(s.archivePath)
 	c.Assert(err, gc.IsNil)
 	err = archive.ExpandTo(dir)
 	c.Assert(err, gc.IsNil)
-	bdir, err := charm.ReadBundleDir(dir, verifyOk)
+	bdir, err := charm.ReadBundleDir(dir)
 	c.Assert(err, gc.IsNil)
 	c.Assert(bdir.ReadMe(), gc.Equals, archive.ReadMe())
 	c.Assert(bdir.Data(), gc.DeepEquals, archive.Data())
