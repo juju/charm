@@ -14,6 +14,12 @@ import (
 	"gopkg.in/juju/charm.v3"
 )
 
+// DefaultSeries specifies the default series of
+// charms in the testing repository. We use "quantal"
+// because it is a valid Ubuntu series, but is not
+// commonly used.
+const DefaultSeries string = "quantal"
+
 func check(err error) {
 	if err != nil {
 		panic(err)
@@ -72,7 +78,7 @@ func (r *Repo) BundleDir(name string) *charm.BundleDir {
 // CharmDirPath returns the path to a charm directory with the given name in the
 // default series
 func (r *Repo) CharmDirPath(name string) string {
-	return filepath.Join(r.Path(), "quantal", name)
+	return filepath.Join(r.Path(), DefaultSeries, name)
 }
 
 // CharmDir returns the actual charm.CharmDir named name.
