@@ -55,6 +55,9 @@ var urlTests = []struct {
 	s:   "bs:~user/series/name-1",
 	err: "charm URL has invalid schema: .*",
 }, {
+	s: ":foo",
+	err: "charm URL has invalid schema: .*",
+}, {
 	s:   "cs:~1/series/name-1",
 	err: "charm URL has invalid user name: .*",
 }, {
@@ -142,9 +145,10 @@ func (s *URLSuite) TestParseURL(c *gc.C) {
 			c.Check(ref.String(), gc.Equals, expectStr)
 		}
 		if t.err != "" {
-			c.Check(uerr, gc.ErrorMatches, t.err)
-			c.Check(url, gc.IsNil)
+			c.Assert(uerr, gc.ErrorMatches, t.err)
+			c.Assert(url, gc.IsNil)
 			if t.ref == nil {
+				c.Assert(rerr, gc.NotNil)
 				// Errors from both ParseURL and ParseReference should match.
 				c.Check(uerr.Error(), gc.Equals, rerr.Error())
 				c.Check(ref, gc.IsNil)
