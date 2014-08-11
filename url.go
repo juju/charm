@@ -146,13 +146,12 @@ func parseReference(url string) (*Reference, error) {
 	i := strings.Index(url, ":")
 	if i >= 0 {
 		r.Schema = url[:i]
+		if r.Schema != "cs" && r.Schema != "local" {
+			return nil, fmt.Errorf("charm URL has invalid schema: %q", url)
+		}
 		i++
 	} else {
 		i = 0
-	}
-	// cs: or local: or unspecified.
-	if r.Schema != "" && r.Schema != "cs" && r.Schema != "local" {
-		return nil, fmt.Errorf("charm URL has invalid schema: %q", url)
 	}
 	parts := strings.Split(url[i:], "/")
 	if len(parts) < 1 || len(parts) > 3 {
