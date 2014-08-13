@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/juju/gojsonschema"
-	"launchpad.net/goyaml"
+	goyaml "gopkg.in/yaml.v1"
 )
 
 var prohibitedSchemaKeys = map[string]bool{"$ref": true, "$schema": true}
