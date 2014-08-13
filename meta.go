@@ -12,7 +12,7 @@ import (
 
 	"github.com/juju/schema"
 	"gopkg.in/juju/charm.v3/hooks"
-	"launchpad.net/goyaml"
+	goyaml "gopkg.in/yaml.v1"
 )
 
 // RelationScope describes the scope of a relation.

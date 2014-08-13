@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/juju/names"
-	"launchpad.net/goyaml"
+	goyaml "gopkg.in/yaml.v1"
 )
 
 // BundleData holds the contents of the bundle.
