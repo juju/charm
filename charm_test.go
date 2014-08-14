@@ -12,7 +12,7 @@ import (
 	"github.com/juju/charm"
 	charmtesting "github.com/juju/charm/testing"
 	gc "launchpad.net/gocheck"
-	"launchpad.net/goyaml"
+	goyaml "gopkg.in/yaml.v1"
 )
 
 func Test(t *stdtesting.T) {
