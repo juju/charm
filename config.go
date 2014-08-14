@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/juju/schema"
-	"launchpad.net/goyaml"
+	goyaml "gopkg.in/yaml.v1"
 )
 
 // Settings is a group of charm config option names and values. A Settings
