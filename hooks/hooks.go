@@ -17,6 +17,7 @@ const (
 	UpgradeCharm    Kind = "upgrade-charm"
 	Stop            Kind = "stop"
 	ActionRequested Kind = "action-requested"
+	CollectMetrics  Kind = "collect-metrics"
 
 	// These hooks require an associated relation, and the name of the relation
 	// unit whose change triggered the hook. The hook file names that these
@@ -39,6 +40,7 @@ var unitHooks = []Kind{
 	ActionRequested,
 	UpgradeCharm,
 	Stop,
+	CollectMetrics,
 }
 
 // UnitHooks returns all known unit hook kinds.
