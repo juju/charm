@@ -10,7 +10,7 @@ import (
 
 	"gopkg.in/juju/charm.v3"
 	"gopkg.in/mgo.v2/bson"
-	gc "launchpad.net/gocheck"
+	gc "gopkg.in/check.v1"
 )
 
 type URLSuite struct{}
