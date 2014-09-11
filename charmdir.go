@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -253,13 +252,14 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 			return err
 		}
 		data = []byte(target)
+		_, err = w.Write(data)
 	} else {
-		data, err = ioutil.ReadFile(path)
+		file, err := os.Open(path)
 		if err != nil {
 			return err
 		}
+		_, err = io.Copy(w, file)
 	}
-	_, err = w.Write(data)
 	return err
 }
 
