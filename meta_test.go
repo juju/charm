@@ -368,6 +368,7 @@ func (s *MetaSuite) TestMetaHooks(c *gc.C) {
 		"action-requested":                  true,
 		"upgrade-charm":                     true,
 		"stop":                              true,
+		"collect-metrics":                   true,
 		"cache-relation-joined":             true,
 		"cache-relation-changed":            true,
 		"cache-relation-departed":           true,
