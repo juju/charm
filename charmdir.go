@@ -258,6 +258,7 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
+		defer file.Close()
 		_, err = io.Copy(w, file)
 	}
 	return err
