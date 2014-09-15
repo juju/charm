@@ -14,7 +14,7 @@ import (
 
 	"gopkg.in/juju/charm.v3"
 	charmtesting "gopkg.in/juju/charm.v3/testing"
-	gc "launchpad.net/gocheck"
+	gc "gopkg.in/check.v1"
 )
 
 func repoMeta(name string) io.Reader {

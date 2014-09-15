@@ -12,7 +12,7 @@ import (
 	gitjujutesting "github.com/juju/testing"
 	"gopkg.in/juju/charm.v3"
 	charmtesting "gopkg.in/juju/charm.v3/testing"
-	gc "launchpad.net/gocheck"
+	gc "gopkg.in/check.v1"
 )
 
 type StoreSuite struct {

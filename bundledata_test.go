@@ -11,7 +11,7 @@ import (
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"gopkg.in/juju/charm.v3"
-	gc "launchpad.net/gocheck"
+	gc "gopkg.in/check.v1"
 )
 
 type bundleDataSuite struct {
