@@ -19,7 +19,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils/set"
 	gc "launchpad.net/gocheck"
-	"launchpad.net/goyaml"
+	"gopkg.in/yaml.v1"
 )
 
 type BundleSuite struct {
@@ -150,7 +150,7 @@ func (s *BundleSuite) prepareBundle(c *gc.C, charmDir *charm.Dir, bundlePath str
 	h.SetMode(0644)
 	w, err = zipw.CreateHeader(h)
 	c.Assert(err, gc.IsNil)
-	data, err := goyaml.Marshal(charmDir.Meta())
+	data, err := yaml.Marshal(charmDir.Meta())
 	c.Assert(err, gc.IsNil)
 	_, err = w.Write(data)
 	c.Assert(err, gc.IsNil)
