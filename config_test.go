@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"gopkg.in/juju/charm.v3"
-	gc "launchpad.net/gocheck"
+	gc "gopkg.in/check.v1"
 )
 
 type ConfigSuite struct {

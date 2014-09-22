@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 
-	gc "launchpad.net/gocheck"
+	gc "gopkg.in/check.v1"
 )
 
 type ActionsSuite struct{}
