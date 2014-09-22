@@ -10,8 +10,8 @@ import (
 
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
-	"gopkg.in/juju/charm.v3"
 	gc "gopkg.in/check.v1"
+	"gopkg.in/juju/charm.v4"
 )
 
 type bundleDataSuite struct {

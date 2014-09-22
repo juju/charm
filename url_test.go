@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/juju/charm.v3"
-	"gopkg.in/mgo.v2/bson"
 	gc "gopkg.in/check.v1"
+	"gopkg.in/juju/charm.v4"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type URLSuite struct{}
@@ -55,7 +55,7 @@ var urlTests = []struct {
 	s:   "bs:~user/series/name-1",
 	err: "charm URL has invalid schema: .*",
 }, {
-	s: ":foo",
+	s:   ":foo",
 	err: "charm URL has invalid schema: .*",
 }, {
 	s:   "cs:~1/series/name-1",

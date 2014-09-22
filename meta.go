@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/juju/schema"
-	"gopkg.in/juju/charm.v3/hooks"
+	"gopkg.in/juju/charm.v4/hooks"
 	goyaml "gopkg.in/yaml.v1"
 )
 

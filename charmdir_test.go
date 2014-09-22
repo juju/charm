@@ -14,9 +14,9 @@ import (
 	"syscall"
 
 	"github.com/juju/testing"
-	"gopkg.in/juju/charm.v3"
-	charmtesting "gopkg.in/juju/charm.v3/testing"
 	gc "gopkg.in/check.v1"
+	"gopkg.in/juju/charm.v4"
+	charmtesting "gopkg.in/juju/charm.v4/testing"
 )
 
 type CharmDirSuite struct {
