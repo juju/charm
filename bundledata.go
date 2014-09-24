@@ -404,6 +404,8 @@ func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
 		return
 	}
 	relProv0, okProv0 := charm0.Meta().Provides[ep0.relation]
+	// The juju-info relation is provided implicitly by every
+	// charm - use it if required.
 	if !okProv0 && ep0.relation == infoRelation.Name {
 		relProv0, okProv0 = infoRelation, true
 	}
@@ -412,6 +414,8 @@ func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
 		verifier.addErrorf("charm %q used by service %q does not define relation %q", svc0.Charm, ep0.service, ep0.relation)
 	}
 	relProv1, okProv1 := charm1.Meta().Provides[ep1.relation]
+	// The juju-info relation is provided implicitly by every
+	// charm - use it if required.
 	if !okProv1 && ep1.relation == infoRelation.Name {
 		relProv1, okProv1 = infoRelation, true
 	}
