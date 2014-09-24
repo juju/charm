@@ -10,8 +10,10 @@ import (
 
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
-	"gopkg.in/juju/charm.v3"
 	gc "launchpad.net/gocheck"
+
+	"gopkg.in/juju/charm.v3"
+	charmtesting "gopkg.in/juju/charm.v3/testing"
 )
 
 type bundleDataSuite struct {
@@ -277,9 +279,22 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 	} {
 		c.Logf("test %d: %s", i, u)
 		bd.Services["mediawiki"].Charm = u
-		err := bd.Verify(func(string) error { return nil })
+		err := bd.Verify(nil)
 		c.Assert(err, gc.IsNil, gc.Commentf("charm url %q", u))
 	}
+}
+
+func (*bundleDataSuite) TestVerifyBundleUsingJujuInfoRelation(c *gc.C) {
+	b := charmtesting.Charms.BundleDir("wordpress-with-logging")
+	bd := b.Data()
+
+	charms := map[string]charm.Charm{
+		"wordpress": charmtesting.Charms.CharmDir("wordpress"),
+		"mysql":     charmtesting.Charms.CharmDir("mysql"),
+		"logging":   charmtesting.Charms.CharmDir("logging"),
+	}
+	err := bd.VerifyWithCharms(nil, charms)
+	c.Assert(err, gc.IsNil)
 }
 
 func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
