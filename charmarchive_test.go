@@ -18,8 +18,8 @@ import (
 	"github.com/juju/utils/set"
 	"gopkg.in/juju/charm.v3"
 	charmtesting "gopkg.in/juju/charm.v3/testing"
-	gc "launchpad.net/gocheck"
 	goyaml "gopkg.in/yaml.v1"
+	gc "launchpad.net/gocheck"
 )
 
 type CharmArchiveSuite struct {

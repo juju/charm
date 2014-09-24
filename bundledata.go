@@ -208,7 +208,8 @@ func (bd *BundleData) Verify(
 
 // VerifyWithCharms verifies that the bundle is consistent.
 // The verifyConstraints function is called to verify any constraints
-// that are found.
+// that are found. If verifyConstraints is nil, no checking
+// of constraints will be done.
 //
 // It verifies the following:
 //
@@ -228,6 +229,11 @@ func (bd *BundleData) VerifyWithCharms(
 	verifyConstraints func(c string) error,
 	charms map[string]Charm,
 ) error {
+	if verifyConstraints == nil {
+		verifyConstraints = func(string) error {
+			return nil
+		}
+	}
 	verifier := &bundleDataVerifier{
 		verifyConstraints: verifyConstraints,
 		bd:                bd,
@@ -368,6 +374,13 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 	}
 }
 
+var infoRelation = Relation{
+	Name:      "juju-info",
+	Role:      RoleProvider,
+	Interface: "juju-info",
+	Scope:     ScopeContainer,
+}
+
 // verifyRelation verifies a single relation.
 // It checks that both endpoints of the relation are
 // defined, and that the relationship is correctly
@@ -391,11 +404,17 @@ func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
 		return
 	}
 	relProv0, okProv0 := charm0.Meta().Provides[ep0.relation]
+	if !okProv0 && ep0.relation == infoRelation.Name {
+		relProv0, okProv0 = infoRelation, true
+	}
 	relReq0, okReq0 := charm0.Meta().Requires[ep0.relation]
 	if !okProv0 && !okReq0 {
 		verifier.addErrorf("charm %q used by service %q does not define relation %q", svc0.Charm, ep0.service, ep0.relation)
 	}
 	relProv1, okProv1 := charm1.Meta().Provides[ep1.relation]
+	if !okProv1 && ep1.relation == infoRelation.Name {
+		relProv1, okProv1 = infoRelation, true
+	}
 	relReq1, okReq1 := charm1.Meta().Requires[ep1.relation]
 	if !okProv1 && !okReq1 {
 		verifier.addErrorf("charm %q used by service %q does not define relation %q", svc1.Charm, ep1.service, ep1.relation)
