@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/juju/utils/fs"
-	"gopkg.in/juju/charm.v3"
+	"gopkg.in/juju/charm.v4"
 )
 
 // DefaultSeries specifies the default series of

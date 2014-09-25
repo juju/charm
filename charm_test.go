@@ -10,10 +10,11 @@ import (
 	"path/filepath"
 	stdtesting "testing"
 
-	"gopkg.in/juju/charm.v3"
-	charmtesting "gopkg.in/juju/charm.v3/testing"
+	gc "gopkg.in/check.v1"
 	goyaml "gopkg.in/yaml.v1"
-	gc "launchpad.net/gocheck"
+
+	"gopkg.in/juju/charm.v4"
+	charmtesting "gopkg.in/juju/charm.v4/testing"
 )
 
 func Test(t *stdtesting.T) {

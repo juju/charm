@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/juju/charm.v3"
+	gc "gopkg.in/check.v1"
+	"gopkg.in/juju/charm.v4"
 	"gopkg.in/mgo.v2/bson"
-	gc "launchpad.net/gocheck"
 )
 
 type URLSuite struct{}
