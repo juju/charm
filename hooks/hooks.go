@@ -16,7 +16,8 @@ const (
 	ConfigChanged   Kind = "config-changed"
 	UpgradeCharm    Kind = "upgrade-charm"
 	Stop            Kind = "stop"
-	ActionRequested Kind = "action-requested"
+	ActionRequested Kind = "action-requested" // TODO: remove in charm v5, DEPRECATED
+	Action          Kind = "action"
 	CollectMetrics  Kind = "collect-metrics"
 
 	// These hooks require an associated relation, and the name of the relation
@@ -37,7 +38,6 @@ var unitHooks = []Kind{
 	Install,
 	Start,
 	ConfigChanged,
-	ActionRequested,
 	UpgradeCharm,
 	Stop,
 	CollectMetrics,
