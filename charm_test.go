@@ -11,9 +11,10 @@ import (
 	stdtesting "testing"
 
 	gc "gopkg.in/check.v1"
+	goyaml "gopkg.in/yaml.v1"
+
 	"gopkg.in/juju/charm.v4"
 	charmtesting "gopkg.in/juju/charm.v4/testing"
-	goyaml "gopkg.in/yaml.v1"
 )
 
 func Test(t *stdtesting.T) {
