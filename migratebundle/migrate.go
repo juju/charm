@@ -16,7 +16,7 @@ type oldBundle struct {
 	Overrides map[string]interface{} `yaml:",omitempty"`
 }
 
-// oldBundle represents a service from a legacy bundle.
+// oldService represents a service from a legacy bundle.
 type oldService struct {
 	Charm       string                 `yaml:",omitempty"`
 	Branch      string                 `yaml:",omitempty"`
