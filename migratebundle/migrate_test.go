@@ -150,15 +150,11 @@ var inheritTests = []struct {
 	`,
 }}
 
+// indentReplacer deletes tabs and | beautifier characters.
+var indentReplacer = strings.NewReplacer("\t", "", "|", "")
+
 func parseBundle(c *gc.C, s string) *legacyBundle {
-	// Delete tabs and | beautifier characters
-	// from the string.
-	s = strings.Map(func(r rune) rune {
-		if r == '\t' || r == '|' {
-			return -1
-		}
-		return r
-	}, s)
+	s = indentReplacer.Replace(s)
 	var b *legacyBundle
 	err := yaml.Unmarshal([]byte(s), &b)
 	c.Assert(err, gc.IsNil)
