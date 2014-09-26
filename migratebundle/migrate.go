@@ -5,19 +5,19 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// oldBundle represents a legacy bundle.
-type oldBundle struct {
+// legacyBundle represents an old-style bundle.
+type legacyBundle struct {
 	Series   string      `yaml:",omitempty"`
 	Inherits interface{} `yaml:",omitempty"` // string or []string
-	Services map[string]*oldService
+	Services map[string]*legacyService
 	// A relation can be in one of two styles:
 	// ["r1", "r2"] or ["r1", ["r2", "r3", ...]]
 	Relations []interface{}          `yaml:",omitempty"` // []string or []interface{}{"", []string{...}}
 	Overrides map[string]interface{} `yaml:",omitempty"`
 }
 
-// oldService represents a service from a legacy bundle.
-type oldService struct {
+// legacyService represents a service from a legacy bundle.
+type legacyService struct {
 	Charm       string                 `yaml:",omitempty"`
 	Branch      string                 `yaml:",omitempty"`
 	NumUnits    *int                   `yaml:"num_units,omitempty"`
@@ -49,7 +49,7 @@ type oldService struct {
 //
 // The bundles map holds all the bundles from the basket (the possible
 // bundles that can be inherited from).
-func inherit(b *oldBundle, bundles map[string]*oldBundle) (*oldBundle, error) {
+func inherit(b *legacyBundle, bundles map[string]*legacyBundle) (*legacyBundle, error) {
 	if b.Inherits == nil {
 		return b, nil
 	}
@@ -88,7 +88,7 @@ func inherit(b *oldBundle, bundles map[string]*oldBundle) (*oldBundle, error) {
 	copyOnto(target, source, true)
 
 	// Convert back to Go types.
-	var newb oldBundle
+	var newb legacyBundle
 	err = yamlCopy(&newb, target)
 	if err != nil {
 		return nil, errgo.Notef(err, "copy result")

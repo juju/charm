@@ -150,7 +150,7 @@ var inheritTests = []struct {
 	`,
 }}
 
-func parseBundle(c *gc.C, s string) *oldBundle {
+func parseBundle(c *gc.C, s string) *legacyBundle {
 	// Delete tabs and | beautifier characters
 	// from the string.
 	s = strings.Map(func(r rune) rune {
@@ -159,7 +159,7 @@ func parseBundle(c *gc.C, s string) *oldBundle {
 		}
 		return r
 	}, s)
-	var b *oldBundle
+	var b *legacyBundle
 	err := yaml.Unmarshal([]byte(s), &b)
 	c.Assert(err, gc.IsNil)
 	return b
@@ -171,7 +171,7 @@ func (*migrateSuite) TestInherit(c *gc.C) {
 		bundle := parseBundle(c, test.bundle)
 		base := parseBundle(c, test.base)
 		expect := parseBundle(c, test.expect)
-		bundles := map[string]*oldBundle{
+		bundles := map[string]*legacyBundle{
 			test.baseName: base,
 		}
 		b, err := inherit(bundle, bundles)
@@ -202,7 +202,7 @@ func (s *migrateSuite) TestNoNameClashes(c *gc.C) {
 	delete(nameCounts, "cs:~charmers/bundle/mediawiki-scalable")
 
 	doAllBundles(c, func(c *gc.C, id string, data []byte) {
-		var bundles map[string]*oldBundle
+		var bundles map[string]*legacyBundle
 		err := yaml.Unmarshal(data, &bundles)
 		c.Assert(err, gc.IsNil)
 		if len(bundles) == 1 {
@@ -225,7 +225,7 @@ func (s *migrateSuite) TestReversible(c *gc.C) {
 }
 
 func (*migrateSuite) testReversible(c *gc.C, id string, data []byte) {
-	var bundles map[string]*oldBundle
+	var bundles map[string]*legacyBundle
 	err := yaml.Unmarshal(data, &bundles)
 	c.Assert(err, gc.IsNil)
 	for _, b := range bundles {
