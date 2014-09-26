@@ -150,7 +150,7 @@ func (s *CharmDirSuite) assertArchiveTo(c *gc.C, baseDir, charmDir string) {
 
 // Bug #864164: Must complain if charm hooks aren't executable
 func (s *CharmDirSuite) TestArchiveToWithNonExecutableHooks(c *gc.C) {
-	hooks := []string{"install", "start", "config-changed", "upgrade-charm", "stop", "collect-metrics"}
+	hooks := []string{"install", "start", "config-changed", "upgrade-charm", "stop", "collect-metrics", "meter-changed"}
 	for _, relName := range []string{"foo", "bar", "self"} {
 		for _, kind := range []string{"joined", "changed", "departed", "broken"} {
 			hooks = append(hooks, relName+"-relation-"+kind)
