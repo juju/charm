@@ -79,6 +79,24 @@ var inheritTests = []struct {
 		|        charm: 'cs:precise/wordpress'
 	`,
 }, {
+	about: "different base name",
+	bundle: `
+		|inherits: something
+	`,
+	baseName: "something",
+	base: `
+		|series: precise
+		|services:
+		|    wordpress:
+		|        charm: 'cs:precise/wordpress'
+	`,
+	expect: `
+		|series: precise
+		|services:
+		|    wordpress:
+		|        charm: 'cs:precise/wordpress'
+	`,
+}, {
 	about: "override series",
 	bundle: `
 		|inherits: base
@@ -150,25 +168,22 @@ var inheritTests = []struct {
 	`,
 }}
 
-// indentReplacer deletes tabs and | beautifier characters.
-var indentReplacer = strings.NewReplacer("\t", "", "|", "")
-
-func parseBundle(c *gc.C, s string) *legacyBundle {
-	s = indentReplacer.Replace(s)
-	var b *legacyBundle
-	err := yaml.Unmarshal([]byte(s), &b)
-	c.Assert(err, gc.IsNil)
-	return b
-}
+var otherBundle = parseBundle(`
+	|series: quantal
+	|overrides:
+	|  something: other
+`)
 
 func (*migrateSuite) TestInherit(c *gc.C) {
 	for i, test := range inheritTests {
 		c.Logf("test %d: %s", i, test.about)
-		bundle := parseBundle(c, test.bundle)
-		base := parseBundle(c, test.base)
-		expect := parseBundle(c, test.expect)
+		bundle := parseBundle(test.bundle)
+		base := parseBundle(test.base)
+		expect := parseBundle(test.expect)
+		// Add another bundle so we know that is
 		bundles := map[string]*legacyBundle{
 			test.baseName: base,
+			"other":       otherBundle,
 		}
 		b, err := inherit(bundle, bundles)
 		if test.error != "" {
@@ -323,4 +338,17 @@ func (a *allBundles) readSection() (title string, data []byte, err error) {
 		}
 		data = append(data, c)
 	}
+}
+
+// indentReplacer deletes tabs and | beautifier characters.
+var indentReplacer = strings.NewReplacer("\t", "", "|", "")
+
+func parseBundle(s string) *legacyBundle {
+	s = indentReplacer.Replace(s)
+	var b *legacyBundle
+	err := yaml.Unmarshal([]byte(s), &b)
+	if err != nil {
+		panic(fmt.Errorf("cannot unmarshal %q: %v", s, err))
+	}
+	return b
 }
