@@ -13,35 +13,300 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
+
+	"gopkg.in/juju/charm.v4"
 )
 
 var _ = gc.Suite(&migrateSuite{})
 
 type migrateSuite struct{}
 
-var inheritTests = []struct {
-	about    string
-	bundle   string
-	base     string
-	baseName string
-	expect   string
-	error    string
+var migrateTests = []struct {
+	about       string
+	bundles     string
+	expect      map[string]*charm.BundleData
+	expectError string
 }{{
-	about:  "inherited-from not found",
-	bundle: `inherits: non-existent`,
-	error:  `inherited-from bundle "non-existent" not found`,
+	about: "single bundle, no relations cs:~jorge/bundle/wordpress",
+	bundles: `
+		|wordpress-simple: 
+		|    series: precise
+		|    services: 
+		|        wordpress: 
+		|            charm: "cs:precise/wordpress-20"
+		|            num_units: 1
+		|            options: 
+		|                debug: "no"
+		|                engine: nginx
+		|                tuning: single
+		|                "wp-content": ""
+		|            annotations: 
+		|                "gui-x": 529
+		|                "gui-y": -97
+		|        mysql: 
+		|            charm: "cs:precise/mysql-28"
+		|            num_units: 2
+		|            options: 
+		|                "binlog-format": MIXED
+		|                "block-size": 5
+		|                "dataset-size": "80%"
+		|                flavor: distro
+		|                "query-cache-size": -1
+		|                "query-cache-type": "OFF"
+		|                vip_iface: eth0
+		|            annotations: 
+		|                "gui-x": 530
+		|                "gui-y": 185
+		|`,
+	expect: map[string]*charm.BundleData{
+		"wordpress-simple": {
+			Series: "precise",
+			Services: map[string]*charm.ServiceSpec{
+				"wordpress": {
+					Charm:    "cs:precise/wordpress-20",
+					NumUnits: 1,
+					Options: map[string]interface{}{
+						"debug":      "no",
+						"engine":     "nginx",
+						"tuning":     "single",
+						"wp-content": "",
+					},
+					Annotations: map[string]string{
+						"gui-x": "529",
+						"gui-y": "-97",
+					},
+				},
+				"mysql": {
+					Charm:    "cs:precise/mysql-28",
+					NumUnits: 2,
+					Options: map[string]interface{}{
+						"binlog-format":    "MIXED",
+						"block-size":       5,
+						"dataset-size":     "80%",
+						"flavor":           "distro",
+						"query-cache-size": -1,
+						"query-cache-type": "OFF",
+						"vip_iface":        "eth0",
+					},
+					Annotations: map[string]string{
+						"gui-x": "530",
+						"gui-y": "185",
+					},
+				},
+			},
+		},
+	},
 }, {
-	about:  "bad inheritance #1",
-	bundle: `inherits: 200`,
-	error:  `bad inherits clause 200`,
+	about: "missing num_units interpreted as single unit",
+	bundles: `
+		|wordpress-simple: 
+		|    services: 
+		|        wordpress: 
+		|            charm: "cs:precise/wordpress-20"
+		|`,
+	expect: map[string]*charm.BundleData{
+		"wordpress-simple": {
+			Services: map[string]*charm.ServiceSpec{
+				"wordpress": {
+					Charm:    "cs:precise/wordpress-20",
+					NumUnits: 1,
+				},
+			},
+		},
+	},
 }, {
-	about:  "bad inheritance #2",
-	bundle: `inherits: [10]`,
-	error:  `bad inherits clause .*`,
+	about: "missing charm taken from service name",
+	bundles: `
+		|wordpress-simple: 
+		|    services: 
+		|        wordpress: 
+		|`,
+	expect: map[string]*charm.BundleData{
+		"wordpress-simple": {
+			Services: map[string]*charm.ServiceSpec{
+				"wordpress": {
+					Charm:    "wordpress",
+					NumUnits: 1,
+				},
+			},
+		},
+	},
 }, {
-	about:  "bad inheritance #3",
-	bundle: `inherits: ['a', 'b']`,
-	error:  `bad inherits clause .*`,
+	about: "services with placement directives",
+	bundles: `
+		|wordpress: 
+		|    services: 
+		|        wordpress1:
+		|            num_units: 1
+		|            to: 0
+		|        wordpress2:
+		|            num_units: 1
+		|            to: kvm:0
+		|        wordpress3:
+		|            num_units: 1
+		|            to: mysql
+		|        wordpress4:
+		|            num_units: 1
+		|            to: kvm:mysql
+		|        mysql:
+		|	    num_units: 1
+		|`,
+	expect: map[string]*charm.BundleData{
+		"wordpress": {
+			Services: map[string]*charm.ServiceSpec{
+				"wordpress1": {
+					Charm:    "wordpress1",
+					NumUnits: 1,
+					To:       []string{"0"},
+				},
+				"wordpress2": {
+					Charm:    "wordpress2",
+					NumUnits: 1,
+					To:       []string{"kvm:0"},
+				},
+				"wordpress3": {
+					Charm:    "wordpress3",
+					NumUnits: 1,
+					To:       []string{"mysql"},
+				},
+				"wordpress4": {
+					Charm:    "wordpress4",
+					NumUnits: 1,
+					To:       []string{"kvm:mysql"},
+				},
+				"mysql": {
+					Charm:    "mysql",
+					NumUnits: 1,
+				},
+			},
+			Machines: map[string]*charm.MachineSpec{
+				"0": {},
+			},
+		},
+	},
+}, {
+	about: "service with single indirect placement directive",
+	bundles: `
+		|wordpress: 
+		|    services: 
+		|        wordpress:
+		|            to: kvm:0
+		|`,
+	expect: map[string]*charm.BundleData{
+		"wordpress": {
+			Services: map[string]*charm.ServiceSpec{
+				"wordpress": {
+					Charm:    "wordpress",
+					NumUnits: 1,
+					To:       []string{"kvm:0"},
+				},
+			},
+			Machines: map[string]*charm.MachineSpec{
+				"0": {},
+			},
+		},
+	},
+}, {
+	about: "service with invalid placement directive",
+	bundles: `
+		|wordpress: 
+		|    services: 
+		|        wordpress:
+		|            to: kvm::0
+		|`,
+	expectError: `bundle migration failed for "wordpress": cannot parse 'to' placment clause "kvm::0": invalid placement syntax "kvm::0"`,
+}, {
+	about: "service with inheritance",
+	bundles: `
+		|wordpress:
+		|    inherits: base
+		|    services: 
+		|        wordpress:
+		|            charm: precise/wordpress
+		|            annotations:
+		|                 foo: yes
+		|                 base: arble
+		|base:
+		|    services:
+		|        logging:
+		|             charm: precise/logging
+		|        wordpress:
+		|            annotations:
+		|                 foo: bar
+		|                 base: arble
+		|`,
+	expect: map[string]*charm.BundleData{
+		"wordpress": {
+			Services: map[string]*charm.ServiceSpec{
+				"wordpress": {
+					Charm:    "precise/wordpress",
+					NumUnits: 1,
+					Annotations: map[string]string{
+						"foo":  "yes",
+						"base": "arble",
+					},
+				},
+				"logging": {
+					Charm:    "precise/logging",
+					NumUnits: 1,
+				},
+			},
+		},
+		"base": {
+			Services: map[string]*charm.ServiceSpec{
+				"logging": {
+					Charm:    "precise/logging",
+					NumUnits: 1,
+				},
+				"wordpress": {
+					Charm:    "wordpress",
+					NumUnits: 1,
+					Annotations: map[string]string{
+						"foo":  "bar",
+						"base": "arble",
+					},
+				},
+			},
+		},
+	},
+}}
+
+func (*migrateSuite) TestMigrate(c *gc.C) {
+	for i, test := range migrateTests {
+		c.Logf("test %d: %s", i, test.about)
+		result, err := Migrate(unbeautify(test.bundles), nil)
+		if test.expectError != "" {
+			c.Assert(err, gc.ErrorMatches, test.expectError)
+		} else {
+			c.Assert(err, gc.IsNil)
+			c.Assert(result, jc.DeepEquals, test.expect)
+		}
+	}
+}
+
+var inheritTests = []struct {
+	about       string
+	bundle      string
+	base        string
+	baseName    string
+	expect      string
+	expectError string
+}{{
+	about:       "inherited-from not found",
+	bundle:      `inherits: non-existent`,
+	expectError: `inherited-from bundle "non-existent" not found`,
+}, {
+	about:       "bad inheritance #1",
+	bundle:      `inherits: 200`,
+	expectError: `bad inherits clause 200`,
+}, {
+	about:       "bad inheritance #2",
+	bundle:      `inherits: [10]`,
+	expectError: `bad inherits clause .*`,
+}, {
+	about:       "bad inheritance #3",
+	bundle:      `inherits: ['a', 'b']`,
+	expectError: `bad inherits clause .*`,
 }, {
 	about: "inherit everything",
 	bundle: `
@@ -166,6 +431,16 @@ var inheritTests = []struct {
 		|            foo: bar
 		|        to: 0
 	`,
+}, {
+	about: "deep inheritance",
+	bundle: `
+		|inherits: base
+	`,
+	baseName: "base",
+	base: `
+		|inherits: "other"
+	`,
+	expectError: `only a single level of inheritance is supported`,
 }}
 
 var otherBundle = parseBundle(`
@@ -186,8 +461,8 @@ func (*migrateSuite) TestInherit(c *gc.C) {
 			"other":       otherBundle,
 		}
 		b, err := inherit(bundle, bundles)
-		if test.error != "" {
-			c.Check(err, gc.ErrorMatches, test.error)
+		if test.expectError != "" {
+			c.Check(err, gc.ErrorMatches, test.expectError)
 		} else {
 			c.Assert(err, gc.IsNil)
 			c.Assert(b, jc.DeepEquals, expect)
@@ -250,13 +525,29 @@ func (*migrateSuite) testReversible(c *gc.C, id string, data []byte) {
 	all, ok := allInterface.(map[interface{}]interface{})
 	c.Assert(ok, gc.Equals, true)
 	for _, b := range all {
-		b, ok := b.(map[interface{}]interface{})
-		if !ok {
-			c.Fatalf("bundle without map; actually %T", b)
-		}
+		b := ymap(b)
+		// Remove empty relations line.
 		if rels, ok := b["relations"].([]interface{}); ok && len(rels) == 0 {
 			delete(b, "relations")
 		}
+		// Convert all annotation values and "to" values
+		// to strings.
+		// Strictly speaking this means that the bundles
+		// are non-reversible, but juju converts annotations
+		// to string anyway, so it doesn't matter.
+		for _, svc := range ymap(b["services"]) {
+			svc := ymap(svc)
+			annot := ymap(svc["annotations"])
+			for key, val := range annot {
+				if _, ok := val.(string); !ok {
+					annot[key] = fmt.Sprint(val)
+				}
+			}
+			if to, ok := svc["to"]; ok {
+				svc["to"] = fmt.Sprint(to)
+			}
+		}
+
 	}
 	data1, err := yaml.Marshal(bundles)
 	c.Assert(err, gc.IsNil)
@@ -264,6 +555,15 @@ func (*migrateSuite) testReversible(c *gc.C, id string, data []byte) {
 	err = yaml.Unmarshal(data1, &all1)
 	c.Assert(err, gc.IsNil)
 	c.Assert(all1, jc.DeepEquals, all)
+}
+
+// ymap returns the default form of a map
+// when unmarshaled by YAML.
+func ymap(v interface{}) map[interface{}]interface{} {
+	if v == nil {
+		return nil
+	}
+	return v.(map[interface{}]interface{})
 }
 
 // doAllBundles calls the given function for each bundle
@@ -340,15 +640,20 @@ func (a *allBundles) readSection() (title string, data []byte, err error) {
 	}
 }
 
-// indentReplacer deletes tabs and | beautifier characters.
-var indentReplacer = strings.NewReplacer("\t", "", "|", "")
-
 func parseBundle(s string) *legacyBundle {
-	s = indentReplacer.Replace(s)
 	var b *legacyBundle
-	err := yaml.Unmarshal([]byte(s), &b)
+	err := yaml.Unmarshal(unbeautify(s), &b)
 	if err != nil {
 		panic(fmt.Errorf("cannot unmarshal %q: %v", s, err))
 	}
 	return b
+}
+
+// indentReplacer deletes tabs and | beautifier characters.
+var indentReplacer = strings.NewReplacer("\t", "", "|", "")
+
+// unbeautify strip the tabs and | characters that
+// we use to make the tests look nicer.
+func unbeautify(s string) []byte {
+	return []byte(indentReplacer.Replace(s))
 }

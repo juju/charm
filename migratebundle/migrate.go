@@ -3,6 +3,8 @@ package migratebundle
 import (
 	"github.com/juju/errgo"
 	"gopkg.in/yaml.v2"
+
+	"gopkg.in/juju/charm.v4"
 )
 
 // legacyBundle represents an old-style bundle.
@@ -23,12 +25,9 @@ type legacyService struct {
 	NumUnits    *int                   `yaml:"num_units,omitempty"`
 	Constraints string                 `yaml:",omitempty"`
 	Expose      bool                   `yaml:",omitempty"`
-	Annotations map[string]interface{} `yaml:",omitempty"`
-
-	// To can be a string or an integer.
-	To interface{} `yaml:",omitempty"`
-
-	Options map[string]interface{} `yaml:",omitempty"`
+	Annotations map[string]string      `yaml:",omitempty"`
+	To          string                 `yaml:",omitempty"`
+	Options     map[string]interface{} `yaml:",omitempty"`
 
 	// Spurious fields, used by existing bundles but not
 	// valid in the specification. Kept here so that
@@ -42,7 +41,88 @@ type legacyService struct {
 // Migrate parses the old-style bundles.yaml file in bundlesYAML
 // and returns a map containing an entry for each bundle
 // found in that basket, keyed by the name of the bundle.
-//func Migrate(bundlesYAML []byte) (map[string] charm.Bundle, error)
+//
+// It performs the following changes:
+//
+// - Any inheritance is expanded.
+//
+// - when a "to" placement directive refers to machine 0,
+// an explicit machines section is added. Also, convert
+// it to a slice.
+//
+// - If the charm URL is not specified, it is taken from the
+// service name.
+//
+// - num_units is renamed to numunits, and set to 1 if omitted.
+//
+// - A relation clause with multiple targets is expanded
+// into multiple relation clauses. (TODO)
+//
+// - relations without explicit relation names have their
+// endpoints specified explicitly. When this change is made,
+// the getCharm function is called to retrieve the charm
+// referred to. (TODO)
+func Migrate(bundlesYAML []byte, getCharm func(*charm.Reference) (charm.Charm, error)) (map[string]*charm.BundleData, error) {
+	var bundles map[string]*legacyBundle
+	if err := yaml.Unmarshal(bundlesYAML, &bundles); err != nil {
+		return nil, errgo.Notef(err, "cannot parse legacy bundle")
+	}
+	// First expand any inherits clauses.
+	newBundles := make(map[string]*charm.BundleData)
+	for name, bundle := range bundles {
+		bundle, err := inherit(bundle, bundles)
+		if err != nil {
+			return nil, errgo.Notef(err, "bundle inheritance failed for %q", name)
+		}
+		newBundle, err := migrate(bundle)
+		if err != nil {
+			return nil, errgo.Notef(err, "bundle migration failed for %q", name)
+		}
+		newBundles[name] = newBundle
+	}
+	return newBundles, nil
+}
+
+func migrate(b *legacyBundle) (*charm.BundleData, error) {
+	data := &charm.BundleData{
+		Services: make(map[string]*charm.ServiceSpec),
+		Series:   b.Series,
+		Machines: make(map[string]*charm.MachineSpec),
+	}
+	for name, svc := range b.Services {
+		if svc == nil {
+			svc = new(legacyService)
+		}
+		newSvc := &charm.ServiceSpec{
+			Charm:       svc.Charm,
+			NumUnits:    1, // default
+			Options:     svc.Options,
+			Annotations: svc.Annotations,
+			Constraints: svc.Constraints,
+		}
+		if newSvc.Charm == "" {
+			newSvc.Charm = name
+		}
+		if svc.NumUnits != nil {
+			newSvc.NumUnits = *svc.NumUnits
+		}
+		if svc.To != "" {
+			newSvc.To = []string{svc.To}
+			place, err := charm.ParsePlacement(svc.To)
+			if err != nil {
+				return nil, errgo.Notef(err, "cannot parse 'to' placment clause %q", svc.To)
+			}
+			if place.Machine != "" {
+				data.Machines[place.Machine] = new(charm.MachineSpec)
+			}
+		}
+		data.Services[name] = newSvc
+	}
+	if len(data.Machines) == 0 {
+		data.Machines = nil
+	}
+	return data, nil
+}
 
 // inherit adds any inherited attributes to the given bundle b. It does
 // not modify b, returning a new bundle if necessary.
@@ -71,6 +151,9 @@ func inherit(b *legacyBundle, bundles map[string]*legacyBundle) (*legacyBundle, 
 	from := bundles[inherits]
 	if from == nil {
 		return nil, errgo.Newf("inherited-from bundle %q not found", inherits)
+	}
+	if from.Inherits != nil {
+		return nil, errgo.Newf("only a single level of inheritance is supported")
 	}
 	// Make a generic copy of both the base and target bundles,
 	// so we can apply inheritance regardless of Go types.
