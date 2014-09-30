@@ -157,6 +157,8 @@ func migrate(b *legacyBundle, getCharm func(*charm.Reference) (*charm.Meta, erro
 	return data, nil
 }
 
+// expandRelations expands any relations that are
+// in the form [r1, [r2, r3, ...]] into the form [r1, r2], [r1, r3], ....
 func expandRelations(relations []interface{}) ([][]string, error) {
 	var newRelations [][]string
 	for _, rel := range relations {
@@ -420,12 +422,8 @@ func (ep endpoint) canRelateTo(other endpoint) bool {
 		counterpartRole(ep.Role) == other.Role
 }
 
-// counterpartRole returns the RelationRole that this RelationRole
+// counterpartRole returns the RelationRole that the given RelationRole
 // can relate to.
-// This should remain an internal method because the relation
-// model does not guarantee that for every role there will
-// necessarily exist a single counterpart role that is sensible
-// for basing algorithms upon.
 func counterpartRole(r charm.RelationRole) charm.RelationRole {
 	switch r {
 	case charm.RoleProvider:
