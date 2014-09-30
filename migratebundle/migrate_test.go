@@ -3,16 +3,19 @@ package migratebundle
 import (
 	"bufio"
 	"compress/gzip"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/juju/errgo"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v4"
 )
@@ -21,9 +24,60 @@ var _ = gc.Suite(&migrateSuite{})
 
 type migrateSuite struct{}
 
+// The charm data cache caches results from
+// fetching charms from the charm store.
+// If the update-charms flag is specified, the
+// contents of charmDataCache is written to
+// allcharms.json.gz; otherwise the contents
+// of allcharms.json are read and the charm
+// store is not touched.
+//
+var (
+	charmDataCacheMutex sync.Mutex
+	charmDataCache      = make(map[string]*charmData)
+)
+
+var updateCharms = flag.Bool("update-charms", false, "fetch and update local charms for test bundles")
+
+const charmCacheFile = "allcharms.json.gz"
+
+func (*migrateSuite) SetUpSuite(c *gc.C) {
+	if *updateCharms {
+		charm.CacheDir = c.MkDir()
+		return
+	}
+	f, err := os.Open(charmCacheFile)
+	if err != nil {
+		c.Logf("cannot open charms data: %v", err)
+		return
+	}
+	defer f.Close()
+	gzr, err := gzip.NewReader(f)
+	c.Assert(err, gc.IsNil)
+	dec := json.NewDecoder(gzr)
+	err = dec.Decode(&charmDataCache)
+	c.Assert(err, gc.IsNil)
+}
+
+func (*migrateSuite) TearDownSuite(c *gc.C) {
+	if !*updateCharms {
+		return
+	}
+	data, err := json.Marshal(charmDataCache)
+	c.Assert(err, gc.IsNil)
+	f, err := os.Create(charmCacheFile)
+	c.Assert(err, gc.IsNil)
+	defer f.Close()
+	gzw := gzip.NewWriter(f)
+	defer gzw.Close()
+	_, err = gzw.Write(data)
+	c.Assert(err, gc.IsNil)
+}
+
 var migrateTests = []struct {
 	about       string
 	bundles     string
+	charms      map[string]*charm.Meta
 	expect      map[string]*charm.BundleData
 	expectError string
 }{{
@@ -269,12 +323,120 @@ var migrateTests = []struct {
 			},
 		},
 	},
+}, {
+	about: "relations that need resolving",
+	bundles: `
+		|wordpress:
+		|    services:
+		|        wordpress:
+		|            charm: precise/wordpress
+		|        mysql:
+		|            charm: precise/mysql
+		|        logging:
+		|            charm: precise/logging
+		|        monitoring:
+		|            charm: precise/monitor
+		|    relations:
+		|        - [wordpress, mysql]
+		|        - [logging, [mysql, wordpress]]
+		|        - [monitoring, wordpress]
+		|`,
+	charms: map[string]*charm.Meta{
+		"cs:precise/wordpress": {
+			Requires: map[string]charm.Relation{
+				"db": {
+					Name:      "db",
+					Role:      charm.RoleRequirer,
+					Interface: "mysql",
+					Scope:     charm.ScopeGlobal,
+				},
+				"logs": {
+					Name:      "logs",
+					Role:      charm.RoleRequirer,
+					Interface: "syslog",
+					Scope:     charm.ScopeContainer,
+				},
+			},
+		},
+		"cs:precise/mysql": {
+			Provides: map[string]charm.Relation{
+				"database": {
+					Name:      "database",
+					Role:      charm.RoleProvider,
+					Interface: "mysql",
+					Scope:     charm.ScopeGlobal,
+				},
+			},
+			Requires: map[string]charm.Relation{
+				"logger": {
+					Name:      "logger",
+					Role:      charm.RoleRequirer,
+					Interface: "syslog",
+					Scope:     charm.ScopeContainer,
+				},
+			},
+		},
+		"cs:precise/logging": {
+			Provides: map[string]charm.Relation{
+				"log": {
+					Name:      "log",
+					Role:      charm.RoleProvider,
+					Interface: "syslog",
+					Scope:     charm.ScopeContainer,
+				},
+			},
+		},
+		"cs:precise/monitor": {
+			Requires: map[string]charm.Relation{
+				"subord": {
+					Name:      "subord",
+					Role:      charm.RoleRequirer,
+					Interface: "juju-info",
+					Scope:     charm.ScopeContainer,
+				},
+			},
+		},
+	},
+	expect: map[string]*charm.BundleData{
+		"wordpress": {
+			Services: map[string]*charm.ServiceSpec{
+				"wordpress": {
+					Charm:    "precise/wordpress",
+					NumUnits: 1,
+				},
+				"mysql": {
+					Charm:    "precise/mysql",
+					NumUnits: 1,
+				},
+				"logging": {
+					Charm:    "precise/logging",
+					NumUnits: 1,
+				},
+				"monitoring": {
+					Charm:    "precise/monitor",
+					NumUnits: 1,
+				},
+			},
+			Relations: [][]string{
+				{"wordpress:db", "mysql:database"},
+				{"logging:log", "mysql:logger"},
+				{"logging:log", "wordpress:logs"},
+				{"monitoring:subord", "wordpress:juju-info"},
+			},
+		},
+	},
 }}
 
 func (*migrateSuite) TestMigrate(c *gc.C) {
 	for i, test := range migrateTests {
 		c.Logf("test %d: %s", i, test.about)
-		result, err := Migrate(unbeautify(test.bundles), nil)
+		getCharm := func(id *charm.Reference) (*charm.Meta, error) {
+			if m := test.charms[id.String()]; m != nil {
+				return m, nil
+			}
+			return nil, fmt.Errorf("charm %q not found in test data", id)
+		}
+		result, err := Migrate(unbeautify(test.bundles), getCharm)
 		if test.expectError != "" {
 			c.Assert(err, gc.ErrorMatches, test.expectError)
 		} else {
@@ -282,6 +444,67 @@ func (*migrateSuite) TestMigrate(c *gc.C) {
 			c.Assert(result, jc.DeepEquals, test.expect)
 		}
 	}
+}
+
+func (*migrateSuite) TestMigrateAll(c *gc.C) {
+	c.ExpectFailure("all bundles do not migrate successfully")
+	passed, total := 0, 0
+	doAllBundles(c, func(c *gc.C, id string, data []byte) {
+		c.Logf("\nmigrate test %s", id)
+		ok := true
+		bundles, err := Migrate(data, func(id *charm.Reference) (*charm.Meta, error) {
+			ch, err := getCharm(id)
+			if err != nil {
+				return nil, err
+			}
+			return ch.Meta(), nil
+		})
+		if err != nil {
+			c.Logf("cannot migrate: %v", err)
+			ok = false
+		}
+		for _, bundle := range bundles {
+			ok = checkBundleData(c, bundle) && ok
+		}
+		if ok {
+			passed++
+		}
+		total++
+	})
+	c.Logf("%d/%d passed", passed, total)
+	c.Check(passed, gc.Equals, total)
+}
+
+func checkBundleData(c *gc.C, bd *charm.BundleData) bool {
+	charms := make(map[string]charm.Charm)
+	ok := true
+	for _, svc := range bd.Services {
+		id, err := charm.ParseReference(svc.Charm)
+		if err != nil {
+			ok = false
+			c.Logf("cannot parse %q: %v", svc.Charm, err)
+			continue
+		}
+		if id.Series == "" {
+			id.Series = bd.Series
+		}
+		ch, err := getCharm(id)
+		if err != nil {
+			ok = false
+			c.Logf("cannot find %q: %v", id, err)
+			continue
+		}
+		charms[svc.Charm] = ch
+	}
+	if ok {
+		if err := bd.VerifyWithCharms(nil, charms); err != nil {
+			for _, err := range err.(*charm.VerificationError).Errors {
+				c.Logf("verification error: %v", err)
+			}
+			ok = false
+		}
+	}
+	return ok
 }
 
 var inheritTests = []struct {
@@ -574,7 +797,6 @@ func doAllBundles(c *gc.C, f func(c *gc.C, id string, data []byte)) {
 	for {
 		title, data, err := a.readSection()
 		if len(data) > 0 {
-			c.Logf("charm %s", title)
 			f(c, title, data)
 		}
 		if err != nil {
@@ -656,4 +878,56 @@ var indentReplacer = strings.NewReplacer("\t", "", "|", "")
 // we use to make the tests look nicer.
 func unbeautify(s string) []byte {
 	return []byte(indentReplacer.Replace(s))
+}
+
+func noCharms(id *charm.Reference) (*charm.Meta, error) {
+	return nil, fmt.Errorf("charm %q not found", id)
+}
+
+func getCharm(id *charm.Reference) (charm.Charm, error) {
+	url, err := id.URL("")
+	if err != nil {
+		return nil, fmt.Errorf("cannot make URL from %q: %v", id, err)
+	}
+	charmDataCacheMutex.Lock()
+	defer charmDataCacheMutex.Unlock()
+	if m, ok := charmDataCache[url.String()]; ok || !*updateCharms {
+		if m == nil {
+			return nil, fmt.Errorf("charm %q not found in cache", id)
+		}
+		return m, nil
+	}
+	log.Printf("getting %s", url)
+	ch, err := charm.Store.Get(url)
+	if err != nil {
+		charmDataCache[url.String()] = nil
+		return nil, err
+	}
+	chData := &charmData{
+		Meta_:   ch.Meta(),
+		Config_: ch.Config(),
+	}
+	charmDataCache[url.String()] = chData
+	return chData, nil
+}
+
+type charmData struct {
+	Meta_   *charm.Meta   `json:"Meta"`
+	Config_ *charm.Config `json:"Config"`
+}
+
+func (c *charmData) Meta() *charm.Meta {
+	return c.Meta_
+}
+
+func (c *charmData) Config() *charm.Config {
+	return c.Config_
+}
+
+func (c *charmData) Actions() *charm.Actions {
+	return nil
+}
+
+func (c *charmData) Revision() int {
+	return 0
 }
