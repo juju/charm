@@ -1,8 +1,12 @@
 package migratebundle
 
 import (
+	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/juju/errgo"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v4"
 )
@@ -37,7 +41,6 @@ type legacyService struct {
 	Local   string `yaml:",omitempty"`
 }
 
-// TODO (this is where we're headed)
 // Migrate parses the old-style bundles.yaml file in bundlesYAML
 // and returns a map containing an entry for each bundle
 // found in that basket, keyed by the name of the bundle.
@@ -56,13 +59,13 @@ type legacyService struct {
 // - num_units is renamed to numunits, and set to 1 if omitted.
 //
 // - A relation clause with multiple targets is expanded
-// into multiple relation clauses. (TODO)
+// into multiple relation clauses.
 //
 // - relations without explicit relation names have their
 // endpoints specified explicitly. When this change is made,
 // the getCharm function is called to retrieve the charm
-// referred to. (TODO)
-func Migrate(bundlesYAML []byte, getCharm func(*charm.Reference) (charm.Charm, error)) (map[string]*charm.BundleData, error) {
+// referred to.
+func Migrate(bundlesYAML []byte, getCharm func(*charm.Reference) (*charm.Meta, error)) (map[string]*charm.BundleData, error) {
 	var bundles map[string]*legacyBundle
 	if err := yaml.Unmarshal(bundlesYAML, &bundles); err != nil {
 		return nil, errgo.Notef(err, "cannot parse legacy bundle")
@@ -74,7 +77,7 @@ func Migrate(bundlesYAML []byte, getCharm func(*charm.Reference) (charm.Charm, e
 		if err != nil {
 			return nil, errgo.Notef(err, "bundle inheritance failed for %q", name)
 		}
-		newBundle, err := migrate(bundle)
+		newBundle, err := migrate(bundle, getCharm)
 		if err != nil {
 			return nil, errgo.Notef(err, "bundle migration failed for %q", name)
 		}
@@ -83,7 +86,7 @@ func Migrate(bundlesYAML []byte, getCharm func(*charm.Reference) (charm.Charm, e
 	return newBundles, nil
 }
 
-func migrate(b *legacyBundle) (*charm.BundleData, error) {
+func migrate(b *legacyBundle, getCharm func(*charm.Reference) (*charm.Meta, error)) (*charm.BundleData, error) {
 	data := &charm.BundleData{
 		Services: make(map[string]*charm.ServiceSpec),
 		Series:   b.Series,
@@ -118,10 +121,70 @@ func migrate(b *legacyBundle) (*charm.BundleData, error) {
 		}
 		data.Services[name] = newSvc
 	}
+	var err error
+	data.Relations, err = expandRelations(b.Relations)
+	if err != nil {
+		return nil, errgo.Notef(err, "cannot expand relations")
+	}
+	getServiceCharm := func(svcName string) (*charm.Meta, error) {
+		svc := data.Services[svcName]
+		if svc == nil {
+			return nil, errgo.Newf("service %q not found", svcName)
+		}
+		id, err := charm.ParseReference(svc.Charm)
+		if err != nil {
+			return nil, errgo.Newf("bad charm URL %q: %v", id, err)
+		}
+		if id.Series == "" {
+			id.Series = b.Series
+		}
+		ch, err := getCharm(id)
+		if err != nil {
+			return nil, errgo.Mask(err)
+		}
+		return ch, nil
+	}
+	for i, rel := range data.Relations {
+		ep0Str, ep1Str, err := inferEndpoints(rel[0], rel[1], getServiceCharm)
+		if err != nil {
+			return nil, errgo.Notef(err, "cannot infer endpoints from %q", rel)
+		}
+		data.Relations[i][0], data.Relations[i][1] = ep0Str, ep1Str
+	}
 	if len(data.Machines) == 0 {
 		data.Machines = nil
 	}
 	return data, nil
+}
+
+func expandRelations(relations []interface{}) ([][]string, error) {
+	var newRelations [][]string
+	for _, rel := range relations {
+		rel, ok := rel.([]interface{})
+		if !ok || len(rel) != 2 {
+			return nil, errgo.Newf("unexpected relation clause %#v", rel)
+		}
+		ep0, ok := rel[0].(string)
+		if !ok {
+			return nil, errgo.Newf("first relation endpoint is %#v not string", rel[0])
+		}
+		if ep1, ok := rel[1].(string); ok {
+			newRelations = append(newRelations, []string{ep0, ep1})
+			continue
+		}
+		eps, ok := rel[1].([]interface{})
+		if !ok {
+			return nil, errgo.Newf("second relation endpoint is %#v not list or string", rel[1])
+		}
+		for _, ep1 := range eps {
+			ep1, ok := ep1.(string)
+			if !ok {
+				return nil, errgo.Newf("relation list member is not string")
+			}
+			newRelations = append(newRelations, []string{ep0, ep1})
+		}
+	}
+	return newRelations, nil
 }
 
 // inherit adds any inherited attributes to the given bundle b. It does
@@ -212,4 +275,159 @@ func copyOnto(target, source map[interface{}]interface{}, isRoot bool) {
 			target[key] = val
 		}
 	}
+}
+
+// inferEndpoints infers missing relation names from the given endpoint
+// specifications, using the given get function to retrieve charm
+// data if necessary. It returns the fully specified endpoints.
+func inferEndpoints(epSpecStr0, epSpecStr1 string, get func(svc string) (*charm.Meta, error)) (ep0Str, ep1Str string, err error) {
+	epSpec0 := parseEndpointSpec(epSpecStr0)
+	epSpec1 := parseEndpointSpec(epSpecStr1)
+	if epSpec0.relation != "" && epSpec1.relation != "" {
+		// The endpoints are already specified explicitly so
+		// there is no need to fetch any charm data to infer
+		// them.
+		return epSpecStr0, epSpecStr1, nil
+	}
+	eps0, err := possibleEndpoints(epSpec0, get)
+	if err != nil {
+		return "", "", errgo.Mask(err)
+	}
+	eps1, err := possibleEndpoints(epSpec1, get)
+	if err != nil {
+		return "", "", errgo.Mask(err)
+	}
+	var candidates [][]endpoint
+	for _, ep0 := range eps0 {
+		for _, ep1 := range eps1 {
+			if ep0.canRelateTo(ep1) {
+				candidates = append(candidates, []endpoint{ep0, ep1})
+			}
+		}
+	}
+	switch len(candidates) {
+	case 0:
+		return "", "", errgo.Newf("no relations found")
+	case 1:
+		return candidates[0][0].String(), candidates[0][1].String(), nil
+	}
+	// There's ambiguity; try discarding implicit relations.
+	var filtered [][]endpoint
+outer:
+	for _, cand := range candidates {
+		for _, ep := range cand {
+			if ep.IsImplicit() {
+				continue outer
+			}
+		}
+		filtered = append(filtered, cand)
+	}
+	if len(filtered) == 1 {
+		return filtered[0][0].String(), filtered[0][1].String(), nil
+	}
+	var keys []string
+	for _, cand := range candidates {
+		keys = append(keys, fmt.Sprintf("%q", relationKey(cand)))
+	}
+	sort.Strings(keys)
+	return "", "", errgo.Newf("ambiguous relation: %s %s could refer to %s",
+		epSpecStr0, epSpecStr1, strings.Join(keys, "; "))
+}
+
+// relationKey returns a string describing the relation defined by
+// endpoints, for use in various contexts (including error messages).
+func relationKey(endpoints []endpoint) string {
+	var names []string
+	for _, ep := range endpoints {
+		names = append(names, ep.String())
+	}
+	sort.Strings(names)
+	return strings.Join(names, " ")
+}
+
+// possibleEndpoints returns all the endpoints that the given endpoint spec
+// could refer to.
+func possibleEndpoints(epSpec endpointSpec, get func(svc string) (*charm.Meta, error)) ([]endpoint, error) {
+	meta, err := get(epSpec.service)
+	if err != nil {
+		return nil, errgo.Mask(err)
+	}
+
+	var eps []endpoint
+	add := func(r charm.Relation) {
+		if epSpec.relation == "" || epSpec.relation == r.Name {
+			eps = append(eps, endpoint{
+				serviceName: epSpec.service,
+				Relation:    r,
+			})
+		}
+	}
+
+	for _, r := range meta.Provides {
+		add(r)
+	}
+	for _, r := range meta.Requires {
+		add(r)
+	}
+	// Every service implicitly provides a juju-info relation.
+	add(charm.Relation{
+		Name:      "juju-info",
+		Role:      charm.RoleProvider,
+		Interface: "juju-info",
+		Scope:     charm.ScopeGlobal,
+	})
+	return eps, nil
+}
+
+type endpointSpec struct {
+	service  string
+	relation string
+}
+
+func parseEndpointSpec(s string) endpointSpec {
+	parts := strings.SplitN(s, ":", 2)
+	if len(parts) == 1 {
+		return endpointSpec{service: parts[0]}
+	}
+	return endpointSpec{
+		service:  parts[0],
+		relation: parts[1],
+	}
+}
+
+// endpoint represents one endpoint of a relation.
+type endpoint struct {
+	serviceName string
+	charm.Relation
+}
+
+// String returns the unique identifier of the relation endpoint.
+func (ep endpoint) String() string {
+	return ep.serviceName + ":" + ep.Name
+}
+
+// canRelateTo returns whether a relation may be established between e and other.
+func (ep endpoint) canRelateTo(other endpoint) bool {
+	return ep.serviceName != other.serviceName &&
+		ep.Interface == other.Interface &&
+		ep.Role != charm.RolePeer &&
+		counterpartRole(ep.Role) == other.Role
+}
+
+// counterpartRole returns the RelationRole that this RelationRole
+// can relate to.
+// This should remain an internal method because the relation
+// model does not guarantee that for every role there will
+// necessarily exist a single counterpart role that is sensible
+// for basing algorithms upon.
+func counterpartRole(r charm.RelationRole) charm.RelationRole {
+	switch r {
+	case charm.RoleProvider:
+		return charm.RoleRequirer
+	case charm.RoleRequirer:
+		return charm.RoleProvider
+	case charm.RolePeer:
+		return charm.RolePeer
+	}
+	panic(fmt.Errorf("unknown relation role %q", r))
 }
