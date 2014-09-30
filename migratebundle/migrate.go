@@ -311,17 +311,9 @@ func inferEndpoints(epSpecStr0, epSpecStr1 string, get func(svc string) (*charm.
 	case 1:
 		return candidates[0][0].String(), candidates[0][1].String(), nil
 	}
+
 	// There's ambiguity; try discarding implicit relations.
-	var filtered [][]endpoint
-outer:
-	for _, cand := range candidates {
-		for _, ep := range cand {
-			if ep.IsImplicit() {
-				continue outer
-			}
-		}
-		filtered = append(filtered, cand)
-	}
+	filtered := discardImplicitRelations(candidates)
 	if len(filtered) == 1 {
 		return filtered[0][0].String(), filtered[0][1].String(), nil
 	}
@@ -332,6 +324,20 @@ outer:
 	sort.Strings(keys)
 	return "", "", errgo.Newf("ambiguous relation: %s %s could refer to %s",
 		epSpecStr0, epSpecStr1, strings.Join(keys, "; "))
+}
+
+func discardImplicitRelations(candidates [][]endpoint) [][]endpoint {
+	var filtered [][]endpoint
+outer:
+	for _, cand := range candidates {
+		for _, ep := range cand {
+			if ep.IsImplicit() {
+				continue outer
+			}
+		}
+		filtered = append(filtered, cand)
+	}
+	return filtered
 }
 
 // relationKey returns a string describing the relation defined by
