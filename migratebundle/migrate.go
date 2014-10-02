@@ -56,7 +56,11 @@ type legacyService struct {
 //
 // - A relation clause with multiple targets is expanded
 // into multiple relation clauses.
-func Migrate(bundlesYAML []byte) (map[string]*charm.BundleData, error) {
+//
+// The getCharm argument is ignored and provided for
+// backward compatibility only. It will be removed in
+// charm.v5.
+func Migrate(bundlesYAML []byte, getCharm func(id *charm.Reference) (*charm.Meta, error)) (map[string]*charm.BundleData, error) {
 	var bundles map[string]*legacyBundle
 	if err := yaml.Unmarshal(bundlesYAML, &bundles); err != nil {
 		return nil, errgo.Notef(err, "cannot parse legacy bundle")

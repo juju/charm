@@ -373,7 +373,7 @@ var migrateTests = []struct {
 func (*migrateSuite) TestMigrate(c *gc.C) {
 	for i, test := range migrateTests {
 		c.Logf("test %d: %s", i, test.about)
-		result, err := Migrate(unbeautify(test.bundles))
+		result, err := Migrate(unbeautify(test.bundles), nil)
 		if test.expectError != "" {
 			c.Assert(err, gc.ErrorMatches, test.expectError)
 		} else {
@@ -389,7 +389,7 @@ func (*migrateSuite) TestMigrateAll(c *gc.C) {
 	doAllBundles(c, func(c *gc.C, id string, data []byte) {
 		c.Logf("\nmigrate test %s", id)
 		ok := true
-		bundles, err := Migrate(data)
+		bundles, err := Migrate(data, nil)
 		if err != nil {
 			c.Logf("cannot migrate: %v", err)
 			ok = false
