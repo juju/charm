@@ -543,7 +543,7 @@ func parseEndpoint(ep string) (endpoint, error) {
 	}, nil
 }
 
-// endpoint holds information about one endpoint of a relation.
+// endpointInfo holds information about one endpoint of a relation.
 type endpointInfo struct {
 	serviceName string
 	Relation
@@ -554,7 +554,8 @@ func (ep endpointInfo) String() string {
 	return ep.serviceName + ":" + ep.Name
 }
 
-// canRelateTo returns whether a relation may be established between e and other.
+// canRelateTo returns whether a relation may be established between ep
+// and other.
 func (ep endpointInfo) canRelateTo(other endpointInfo) bool {
 	return ep.serviceName != other.serviceName &&
 		ep.Interface == other.Interface &&
@@ -562,7 +563,7 @@ func (ep endpointInfo) canRelateTo(other endpointInfo) bool {
 		counterpartRole(ep.Role) == other.Role
 }
 
-// spec returns the endpoint specifier for ep.
+// endpoint returns the endpoint specifier for ep.
 func (ep endpointInfo) endpoint() endpoint {
 	return endpoint{
 		service:  ep.serviceName,
@@ -685,6 +686,7 @@ func inferEndpoints(epSpec0, epSpec1 endpoint, get func(svc string) (*Meta, erro
 	if len(filtered) == 1 {
 		return filtered[0][0].endpoint(), filtered[0][1].endpoint(), nil
 	}
+	// The ambiguity cannot be resolved, so return an error.
 	var keys []string
 	for _, cand := range candidates {
 		keys = append(keys, fmt.Sprintf("%q", relationKey(cand)))
@@ -744,7 +746,6 @@ func possibleEndpoints(epSpec endpoint, get func(svc string) (*Meta, error)) ([]
 		add(r)
 	}
 	// Every service implicitly provides a juju-info relation.
-
 	add(Relation{
 		Name:      "juju-info",
 		Role:      RoleProvider,
