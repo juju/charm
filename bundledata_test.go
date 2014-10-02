@@ -198,6 +198,8 @@ services:
             "gui-x": 610
             "gui-y": 255
         constraints: "bad constraints"
+    wordpress:
+          charm: wordpress
 relations:
     - ["mediawiki:db", "mysql:db"]
     - ["mysql:foo", "mediawiki:bar"]
@@ -206,7 +208,7 @@ relations:
     - ["mysql:foo", "mysql:bar"]
     - ["mysql:db", "mediawiki:db"]
     - ["mediawiki/db", "mysql:db"]
-
+    - ["wordpress", "mysql"]
 `,
 	errors: []string{
 		`bundle declares an invalid series "9wrong"`,
@@ -251,8 +253,12 @@ func assertVerifyWithCharmsErrors(c *gc.C, bundleData string, charms map[string]
 		return nil
 	}, charms)
 	if len(expectErrors) == 0 {
-		c.Assert(err, gc.IsNil)
-		return
+		if err == nil {
+			return
+		}
+		// Let the rest of the function deal with the
+		// error, so that we'll see the actual errors
+		// that resulted.
 	}
 	c.Assert(err, gc.FitsTypeOf, (*charm.VerificationError)(nil))
 	errors := err.(*charm.VerificationError).Errors
@@ -305,24 +311,44 @@ func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
 	c.Assert(reqCharms, gc.DeepEquals, []string{"cs:precise/mediawiki-10", "cs:precise/mysql-28"})
 }
 
-var testCharm = func() charm.Charm {
-	metaStr := `name: test
-summary: "test charm"
-description: "testing, testing"
-requires:
-    reqa:
-        interface: a
-    reqb:
-        interface: b
-provides:
-    prova:
-        interface: a
-    provb:
-        interface: b
-`
-	meta, err := charm.ReadMeta(strings.NewReader(metaStr))
-	if err != nil {
-		panic(err)
+// testCharm returns a charm with the given name
+// and relations. The relations are specified as
+// a string of the form:
+//
+//	<provides-relations> | <requires-relations>
+//
+// Within each section, each white-space separated
+// relation is specified as:
+///	<relation-name>:<interface>
+//
+// So, for example:
+//
+//     testCharm("wordpress", "web:http | db:mysql")
+//
+// is equivalent to a charm with metadata.yaml containing
+//
+//	name: wordpress
+//	description: wordpress
+//	provides:
+//	    web:
+//	        interface: http
+//	requires:
+//	    db:
+//	        interface: mysql
+//
+func testCharm(name string, relations string) charm.Charm {
+	var provides, requires string
+	parts := strings.Split(relations, "|")
+	provides = parts[0]
+	if len(parts) > 1 {
+		requires = parts[1]
+	}
+	meta := &charm.Meta{
+		Name:        name,
+		Summary:     name,
+		Description: name,
+		Provides:    parseRelations(provides, charm.RoleProvider),
+		Requires:    parseRelations(requires, charm.RoleRequirer),
 	}
 	configStr := `
 options:
@@ -337,22 +363,25 @@ options:
 		meta:   meta,
 		config: config,
 	}
-}()
+}
 
-var testCharmNoRelations = func() charm.Charm {
-	meta := `name: test
-summary: "test charm with no relations"
-description: "testing, testing"
-`
-	// TODO config
-	m, err := charm.ReadMeta(strings.NewReader(meta))
-	if err != nil {
-		panic(err)
+func parseRelations(s string, role charm.RelationRole) map[string]charm.Relation {
+	rels := make(map[string]charm.Relation)
+	for _, r := range strings.Fields(s) {
+		parts := strings.Split(r, ":")
+		if len(parts) != 2 {
+			panic(fmt.Errorf("invalid relation specifier %q", r))
+		}
+		name, interf := parts[0], parts[1]
+		rels[name] = charm.Relation{
+			Name:      name,
+			Role:      role,
+			Interface: interf,
+			Scope:     charm.ScopeGlobal,
+		}
 	}
-	return testCharmImpl{
-		meta: m,
-	}
-}()
+	return rels
+}
 
 type testCharmImpl struct {
 	meta   *charm.Meta
@@ -400,7 +429,7 @@ relations:
     - ["service3:provb", "service2:reqb"]
 `,
 	charms: map[string]charm.Charm{
-		"test": testCharm,
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 }, {
 	about: "undefined relations",
@@ -415,7 +444,7 @@ relations:
     - ["service1:blah", "service2:prova"]
 `,
 	charms: map[string]charm.Charm{
-		"test": testCharm,
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
 		`charm "test" used by service "service1" does not define relation "blah"`,
@@ -434,7 +463,7 @@ relations:
     - ["service1:blah", "unknown:prova"]
 `,
 	charms: map[string]charm.Charm{
-		"test": testCharm,
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
 		`relation ["service1:blah" "unknown:prova"] refers to service "unknown" not defined in this bundle`,
@@ -452,7 +481,7 @@ relations:
     - ["service2:prova", "service2:reqa"]
 `,
 	charms: map[string]charm.Charm{
-		"test": testCharm,
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
 		`relation ["service2:prova" "service2:reqa"] relates a service to itself`,
@@ -469,7 +498,7 @@ relations:
     - ["service1:prova", "service2:prova"]
 `,
 	charms: map[string]charm.Charm{
-		"test": testCharm,
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
 		`relation "service1:prova" to "service2:prova" relates provider to provider`,
@@ -486,7 +515,7 @@ relations:
     - ["service1:reqa", "service2:reqa"]
 `,
 	charms: map[string]charm.Charm{
-		"test": testCharm,
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
 		`relation "service1:reqa" to "service2:reqa" relates requirer to requirer`,
@@ -503,7 +532,7 @@ relations:
     - ["service1:reqa", "service2:provb"]
 `,
 	charms: map[string]charm.Charm{
-		"test": testCharm,
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
 		`mismatched interface between "service2:provb" and "service1:reqa" ("b" vs "a")`,
@@ -520,11 +549,93 @@ relations:
     - ["service1:reqa", "service2:prova"]
 `,
 	charms: map[string]charm.Charm{
-		"test1": testCharm,
-		"test2": testCharmNoRelations,
+		"test1": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
+		"test2": testCharm("test", ""),
 	},
 	errors: []string{
 		`charm "test2" used by service "service2" does not define relation "prova"`,
+	},
+}, {
+	about: "ambiguous relation",
+	data: `
+services: 
+    service1: 
+        charm: "test1"
+    service2: 
+        charm: "test2"
+relations:
+    - [service1, service2]
+`,
+	charms: map[string]charm.Charm{
+		"test1": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
+		"test2": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
+	},
+	errors: []string{
+		`cannot infer endpoint between service1 and service2: ambiguous relation: service1 service2 could refer to "service1:prova service2:reqa"; "service1:provb service2:reqb"; "service1:reqa service2:prova"; "service1:reqb service2:provb"`,
+	},
+}, {
+	about: "relation using juju-info",
+	data: `
+services: 
+    service1: 
+        charm: "provider"
+    service2: 
+        charm: "requirer"
+relations:
+    - [service1, service2]
+`,
+	charms: map[string]charm.Charm{
+		"provider": testCharm("provider", ""),
+		"requirer": testCharm("requirer", "| req:juju-info"),
+	},
+}, {
+	about: "ambiguous when implicit relations taken into account",
+	data: `
+services: 
+    service1: 
+        charm: "provider"
+    service2: 
+        charm: "requirer"
+relations:
+    - [service1, service2]
+`,
+	charms: map[string]charm.Charm{
+		"provider": testCharm("provider", "provdb:db | "),
+		"requirer": testCharm("requirer", "| reqdb:db reqinfo:juju-info"),
+	},
+}, {
+	about: "half of relation left open",
+	data: `
+services: 
+    service1: 
+        charm: "provider"
+    service2: 
+        charm: "requirer"
+relations:
+    - ["service1:prova2", service2]
+`,
+	charms: map[string]charm.Charm{
+		"provider": testCharm("provider", "prova1:a prova2:a | "),
+		"requirer": testCharm("requirer", "| reqa:a"),
+	},
+}, {
+	about: "duplicate relation between open and fully-specified relations",
+	data: `
+services: 
+    service1: 
+        charm: "provider"
+    service2: 
+        charm: "requirer"
+relations:
+    - ["service1:prova", "service2:reqa"]
+    - ["service1", "service2"]
+`,
+	charms: map[string]charm.Charm{
+		"provider": testCharm("provider", "prova:a | "),
+		"requirer": testCharm("requirer", "| reqa:a"),
+	},
+	errors: []string{
+		`relation ["service1" "service2"] is defined more than once`,
 	},
 }, {
 	about: "configuration options specified",
@@ -541,7 +652,7 @@ services:
             title: "another title"
 `,
 	charms: map[string]charm.Charm{
-		"test": testCharm,
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 }, {
 	about: "invalid type for option",
@@ -558,7 +669,7 @@ services:
             title: "another title"
 `,
 	charms: map[string]charm.Charm{
-		"test": testCharm,
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
 		`cannot validate service "service1": option "skill-level" expected int, got "too much"`,
@@ -574,7 +685,7 @@ services:
             unknown-option: 2345
 `,
 	charms: map[string]charm.Charm{
-		"test": testCharm,
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
 		`cannot validate service "service1": configuration option "unknown-option" not found in charm "test"`,
@@ -595,7 +706,7 @@ services:
             another-unknown: 2345
 `,
 	charms: map[string]charm.Charm{
-		"test": testCharm,
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
 		`cannot validate service "service1": configuration option "unknown-option" not found in charm "test"`,

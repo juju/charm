@@ -36,9 +36,12 @@ type BundleData struct {
 
 	// Relations holds a slice of 2-element slices,
 	// each specifying a relation between two services.
-	// Each two-element slice holds two colon-separated
-	// (service, relation) pairs - the relation is made between
-	// each.
+	// Each two-element slice holds two two endpoints,
+	// each specified as either colon-separated
+	// (service, relation) pair or just a service name.
+	// The relation is made between each. If the relation
+	// name is omitted, it will be inferred from the available
+	// relations defined in the services' charms.
 	Relations [][]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// White listed set of tags to categorize bundles as we do charms.
@@ -332,6 +335,18 @@ func (verifier *bundleDataVerifier) verifyPlacement(to []string) {
 	}
 }
 
+func (verifier *bundleDataVerifier) getCharmMetaForService(svcName string) (*Meta, error) {
+	svc, ok := verifier.bd.Services[svcName]
+	if !ok {
+		return nil, fmt.Errorf("service %q not found", svcName)
+	}
+	ch, ok := verifier.charms[svc.Charm]
+	if !ok {
+		return nil, fmt.Errorf("charm %q from service %q not found", svc.Charm, svcName)
+	}
+	return ch.Meta(), nil
+}
+
 func (verifier *bundleDataVerifier) verifyRelations() {
 	seen := make(map[[2]endpoint]bool)
 	for _, relPair := range verifier.bd.Relations {
@@ -361,6 +376,22 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 		if epPair[0].service == epPair[1].service {
 			verifier.addErrorf("relation %q relates a service to itself", relPair)
 		}
+		// Resolve endpoint relations if necessary and we have
+		// the necessary charm information.
+		if (epPair[0].relation == "" || epPair[1].relation == "") && verifier.charms != nil {
+			iep0, iep1, err := inferEndpoints(epPair[0], epPair[1], verifier.getCharmMetaForService)
+			if err != nil {
+				verifier.addErrorf("cannot infer endpoint between %s and %s: %v", epPair[0], epPair[1], err)
+			} else {
+				// Change the endpoints that get recorded
+				// as seen, so we'll diagnose a duplicate
+				// relation even if one relation specifies
+				// the relations explicitly and the other does
+				// now.
+				epPair[0], epPair[1] = iep0, iep1
+			}
+		}
+
 		// Re-order pairs so that we diagnose duplicate relations
 		// whichever way they're specified.
 		if epPair[1].less(epPair[0]) {
@@ -369,7 +400,11 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 		if _, ok := seen[epPair]; ok {
 			verifier.addErrorf("relation %q is defined more than once", relPair)
 		}
-		verifier.verifyRelation(epPair[0], epPair[1])
+		if verifier.charms != nil && epPair[0].relation != "" && epPair[1].relation != "" {
+			// We have charms to verify against, and the
+			// endpoint has been fully specified or inferred.
+			verifier.verifyRelation(epPair[0], epPair[1])
+		}
 		seen[epPair] = true
 	}
 }
@@ -387,10 +422,6 @@ var infoRelation = Relation{
 // symmetrical (provider to requirer) and shares
 // the same interface.
 func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
-	if verifier.charms == nil {
-		// No charms to verify against.
-		return
-	}
 	svc0 := verifier.bd.Services[ep0.service]
 	svc1 := verifier.bd.Services[ep1.service]
 	if svc0 == nil || svc1 == nil || svc0 == svc1 {
@@ -483,6 +514,9 @@ type endpoint struct {
 }
 
 func (ep endpoint) String() string {
+	if ep.relation == "" {
+		return ep.service
+	}
 	return fmt.Sprintf("%s:%s", ep.service, ep.relation)
 }
 
@@ -495,13 +529,59 @@ func (ep1 endpoint) less(ep2 endpoint) bool {
 
 func parseEndpoint(ep string) (endpoint, error) {
 	m := validServiceRelation.FindStringSubmatch(ep)
-	if m == nil {
+	if m != nil {
+		return endpoint{
+			service:  m[1],
+			relation: m[2],
+		}, nil
+	}
+	if !names.IsValidService(ep) {
 		return endpoint{}, fmt.Errorf("invalid relation syntax %q", ep)
 	}
 	return endpoint{
-		service:  m[1],
-		relation: m[2],
+		service: ep,
 	}, nil
+}
+
+// endpoint holds information about one endpoint of a relation.
+type endpointInfo struct {
+	serviceName string
+	Relation
+}
+
+// String returns the unique identifier of the relation endpoint.
+func (ep endpointInfo) String() string {
+	return ep.serviceName + ":" + ep.Name
+}
+
+// canRelateTo returns whether a relation may be established between e and other.
+func (ep endpointInfo) canRelateTo(other endpointInfo) bool {
+	return ep.serviceName != other.serviceName &&
+		ep.Interface == other.Interface &&
+		ep.Role != RolePeer &&
+		counterpartRole(ep.Role) == other.Role
+}
+
+// spec returns the endpoint specifier for ep.
+func (ep endpointInfo) endpoint() endpoint {
+	return endpoint{
+		service:  ep.serviceName,
+		relation: ep.Name,
+	}
+}
+
+// counterpartRole returns the RelationRole that the given RelationRole
+// can relate to.
+func counterpartRole(r RelationRole) RelationRole {
+	switch r {
+	case RoleProvider:
+		return RoleRequirer
+	case RoleRequirer:
+		return RoleProvider
+	case RolePeer:
+		return RolePeer
+	}
+	panic(fmt.Errorf("unknown relation role %q", r))
 }
 
 type UnitPlacement struct {
@@ -565,4 +645,111 @@ func ParsePlacement(p string) (*UnitPlacement, error) {
 		up.Machine, up.Service = "new", ""
 	}
 	return &up, nil
+}
+
+// inferEndpoints infers missing relation names from the given endpoint
+// specifications, using the given get function to retrieve charm
+// data if necessary. It returns the fully specified endpoints.
+func inferEndpoints(epSpec0, epSpec1 endpoint, get func(svc string) (*Meta, error)) (endpoint, endpoint, error) {
+	if epSpec0.relation != "" && epSpec1.relation != "" {
+		// The endpoints are already specified explicitly so
+		// there is no need to fetch any charm data to infer
+		// them.
+		return epSpec0, epSpec1, nil
+	}
+	eps0, err := possibleEndpoints(epSpec0, get)
+	if err != nil {
+		return endpoint{}, endpoint{}, err
+	}
+	eps1, err := possibleEndpoints(epSpec1, get)
+	if err != nil {
+		return endpoint{}, endpoint{}, err
+	}
+	var candidates [][]endpointInfo
+	for _, ep0 := range eps0 {
+		for _, ep1 := range eps1 {
+			if ep0.canRelateTo(ep1) {
+				candidates = append(candidates, []endpointInfo{ep0, ep1})
+			}
+		}
+	}
+	switch len(candidates) {
+	case 0:
+		return endpoint{}, endpoint{}, fmt.Errorf("no relations found")
+	case 1:
+		return candidates[0][0].endpoint(), candidates[0][1].endpoint(), nil
+	}
+
+	// There's ambiguity; try discarding implicit relations.
+	filtered := discardImplicitRelations(candidates)
+	if len(filtered) == 1 {
+		return filtered[0][0].endpoint(), filtered[0][1].endpoint(), nil
+	}
+	var keys []string
+	for _, cand := range candidates {
+		keys = append(keys, fmt.Sprintf("%q", relationKey(cand)))
+	}
+	sort.Strings(keys)
+	return endpoint{}, endpoint{}, fmt.Errorf("ambiguous relation: %s %s could refer to %s",
+		epSpec0, epSpec1, strings.Join(keys, "; "))
+}
+
+func discardImplicitRelations(candidates [][]endpointInfo) [][]endpointInfo {
+	var filtered [][]endpointInfo
+outer:
+	for _, cand := range candidates {
+		for _, ep := range cand {
+			if ep.IsImplicit() {
+				continue outer
+			}
+		}
+		filtered = append(filtered, cand)
+	}
+	return filtered
+}
+
+// relationKey returns a string describing the relation defined by
+// endpoints, for use in various contexts (including error messages).
+func relationKey(endpoints []endpointInfo) string {
+	var names []string
+	for _, ep := range endpoints {
+		names = append(names, ep.String())
+	}
+	sort.Strings(names)
+	return strings.Join(names, " ")
+}
+
+// possibleEndpoints returns all the endpoints that the given endpoint spec
+// could refer to.
+func possibleEndpoints(epSpec endpoint, get func(svc string) (*Meta, error)) ([]endpointInfo, error) {
+	meta, err := get(epSpec.service)
+	if err != nil {
+		return nil, err
+	}
+
+	var eps []endpointInfo
+	add := func(r Relation) {
+		if epSpec.relation == "" || epSpec.relation == r.Name {
+			eps = append(eps, endpointInfo{
+				serviceName: epSpec.service,
+				Relation:    r,
+			})
+		}
+	}
+
+	for _, r := range meta.Provides {
+		add(r)
+	}
+	for _, r := range meta.Requires {
+		add(r)
+	}
+	// Every service implicitly provides a juju-info relation.
+
+	add(Relation{
+		Name:      "juju-info",
+		Role:      RoleProvider,
+		Interface: "juju-info",
+		Scope:     ScopeGlobal,
+	})
+	return eps, nil
 }
