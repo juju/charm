@@ -77,7 +77,6 @@ func (*migrateSuite) TearDownSuite(c *gc.C) {
 var migrateTests = []struct {
 	about       string
 	bundles     string
-	charms      map[string]*charm.Meta
 	expect      map[string]*charm.BundleData
 	expectError string
 }{{
@@ -324,7 +323,7 @@ var migrateTests = []struct {
 		},
 	},
 }, {
-	about: "relations that need resolving",
+	about: "open relations",
 	bundles: `
 		|wordpress:
 		|    services:
@@ -341,62 +340,6 @@ var migrateTests = []struct {
 		|        - [logging, [mysql, wordpress]]
 		|        - [monitoring, wordpress]
 		|`,
-	charms: map[string]*charm.Meta{
-		"cs:precise/wordpress": {
-			Requires: map[string]charm.Relation{
-				"db": {
-					Name:      "db",
-					Role:      charm.RoleRequirer,
-					Interface: "mysql",
-					Scope:     charm.ScopeGlobal,
-				},
-				"logs": {
-					Name:      "logs",
-					Role:      charm.RoleRequirer,
-					Interface: "syslog",
-					Scope:     charm.ScopeContainer,
-				},
-			},
-		},
-		"cs:precise/mysql": {
-			Provides: map[string]charm.Relation{
-				"database": {
-					Name:      "database",
-					Role:      charm.RoleProvider,
-					Interface: "mysql",
-					Scope:     charm.ScopeGlobal,
-				},
-			},
-			Requires: map[string]charm.Relation{
-				"logger": {
-					Name:      "logger",
-					Role:      charm.RoleRequirer,
-					Interface: "syslog",
-					Scope:     charm.ScopeContainer,
-				},
-			},
-		},
-		"cs:precise/logging": {
-			Provides: map[string]charm.Relation{
-				"log": {
-					Name:      "log",
-					Role:      charm.RoleProvider,
-					Interface: "syslog",
-					Scope:     charm.ScopeContainer,
-				},
-			},
-		},
-		"cs:precise/monitor": {
-			Requires: map[string]charm.Relation{
-				"subord": {
-					Name:      "subord",
-					Role:      charm.RoleRequirer,
-					Interface: "juju-info",
-					Scope:     charm.ScopeContainer,
-				},
-			},
-		},
-	},
 	expect: map[string]*charm.BundleData{
 		"wordpress": {
 			Services: map[string]*charm.ServiceSpec{
@@ -418,10 +361,10 @@ var migrateTests = []struct {
 				},
 			},
 			Relations: [][]string{
-				{"wordpress:db", "mysql:database"},
-				{"logging:log", "mysql:logger"},
-				{"logging:log", "wordpress:logs"},
-				{"monitoring:subord", "wordpress:juju-info"},
+				{"wordpress", "mysql"},
+				{"logging", "mysql"},
+				{"logging", "wordpress"},
+				{"monitoring", "wordpress"},
 			},
 		},
 	},
@@ -430,13 +373,7 @@ var migrateTests = []struct {
 func (*migrateSuite) TestMigrate(c *gc.C) {
 	for i, test := range migrateTests {
 		c.Logf("test %d: %s", i, test.about)
-		getCharm := func(id *charm.Reference) (*charm.Meta, error) {
-			if m := test.charms[id.String()]; m != nil {
-				return m, nil
-			}
-			return nil, fmt.Errorf("charm %q not found in test data", id)
-		}
-		result, err := Migrate(unbeautify(test.bundles), getCharm)
+		result, err := Migrate(unbeautify(test.bundles), nil)
 		if test.expectError != "" {
 			c.Assert(err, gc.ErrorMatches, test.expectError)
 		} else {
@@ -452,13 +389,7 @@ func (*migrateSuite) TestMigrateAll(c *gc.C) {
 	doAllBundles(c, func(c *gc.C, id string, data []byte) {
 		c.Logf("\nmigrate test %s", id)
 		ok := true
-		bundles, err := Migrate(data, func(id *charm.Reference) (*charm.Meta, error) {
-			ch, err := getCharm(id)
-			if err != nil {
-				return nil, err
-			}
-			return ch.Meta(), nil
-		})
+		bundles, err := Migrate(data, nil)
 		if err != nil {
 			c.Logf("cannot migrate: %v", err)
 			ok = false
