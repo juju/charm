@@ -36,7 +36,7 @@ type BundleData struct {
 
 	// Relations holds a slice of 2-element slices,
 	// each specifying a relation between two services.
-	// Each two-element slice holds two two endpoints,
+	// Each two-element slice holds two endpoints,
 	// each specified as either colon-separated
 	// (service, relation) pair or just a service name.
 	// The relation is made between each. If the relation
@@ -387,7 +387,7 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 				// as seen, so we'll diagnose a duplicate
 				// relation even if one relation specifies
 				// the relations explicitly and the other does
-				// now.
+				// not.
 				epPair[0], epPair[1] = iep0, iep1
 			}
 		}
