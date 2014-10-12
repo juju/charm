@@ -31,6 +31,10 @@ const (
 	// will be prefixed by the relation name, just like the other Relation* Kind
 	// values.
 	RelationBroken Kind = "relation-broken"
+
+	// Default is the hook that will get run if other specific hooks do not
+	// exist.
+	Default Kind = "default-hook"
 )
 
 var unitHooks = []Kind{
