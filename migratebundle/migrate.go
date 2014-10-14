@@ -1,7 +1,7 @@
 package migratebundle
 
 import (
-	"github.com/juju/errgo"
+	"gopkg.in/errgo.v1"
 	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v4"
