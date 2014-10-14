@@ -1,8 +1,9 @@
 package migratebundle
 
 import (
-	gc "gopkg.in/check.v1"
 	"testing"
+
+	gc "gopkg.in/check.v1"
 )
 
 func TestPackage(t *testing.T) {

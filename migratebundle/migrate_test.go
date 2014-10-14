@@ -12,9 +12,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/juju/errgo"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
+	"gopkg.in/errgo.v1"
 	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v4"

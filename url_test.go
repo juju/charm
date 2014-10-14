@@ -9,8 +9,9 @@ import (
 	"strings"
 
 	gc "gopkg.in/check.v1"
-	"gopkg.in/juju/charm.v4"
 	"gopkg.in/mgo.v2/bson"
+
+	"gopkg.in/juju/charm.v4"
 )
 
 type URLSuite struct{}

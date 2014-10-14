@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/juju/utils/fs"
+
 	"gopkg.in/juju/charm.v4"
 )
 
