@@ -26,6 +26,7 @@ type CharmArchive struct {
 	Path     string // May be empty if CharmArchive wasn't read from a file
 	meta     *Meta
 	config   *Config
+	metrics  *Metrics
 	actions  *Actions
 	revision int
 }
@@ -90,6 +91,17 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	reader, err = zipOpenFile(zipr, "metrics.yaml")
+	if err == nil {
+		b.metrics, err = ReadMetrics(reader)
+		reader.Close()
+		if err != nil {
+			return nil, err
+		}
+	} else if _, ok := err.(*noCharmArchiveFile); !ok {
+		return nil, err
 	}
 
 	reader, err = zipOpenFile(zipr, "actions.yaml")
@@ -160,6 +172,12 @@ func (a *CharmArchive) Meta() *Meta {
 // for the charm archive.
 func (a *CharmArchive) Config() *Config {
 	return a.config
+}
+
+// Metrics returns the Metrics representing the metrics.yaml file
+// for the charm archive.
+func (a *CharmArchive) Metrics() *Metrics {
+	return a.metrics
 }
 
 // Actions returns the Actions map for the actions.yaml file for the charm

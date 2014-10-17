@@ -511,6 +511,10 @@ func (c *dummyCharm) Config() *charm.Config {
 	panic("unused")
 }
 
+func (c *dummyCharm) Metrics() *charm.Metrics {
+	panic("unused")
+}
+
 func (c *dummyCharm) Actions() *charm.Actions {
 	panic("unused")
 }

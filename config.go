@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/juju/schema"
-	goyaml "gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v1"
 )
 
 // Settings is a group of charm config option names and values. A Settings
@@ -92,7 +92,7 @@ func ReadConfig(r io.Reader) (*Config, error) {
 		return nil, err
 	}
 	var config *Config
-	if err := goyaml.Unmarshal(data, &config); err != nil {
+	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, err
 	}
 	if config == nil {
@@ -193,7 +193,7 @@ func (c *Config) ParseSettingsStrings(values map[string]string) (Settings, error
 // config option. Empty strings and nil values are both interpreted as nil.
 func (c *Config) ParseSettingsYAML(yamlData []byte, key string) (Settings, error) {
 	var allSettings map[string]Settings
-	if err := goyaml.Unmarshal(yamlData, &allSettings); err != nil {
+	if err := yaml.Unmarshal(yamlData, &allSettings); err != nil {
 		return nil, fmt.Errorf("cannot parse settings data: %v", err)
 	}
 	settings, ok := allSettings[key]

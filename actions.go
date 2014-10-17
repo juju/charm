@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/juju/gojsonschema"
-	goyaml "gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v1"
 )
 
 var prohibitedSchemaKeys = map[string]bool{"$ref": true, "$schema": true}
@@ -66,7 +66,7 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 		return nil, err
 	}
 	var unmarshaledActions Actions
-	if err := goyaml.Unmarshal(data, &unmarshaledActions); err != nil {
+	if err := yaml.Unmarshal(data, &unmarshaledActions); err != nil {
 		return nil, err
 	}
 

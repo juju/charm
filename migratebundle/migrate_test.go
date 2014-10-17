@@ -835,20 +835,26 @@ func getCharm(id *charm.Reference) (charm.Charm, error) {
 		return nil, err
 	}
 	chData := &charmData{
-		Meta_:   ch.Meta(),
-		Config_: ch.Config(),
+		Meta_:    ch.Meta(),
+		Config_:  ch.Config(),
+		Metrics_: ch.Metrics(),
 	}
 	charmDataCache[url.String()] = chData
 	return chData, nil
 }
 
 type charmData struct {
-	Meta_   *charm.Meta   `json:"Meta"`
-	Config_ *charm.Config `json:"Config"`
+	Meta_    *charm.Meta    `json:"Meta"`
+	Config_  *charm.Config  `json:"Config"`
+	Metrics_ *charm.Metrics `json:"Metrics"`
 }
 
 func (c *charmData) Meta() *charm.Meta {
 	return c.Meta_
+}
+
+func (c *charmData) Metrics() *charm.Metrics {
+	return c.Metrics_
 }
 
 func (c *charmData) Config() *charm.Config {
