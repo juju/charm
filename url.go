@@ -117,6 +117,15 @@ func (ref *Reference) URL(defaultSeries string) (*URL, error) {
 	return &url, nil
 }
 
+// MustParseReference works like ParseReference, but panics in case of errors.
+func MustParseReference(url string) *Reference {
+	u, err := ParseReference(url)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}
+
 // ParseReference returns a charm reference inferred from src. The provided
 // src may be a valid URL or it may be an alias in one of the following formats:
 //

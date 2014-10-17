@@ -281,6 +281,19 @@ func (s *URLSuite) TestValidCheckers(c *gc.C) {
 	}
 }
 
+func (s *URLSuite) TestMustParseReference(c *gc.C) {
+	ref := charm.MustParseReference("wordpress")
+	c.Assert(ref, gc.DeepEquals, &charm.Reference{
+		Schema:   "cs",
+		Name:     "wordpress",
+		Revision: -1,
+	})
+	f := func() {
+		charm.MustParseReference("bad:bad")
+	}
+	c.Assert(f, gc.PanicMatches, `charm URL has invalid schema: "bad:bad"`)
+}
+
 func (s *URLSuite) TestMustParseURL(c *gc.C) {
 	url := charm.MustParseURL("cs:series/name")
 	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series"})
