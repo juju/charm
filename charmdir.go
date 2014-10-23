@@ -21,6 +21,7 @@ type CharmDir struct {
 	Path     string
 	meta     *Meta
 	config   *Config
+	metrics  *Metrics
 	actions  *Actions
 	revision int
 }
@@ -40,6 +41,7 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 	if err != nil {
 		return nil, err
 	}
+
 	file, err = os.Open(dir.join("config.yaml"))
 	if _, ok := err.(*os.PathError); ok {
 		dir.config = NewConfig()
@@ -52,6 +54,18 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 			return nil, err
 		}
 	}
+
+	file, err = os.Open(dir.join("metrics.yaml"))
+	if err == nil {
+		dir.metrics, err = ReadMetrics(file)
+		file.Close()
+		if err != nil {
+			return nil, err
+		}
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+
 	file, err = os.Open(dir.join("actions.yaml"))
 	if _, ok := err.(*os.PathError); ok {
 		dir.actions = NewActions()
@@ -64,6 +78,7 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 			return nil, err
 		}
 	}
+
 	if file, err = os.Open(dir.join("revision")); err == nil {
 		_, err = fmt.Fscan(file, &dir.revision)
 		file.Close()
@@ -100,6 +115,12 @@ func (dir *CharmDir) Meta() *Meta {
 // for the charm expanded in dir.
 func (dir *CharmDir) Config() *Config {
 	return dir.config
+}
+
+// Metrics returns the Metrics representing the metrics.yaml file
+// for the charm expanded in dir.
+func (dir *CharmDir) Metrics() *Metrics {
+	return dir.metrics
 }
 
 // Actions returns the Actions representing the actions.yaml file

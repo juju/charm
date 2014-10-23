@@ -11,7 +11,7 @@ import (
 	stdtesting "testing"
 
 	gc "gopkg.in/check.v1"
-	goyaml "gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v4"
 	charmtesting "gopkg.in/juju/charm.v4/testing"
@@ -113,7 +113,7 @@ func ReadYaml(r io.Reader) YamlHacker {
 		panic(err)
 	}
 	m := make(map[interface{}]interface{})
-	err = goyaml.Unmarshal(data, m)
+	err = yaml.Unmarshal(data, m)
 	if err != nil {
 		panic(err)
 	}
@@ -121,7 +121,7 @@ func ReadYaml(r io.Reader) YamlHacker {
 }
 
 func (yh YamlHacker) Reader() io.Reader {
-	data, err := goyaml.Marshal(yh)
+	data, err := yaml.Marshal(yh)
 	if err != nil {
 		panic(err)
 	}

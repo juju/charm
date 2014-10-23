@@ -43,6 +43,34 @@ func (s *CharmDirSuite) TestReadCharmDirWithoutConfig(c *gc.C) {
 	c.Assert(dir.Config().Options, gc.HasLen, 0)
 }
 
+func (s *CharmDirSuite) TestReadCharmDirWithoutMetrics(c *gc.C) {
+	path := charmtesting.Charms.CharmDirPath("varnish")
+	dir, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
+
+	// A lacking metrics.yaml file indicates the unit will not
+	// be metered.
+	c.Assert(dir.Metrics(), gc.IsNil)
+}
+
+func (s *CharmDirSuite) TestReadCharmDirWithEmptyMetrics(c *gc.C) {
+	path := charmtesting.Charms.CharmDirPath("metered")
+	dir, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
+
+	c.Assert(dir.Metrics(), gc.NotNil)
+	c.Assert(Keys(dir.Metrics()), gc.HasLen, 0)
+}
+
+func (s *CharmDirSuite) TestReadCharmDirWithCustomMetrics(c *gc.C) {
+	path := charmtesting.Charms.CharmDirPath("metered-custom")
+	dir, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
+
+	c.Assert(dir.Metrics(), gc.NotNil)
+	c.Assert(Keys(dir.Metrics()), gc.DeepEquals, []string{"pings"})
+}
+
 func (s *CharmDirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
 	path := charmtesting.Charms.CharmDirPath("wordpress")
 	dir, err := charm.ReadCharmDir(path)

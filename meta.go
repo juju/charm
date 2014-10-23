@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/juju/schema"
-	goyaml "gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v4/hooks"
 )
@@ -153,7 +153,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 		return
 	}
 	raw := make(map[interface{}]interface{})
-	err = goyaml.Unmarshal(data, raw)
+	err = yaml.Unmarshal(data, raw)
 	if err != nil {
 		return
 	}

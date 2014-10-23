@@ -17,7 +17,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils/set"
 	gc "gopkg.in/check.v1"
-	goyaml "gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v4"
 	charmtesting "gopkg.in/juju/charm.v4/testing"
@@ -62,6 +62,34 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutConfig(c *gc.C) {
 	// A lacking config.yaml file still causes a proper
 	// Config value to be returned.
 	c.Assert(archive.Config().Options, gc.HasLen, 0)
+}
+
+func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutMetrics(c *gc.C) {
+	path := charmtesting.Charms.CharmArchivePath(c.MkDir(), "varnish")
+	dir, err := charm.ReadCharmArchive(path)
+	c.Assert(err, gc.IsNil)
+
+	// A lacking metrics.yaml file indicates the unit will not
+	// be metered.
+	c.Assert(dir.Metrics(), gc.IsNil)
+}
+
+func (s *CharmArchiveSuite) TestReadCharmArchiveWithEmptyMetrics(c *gc.C) {
+	path := charmtesting.Charms.CharmArchivePath(c.MkDir(), "metered")
+	dir, err := charm.ReadCharmArchive(path)
+	c.Assert(err, gc.IsNil)
+
+	c.Assert(dir.Metrics(), gc.NotNil)
+	c.Assert(Keys(dir.Metrics()), gc.HasLen, 0)
+}
+
+func (s *CharmArchiveSuite) TestReadCharmArchiveWithCustomMetrics(c *gc.C) {
+	path := charmtesting.Charms.CharmArchivePath(c.MkDir(), "metered-custom")
+	dir, err := charm.ReadCharmArchive(path)
+	c.Assert(err, gc.IsNil)
+
+	c.Assert(dir.Metrics(), gc.NotNil)
+	c.Assert(Keys(dir.Metrics()), gc.DeepEquals, []string{"pings"})
 }
 
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutActions(c *gc.C) {
@@ -162,7 +190,7 @@ func (s *CharmArchiveSuite) prepareCharmArchive(c *gc.C, charmDir *charm.CharmDi
 	h.SetMode(0644)
 	w, err = zipw.CreateHeader(h)
 	c.Assert(err, gc.IsNil)
-	data, err := goyaml.Marshal(charmDir.Meta())
+	data, err := yaml.Marshal(charmDir.Meta())
 	c.Assert(err, gc.IsNil)
 	_, err = w.Write(data)
 	c.Assert(err, gc.IsNil)

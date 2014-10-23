@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/juju/names"
-	goyaml "gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v1"
 )
 
 // BundleData holds the contents of the bundle.
@@ -140,7 +140,7 @@ func ReadBundleData(r io.Reader) (*BundleData, error) {
 		return nil, err
 	}
 	var bd BundleData
-	if err := goyaml.Unmarshal(bytes, &bd); err != nil {
+	if err := yaml.Unmarshal(bytes, &bd); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal bundle data: %v", err)
 	}
 	return &bd, nil
