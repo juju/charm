@@ -62,6 +62,12 @@ func (s *MetaSuite) TestReadCategory(c *gc.C) {
 	c.Assert(meta.Categories, gc.DeepEquals, []string{"database"})
 }
 
+func (s *MetaSuite) TestReadTags(c *gc.C) {
+	meta, err := charm.ReadMeta(repoMeta("category"))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.Tags, gc.DeepEquals, []string{"openstack", "storage"})
+}
+
 func (s *MetaSuite) TestSubordinate(c *gc.C) {
 	meta, err := charm.ReadMeta(repoMeta("logging"))
 	c.Assert(err, gc.IsNil)
@@ -438,6 +444,7 @@ func (s *MetaSuite) TestCodecRoundTrip(c *gc.C) {
 			},
 		},
 		Categories:  []string{"quxxxx", "quxxxxx"},
+		Tags:        []string{"openstack", "storage"},
 		Format:      10,
 		OldRevision: 11,
 	}

@@ -102,6 +102,7 @@ type Meta struct {
 	Format      int                 `bson:",omitempty"`
 	OldRevision int                 `bson:",omitempty"` // Obsolete
 	Categories  []string            `bson:",omitempty"`
+	Tags        []string            `bson:",omitempty"`
 	Series      string              `bson:",omitempty"`
 }
 
@@ -145,6 +146,24 @@ func parseCategories(categories interface{}) []string {
 	return result
 }
 
+func parseTags(tags interface{}) []string {
+	if tags == nil {
+		return nil
+	}
+	slice := tags.([]interface{})
+	result := make([]string, 0, len(slice))
+	for _, cat := range slice {
+		// todo : check if tag is whitelisted
+		result = append(result, cat.(string))
+	}
+	return result
+}
+
+// Todo : cheks if tags are whitelisted or not.
+func checkTags(tags interface{}) error {
+	return nil
+}
+
 // ReadMeta reads the content of a metadata.yaml file and returns
 // its representation.
 func ReadMeta(r io.Reader) (meta *Meta, err error) {
@@ -173,6 +192,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	meta.Peers = parseRelations(m["peers"], RolePeer)
 	meta.Format = int(m["format"].(int64))
 	meta.Categories = parseCategories(m["categories"])
+	meta.Tags = parseTags(m["tags"])
 	if subordinate := m["subordinate"]; subordinate != nil {
 		meta.Subordinate = subordinate.(bool)
 	}
@@ -227,6 +247,9 @@ func (meta Meta) Check() error {
 		return err
 	}
 	if err := checkRelations(meta.Peers, RolePeer); err != nil {
+		return err
+	}
+	if err := checkTags(meta.Tags); err != nil {
 		return err
 	}
 
@@ -368,6 +391,7 @@ var charmSchema = schema.FieldMap(
 		"format":      schema.Int(),
 		"subordinate": schema.Bool(),
 		"categories":  schema.List(schema.String()),
+		"tags":        schema.List(schema.String()),
 		"series":      schema.String(),
 	},
 	schema.Defaults{
@@ -378,6 +402,7 @@ var charmSchema = schema.FieldMap(
 		"format":      1,
 		"subordinate": schema.Omit,
 		"categories":  schema.Omit,
+		"tags":        schema.Omit,
 		"series":      schema.Omit,
 	},
 )

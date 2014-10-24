@@ -3,3 +3,4 @@ summary: "Sample charm with a category"
 description: |
         That's a boring charm that has a category.
 categories: ["database"]
+tags: ["openstack", "storage"]
