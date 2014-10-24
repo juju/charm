@@ -134,6 +134,7 @@ func (m Meta) Hooks() map[string]bool {
 	return allHooks
 }
 
+// Used for parsing Categories and Tags.
 func parseStringList(list interface{}) []string {
 	if list == nil {
 		return nil
@@ -144,14 +145,6 @@ func parseStringList(list interface{}) []string {
 		result = append(result, cat.(string))
 	}
 	return result
-}
-
-func parseCategories(categories interface{}) []string {
-	return parseStringList(categories)
-}
-
-func parseTags(tags interface{}) []string {
-	return parseStringList(tags)
 }
 
 // ReadMeta reads the content of a metadata.yaml file and returns
@@ -181,8 +174,8 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	meta.Requires = parseRelations(m["requires"], RoleRequirer)
 	meta.Peers = parseRelations(m["peers"], RolePeer)
 	meta.Format = int(m["format"].(int64))
-	meta.Categories = parseCategories(m["categories"])
-	meta.Tags = parseTags(m["tags"])
+	meta.Categories = parseStringList(m["categories"])
+	meta.Tags = parseStringList(m["tags"])
 	if subordinate := m["subordinate"]; subordinate != nil {
 		meta.Subordinate = subordinate.(bool)
 	}
