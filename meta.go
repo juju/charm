@@ -102,6 +102,7 @@ type Meta struct {
 	Format      int                 `bson:",omitempty"`
 	OldRevision int                 `bson:",omitempty"` // Obsolete
 	Categories  []string            `bson:",omitempty"`
+	Tags        []string            `bson:",omitempty"`
 	Series      string              `bson:",omitempty"`
 }
 
@@ -133,11 +134,12 @@ func (m Meta) Hooks() map[string]bool {
 	return allHooks
 }
 
-func parseCategories(categories interface{}) []string {
-	if categories == nil {
+// Used for parsing Categories and Tags.
+func parseStringList(list interface{}) []string {
+	if list == nil {
 		return nil
 	}
-	slice := categories.([]interface{})
+	slice := list.([]interface{})
 	result := make([]string, 0, len(slice))
 	for _, cat := range slice {
 		result = append(result, cat.(string))
@@ -172,7 +174,8 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	meta.Requires = parseRelations(m["requires"], RoleRequirer)
 	meta.Peers = parseRelations(m["peers"], RolePeer)
 	meta.Format = int(m["format"].(int64))
-	meta.Categories = parseCategories(m["categories"])
+	meta.Categories = parseStringList(m["categories"])
+	meta.Tags = parseStringList(m["tags"])
 	if subordinate := m["subordinate"]; subordinate != nil {
 		meta.Subordinate = subordinate.(bool)
 	}
@@ -368,6 +371,7 @@ var charmSchema = schema.FieldMap(
 		"format":      schema.Int(),
 		"subordinate": schema.Bool(),
 		"categories":  schema.List(schema.String()),
+		"tags":        schema.List(schema.String()),
 		"series":      schema.String(),
 	},
 	schema.Defaults{
@@ -378,6 +382,7 @@ var charmSchema = schema.FieldMap(
 		"format":      1,
 		"subordinate": schema.Omit,
 		"categories":  schema.Omit,
+		"tags":        schema.Omit,
 		"series":      schema.Omit,
 	},
 )
