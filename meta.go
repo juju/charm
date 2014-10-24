@@ -134,34 +134,24 @@ func (m Meta) Hooks() map[string]bool {
 	return allHooks
 }
 
-func parseCategories(categories interface{}) []string {
-	if categories == nil {
+func parseStringList(list interface{}) []string {
+	if list == nil {
 		return nil
 	}
-	slice := categories.([]interface{})
+	slice := list.([]interface{})
 	result := make([]string, 0, len(slice))
 	for _, cat := range slice {
 		result = append(result, cat.(string))
 	}
 	return result
+}
+
+func parseCategories(categories interface{}) []string {
+	return parseStringList(categories)
 }
 
 func parseTags(tags interface{}) []string {
-	if tags == nil {
-		return nil
-	}
-	slice := tags.([]interface{})
-	result := make([]string, 0, len(slice))
-	for _, cat := range slice {
-		// todo : check if tag is whitelisted
-		result = append(result, cat.(string))
-	}
-	return result
-}
-
-// Todo : cheks if tags are whitelisted or not.
-func checkTags(tags interface{}) error {
-	return nil
+	return parseStringList(tags)
 }
 
 // ReadMeta reads the content of a metadata.yaml file and returns
@@ -247,9 +237,6 @@ func (meta Meta) Check() error {
 		return err
 	}
 	if err := checkRelations(meta.Peers, RolePeer); err != nil {
-		return err
-	}
-	if err := checkTags(meta.Tags); err != nil {
 		return err
 	}
 
