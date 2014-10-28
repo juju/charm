@@ -22,7 +22,7 @@ type BundleArchiveSuite struct {
 }
 
 func (s *BundleArchiveSuite) SetUpSuite(c *gc.C) {
-	s.archivePath = charmtesting.Charms.BundleArchivePath(c.MkDir(), "wordpress")
+	s.archivePath = charmtesting.Charms.BundleArchivePath(c.MkDir(), "wordpress-simple")
 }
 
 func (s *BundleArchiveSuite) TestReadBundleArchive(c *gc.C) {
@@ -61,7 +61,7 @@ func (s *BundleArchiveSuite) TestReadBundleArchiveWithoutREADME(c *gc.C) {
 }
 
 func testReadBundleArchiveWithoutFile(c *gc.C, fileToRemove string) {
-	path := charmtesting.Charms.ClonedBundleDirPath(c.MkDir(), "wordpress")
+	path := charmtesting.Charms.ClonedBundleDirPath(c.MkDir(), "wordpress-simple")
 	dir, err := charm.ReadBundleDir(path)
 	c.Assert(err, gc.IsNil)
 

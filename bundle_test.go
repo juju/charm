@@ -19,7 +19,7 @@ type BundleSuite struct {
 }
 
 func (*BundleSuite) TestReadBundleDir(c *gc.C) {
-	path := charmtesting.Charms.BundleDirPath("wordpress")
+	path := charmtesting.Charms.BundleDirPath("wordpress-simple")
 	b, err := charm.ReadBundle(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
@@ -27,7 +27,7 @@ func (*BundleSuite) TestReadBundleDir(c *gc.C) {
 }
 
 func (*BundleSuite) TestReadBundleArchive(c *gc.C) {
-	path := charmtesting.Charms.BundleDirPath("wordpress")
+	path := charmtesting.Charms.BundleDirPath("wordpress-simple")
 	b, err := charm.ReadBundle(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
