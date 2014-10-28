@@ -21,14 +21,14 @@ type BundleDirSuite struct {
 var _ = gc.Suite(&BundleDirSuite{})
 
 func (s *BundleDirSuite) TestReadBundleDir(c *gc.C) {
-	path := charmtesting.Charms.BundleDirPath("wordpress")
+	path := charmtesting.Charms.BundleDirPath("wordpress-simple")
 	dir, err := charm.ReadBundleDir(path)
 	c.Assert(err, gc.IsNil)
 	checkWordpressBundle(c, dir, path)
 }
 
 func (s *BundleDirSuite) TestReadBundleDirWithoutREADME(c *gc.C) {
-	path := charmtesting.Charms.ClonedBundleDirPath(c.MkDir(), "wordpress")
+	path := charmtesting.Charms.ClonedBundleDirPath(c.MkDir(), "wordpress-simple")
 	err := os.Remove(filepath.Join(path, "README.md"))
 	c.Assert(err, gc.IsNil)
 	dir, err := charm.ReadBundleDir(path)
@@ -38,7 +38,7 @@ func (s *BundleDirSuite) TestReadBundleDirWithoutREADME(c *gc.C) {
 
 func (s *BundleDirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
-	charmDir := charmtesting.Charms.ClonedBundleDirPath(baseDir, "wordpress")
+	charmDir := charmtesting.Charms.ClonedBundleDirPath(baseDir, "wordpress-simple")
 	s.assertArchiveTo(c, baseDir, charmDir)
 }
 
