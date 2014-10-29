@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/juju/schema"
@@ -36,6 +38,70 @@ const (
 	RoleRequirer RelationRole = "requirer"
 	RolePeer     RelationRole = "peer"
 )
+
+// StorageType defines a storage type.
+type StorageType string
+
+const (
+	StorageBlock      StorageType = "block"
+	StorageFilesystem StorageType = "filesystem"
+)
+
+// Storage represents a charm's storage requirement.
+type Storage struct {
+	// Name is the name of the storage requirement.
+	Name string
+
+	// Type is the storage type: filesystem or block-device.
+	Type StorageType
+
+	// Shared indicates that the storage is shared between all units of
+	// a service deployed from the charm. It is an error to attempt to
+	// assign non-shareable storage to a "shared" storage requirement.
+	Shared bool
+
+	// ReadOnly indicates that the storage should be made read-only if
+	// possible. If the storage cannot be made read-only, Juju will warn
+	// the user.
+	ReadOnly bool
+
+	// Persistent indicates that the storage should be made persistent
+	// if possible. If the storage cannot be made persistent, Juju will
+	// warn the user.
+	Persistent bool
+
+	// CountMin is the number of storage instances that must be attached
+	// to the charm for it to be useful; the charm will not install until
+	// this number has been satisfied. This must be a non-negative number.
+	CountMin int
+
+	// CountMax is the largest number of storage instances that can be
+	// attached to the charm. If CountMax is -1, then there is no upper
+	// bound.
+	CountMax int
+
+	// Location is the mount location for filesystem stores. If count does
+	// not have a maximum of 1, then location acts as the parent directory
+	// for each mounted store.
+	Location string `bson:",omitempty"`
+
+	// Filesystem is the list of filesystems that Juju will attempt to
+	// create, in order of most to least preferred.
+	Filesystem []Filesystem `bson:",omitempty"`
+}
+
+type Filesystem struct {
+	// Type is the filesystem type.
+	Type string
+
+	// MkfsOptions is any options to use when creating the filesystem.
+	// MkfsOptions will be passed directly to "mkfs".
+	MkfsOptions []string `bson:",omitempty"`
+
+	// MountOptions is any options to use when mounting the filesystem.
+	// MountOptions will be passed directly to "mount".
+	MountOptions []string `bson:",omitempty"`
+}
 
 // Relation represents a single relation defined in the charm
 // metadata.yaml file.
@@ -104,6 +170,7 @@ type Meta struct {
 	Categories  []string            `bson:",omitempty"`
 	Tags        []string            `bson:",omitempty"`
 	Series      string              `bson:",omitempty"`
+	Storage     map[string]Storage  `bson:",omitempty"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -141,8 +208,8 @@ func parseStringList(list interface{}) []string {
 	}
 	slice := list.([]interface{})
 	result := make([]string, 0, len(slice))
-	for _, cat := range slice {
-		result = append(result, cat.(string))
+	for _, elem := range slice {
+		result = append(result, elem.(string))
 	}
 	return result
 }
@@ -186,6 +253,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	if series, ok := m["series"]; ok && series != nil {
 		meta.Series = series.(string)
 	}
+	meta.Storage = parseStorage(m["storage"])
 	if err := meta.Check(); err != nil {
 		return nil, err
 	}
@@ -322,6 +390,29 @@ func (meta Meta) Check() error {
 		}
 	}
 
+	names = make(map[string]bool)
+	for name, store := range meta.Storage {
+		if store.Location != "" && store.Type != StorageFilesystem {
+			return fmt.Errorf(`charm %q storage %q: location may not be specified for "type: %s"`, meta.Name, name, store.Type)
+		}
+		if store.Filesystem != nil && store.Type != StorageFilesystem {
+			return fmt.Errorf(`charm %q storage %q: filesystem may not be specified for "type: %s"`, meta.Name, name, store.Type)
+		}
+		if store.Type == "" {
+			return fmt.Errorf("charm %q storage %q: type must be specified", meta.Name, name)
+		}
+		if store.CountMin < 0 {
+			return fmt.Errorf("charm %q storage %q: invalid minimum count %d", meta.Name, name, store.CountMin)
+		}
+		if store.CountMax == 0 || store.CountMax < -1 {
+			return fmt.Errorf("charm %q storage %q: invalid maximum count %d", meta.Name, name, store.CountMax)
+		}
+		if names[name] {
+			return fmt.Errorf("charm %q storage %q: duplicated storage name", meta.Name, name)
+		}
+		names[name] = true
+	}
+
 	return nil
 }
 
@@ -424,6 +515,138 @@ var ifaceSchema = schema.FieldMap(
 	},
 )
 
+func parseStorage(stores interface{}) map[string]Storage {
+	if stores == nil {
+		return nil
+	}
+	result := make(map[string]Storage)
+	for name, store := range stores.(map[string]interface{}) {
+		storeMap := store.(map[string]interface{})
+		store := Storage{
+			Name:       name,
+			Type:       StorageType(storeMap["type"].(string)),
+			Shared:     storeMap["shared"].(bool),
+			ReadOnly:   storeMap["read-only"].(bool),
+			Persistent: storeMap["persistent"].(bool),
+		}
+		required := storeMap["required"].(bool)
+		if count, ok := storeMap["count"].([2]int); ok {
+			store.CountMin = count[0]
+			store.CountMax = count[1]
+		} else {
+			store.CountMin = -1
+			store.CountMax = 1
+		}
+		if store.CountMin == -1 {
+			if required {
+				store.CountMin = store.CountMax
+			} else {
+				store.CountMin = 0
+			}
+		}
+		if loc, ok := storeMap["location"].(string); ok {
+			store.Location = loc
+		}
+		store.Filesystem = parseFilesystem(storeMap["filesystem"])
+		result[name] = store
+	}
+	return result
+}
+
+func parseFilesystem(filesystems interface{}) []Filesystem {
+	if filesystems == nil {
+		return nil
+	}
+	slice := filesystems.([]interface{})
+	result := make([]Filesystem, 0, len(slice))
+	for _, elem := range slice {
+		switch elem := elem.(type) {
+		case string:
+			result = append(result, Filesystem{Type: elem})
+		case map[string]interface{}:
+			fs := Filesystem{
+				Type:         elem["type"].(string),
+				MountOptions: parseStringList(elem["options"]),
+				MkfsOptions:  parseStringList(elem["mkfs-options"]),
+			}
+			result = append(result, fs)
+		}
+	}
+	return result
+}
+
+var storageSchema = schema.FieldMap(
+	schema.Fields{
+		"required":   schema.Bool(),
+		"shared":     schema.Bool(),
+		"read-only":  schema.Bool(),
+		"persistent": schema.Bool(),
+		"count":      storageCountC{}, // m, m-n, m-
+		"location":   schema.String(),
+		"type":       schema.OneOf(schema.Const(string(StorageBlock)), schema.Const(string(StorageFilesystem))),
+		"filesystem": schema.List(schema.OneOf(schema.String(), filesystemSchema)),
+	},
+	schema.Defaults{
+		"required":   false,
+		"shared":     false,
+		"read-only":  false,
+		"persistent": false,
+		"count":      schema.Omit,
+		"location":   schema.Omit,
+		"filesystem": schema.Omit,
+	},
+)
+
+var filesystemSchema = schema.FieldMap(
+	schema.Fields{
+		"type":         schema.String(),
+		"mkfs-options": schema.List(schema.String()),
+		"options":      schema.List(schema.String()),
+	},
+	schema.Defaults{
+		"mkfs-options": schema.Omit,
+		"options":      schema.Omit,
+	},
+)
+
+type storageCountC struct{}
+
+var storageCountRE = regexp.MustCompile("^([0-9]+)-([0-9]*)$")
+
+func (c storageCountC) Coerce(v interface{}, path []string) (newv interface{}, err error) {
+	s, err := schema.OneOf(schema.Int(), stringC).Coerce(v, path)
+	if err != nil {
+		return nil, err
+	}
+	if m, ok := s.(int64); ok {
+		// We've got a count of the form "m": m represents the
+		// maximum. The minimum is either 0 or m, depending on the
+		// value of "required". Use -1 as a placeholder.
+		if m <= 0 {
+			return nil, fmt.Errorf("%s: invalid count %v", strings.Join(path[1:], ""), m)
+		}
+		return [2]int{-1, int(m)}, nil
+	}
+	match := storageCountRE.FindStringSubmatch(s.(string))
+	if match == nil {
+		return nil, fmt.Errorf("%s: value %q does not match 'm', 'm-n', or 'm-'", strings.Join(path[1:], ""), s)
+	}
+	var m, n int
+	if m, err = strconv.Atoi(match[1]); err != nil {
+		return nil, err
+	}
+	if len(match[2]) == 0 {
+		// We've got a count of the form "m-1": m represents the
+		// minimum, and there is no upper bound.
+		n = -1
+	} else {
+		if n, err = strconv.Atoi(match[2]); err != nil {
+			return nil, err
+		}
+	}
+	return [2]int{m, n}, nil
+}
+
 var charmSchema = schema.FieldMap(
 	schema.Fields{
 		"name":        schema.String(),
@@ -438,6 +661,7 @@ var charmSchema = schema.FieldMap(
 		"categories":  schema.List(schema.String()),
 		"tags":        schema.List(schema.String()),
 		"series":      schema.String(),
+		"storage":     schema.StringMap(storageSchema),
 	},
 	schema.Defaults{
 		"provides":    schema.Omit,
@@ -449,5 +673,6 @@ var charmSchema = schema.FieldMap(
 		"categories":  schema.Omit,
 		"tags":        schema.Omit,
 		"series":      schema.Omit,
+		"storage":     schema.Omit,
 	},
 )
