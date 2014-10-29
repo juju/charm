@@ -19,11 +19,6 @@ const (
 	// Supported metric types.
 	MetricTypeGauge    MetricType = "gauge"
 	MetricTypeAbsolute MetricType = "absolute"
-	MaxMetricValueSize            = 30
-	// Arbitrarily chosen large number based on
-	// Largest number of digits returned by strconv.FormatFloat = 24
-	// US GDP 2013 ~ 1*10^15
-	// Nanoseconds in a Century ~ 3*10^18
 )
 
 // validateValue checks if the supplied metric value fits the requirements
@@ -31,7 +26,9 @@ const (
 func (m MetricType) validateValue(value string) error {
 	switch m {
 	case MetricTypeGauge, MetricTypeAbsolute:
-		if len(value) > MaxMetricValueSize {
+		// Arbitrarily chosen large length based on
+		// Largest number of digits returned by strconv.FormatFloat = 24
+		if len(value) > 30 {
 			return fmt.Errorf("metric value is too large")
 		}
 		_, err := strconv.ParseFloat(value, 64)
