@@ -26,8 +26,8 @@ const (
 func (m MetricType) validateValue(value string) error {
 	switch m {
 	case MetricTypeGauge, MetricTypeAbsolute:
-		// Arbitrarily chosen large length based on
-		// Largest number of digits returned by strconv.FormatFloat = 24
+		// The largest number of digits that can be returned by strconv.FormatFloat is 24, so
+		// choose an arbitrary limit somewhat higher than that.
 		if len(value) > 30 {
 			return fmt.Errorf("metric value is too large")
 		}
