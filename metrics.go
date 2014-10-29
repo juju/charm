@@ -17,8 +17,10 @@ type MetricType string
 
 const (
 	// Supported metric types.
-	MetricTypeGauge    = "gauge"
-	MetricTypeAbsolute = "absolute"
+	MetricTypeGauge    MetricType = "gauge"
+	MetricTypeAbsolute MetricType = "absolute"
+	MaxMetricValueSize            = 65536
+	MaxMetricKeySize              = 200
 )
 
 // validateValue checks if the supplied metric value fits the requirements
@@ -77,6 +79,12 @@ func ReadMetrics(r io.Reader) (*Metrics, error) {
 // ValidateMetric validates the supplied metric name and value against the loaded
 // metric definitions.
 func (m Metrics) ValidateMetric(name, value string) error {
+	if len(name) > MaxMetricKeySize {
+		return fmt.Errorf("metric key is too large")
+	}
+	if len(value) > MaxMetricValueSize {
+		return fmt.Errorf("metric value is too large")
+	}
 	metric, exists := m.Metrics[name]
 	if !exists {
 		return fmt.Errorf("metric %q not defined", name)

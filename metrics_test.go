@@ -5,6 +5,8 @@ package charm_test
 
 import (
 	"bytes"
+	"fmt"
+	"math/rand"
 	"sort"
 
 	gc "gopkg.in/check.v1"
@@ -23,6 +25,16 @@ func Keys(m *charm.Metrics) []string {
 	sort.Strings(result)
 	return result
 }
+
+func randomString(length int, chars string) string {
+	bytes := make([]byte, length)
+	for i := range bytes {
+		bytes[i] = chars[rand.Intn(len(chars))]
+	}
+	return string(bytes)
+}
+
+var longMetricKey = "metric" + randomString(200, "abc")
 
 type MetricsSuite struct{}
 
@@ -65,8 +77,24 @@ metrics:
 	c.Assert(metrics, gc.IsNil)
 }
 
-func (s *MetricsSuite) TestValidYaml(c *gc.C) {
+func (s *MetricsSuite) TestMultipleDefinition(c *gc.C) {
 	metrics, err := charm.ReadMetrics(bytes.NewBuffer([]byte(`
+metrics:
+  some-metric:
+    type: gauge
+    description: Some description.
+  some-metric:
+    type: absolute
+    description: Some other description.
+
+`)))
+	c.Assert(err, gc.IsNil)
+	c.Assert(metrics.Metrics, gc.HasLen, 1)
+	c.Assert(metrics.Metrics["some-metric"].Type, gc.Equals, charm.MetricTypeAbsolute)
+}
+
+func (s *MetricsSuite) TestValidYaml(c *gc.C) {
+	metrics, err := charm.ReadMetrics(bytes.NewBuffer([]byte(fmt.Sprintf(`
 metrics:
   blips:
     type: absolute
@@ -77,10 +105,13 @@ metrics:
   juju-unit-time:
     type: gauge
     description: Unit time.
-`)))
+  %s:
+    type: gauge
+    description: An unreasonably long key.
+`, longMetricKey))))
 	c.Assert(err, gc.IsNil)
 	c.Assert(metrics, gc.NotNil)
-	c.Assert(Keys(metrics), gc.DeepEquals, []string{"blips", "blops", "juju-unit-time"})
+	c.Assert(Keys(metrics), gc.DeepEquals, []string{"blips", "blops", "juju-unit-time", longMetricKey})
 
 	testCases := []struct {
 		about string
@@ -117,7 +148,19 @@ metrics:
 		name:  "blops",
 		value: "true",
 		err:   "invalid value type: expected float, got \"true\"",
-	}}
+	}, {
+		about: "metric value too large",
+		name:  "blips",
+		value: "0.1" + randomString(64*1024, "0123"),
+		err:   "metric value is too large",
+	}, {
+
+		about: "metric key too large",
+		name:  longMetricKey,
+		value: "0.1",
+		err:   "metric key is too large",
+	},
+	}
 
 	for i, t := range testCases {
 		c.Logf("test %d: %s", i, t.about)
