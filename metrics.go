@@ -17,8 +17,8 @@ type MetricType string
 
 const (
 	// Supported metric types.
-	MetricTypeGauge    = "gauge"
-	MetricTypeAbsolute = "absolute"
+	MetricTypeGauge    MetricType = "gauge"
+	MetricTypeAbsolute MetricType = "absolute"
 )
 
 // validateValue checks if the supplied metric value fits the requirements
@@ -26,6 +26,11 @@ const (
 func (m MetricType) validateValue(value string) error {
 	switch m {
 	case MetricTypeGauge, MetricTypeAbsolute:
+		// The largest number of digits that can be returned by strconv.FormatFloat is 24, so
+		// choose an arbitrary limit somewhat higher than that.
+		if len(value) > 30 {
+			return fmt.Errorf("metric value is too large")
+		}
 		_, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			return fmt.Errorf("invalid value type: expected float, got %q", value)

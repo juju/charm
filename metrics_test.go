@@ -4,8 +4,8 @@
 package charm_test
 
 import (
-	"bytes"
 	"sort"
+	"strings"
 
 	gc "gopkg.in/check.v1"
 
@@ -29,44 +29,60 @@ type MetricsSuite struct{}
 var _ = gc.Suite(&MetricsSuite{})
 
 func (s *MetricsSuite) TestReadEmpty(c *gc.C) {
-	metrics, err := charm.ReadMetrics(bytes.NewBuffer([]byte{}))
+	metrics, err := charm.ReadMetrics(strings.NewReader(""))
 	c.Assert(err, gc.IsNil)
 	c.Assert(metrics, gc.NotNil)
 	c.Assert(Keys(metrics), gc.HasLen, 0)
 }
 
 func (s *MetricsSuite) TestReadAlmostEmpty(c *gc.C) {
-	metrics, err := charm.ReadMetrics(bytes.NewBuffer([]byte(`
+	metrics, err := charm.ReadMetrics(strings.NewReader(`
 metrics:
-`)))
+`))
 	c.Assert(err, gc.IsNil)
 	c.Assert(metrics, gc.NotNil)
 	c.Assert(Keys(metrics), gc.HasLen, 0)
 }
 
 func (s *MetricsSuite) TestNoDescription(c *gc.C) {
-	metrics, err := charm.ReadMetrics(bytes.NewBuffer([]byte(`
+	metrics, err := charm.ReadMetrics(strings.NewReader(`
 metrics:
   some-metric:
     type: gauge
-`)))
+`))
 	c.Assert(err, gc.ErrorMatches, "invalid metrics declaration: metric \"some-metric\" lacks description")
 	c.Assert(metrics, gc.IsNil)
 }
 
 func (s *MetricsSuite) TestIncorrectType(c *gc.C) {
-	metrics, err := charm.ReadMetrics(bytes.NewBuffer([]byte(`
+	metrics, err := charm.ReadMetrics(strings.NewReader(`
 metrics:
   some-metric:
     type: not-a-type
     description: Some description.
-`)))
+`))
 	c.Assert(err, gc.ErrorMatches, "invalid metrics declaration: metric \"some-metric\" has unknown type \"not-a-type\"")
 	c.Assert(metrics, gc.IsNil)
 }
 
+func (s *MetricsSuite) TestMultipleDefinition(c *gc.C) {
+	metrics, err := charm.ReadMetrics(strings.NewReader(`
+metrics:
+  some-metric:
+    type: gauge
+    description: Some description.
+  some-metric:
+    type: absolute
+    description: Some other description.
+
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(metrics.Metrics, gc.HasLen, 1)
+	c.Assert(metrics.Metrics["some-metric"].Type, gc.Equals, charm.MetricTypeAbsolute)
+}
+
 func (s *MetricsSuite) TestValidYaml(c *gc.C) {
-	metrics, err := charm.ReadMetrics(bytes.NewBuffer([]byte(`
+	metrics, err := charm.ReadMetrics(strings.NewReader(`
 metrics:
   blips:
     type: absolute
@@ -77,7 +93,7 @@ metrics:
   juju-unit-time:
     type: gauge
     description: Unit time.
-`)))
+`))
 	c.Assert(err, gc.IsNil)
 	c.Assert(metrics, gc.NotNil)
 	c.Assert(Keys(metrics), gc.DeepEquals, []string{"blips", "blops", "juju-unit-time"})
@@ -117,7 +133,13 @@ metrics:
 		name:  "blops",
 		value: "true",
 		err:   "invalid value type: expected float, got \"true\"",
-	}}
+	}, {
+		about: "metric value too large",
+		name:  "blips",
+		value: "1111111111111111111111111111111",
+		err:   "metric value is too large",
+	},
+	}
 
 	for i, t := range testCases {
 		c.Logf("test %d: %s", i, t.about)
