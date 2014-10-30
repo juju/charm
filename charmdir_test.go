@@ -54,16 +54,14 @@ func (s *CharmDirSuite) TestReadCharmDirWithoutMetrics(c *gc.C) {
 }
 
 func (s *CharmDirSuite) TestReadCharmDirWithEmptyMetrics(c *gc.C) {
-	path := charmtesting.Charms.CharmDirPath("metered")
+	path := charmtesting.Charms.CharmDirPath("metered-empty")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
-
-	c.Assert(dir.Metrics(), gc.NotNil)
 	c.Assert(Keys(dir.Metrics()), gc.HasLen, 0)
 }
 
 func (s *CharmDirSuite) TestReadCharmDirWithCustomMetrics(c *gc.C) {
-	path := charmtesting.Charms.CharmDirPath("metered-custom")
+	path := charmtesting.Charms.CharmDirPath("metered")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 

@@ -1,5 +1,3 @@
-name: varnish
-summary: "Database engine"
-description: "Another popular database"
-provides:
-  webcache: varnish
+name: metered
+summary: "A metered charm with custom metrics"
+description: ""
