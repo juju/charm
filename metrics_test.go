@@ -32,7 +32,6 @@ func (s *MetricsSuite) TestReadEmpty(c *gc.C) {
 	metrics, err := charm.ReadMetrics(strings.NewReader(""))
 	c.Assert(err, gc.IsNil)
 	c.Assert(metrics, gc.NotNil)
-	c.Assert(Keys(metrics), gc.HasLen, 0)
 }
 
 func (s *MetricsSuite) TestReadAlmostEmpty(c *gc.C) {
@@ -41,7 +40,6 @@ metrics:
 `))
 	c.Assert(err, gc.IsNil)
 	c.Assert(metrics, gc.NotNil)
-	c.Assert(Keys(metrics), gc.HasLen, 0)
 }
 
 func (s *MetricsSuite) TestNoDescription(c *gc.C) {
