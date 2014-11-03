@@ -172,34 +172,63 @@ func (r *Repo) CharmArchive(dst, name string) *charm.CharmArchive {
 // MockCharmStore implements charm.Repository and is used to isolate tests
 // that would otherwise need to hit the real charm store.
 type MockCharmStore struct {
-	charms        map[string]map[int]*charm.CharmArchive
-	AuthAttrs     string
-	TestMode      bool
-	DefaultSeries string
+	charms map[string]map[int]*charm.CharmArchive
+
+	mu            sync.Mutex // protects the following fields
+	authAttrs     string
+	testMode      bool
+	defaultSeries string
 }
 
 func NewMockCharmStore() *MockCharmStore {
 	return &MockCharmStore{charms: map[string]map[int]*charm.CharmArchive{}}
 }
 
-func (s *MockCharmStore) WithAuthAttrs(auth string) charm.Repository {
-	s.AuthAttrs = auth
-	return s
+// SetAuthAttrs overwrites the value returned by AuthAttrs
+func (s *MockCharmStore) SetAuthAttrs(auth string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.authAttrs = auth
 }
 
-func (s *MockCharmStore) WithTestMode(testMode bool) charm.Repository {
-	s.TestMode = testMode
-	return s
+// AuthAttrs returns the AuthAttrs for this charm store.
+func (s *MockCharmStore) AuthAttrs() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.authAttrs
 }
 
-func (s *MockCharmStore) WithDefaultSeries(series string) charm.Repository {
-	s.DefaultSeries = series
-	return s
+// SetTestMode enables or disables test mode.
+func (s *MockCharmStore) SetTestMode(testMode bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.testMode = testMode
+}
+
+// TestMode returns the test mode setting of this charm store.
+func (s *MockCharmStore) TestMode() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.testMode
+}
+
+// SetDefaultSeries overwrites the default series for this charm store.
+func (s *MockCharmStore) SetDefaultSeries(series string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.defaultSeries = series
+}
+
+// DefaultSeries returns the default series for this charm store.
+func (s *MockCharmStore) DefaultSeries() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.defaultSeries
 }
 
 // Resolve implements charm.Repository.Resolve.
 func (s *MockCharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
-	return ref.URL(s.DefaultSeries)
+	return ref.URL(s.DefaultSeries())
 }
 
 // SetCharm adds and removes charms in s. The affected charm is identified by
