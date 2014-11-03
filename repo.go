@@ -405,7 +405,17 @@ func (s *CharmStore) Get(curl *URL) (Charm, error) {
 	if err := verify(path, digest); err != nil {
 		return nil, err
 	}
-	return ReadCharmArchive(path)
+	return readCharmArchiveDeleteOnError(path)
+}
+
+func readCharmArchiveDeleteOnError(path string) (*CharmArchive, error) {
+	a, err := readCharmArchive(newZipOpenerFromPath(path))
+	if err != nil {
+		os.Remove(path)
+		return nil, err
+	}
+	a.Path = path
+	return a, nil
 }
 
 // LocalRepository represents a local directory containing subdirectories
