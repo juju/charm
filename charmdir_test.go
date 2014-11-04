@@ -66,7 +66,7 @@ func (s *CharmDirSuite) TestReadCharmDirWithCustomMetrics(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	c.Assert(dir.Metrics(), gc.NotNil)
-	c.Assert(Keys(dir.Metrics()), gc.DeepEquals, []string{"pings"})
+	c.Assert(Keys(dir.Metrics()), gc.DeepEquals, []string{"juju-unit-time", "pings"})
 }
 
 func (s *CharmDirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
