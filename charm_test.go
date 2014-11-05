@@ -21,16 +21,18 @@ func Test(t *stdtesting.T) {
 	gc.TestingT(t)
 }
 
+var TestCharms = charmtesting.NewRepo("internal/test-charm-repo", "quantal")
+
 type CharmSuite struct{}
 
 var _ = gc.Suite(&CharmSuite{})
 
 func (s *CharmSuite) TestReadCharm(c *gc.C) {
-	bPath := charmtesting.Charms.CharmArchivePath(c.MkDir(), "dummy")
+	bPath := TestCharms.CharmArchivePath(c.MkDir(), "dummy")
 	ch, err := charm.ReadCharm(bPath)
 	c.Assert(err, gc.IsNil)
 	c.Assert(ch.Meta().Name, gc.Equals, "dummy")
-	dPath := charmtesting.Charms.CharmDirPath("dummy")
+	dPath := TestCharms.CharmDirPath("dummy")
 	ch, err = charm.ReadCharm(dPath)
 	c.Assert(err, gc.IsNil)
 	c.Assert(ch.Meta().Name, gc.Equals, "dummy")

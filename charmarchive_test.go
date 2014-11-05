@@ -20,7 +20,6 @@ import (
 	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v4"
-	charmtesting "gopkg.in/juju/charm.v4/testing"
 )
 
 type CharmArchiveSuite struct {
@@ -30,7 +29,7 @@ type CharmArchiveSuite struct {
 var _ = gc.Suite(&CharmArchiveSuite{})
 
 func (s *CharmArchiveSuite) SetUpSuite(c *gc.C) {
-	s.archivePath = charmtesting.Charms.CharmArchivePath(c.MkDir(), "dummy")
+	s.archivePath = TestCharms.CharmArchivePath(c.MkDir(), "dummy")
 }
 
 var dummyManifest = []string{
@@ -55,7 +54,7 @@ func (s *CharmArchiveSuite) TestReadCharmArchive(c *gc.C) {
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutConfig(c *gc.C) {
 	// Technically varnish has no config AND no actions.
 	// Perhaps we should make this more orthogonal?
-	path := charmtesting.Charms.CharmArchivePath(c.MkDir(), "varnish")
+	path := TestCharms.CharmArchivePath(c.MkDir(), "varnish")
 	archive, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
 
@@ -65,7 +64,7 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutConfig(c *gc.C) {
 }
 
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutMetrics(c *gc.C) {
-	path := charmtesting.Charms.CharmArchivePath(c.MkDir(), "varnish")
+	path := TestCharms.CharmArchivePath(c.MkDir(), "varnish")
 	dir, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
 
@@ -75,14 +74,14 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutMetrics(c *gc.C) {
 }
 
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithEmptyMetrics(c *gc.C) {
-	path := charmtesting.Charms.CharmArchivePath(c.MkDir(), "metered-empty")
+	path := TestCharms.CharmArchivePath(c.MkDir(), "metered-empty")
 	dir, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(Keys(dir.Metrics()), gc.HasLen, 0)
 }
 
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithCustomMetrics(c *gc.C) {
-	path := charmtesting.Charms.CharmArchivePath(c.MkDir(), "metered")
+	path := TestCharms.CharmArchivePath(c.MkDir(), "metered")
 	dir, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
 
@@ -92,7 +91,7 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithCustomMetrics(c *gc.C) {
 
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutActions(c *gc.C) {
 	// Wordpress has config but no actions.
-	path := charmtesting.Charms.CharmArchivePath(c.MkDir(), "wordpress")
+	path := TestCharms.CharmArchivePath(c.MkDir(), "wordpress")
 	archive, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
 
@@ -146,7 +145,7 @@ func (s *CharmArchiveSuite) TestManifestNoRevision(c *gc.C) {
 }
 
 func (s *CharmArchiveSuite) TestManifestSymlink(c *gc.C) {
-	srcPath := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
+	srcPath := TestCharms.ClonedDirPath(c.MkDir(), "dummy")
 	if err := os.Symlink("../target", filepath.Join(srcPath, "hooks/symlink")); err != nil {
 		c.Skip("cannot symlink")
 	}
@@ -209,7 +208,7 @@ func (s *CharmArchiveSuite) prepareCharmArchive(c *gc.C, charmDir *charm.CharmDi
 }
 
 func (s *CharmArchiveSuite) TestExpandToSetsHooksExecutable(c *gc.C) {
-	charmDir := charmtesting.Charms.ClonedDir(c.MkDir(), "all-hooks")
+	charmDir := TestCharms.ClonedDir(c.MkDir(), "all-hooks")
 	// CharmArchive manually, so we can check ExpandTo(), unaffected
 	// by ArchiveTo()'s behavior
 	archivePath := filepath.Join(c.MkDir(), "archive.charm")
@@ -235,7 +234,7 @@ func (s *CharmArchiveSuite) TestExpandToSetsHooksExecutable(c *gc.C) {
 
 func (s *CharmArchiveSuite) TestCharmArchiveFileModes(c *gc.C) {
 	// Apply subtler mode differences than can be expressed in Bazaar.
-	srcPath := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
+	srcPath := TestCharms.ClonedDirPath(c.MkDir(), "dummy")
 	modes := []struct {
 		path string
 		mode os.FileMode
@@ -282,7 +281,7 @@ func (s *CharmArchiveSuite) TestCharmArchiveFileModes(c *gc.C) {
 }
 
 func (s *CharmArchiveSuite) TestCharmArchiveRevisionFile(c *gc.C) {
-	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
+	charmDir := TestCharms.ClonedDirPath(c.MkDir(), "dummy")
 	revPath := filepath.Join(charmDir, "revision")
 
 	// Missing revision file
@@ -329,7 +328,7 @@ func (s *CharmArchiveSuite) TestCharmArchiveSetRevision(c *gc.C) {
 }
 
 func (s *CharmArchiveSuite) TestExpandToWithBadLink(c *gc.C) {
-	charmDir := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
+	charmDir := TestCharms.ClonedDirPath(c.MkDir(), "dummy")
 	badLink := filepath.Join(charmDir, "hooks", "badlink")
 
 	// Symlink targeting a path outside of the charm.

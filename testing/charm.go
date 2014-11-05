@@ -15,47 +15,43 @@ import (
 	"gopkg.in/juju/charm.v4"
 )
 
-// DefaultSeries specifies the default series of
-// charms in the testing repository. We use "quantal"
-// because it is a valid Ubuntu series, but is not
-// commonly used.
-const DefaultSeries string = "quantal"
-
 func check(err error) {
 	if err != nil {
 		panic(err)
 	}
 }
 
-// Repo represents a charm repository used for testing.
-type Repo struct {
-	once sync.Once
-	path string
-}
-
-func (r *Repo) Path() string {
-	r.once.Do(r.init)
-	return r.path
-}
-
-// init is called once when r.Path() is called for the first time, and
-// it initializes r.path to the location of the local testing
-// repository.
-func (r *Repo) init() {
+// NewRepo returns a new testing charm repository rooted at the given
+// path, relative to the package directory of the calling package, using
+// defaultSeries as the default series.
+func NewRepo(path, defaultSeries string) *Repo {
 	// Find the repo directory. This is only OK to do
 	// because this is running in a test context
 	// so we know the source is available.
-	_, file, _, ok := runtime.Caller(0)
+	_, file, _, ok := runtime.Caller(1)
 	if !ok {
 		panic("cannot get caller")
 	}
-	dir := filepath.Dir(file)
-	r.path = filepath.Join(dir, "repo")
+	r := &Repo{
+		path:          filepath.Join(filepath.Dir(file), path),
+		defaultSeries: defaultSeries,
+	}
+	_, err := os.Stat(r.path)
+	if err != nil {
+		panic(fmt.Errorf("cannot read repository found at %q: %v", r.path, err))
+	}
+	return r
 }
 
-// Charms represents the specific charm repository stored in this package and
-// used by the Juju unit tests. The series name is "quantal".
-var Charms = &Repo{}
+// Repo represents a charm repository used for testing.
+type Repo struct {
+	path          string
+	defaultSeries string
+}
+
+func (r *Repo) Path() string {
+	return r.path
+}
 
 func clone(dst, src string) string {
 	dst = filepath.Join(dst, filepath.Base(src))
@@ -79,7 +75,7 @@ func (r *Repo) BundleDir(name string) *charm.BundleDir {
 // CharmDirPath returns the path to a charm directory with the given name in the
 // default series
 func (r *Repo) CharmDirPath(name string) string {
-	return filepath.Join(r.Path(), DefaultSeries, name)
+	return filepath.Join(r.Path(), r.defaultSeries, name)
 }
 
 // CharmDir returns the actual charm.CharmDir named name.
