@@ -26,7 +26,7 @@ var _ = gc.Suite(&StoreSuite{})
 
 func (s *StoreSuite) SetUpSuite(c *gc.C) {
 	s.FakeHomeSuite.SetUpSuite(c)
-	s.server = charmtesting.NewMockStore(c, map[string]int{
+	s.server = charmtesting.NewMockStore(c, TestCharms, map[string]int{
 		"cs:series/good":   23,
 		"cs:series/unwise": 23,
 		"cs:series/better": 24,
@@ -386,11 +386,11 @@ func (s *LocalRepoSuite) SetUpTest(c *gc.C) {
 }
 
 func (s *LocalRepoSuite) addCharmArchive(name string) string {
-	return charmtesting.Charms.CharmArchivePath(s.seriesPath, name)
+	return TestCharms.CharmArchivePath(s.seriesPath, name)
 }
 
 func (s *LocalRepoSuite) addDir(name string) string {
-	return charmtesting.Charms.ClonedDirPath(s.seriesPath, name)
+	return TestCharms.ClonedDirPath(s.seriesPath, name)
 }
 
 func (s *LocalRepoSuite) checkNotFoundErr(c *gc.C, err error, charmURL *charm.URL) {
@@ -513,7 +513,7 @@ func (s *LocalRepoSuite) TestIgnoresUnpromisingNames(c *gc.C) {
 }
 
 func (s *LocalRepoSuite) TestFindsSymlinks(c *gc.C) {
-	realPath := charmtesting.Charms.ClonedDirPath(c.MkDir(), "dummy")
+	realPath := TestCharms.ClonedDirPath(c.MkDir(), "dummy")
 	linkPath := filepath.Join(s.seriesPath, "dummy")
 	err := os.Symlink(realPath, linkPath)
 	c.Assert(err, gc.IsNil)
