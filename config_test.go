@@ -6,8 +6,11 @@ package charm_test
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
+	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
+	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v4"
 )
@@ -52,7 +55,7 @@ options:
 }
 
 func (s *ConfigSuite) TestReadSample(c *gc.C) {
-	c.Assert(s.config.Options, gc.DeepEquals, map[string]charm.Option{
+	c.Assert(s.config.Options, jc.DeepEquals, map[string]charm.Option{
 		"title": {
 			Default:     "My Title",
 			Description: "A descriptive title used for the service.",
@@ -88,7 +91,7 @@ func (s *ConfigSuite) TestReadSample(c *gc.C) {
 }
 
 func (s *ConfigSuite) TestDefaultSettings(c *gc.C) {
-	c.Assert(s.config.DefaultSettings(), gc.DeepEquals, charm.Settings{
+	c.Assert(s.config.DefaultSettings(), jc.DeepEquals, charm.Settings{
 		"title":              "My Title",
 		"subtitle":           "",
 		"username":           "admin001",
@@ -109,7 +112,7 @@ func (s *ConfigSuite) TestFilterSettings(c *gc.C) {
 		"agility-ratio":      true,
 		"reticulate-splines": "hullo",
 	})
-	c.Assert(settings, gc.DeepEquals, charm.Settings{
+	c.Assert(settings, jc.DeepEquals, charm.Settings{
 		"title":    "something valid",
 		"username": nil,
 		"outlook":  "",
@@ -186,9 +189,9 @@ func (s *ConfigSuite) TestValidateSettings(c *gc.C) {
 		} else {
 			c.Check(err, gc.IsNil)
 			if test.expect == nil {
-				c.Check(result, gc.DeepEquals, test.input)
+				c.Check(result, jc.DeepEquals, test.input)
 			} else {
-				c.Check(result, gc.DeepEquals, test.expect)
+				c.Check(result, jc.DeepEquals, test.expect)
 			}
 		}
 	}
@@ -330,7 +333,7 @@ func (s *ConfigSuite) TestParseSettingsYAML(c *gc.C) {
 			c.Check(err, gc.ErrorMatches, test.err)
 		} else {
 			c.Check(err, gc.IsNil)
-			c.Check(result, gc.DeepEquals, test.expect)
+			c.Check(result, jc.DeepEquals, test.expect)
 		}
 	}
 }
@@ -384,7 +387,7 @@ func (s *ConfigSuite) TestParseSettingsStrings(c *gc.C) {
 			c.Check(err, gc.ErrorMatches, test.err)
 		} else {
 			c.Check(err, gc.IsNil)
-			c.Check(result, gc.DeepEquals, test.expect)
+			c.Check(result, jc.DeepEquals, test.expect)
 		}
 	}
 }
@@ -427,4 +430,28 @@ func (s *ConfigSuite) TestEmptyConfigReturnsError(c *gc.C) {
 	result, err := charm.ReadConfig(bytes.NewBuffer([]byte(config)))
 	c.Assert(result, gc.IsNil)
 	c.Assert(err, gc.ErrorMatches, "invalid config: empty configuration")
+}
+
+func (s *ConfigSuite) TestYAMLMarshal(c *gc.C) {
+	cfg, err := charm.ReadConfig(strings.NewReader(`
+options:
+    minimal:
+        type: string
+    withdescription:
+        type: int
+        description: d
+    withdefault:
+        type: boolean
+        description: d
+        default: true
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(cfg.Options, gc.HasLen, 3)
+
+	newYAML, err := yaml.Marshal(cfg)
+	c.Assert(err, gc.IsNil)
+
+	newCfg, err := charm.ReadConfig(bytes.NewReader(newYAML))
+	c.Assert(err, gc.IsNil)
+	c.Assert(newCfg, jc.DeepEquals, cfg)
 }
