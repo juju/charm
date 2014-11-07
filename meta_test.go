@@ -513,7 +513,7 @@ func (s *MetaSuite) TestImplementedBy(c *gc.C) {
 	}
 }
 
-var yamlMarshalTests = []struct {
+var metaYAMLMarshalTests = []struct {
 	about string
 	yaml  string
 }{{
@@ -556,7 +556,7 @@ series: someseries
 }}
 
 func (s *MetaSuite) TestYAMLMarshal(c *gc.C) {
-	for i, test := range yamlMarshalTests {
+	for i, test := range metaYAMLMarshalTests {
 		c.Logf("test %d: %s", i, test.about)
 		ch, err := charm.ReadMeta(strings.NewReader(test.yaml))
 		c.Assert(err, gc.IsNil)

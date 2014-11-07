@@ -20,9 +20,9 @@ type Settings map[string]interface{}
 
 // Option represents a single charm config option.
 type Option struct {
-	Type        string
-	Description string
-	Default     interface{}
+	Type        string      `yaml:"type"`
+	Description string      `yaml:"description,omitempty"`
+	Default     interface{} `yaml:"default,omitempty"`
 }
 
 // error replaces any supplied non-nil error with a new error describing a
