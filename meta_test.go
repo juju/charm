@@ -12,7 +12,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
+	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v4"
 )
@@ -58,13 +60,13 @@ func (s *MetaSuite) TestReadMetaVersion2(c *gc.C) {
 func (s *MetaSuite) TestReadCategory(c *gc.C) {
 	meta, err := charm.ReadMeta(repoMeta("category"))
 	c.Assert(err, gc.IsNil)
-	c.Assert(meta.Categories, gc.DeepEquals, []string{"database"})
+	c.Assert(meta.Categories, jc.DeepEquals, []string{"database"})
 }
 
 func (s *MetaSuite) TestReadTags(c *gc.C) {
 	meta, err := charm.ReadMeta(repoMeta("category"))
 	c.Assert(err, gc.IsNil)
-	c.Assert(meta.Tags, gc.DeepEquals, []string{"openstack", "storage"})
+	c.Assert(meta.Tags, jc.DeepEquals, []string{"openstack", "storage"})
 }
 
 func (s *MetaSuite) TestSubordinate(c *gc.C) {
@@ -331,20 +333,20 @@ func (s *MetaSuite) TestIfaceExpander(c *gc.C) {
 	// Shorthand is properly rewritten
 	v, err := e.Coerce("http", path)
 	c.Assert(err, gc.IsNil)
-	c.Assert(v, gc.DeepEquals, map[string]interface{}{"interface": "http", "limit": nil, "optional": false, "scope": string(charm.ScopeGlobal)})
+	c.Assert(v, jc.DeepEquals, map[string]interface{}{"interface": "http", "limit": nil, "optional": false, "scope": string(charm.ScopeGlobal)})
 
 	// Defaults are properly applied
 	v, err = e.Coerce(map[string]interface{}{"interface": "http"}, path)
 	c.Assert(err, gc.IsNil)
-	c.Assert(v, gc.DeepEquals, map[string]interface{}{"interface": "http", "limit": nil, "optional": false, "scope": string(charm.ScopeGlobal)})
+	c.Assert(v, jc.DeepEquals, map[string]interface{}{"interface": "http", "limit": nil, "optional": false, "scope": string(charm.ScopeGlobal)})
 
 	v, err = e.Coerce(map[string]interface{}{"interface": "http", "limit": 2}, path)
 	c.Assert(err, gc.IsNil)
-	c.Assert(v, gc.DeepEquals, map[string]interface{}{"interface": "http", "limit": int64(2), "optional": false, "scope": string(charm.ScopeGlobal)})
+	c.Assert(v, jc.DeepEquals, map[string]interface{}{"interface": "http", "limit": int64(2), "optional": false, "scope": string(charm.ScopeGlobal)})
 
 	v, err = e.Coerce(map[string]interface{}{"interface": "http", "optional": true}, path)
 	c.Assert(err, gc.IsNil)
-	c.Assert(v, gc.DeepEquals, map[string]interface{}{"interface": "http", "limit": nil, "optional": true, "scope": string(charm.ScopeGlobal)})
+	c.Assert(v, jc.DeepEquals, map[string]interface{}{"interface": "http", "limit": nil, "optional": true, "scope": string(charm.ScopeGlobal)})
 
 	// Invalid data raises an error.
 	v, err = e.Coerce(42, path)
@@ -360,7 +362,7 @@ func (s *MetaSuite) TestIfaceExpander(c *gc.C) {
 	e = charm.IfaceExpander(1)
 	v, err = e.Coerce(map[string]interface{}{"interface": "http"}, path)
 	c.Assert(err, gc.IsNil)
-	c.Assert(v, gc.DeepEquals, map[string]interface{}{"interface": "http", "limit": int64(1), "optional": false, "scope": string(charm.ScopeGlobal)})
+	c.Assert(v, jc.DeepEquals, map[string]interface{}{"interface": "http", "limit": int64(1), "optional": false, "scope": string(charm.ScopeGlobal)})
 }
 
 func (s *MetaSuite) TestMetaHooks(c *gc.C) {
@@ -396,7 +398,7 @@ func (s *MetaSuite) TestMetaHooks(c *gc.C) {
 		"url-relation-departed":             true,
 		"url-relation-broken":               true,
 	}
-	c.Assert(hooks, gc.DeepEquals, expectedHooks)
+	c.Assert(hooks, jc.DeepEquals, expectedHooks)
 }
 
 func (s *MetaSuite) TestCodecRoundTripEmpty(c *gc.C) {
@@ -408,7 +410,7 @@ func (s *MetaSuite) TestCodecRoundTripEmpty(c *gc.C) {
 		var empty_output charm.Meta
 		err = codec.Unmarshal(data, &empty_output)
 		c.Assert(err, gc.IsNil)
-		c.Assert(empty_input, gc.DeepEquals, empty_output)
+		c.Assert(empty_input, jc.DeepEquals, empty_output)
 	}
 }
 
@@ -454,7 +456,7 @@ func (s *MetaSuite) TestCodecRoundTrip(c *gc.C) {
 		var output charm.Meta
 		err = codec.Unmarshal(data, &output)
 		c.Assert(err, gc.IsNil)
-		c.Assert(input, gc.DeepEquals, output)
+		c.Assert(input, jc.DeepEquals, output)
 	}
 }
 
@@ -509,6 +511,98 @@ func (s *MetaSuite) TestImplementedBy(c *gc.C) {
 		c.Assert(r.ImplementedBy(&dummyCharm{}), gc.Equals, t.match)
 		c.Assert(r.IsImplicit(), gc.Equals, t.implicit)
 	}
+}
+
+var yamlMarshalTests = []struct {
+	about string
+	yaml  string
+}{{
+	about: "minimal charm",
+	yaml: `
+name: minimal
+description: d
+summary: s
+`,
+}, {
+	about: "charm with lots of stuff",
+	yaml: `
+name: big
+description: d
+summary: s
+subordinate: true
+provides:
+    provideSimple: someinterface
+    provideLessSimple:
+        interface: anotherinterface
+        optional: true
+        scope: container
+        limit: 3
+requires:
+    requireSimple: someinterface
+    requireLessSimple:
+        interface: anotherinterface
+        optional: true
+        scope: container
+        limit: 3
+peers:
+    peerSimple: someinterface
+    peerLessSimple:
+        interface: peery
+        optional: true
+categories: [c1, c1]
+tags: [t1, t2]
+series: someseries
+`,
+}}
+
+func (s *MetaSuite) TestYAMLMarshal(c *gc.C) {
+	for i, test := range yamlMarshalTests {
+		c.Logf("test %d: %s", i, test.about)
+		ch, err := charm.ReadMeta(strings.NewReader(test.yaml))
+		c.Assert(err, gc.IsNil)
+		gotYAML, err := yaml.Marshal(ch)
+		c.Assert(err, gc.IsNil)
+		gotCh, err := charm.ReadMeta(bytes.NewReader(gotYAML))
+		c.Assert(err, gc.IsNil)
+		c.Assert(gotCh, jc.DeepEquals, ch)
+	}
+}
+
+func (s *MetaSuite) TestYAMLMarshalSimpleRelation(c *gc.C) {
+	// Check that a simple relation gets marshaled as a string.
+	chYAML := `
+name: minimal
+description: d
+summary: s
+provides:
+    server: http
+requires:
+    client: http
+peers:
+     me: http
+`
+	ch, err := charm.ReadMeta(strings.NewReader(chYAML))
+	c.Assert(err, gc.IsNil)
+	gotYAML, err := yaml.Marshal(ch)
+	c.Assert(err, gc.IsNil)
+
+	var x interface{}
+	err = yaml.Unmarshal(gotYAML, &x)
+	c.Assert(err, gc.IsNil)
+	c.Assert(x, jc.DeepEquals, map[interface{}]interface{}{
+		"name":        "minimal",
+		"description": "d",
+		"summary":     "s",
+		"provides": map[interface{}]interface{}{
+			"server": "http",
+		},
+		"requires": map[interface{}]interface{}{
+			"client": "http",
+		},
+		"peers": map[interface{}]interface{}{
+			"me": "http",
+		},
+	})
 }
 
 type dummyCharm struct{}
