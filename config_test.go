@@ -405,7 +405,7 @@ func (s *ConfigSuite) TestConfigWithNoOptions(c *gc.C) {
 	c.Assert(err, gc.ErrorMatches, "invalid config: empty configuration")
 
 	_, err = charm.ReadConfig(strings.NewReader("null\n"))
-	c.Assert(err, gc.ErrorMatches, "invalid config: empty configuration")
+	c.Assert(err, gc.ErrorMatches, "YAML error: reflect: reflect.Value.Set using unaddressable value")
 
 	_, err = charm.ReadConfig(strings.NewReader("options:\n"))
 	c.Assert(err, gc.IsNil)
