@@ -98,6 +98,20 @@ func ReadConfig(r io.Reader) (*Config, error) {
 	if config == nil {
 		return nil, fmt.Errorf("invalid config: empty configuration")
 	}
+	if config.Options == nil {
+		// We are allowed an empty configuration if the options
+		// field is explicitly specified, but there is no easy way
+		// to tell if it was specified or not without unmarshaling
+		// into interface{} and explicitly checking the field.
+		var configInterface interface{}
+		if err := yaml.Unmarshal(data, &configInterface); err != nil {
+			return nil, err
+		}
+		m, _ := configInterface.(map[interface{}]interface{})
+		if _, ok := m["options"]; !ok {
+			return nil, fmt.Errorf("invalid config: empty configuration")
+		}
+	}
 	for name, option := range config.Options {
 		switch option.Type {
 		case "string", "int", "float", "boolean":

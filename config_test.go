@@ -397,6 +397,20 @@ func (s *ConfigSuite) TestConfigError(c *gc.C) {
 	c.Assert(err, gc.ErrorMatches, `invalid config: option "t" has unknown type "foo"`)
 }
 
+func (s *ConfigSuite) TestConfigWithNoOptions(c *gc.C) {
+	_, err := charm.ReadConfig(strings.NewReader("other:\n"))
+	c.Assert(err, gc.ErrorMatches, "invalid config: empty configuration")
+
+	_, err = charm.ReadConfig(strings.NewReader("\n"))
+	c.Assert(err, gc.ErrorMatches, "invalid config: empty configuration")
+
+	_, err = charm.ReadConfig(strings.NewReader("null\n"))
+	c.Assert(err, gc.ErrorMatches, "invalid config: empty configuration")
+
+	_, err = charm.ReadConfig(strings.NewReader("options:\n"))
+	c.Assert(err, gc.IsNil)
+}
+
 func (s *ConfigSuite) TestDefaultType(c *gc.C) {
 	assertDefault := func(type_ string, value string, expected interface{}) {
 		config := fmt.Sprintf(`options: {t: {type: %s, default: %s}}`, type_, value)
