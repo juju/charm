@@ -50,43 +50,62 @@ const (
 // Storage represents a charm's storage requirement.
 type Storage struct {
 	// Name is the name of the storage requirement.
+	//
+	// Name has no default, and must be specified.
 	Name string
 
 	// Type is the storage type: filesystem or block-device.
+	//
+	// Type has no default, and must be specified.
 	Type StorageType
 
 	// Shared indicates that the storage is shared between all units of
 	// a service deployed from the charm. It is an error to attempt to
 	// assign non-shareable storage to a "shared" storage requirement.
+	//
+	// Shared defaults to false.
 	Shared bool
 
 	// ReadOnly indicates that the storage should be made read-only if
 	// possible. If the storage cannot be made read-only, Juju will warn
 	// the user.
+	//
+	// ReadOnly defaults to false.
 	ReadOnly bool
 
 	// Persistent indicates that the storage should be made persistent
 	// if possible. If the storage cannot be made persistent, Juju will
 	// warn the user.
+	//
+	// Persistent defaults to false.
 	Persistent bool
 
 	// CountMin is the number of storage instances that must be attached
 	// to the charm for it to be useful; the charm will not install until
 	// this number has been satisfied. This must be a non-negative number.
+	//
+	// CountMin defaults to either 0 or 1, depending on whether the storage
+	// is marked "required".
 	CountMin int
 
 	// CountMax is the largest number of storage instances that can be
 	// attached to the charm. If CountMax is -1, then there is no upper
 	// bound.
+	//
+	// CountMax defaults to -1.
 	CountMax int
 
 	// Location is the mount location for filesystem stores. If count does
 	// not have a maximum of 1, then location acts as the parent directory
 	// for each mounted store.
+	//
+	// Location has no default, and is optional.
 	Location string `bson:",omitempty"`
 
 	// Filesystem is the list of filesystems that Juju will attempt to
 	// create, in order of most to least preferred.
+	//
+	// Filesystem has no default, and is option.
 	Filesystem []Filesystem `bson:",omitempty"`
 }
 
