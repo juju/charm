@@ -109,17 +109,11 @@ type Storage struct {
 	Filesystem []Filesystem `bson:"filesystem,omitempty"`
 }
 
+// Filesystem describes a filesystem preference which Juju may use when
+// formatting a block device.
 type Filesystem struct {
 	// Type is the filesystem type.
 	Type string `bson:"type,omitempty"`
-
-	// MkfsOptions is any options to use when creating the filesystem.
-	// MkfsOptions will be passed directly to "mkfs".
-	MkfsOptions []string `bson:"mkfsoptions,omitempty"`
-
-	// MountOptions is any options to use when mounting the filesystem.
-	// MountOptions will be passed directly to "mount".
-	MountOptions []string `bson:"mountoptions,omitempty"`
 }
 
 // Relation represents a single relation defined in the charm
@@ -584,9 +578,7 @@ func parseFilesystem(filesystems interface{}) []Filesystem {
 			result = append(result, Filesystem{Type: elem})
 		case map[string]interface{}:
 			fs := Filesystem{
-				Type:         elem["type"].(string),
-				MountOptions: parseStringList(elem["options"]),
-				MkfsOptions:  parseStringList(elem["mkfs-options"]),
+				Type: elem["type"].(string),
 			}
 			result = append(result, fs)
 		}
@@ -618,14 +610,9 @@ var storageSchema = schema.FieldMap(
 
 var filesystemSchema = schema.FieldMap(
 	schema.Fields{
-		"type":         schema.String(),
-		"mkfs-options": schema.List(schema.String()),
-		"options":      schema.List(schema.String()),
+		"type": schema.String(),
 	},
-	schema.Defaults{
-		"mkfs-options": schema.Omit,
-		"options":      schema.Omit,
-	},
+	schema.Defaults{},
 )
 
 type storageCountC struct{}

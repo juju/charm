@@ -741,8 +741,6 @@ storage:
     store1:
         type: filesystem
         filesystem:
-            - {type: btrfs, options: [discard, autodefrag]}
-            - {type: btrfs, mkfs-options: ["-L", mylabel]}
             - btrfs
 `))
 	c.Assert(err, gc.IsNil)
@@ -759,12 +757,6 @@ storage:
 	store = meta.Storage["store1"]
 	c.Assert(store, gc.NotNil)
 	c.Assert(store.Filesystem, gc.DeepEquals, []charm.Filesystem{{
-		Type:         "btrfs",
-		MountOptions: []string{"discard", "autodefrag"},
-	}, {
-		Type:        "btrfs",
-		MkfsOptions: []string{"-L", "mylabel"},
-	}, {
 		Type: "btrfs",
 	}})
 }
