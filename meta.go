@@ -52,33 +52,33 @@ type Storage struct {
 	// Name is the name of the storage requirement.
 	//
 	// Name has no default, and must be specified.
-	Name string
+	Name string `bson:"name"`
 
 	// Type is the storage type: filesystem or block-device.
 	//
 	// Type has no default, and must be specified.
-	Type StorageType
+	Type StorageType `bson:"type"`
 
 	// Shared indicates that the storage is shared between all units of
 	// a service deployed from the charm. It is an error to attempt to
 	// assign non-shareable storage to a "shared" storage requirement.
 	//
 	// Shared defaults to false.
-	Shared bool
+	Shared bool `bson:"shared"`
 
 	// ReadOnly indicates that the storage should be made read-only if
 	// possible. If the storage cannot be made read-only, Juju will warn
 	// the user.
 	//
 	// ReadOnly defaults to false.
-	ReadOnly bool
+	ReadOnly bool `bson:"read-only"`
 
 	// Persistent indicates that the storage should be made persistent
 	// if possible. If the storage cannot be made persistent, Juju will
 	// warn the user.
 	//
 	// Persistent defaults to false.
-	Persistent bool
+	Persistent bool `bson:"persistent"`
 
 	// CountMin is the number of storage instances that must be attached
 	// to the charm for it to be useful; the charm will not install until
@@ -86,51 +86,51 @@ type Storage struct {
 	//
 	// CountMin defaults to either 0 or 1, depending on whether the storage
 	// is marked "required".
-	CountMin int
+	CountMin int `bson:"countmin"`
 
 	// CountMax is the largest number of storage instances that can be
 	// attached to the charm. If CountMax is -1, then there is no upper
 	// bound.
 	//
 	// CountMax defaults to -1.
-	CountMax int
+	CountMax int `bson:"countmax"`
 
 	// Location is the mount location for filesystem stores. If count does
 	// not have a maximum of 1, then location acts as the parent directory
 	// for each mounted store.
 	//
 	// Location has no default, and is optional.
-	Location string `bson:",omitempty"`
+	Location string `bson:"location,omitempty"`
 
 	// Filesystem is the list of filesystems that Juju will attempt to
 	// create, in order of most to least preferred.
 	//
 	// Filesystem has no default, and is option.
-	Filesystem []Filesystem `bson:",omitempty"`
+	Filesystem []Filesystem `bson:"filesystem,omitempty"`
 }
 
 type Filesystem struct {
 	// Type is the filesystem type.
-	Type string
+	Type string `bson:"type,omitempty"`
 
 	// MkfsOptions is any options to use when creating the filesystem.
 	// MkfsOptions will be passed directly to "mkfs".
-	MkfsOptions []string `bson:",omitempty"`
+	MkfsOptions []string `bson:"mkfsoptions,omitempty"`
 
 	// MountOptions is any options to use when mounting the filesystem.
 	// MountOptions will be passed directly to "mount".
-	MountOptions []string `bson:",omitempty"`
+	MountOptions []string `bson:"mountoptions,omitempty"`
 }
 
 // Relation represents a single relation defined in the charm
 // metadata.yaml file.
 type Relation struct {
-	Name      string
-	Role      RelationRole
-	Interface string
-	Optional  bool
-	Limit     int
-	Scope     RelationScope
+	Name      string        `bson:"name"`
+	Role      RelationRole  `bson:"role"`
+	Interface string        `bson:"interface"`
+	Optional  bool          `bson:"optional"`
+	Limit     int           `bson:"limit"`
+	Scope     RelationScope `bson:"scope"`
 }
 
 // ImplementedBy returns whether the relation is implemented by the supplied charm.
@@ -177,19 +177,19 @@ func (r Relation) IsImplicit() bool {
 // Meta represents all the known content that may be defined
 // within a charm's metadata.yaml file.
 type Meta struct {
-	Name        string
-	Summary     string
-	Description string
-	Subordinate bool
-	Provides    map[string]Relation `bson:",omitempty"`
-	Requires    map[string]Relation `bson:",omitempty"`
-	Peers       map[string]Relation `bson:",omitempty"`
-	Format      int                 `bson:",omitempty"`
-	OldRevision int                 `bson:",omitempty"` // Obsolete
-	Categories  []string            `bson:",omitempty"`
-	Tags        []string            `bson:",omitempty"`
-	Series      string              `bson:",omitempty"`
-	Storage     map[string]Storage  `bson:",omitempty"`
+	Name        string              `bson:"name"`
+	Summary     string              `bson:"summary"`
+	Description string              `bson:"description"`
+	Subordinate bool                `bson:"subordinate"`
+	Provides    map[string]Relation `bson:"provides,omitempty"`
+	Requires    map[string]Relation `bson:"requires,omitempty"`
+	Peers       map[string]Relation `bson:"peers,omitempty"`
+	Format      int                 `bson:"format,omitempty"`
+	OldRevision int                 `bson:"oldrevision,omitempty"` // Obsolete
+	Categories  []string            `bson:"categories,omitempty"`
+	Tags        []string            `bson:"tags,omitempty"`
+	Series      string              `bson:"series,omitempty"`
+	Storage     map[string]Storage  `bson:"storage,omitempty"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -554,7 +554,7 @@ func parseStorage(stores interface{}) map[string]Storage {
 			store.CountMax = count[1]
 		} else {
 			store.CountMin = -1
-			store.CountMax = 1
+			store.CountMax = -1
 		}
 		if store.CountMin == -1 {
 			if required {
@@ -655,7 +655,7 @@ func (c storageCountC) Coerce(v interface{}, path []string) (newv interface{}, e
 		return nil, err
 	}
 	if len(match[2]) == 0 {
-		// We've got a count of the form "m-1": m represents the
+		// We've got a count of the form "m-": m represents the
 		// minimum, and there is no upper bound.
 		n = -1
 	} else {

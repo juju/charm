@@ -622,12 +622,14 @@ storage:
 		"store0": charm.Storage{
 			Name:     "store0",
 			Type:     charm.StorageBlock,
-			CountMax: 1,
+			CountMin: 0, // not required
+			CountMax: -1,
 		},
 		"store1": charm.Storage{
 			Name:     "store1",
 			Type:     charm.StorageFilesystem,
-			CountMax: 1,
+			CountMin: 0, // not required
+			CountMax: -1,
 		},
 	})
 }
