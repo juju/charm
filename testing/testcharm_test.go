@@ -37,14 +37,13 @@ options:
   blog-title: {default: My Title, description: Config description, type: string}
 `,
 		Actions: `
-actions:
-   snapshot:
-      description: Take a snapshot of the database.
-      params:
-         outfile:
-            description: snapshot description
-            type: string
-            default: foo.bz2
+snapshot:
+   description: Take a snapshot of the database.
+   params:
+      outfile:
+         description: outfile description
+         type: string
+         default: foo.bz2
 `,
 		Metrics: `
 metrics:
@@ -82,10 +81,15 @@ metrics:
 			"snapshot": {
 				Description: "Take a snapshot of the database.",
 				Params: map[string]interface{}{
-					"outfile": map[string]interface{}{
-						"description": "snapshot description",
-						"type":        "string",
-						"default":     "foo.bz2",
+					"title":       "snapshot",
+					"description": "Take a snapshot of the database.",
+					"type":        "object",
+					"properties": map[string]interface{}{
+						"outfile": map[string]interface{}{
+							"description": "outfile description",
+							"type":        "string",
+							"default":     "foo.bz2",
+						},
 					},
 				},
 			},
