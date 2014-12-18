@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 
+	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 )
 
@@ -16,7 +17,7 @@ var _ = gc.Suite(&ActionsSuite{})
 
 func (s *ActionsSuite) TestNewActions(c *gc.C) {
 	emptyAction := NewActions()
-	c.Assert(emptyAction, gc.DeepEquals, &Actions{})
+	c.Assert(emptyAction, jc.DeepEquals, &Actions{})
 }
 
 func (s *ActionsSuite) TestValidateOk(c *gc.C) {
@@ -29,7 +30,7 @@ func (s *ActionsSuite) TestValidateOk(c *gc.C) {
 		actionSpec: &ActionSpec{
 			Description: "Take a snapshot of the database.",
 			Params: map[string]interface{}{
-				"title":       "Snapshot params",
+				"title":       "snapshot",
 				"description": "Take a snapshot of the database.",
 				"type":        "object",
 				"properties": map[string]interface{}{
@@ -43,7 +44,7 @@ func (s *ActionsSuite) TestValidateOk(c *gc.C) {
 		actionSpec: &ActionSpec{
 			Description: "Take a snapshot of the database.",
 			Params: map[string]interface{}{
-				"title":       "Snapshot params",
+				"title":       "snapshot",
 				"description": "Take a snapshot of the database.",
 				"type":        "object",
 				"properties": map[string]interface{}{
@@ -62,7 +63,7 @@ func (s *ActionsSuite) TestValidateOk(c *gc.C) {
 		actionSpec: &ActionSpec{
 			Description: "Take a snapshot of the database.",
 			Params: map[string]interface{}{
-				"title":       "Snapshot params",
+				"title":       "snapshot",
 				"description": "Take a snapshot of the database.",
 				"type":        "object",
 				"properties": map[string]interface{}{
@@ -101,7 +102,7 @@ func (s *ActionsSuite) TestValidateFail(c *gc.C) {
 		actionSpec: &ActionSpec{
 			Description: "Take a snapshot of the database.",
 			Params: map[string]interface{}{
-				"title":       "Snapshot params",
+				"title":       "snapshot",
 				"description": "Take a snapshot of the database.",
 				"type":        "object",
 				"properties": map[string]interface{}{
@@ -112,11 +113,27 @@ func (s *ActionsSuite) TestValidateFail(c *gc.C) {
 		badActionJson: `{"outfile": 5}`,
 		expectedError: "JSON validation failed: (root).outfile : must be of type string, given 5",
 	}, {
+		description: "Restrict to only one property",
+		actionSpec: &ActionSpec{
+			Description: "Take a snapshot of the database.",
+			Params: map[string]interface{}{
+				"title":       "snapshot",
+				"description": "Take a snapshot of the database.",
+				"type":        "object",
+				"properties": map[string]interface{}{
+					"outfile": map[string]interface{}{
+						"description": "The file to write out to.",
+						"type":        "string"}},
+				"required":             []interface{}{"outfile"},
+				"additionalProperties": false}},
+		badActionJson: `{"outfile": "foo.bz", "bar": "foo"}`,
+		expectedError: "JSON validation failed: (root) : additional property \"bar\" is not allowed, given {\"bar\":\"foo\",\"outfile\":\"foo.bz\"}",
+	}, {
 		description: "Validation of one required and one optional value.",
 		actionSpec: &ActionSpec{
 			Description: "Take a snapshot of the database.",
 			Params: map[string]interface{}{
-				"title":       "Snapshot params",
+				"title":       "snapshot",
 				"description": "Take a snapshot of the database.",
 				"type":        "object",
 				"properties": map[string]interface{}{
@@ -136,7 +153,7 @@ func (s *ActionsSuite) TestValidateFail(c *gc.C) {
 		actionSpec: &ActionSpec{
 			Description: "Take a snapshot of the database.",
 			Params: map[string]interface{}{
-				"title":       "Snapshot params",
+				"title":       "snapshot",
 				"description": "Take a snapshot of the database.",
 				"type":        "object",
 				"properties": map[string]interface{}{
@@ -235,7 +252,7 @@ func (s *ActionsSuite) TestCleanseOk(c *gc.C) {
 		c.Logf("test %d: %s", i, test.description)
 		cleansedInterfaceMap, err := cleanse(test.acceptableInterface)
 		c.Assert(err, gc.IsNil)
-		c.Assert(cleansedInterfaceMap, gc.DeepEquals, test.expectedInterface)
+		c.Assert(cleansedInterfaceMap, jc.DeepEquals, test.expectedInterface)
 	}
 }
 
@@ -276,7 +293,6 @@ func (s *ActionsSuite) TestCleanseFail(c *gc.C) {
 }
 
 func (s *ActionsSuite) TestReadGoodActionsYaml(c *gc.C) {
-
 	var goodActionsYamlTests = []struct {
 		description     string
 		yaml            string
@@ -284,78 +300,71 @@ func (s *ActionsSuite) TestReadGoodActionsYaml(c *gc.C) {
 	}{{
 		description: "A simple snapshot actions YAML with one parameter.",
 		yaml: `
-actions:
-   snapshot:
-      description: Take a snapshot of the database.
-      params:
-         title: "Snapshot"
-         type: "object"
-         properties:
-            outfile:
-               description: "The file to write out to."
-               type: string
-         required: ["outfile"]
+snapshot:
+   description: Take a snapshot of the database.
+   params:
+      outfile:
+         description: "The file to write out to."
+         type: string
+   required: ["outfile"]
 `,
 		expectedActions: &Actions{map[string]ActionSpec{
 			"snapshot": ActionSpec{
 				Description: "Take a snapshot of the database.",
 				Params: map[string]interface{}{
-					"title": "Snapshot",
-					"type":  "object",
+					"title":       "snapshot",
+					"description": "Take a snapshot of the database.",
+					"type":        "object",
 					"properties": map[string]interface{}{
 						"outfile": map[string]interface{}{
 							"description": "The file to write out to.",
 							"type":        "string"}},
 					"required": []interface{}{"outfile"}}}}},
 	}, {
-		description:     "An empty Actions definition.",
-		yaml:            "",
-		expectedActions: &Actions{},
+		description: "An empty Actions definition.",
+		yaml:        "",
+		expectedActions: &Actions{
+			ActionSpecs: map[string]ActionSpec{},
+		},
 	}, {
 		description: "A more complex schema with hyphenated names and multiple parameters.",
 		yaml: `
-actions:
-   snapshot:
-      description: "Take a snapshot of the database."
-      params:
-         title: "Snapshot"
-         type: "object"
-         properties:
-            outfile:
-               description: "The file to write out to."
-               type: "string"
-            compression-quality:
-               description: "The compression quality."
-               type: "integer"
-               minimum: 0
-               maximum: 9
-               exclusiveMaximum: false
-   remote-sync:
-      description: "Sync a file to a remote host."
-      params:
-         title: "Remote sync"
-         type: "object"
-         properties:
-            file:
-               description: "The file to send out."
-               type: "string"
-               format: "uri"
-            remote-uri:
-               description: "The host to sync to."
-               type: "string"
-               format: "uri"
-            util:
-               description: "The util to perform the sync (rsync or scp.)"
-               type: "string"
-               enum: ["rsync", "scp"]
-         required: ["file", "remote-uri"]
+snapshot:
+   description: "Take a snapshot of the database."
+   params:
+      outfile:
+         description: "The file to write out to."
+         type: "string"
+      compression-quality:
+         description: "The compression quality."
+         type: "integer"
+         minimum: 0
+         maximum: 9
+         exclusiveMaximum: false
+remote-sync:
+   description: "Sync a file to a remote host."
+   params:
+      file:
+         description: "The file to send out."
+         type: "string"
+         format: "uri"
+      remote-uri:
+         description: "The host to sync to."
+         type: "string"
+         format: "uri"
+      util:
+         description: "The util to perform the sync (rsync or scp.)"
+         type: "string"
+         enum: ["rsync", "scp"]
+   required: ["file", "remote-uri"]
 `,
 		expectedActions: &Actions{map[string]ActionSpec{
 			"snapshot": ActionSpec{
 				Description: "Take a snapshot of the database.",
 				Params: map[string]interface{}{
-					"title": "Snapshot",
-					"type":  "object",
+					"title":       "snapshot",
+					"description": "Take a snapshot of the database.",
+					"type":        "object",
 					"properties": map[string]interface{}{
 						"outfile": map[string]interface{}{
 							"description": "The file to write out to.",
@@ -369,8 +378,9 @@ actions:
 			"remote-sync": ActionSpec{
 				Description: "Sync a file to a remote host.",
 				Params: map[string]interface{}{
-					"title": "Remote sync",
-					"type":  "object",
+					"title":       "remote-sync",
+					"description": "Sync a file to a remote host.",
+					"type":        "object",
 					"properties": map[string]interface{}{
 						"file": map[string]interface{}{
 							"description": "The file to send out.",
@@ -386,30 +396,82 @@ actions:
 							"enum":        []interface{}{"rsync", "scp"}}},
 					"required": []interface{}{"file", "remote-uri"}}}}},
 	}, {
-		description: "A schema with an empty \"params\" key, implying no options.",
+		description: "A schema with other keys, e.g. \"definitions\"",
 		yaml: `
-actions:
-   snapshot:
-      description: Take a snapshot of the database.
-      params:
+snapshot:
+   description: "Take a snapshot of the database."
+   params:
+      outfile:
+         description: "The file to write out to."
+         type: "string"
+      compression-quality:
+         description: "The compression quality."
+         type: "integer"
+         minimum: 0
+         maximum: 9
+         exclusiveMaximum: false
+   definitions:
+      diskdevice: {}
+      something-else: {}
 `,
-
 		expectedActions: &Actions{map[string]ActionSpec{
 			"snapshot": ActionSpec{
 				Description: "Take a snapshot of the database.",
-				Params:      map[string]interface{}{}}}},
+				Params: map[string]interface{}{
+					"title":       "snapshot",
+					"description": "Take a snapshot of the database.",
+					"type":        "object",
+					"properties": map[string]interface{}{
+						"outfile": map[string]interface{}{
+							"description": "The file to write out to.",
+							"type":        "string",
+						},
+						"compression-quality": map[string]interface{}{
+							"description":      "The compression quality.",
+							"type":             "integer",
+							"minimum":          0,
+							"maximum":          9,
+							"exclusiveMaximum": false,
+						},
+					},
+					"definitions": map[string]interface{}{
+						"diskdevice":     map[string]interface{}{},
+						"something-else": map[string]interface{}{},
+					},
+				},
+			},
+		}},
 	}, {
 		description: "A schema with no \"params\" key, implying no options.",
 		yaml: `
-actions:
-   snapshot:
-      description: Take a snapshot of the database.
+snapshot:
+   description: Take a snapshot of the database.
 `,
 
 		expectedActions: &Actions{map[string]ActionSpec{
 			"snapshot": ActionSpec{
 				Description: "Take a snapshot of the database.",
-				Params:      map[string]interface{}{}}}},
+				Params: map[string]interface{}{
+					"description": "Take a snapshot of the database.",
+					"title":       "snapshot",
+					"type":        "object",
+					"properties":  map[string]interface{}{},
+				}}}},
+	}, {
+		description: "A schema with no values at all, implying no options.",
+		yaml: `
+snapshot:
+`,
+
+		expectedActions: &Actions{map[string]ActionSpec{
+			"snapshot": ActionSpec{
+				Description: "No description",
+				Params: map[string]interface{}{
+					"description": "No description",
+					"title":       "snapshot",
+					"type":        "object",
+					"properties":  map[string]interface{}{},
+				}}}},
 	}}
 
 	// Beginning of testing loop
@@ -418,7 +480,7 @@ actions:
 		reader := bytes.NewReader([]byte(test.yaml))
 		loadedAction, err := ReadActionsYaml(reader)
 		c.Assert(err, gc.IsNil)
-		c.Assert(loadedAction, gc.DeepEquals, test.expectedActions)
+		c.Check(loadedAction, jc.DeepEquals, test.expectedActions)
 	}
 }
 
@@ -431,82 +493,142 @@ func (s *ActionsSuite) TestReadBadActionsYaml(c *gc.C) {
 	}{{
 		description: "Reject JSON-Schema containing references.",
 		yaml: `
-actions:
-   snapshot:
-      description: Take a snapshot of the database.
-      params:
-         $schema: "http://json-schema.org/draft-03/schema#"
+snapshot:
+   description: Take a snapshot of the database.
+   params:
+      $schema: "http://json-schema.org/draft-03/schema#"
 `,
 		expectedError: "schema key \"$schema\" not compatible with this version of juju",
 	}, {
 		description: "Reject JSON-Schema containing references.",
 		yaml: `
-actions:
-   snapshot:
-      description: Take a snapshot of the database.
-      params:
-         title: "snapshot"
-         type: "object"
-         properties: 
-            outfile: { $ref: "http://json-schema.org/draft-03/schema#" }
+snapshot:
+   description: Take a snapshot of the database.
+   params:
+      outfile: { $ref: "http://json-schema.org/draft-03/schema#" }
 `,
 		expectedError: "schema key \"$ref\" not compatible with this version of juju",
 	}, {
 		description: "Malformed YAML: missing key in \"outfile\".",
 		yaml: `
-actions:
-   snapshot:
-      description: Take a snapshot of the database.
-      params:
-         outfile:
-            The file to write out to.
-            type: string
-            default: foo.bz2
+snapshot:
+   description: Take a snapshot of the database.
+   params:
+      outfile:
+         The file to write out to.
+         type: string
+         default: foo.bz2
 `,
 
-		expectedError: "YAML error: line 7: mapping values are not allowed in this context",
+		expectedError: "YAML error: line 6: mapping values are not allowed in this context",
 	}, {
 		description: "Malformed JSON-Schema: $schema element misplaced.",
 		yaml: `
-actions:
-   snapshot:
-   description: Take a snapshot of the database.
-      params:
-         outfile:
-            $schema: http://json-schema.org/draft-03/schema#
-            description: The file to write out to.
-            type: string
-            default: foo.bz2
+snapshot:
+description: Take a snapshot of the database.
+   params:
+      outfile:
+         $schema: http://json-schema.org/draft-03/schema#
+         description: The file to write out to.
+         type: string
+         default: foo.bz2
 `,
 
-		expectedError: "YAML error: line 4: mapping values are not allowed in this context",
+		expectedError: "YAML error: line 3: mapping values are not allowed in this context",
 	}, {
 		description: "Malformed Actions: hyphen at beginning of action name.",
 		yaml: `
-actions:
-   -snapshot:
-      description: Take a snapshot of the database.
+-snapshot:
+   description: Take a snapshot of the database.
 `,
 
 		expectedError: "bad action name -snapshot",
 	}, {
 		description: "Malformed Actions: hyphen after action name.",
 		yaml: `
-actions:
-   snapshot-:
-      description: Take a snapshot of the database.
+snapshot-:
+   description: Take a snapshot of the database.
 `,
 
 		expectedError: "bad action name snapshot-",
 	}, {
 		description: "Malformed Actions: caps in action name.",
 		yaml: `
-actions:
-   Snapshot:
-      description: Take a snapshot of the database.
+Snapshot:
+   description: Take a snapshot of the database.
 `,
 
 		expectedError: "bad action name Snapshot",
+	}, {
+		description: "A non-string description fails to parse",
+		yaml: `
+snapshot:
+   description: ["Take a snapshot of the database."]
+`,
+		expectedError: "value for schema key \"description\" must be a string",
+	}, {
+		description: "A non-list \"required\" key",
+		yaml: `
+snapshot:
+   description: Take a snapshot of the database.
+   params:
+      outfile:
+         description: "The file to write out to."
+         type: string
+   required: "outfile"
+`,
+		expectedError: "value for schema key \"required\" must be a YAML list",
+	}, {
+		description: "A schema with an empty \"params\" key fails to parse",
+		yaml: `
+snapshot:
+   description: Take a snapshot of the database.
+   params:
+`,
+		expectedError: "params failed to parse as a map",
+	}, {
+		description: "A schema with a non-map \"params\" value fails to parse",
+		yaml: `
+snapshot:
+   description: Take a snapshot of the database.
+   params: ["a", "b"]
+`,
+		expectedError: "params failed to parse as a map",
+	}, {
+		description: "\"definitions\" goes against JSON-Schema definition",
+		yaml: `
+snapshot:
+   description: "Take a snapshot of the database."
+   params:
+      outfile:
+         description: "The file to write out to."
+         type: "string"
+   definitions:
+      diskdevice: ["a"]
+      something-else: {"a": "b"}
+`,
+		expectedError: "invalid params schema for action schema snapshot: definitions must be of type array of schemas",
+	}, {
+		description: "excess keys not in the JSON-Schema spec will be rejected",
+		yaml: `
+snapshot:
+   description: "Take a snapshot of the database."
+   params:
+      outfile:
+         description: "The file to write out to."
+         type: "string"
+      compression-quality:
+         description: "The compression quality."
+         type: "integer"
+         minimum: 0
+         maximum: 9
+         exclusiveMaximum: false
+   definitions:
+      diskdevice: {}
+      something-else: {}
+   other-key: ["some", "values"],
+`,
+		expectedError: "YAML error: line 16: did not find expected key",
 	}}
 
 	for i, test := range badActionsYamlTests {
@@ -514,6 +636,77 @@ actions:
 		reader := bytes.NewReader([]byte(test.yaml))
 		_, err := ReadActionsYaml(reader)
 		c.Assert(err, gc.NotNil)
-		c.Assert(err.Error(), gc.Equals, test.expectedError)
+		c.Check(err.Error(), gc.Equals, test.expectedError)
+	}
+}
+
+func (s *ActionsSuite) TestRecurseMapOnKeys(c *gc.C) {
+	tests := []struct {
+		should     string
+		givenKeys  []string
+		givenMap   map[string]interface{}
+		expected   interface{}
+		shouldFail bool
+	}{{
+		should:    "fail if the specified key was not in the map",
+		givenKeys: []string{"key", "key2"},
+		givenMap: map[string]interface{}{
+			"key": map[string]interface{}{
+				"key": "value",
+			},
+		},
+		shouldFail: true,
+	}, {
+		should:    "fail if a key was not a string",
+		givenKeys: []string{"key", "key2"},
+		givenMap: map[string]interface{}{
+			"key": map[interface{}]interface{}{
+				5: "value",
+			},
+		},
+		shouldFail: true,
+	}, {
+		should:    "fail if we have more keys but not a recursable val",
+		givenKeys: []string{"key", "key2"},
+		givenMap: map[string]interface{}{
+			"key": []string{"a", "b", "c"},
+		},
+		shouldFail: true,
+	}, {
+		should:    "retrieve a good value",
+		givenKeys: []string{"key", "key2"},
+		givenMap: map[string]interface{}{
+			"key": map[string]interface{}{
+				"key2": "value",
+			},
+		},
+		expected: "value",
+	}, {
+		should:    "retrieve a map",
+		givenKeys: []string{"key"},
+		givenMap: map[string]interface{}{
+			"key": map[string]interface{}{
+				"key": "value",
+			},
+		},
+		expected: map[string]interface{}{
+			"key": "value",
+		},
+	}, {
+		should:    "retrieve a slice",
+		givenKeys: []string{"key"},
+		givenMap: map[string]interface{}{
+			"key": []string{"a", "b", "c"},
+		},
+		expected: []string{"a", "b", "c"},
+	}}
+
+	for i, t := range tests {
+		c.Logf("test %d: should %s\n  map: %#v\n  keys: %#v", i, t.should, t.givenMap, t.givenKeys)
+		obtained, failed := recurseMapOnKeys(t.givenKeys, t.givenMap)
+		c.Assert(!failed, gc.Equals, t.shouldFail)
+		if !t.shouldFail {
+			c.Check(obtained, jc.DeepEquals, t.expected)
+		}
 	}
 }

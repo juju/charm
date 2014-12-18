@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	stdtesting "testing"
 
+	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v1"
 
@@ -88,17 +89,21 @@ func checkDummy(c *gc.C, f charm.Charm, path string) {
 	c.Assert(f.Revision(), gc.Equals, 1)
 	c.Assert(f.Meta().Name, gc.Equals, "dummy")
 	c.Assert(f.Config().Options["title"].Default, gc.Equals, "My Title")
-	c.Assert(f.Actions(), gc.DeepEquals,
+	c.Assert(f.Actions(), jc.DeepEquals,
 		&charm.Actions{
 			map[string]charm.ActionSpec{
 				"snapshot": charm.ActionSpec{
 					Description: "Take a snapshot of the database.",
 					Params: map[string]interface{}{
-						"outfile": map[string]interface{}{
-							"description": "The file to write out to.",
-							"type":        "string",
-							"default":     "foo.bz2",
-						}}}}})
+						"type":        "object",
+						"description": "Take a snapshot of the database.",
+						"title":       "snapshot",
+						"properties": map[string]interface{}{
+							"outfile": map[string]interface{}{
+								"description": "The file to write out to.",
+								"type":        "string",
+								"default":     "foo.bz2",
+							}}}}}})
 	switch f := f.(type) {
 	case *charm.CharmArchive:
 		c.Assert(f.Path, gc.Equals, path)
