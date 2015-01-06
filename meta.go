@@ -49,10 +49,15 @@ const (
 
 // Storage represents a charm's storage requirement.
 type Storage struct {
-	// Name is the name of the storage requirement.
+	// Name is the name of the store.
 	//
 	// Name has no default, and must be specified.
 	Name string `bson:"name"`
+
+	// Description is a description of the store.
+	//
+	// Description has no default, and is optional.
+	Description string `bson:"description"`
 
 	// Type is the storage type: filesystem or block-device.
 	//
@@ -73,47 +78,26 @@ type Storage struct {
 	// ReadOnly defaults to false.
 	ReadOnly bool `bson:"read-only"`
 
-	// Persistent indicates that the storage should be made persistent
-	// if possible. If the storage cannot be made persistent, Juju will
-	// warn the user.
-	//
-	// Persistent defaults to false.
-	Persistent bool `bson:"persistent"`
-
 	// CountMin is the number of storage instances that must be attached
 	// to the charm for it to be useful; the charm will not install until
 	// this number has been satisfied. This must be a non-negative number.
 	//
-	// CountMin defaults to either 0 or 1, depending on whether the storage
-	// is marked "required".
+	// CountMin defaults to 1 for singleton stores.
 	CountMin int `bson:"countmin"`
 
 	// CountMax is the largest number of storage instances that can be
 	// attached to the charm. If CountMax is -1, then there is no upper
 	// bound.
 	//
-	// CountMax defaults to -1.
+	// CountMax defaults to 1 for singleton stores.
 	CountMax int `bson:"countmax"`
 
-	// Location is the mount location for filesystem stores. If count does
-	// not have a maximum of 1, then location acts as the parent directory
-	// for each mounted store.
+	// Location is the mount location for filesystem stores. For multi-
+	// stores, the location acts as the parent directory for each mounted
+	// store.
 	//
 	// Location has no default, and is optional.
 	Location string `bson:"location,omitempty"`
-
-	// Filesystem is the list of filesystems that Juju will attempt to
-	// create, in order of most to least preferred.
-	//
-	// Filesystem has no default, and is option.
-	Filesystem []Filesystem `bson:"filesystem,omitempty"`
-}
-
-// Filesystem describes a filesystem preference which Juju may use when
-// formatting a block device.
-type Filesystem struct {
-	// Type is the filesystem type.
-	Type string `bson:"type,omitempty"`
 }
 
 // Relation represents a single relation defined in the charm
@@ -408,9 +392,6 @@ func (meta Meta) Check() error {
 		if store.Location != "" && store.Type != StorageFilesystem {
 			return fmt.Errorf(`charm %q storage %q: location may not be specified for "type: %s"`, meta.Name, name, store.Type)
 		}
-		if store.Filesystem != nil && store.Type != StorageFilesystem {
-			return fmt.Errorf(`charm %q storage %q: filesystem may not be specified for "type: %s"`, meta.Name, name, store.Type)
-		}
 		if store.Type == "" {
 			return fmt.Errorf("charm %q storage %q: type must be specified", meta.Name, name)
 		}
@@ -536,88 +517,55 @@ func parseStorage(stores interface{}) map[string]Storage {
 	for name, store := range stores.(map[string]interface{}) {
 		storeMap := store.(map[string]interface{})
 		store := Storage{
-			Name:       name,
-			Type:       StorageType(storeMap["type"].(string)),
-			Shared:     storeMap["shared"].(bool),
-			ReadOnly:   storeMap["read-only"].(bool),
-			Persistent: storeMap["persistent"].(bool),
+			Name:     name,
+			Type:     StorageType(storeMap["type"].(string)),
+			Shared:   storeMap["shared"].(bool),
+			ReadOnly: storeMap["read-only"].(bool),
+			CountMin: 1,
+			CountMax: 1,
 		}
-		required := storeMap["required"].(bool)
-		if count, ok := storeMap["count"].([2]int); ok {
-			store.CountMin = count[0]
-			store.CountMax = count[1]
-		} else {
-			store.CountMin = -1
-			store.CountMax = -1
+		if desc, ok := storeMap["description"].(string); ok {
+			store.Description = desc
 		}
-		if store.CountMin == -1 {
-			if required {
-				store.CountMin = store.CountMax
-			} else {
-				store.CountMin = 0
+		if multiple, ok := storeMap["multiple"].(map[string]interface{}); ok {
+			if r, ok := multiple["range"].([2]int); ok {
+				store.CountMin, store.CountMax = r[0], r[1]
 			}
 		}
 		if loc, ok := storeMap["location"].(string); ok {
 			store.Location = loc
 		}
-		store.Filesystem = parseFilesystem(storeMap["filesystem"])
 		result[name] = store
-	}
-	return result
-}
-
-func parseFilesystem(filesystems interface{}) []Filesystem {
-	if filesystems == nil {
-		return nil
-	}
-	slice := filesystems.([]interface{})
-	result := make([]Filesystem, 0, len(slice))
-	for _, elem := range slice {
-		switch elem := elem.(type) {
-		case string:
-			result = append(result, Filesystem{Type: elem})
-		case map[string]interface{}:
-			fs := Filesystem{
-				Type: elem["type"].(string),
-			}
-			result = append(result, fs)
-		}
 	}
 	return result
 }
 
 var storageSchema = schema.FieldMap(
 	schema.Fields{
-		"required":   schema.Bool(),
-		"shared":     schema.Bool(),
-		"read-only":  schema.Bool(),
-		"persistent": schema.Bool(),
-		"count":      storageCountC{}, // m, m-n, m-
-		"location":   schema.String(),
-		"type":       schema.OneOf(schema.Const(string(StorageBlock)), schema.Const(string(StorageFilesystem))),
-		"filesystem": schema.List(schema.OneOf(schema.String(), filesystemSchema)),
+		"type":      schema.OneOf(schema.Const(string(StorageBlock)), schema.Const(string(StorageFilesystem))),
+		"shared":    schema.Bool(),
+		"read-only": schema.Bool(),
+		"multiple": schema.FieldMap(
+			schema.Fields{
+				"range": storageCountC{}, // m, m-n, m+, m-
+			},
+			schema.Defaults{},
+		),
+		"location":    schema.String(),
+		"description": schema.String(),
 	},
 	schema.Defaults{
-		"required":   false,
-		"shared":     false,
-		"read-only":  false,
-		"persistent": false,
-		"count":      schema.Omit,
-		"location":   schema.Omit,
-		"filesystem": schema.Omit,
+		"shared":      false,
+		"read-only":   false,
+		"multiple":    schema.Omit,
+		"location":    schema.Omit,
+		"description": schema.Omit,
 	},
-)
-
-var filesystemSchema = schema.FieldMap(
-	schema.Fields{
-		"type": schema.String(),
-	},
-	schema.Defaults{},
 )
 
 type storageCountC struct{}
 
-var storageCountRE = regexp.MustCompile("^([0-9]+)-([0-9]*)$")
+var storageCountRE = regexp.MustCompile("^([0-9]+)([-+]|-[0-9]+)$")
 
 func (c storageCountC) Coerce(v interface{}, path []string) (newv interface{}, err error) {
 	s, err := schema.OneOf(schema.Int(), stringC).Coerce(v, path)
@@ -625,28 +573,28 @@ func (c storageCountC) Coerce(v interface{}, path []string) (newv interface{}, e
 		return nil, err
 	}
 	if m, ok := s.(int64); ok {
-		// We've got a count of the form "m": m represents the
-		// maximum. The minimum is either 0 or m, depending on the
-		// value of "required". Use -1 as a placeholder.
+		// We've got a count of the form "m": m represents
+		// both the minimum and maximum.
 		if m <= 0 {
 			return nil, fmt.Errorf("%s: invalid count %v", strings.Join(path[1:], ""), m)
 		}
-		return [2]int{-1, int(m)}, nil
+		return [2]int{int(m), int(m)}, nil
 	}
 	match := storageCountRE.FindStringSubmatch(s.(string))
 	if match == nil {
-		return nil, fmt.Errorf("%s: value %q does not match 'm', 'm-n', or 'm-'", strings.Join(path[1:], ""), s)
+		return nil, fmt.Errorf("%s: value %q does not match 'm', 'm-n', or 'm+'", strings.Join(path[1:], ""), s)
 	}
 	var m, n int
 	if m, err = strconv.Atoi(match[1]); err != nil {
 		return nil, err
 	}
-	if len(match[2]) == 0 {
-		// We've got a count of the form "m-": m represents the
-		// minimum, and there is no upper bound.
+	if len(match[2]) == 1 {
+		// We've got a count of the form "m+" or "m-":
+		// m represents the minimum, and there is no
+		// upper bound.
 		n = -1
 	} else {
-		if n, err = strconv.Atoi(match[2]); err != nil {
+		if n, err = strconv.Atoi(match[2][1:]); err != nil {
 			return nil, err
 		}
 	}
