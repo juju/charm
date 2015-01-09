@@ -605,6 +605,128 @@ peers:
 	})
 }
 
+func (s *MetaSuite) TestStorage(c *gc.C) {
+	// "type" is the only required attribute for storage.
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+storage:
+    store0:
+        description: woo tee bix
+        type: block
+    store1:
+        type: filesystem
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.Storage, gc.DeepEquals, map[string]charm.Storage{
+		"store0": charm.Storage{
+			Name:        "store0",
+			Description: "woo tee bix",
+			Type:        charm.StorageBlock,
+			CountMin:    1, // singleton
+			CountMax:    1,
+		},
+		"store1": charm.Storage{
+			Name:     "store1",
+			Type:     charm.StorageFilesystem,
+			CountMin: 1, // singleton
+			CountMax: 1,
+		},
+	})
+}
+
+func (s *MetaSuite) TestStorageErrors(c *gc.C) {
+	prefix := `
+name: a
+summary: b
+description: c
+storage:
+ store-bad:
+`[1:]
+
+	type test struct {
+		desc string
+		yaml string
+		err  string
+	}
+
+	tests := []test{{
+		desc: "type is required",
+		yaml: "  required: false",
+		err:  "metadata: storage.store-bad.type: unexpected value <nil>",
+	}, {
+		desc: "range must be an integer, or integer range (1)",
+		yaml: "  type: filesystem\n  multiple:\n   range: woat",
+		err:  `metadata: storage.store-bad.multiple.range: value "woat" does not match 'm', 'm-n', or 'm\+'`,
+	}, {
+		desc: "range must be an integer, or integer range (2)",
+		yaml: "  type: filesystem\n  multiple:\n   range: 0-abc",
+		err:  `metadata: storage.store-bad.multiple.range: value "0-abc" does not match 'm', 'm-n', or 'm\+'`,
+	}, {
+		desc: "range must be non-negative",
+		yaml: "  type: filesystem\n  multiple:\n    range: -1",
+		err:  `metadata: storage.store-bad.multiple.range: invalid count -1`,
+	}, {
+		desc: "range must be positive",
+		yaml: "  type: filesystem\n  multiple:\n    range: 0",
+		err:  `metadata: storage.store-bad.multiple.range: invalid count 0`,
+	}, {
+		desc: "location cannot be specified for block type storage",
+		yaml: "  type: block\n  location: /dev/sdc",
+		err:  `charm "a" storage "store-bad": location may not be specified for "type: block"`,
+	}}
+
+	for i, test := range tests {
+		c.Logf("test %d: %s", i, test.desc)
+		c.Logf("\n%s\n", prefix+test.yaml)
+		_, err := charm.ReadMeta(strings.NewReader(prefix + test.yaml))
+		c.Assert(err, gc.ErrorMatches, test.err)
+	}
+}
+
+func (s *MetaSuite) TestStorageCount(c *gc.C) {
+	testStorageCount := func(count string, min, max int) {
+		meta, err := charm.ReadMeta(strings.NewReader(fmt.Sprintf(`
+name: a
+summary: b
+description: c
+storage:
+    store0:
+        type: filesystem
+        multiple:
+            range: %s
+`, count)))
+		c.Assert(err, gc.IsNil)
+		store := meta.Storage["store0"]
+		c.Assert(store, gc.NotNil)
+		c.Assert(store.CountMin, gc.Equals, min)
+		c.Assert(store.CountMax, gc.Equals, max)
+	}
+	testStorageCount("1", 1, 1)
+	testStorageCount("0-1", 0, 1)
+	testStorageCount("1-1", 1, 1)
+	testStorageCount("1+", 1, -1)
+	// n- is equivalent to n+
+	testStorageCount("1-", 1, -1)
+}
+
+func (s *MetaSuite) TestStorageLocation(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+storage:
+    store0:
+        type: filesystem
+        location: /var/lib/things
+`))
+	c.Assert(err, gc.IsNil)
+	store := meta.Storage["store0"]
+	c.Assert(store, gc.NotNil)
+	c.Assert(store.Location, gc.Equals, "/var/lib/things")
+}
+
 type dummyCharm struct{}
 
 func (c *dummyCharm) Config() *charm.Config {

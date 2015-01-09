@@ -33,6 +33,12 @@ const (
 	// will be prefixed by the relation name, just like the other Relation* Kind
 	// values.
 	RelationBroken Kind = "relation-broken"
+
+	// These hooks require an associated storage. The hook file names that these
+	// kinds represent will be prefixed by the storage name; for example,
+	// "shared-fs-storage-attached".
+	StorageAttached Kind = "storage-attached"
+	StorageDetached Kind = "storage-detached"
 )
 
 var unitHooks = []Kind{
@@ -66,10 +72,31 @@ func RelationHooks() []Kind {
 	return hooks
 }
 
+var storageHooks = []Kind{
+	StorageAttached,
+	StorageDetached,
+}
+
+// StorageHooks returns all known storage hook kinds.
+func StorageHooks() []Kind {
+	hooks := make([]Kind, len(storageHooks))
+	copy(hooks, storageHooks)
+	return hooks
+}
+
 // IsRelation returns whether the Kind represents a relation hook.
 func (kind Kind) IsRelation() bool {
 	switch kind {
 	case RelationJoined, RelationChanged, RelationDeparted, RelationBroken:
+		return true
+	}
+	return false
+}
+
+// IsStorage returns whether the Kind represents a storage hook.
+func (kind Kind) IsStorage() bool {
+	switch kind {
+	case StorageAttached, StorageDetached:
 		return true
 	}
 	return false
