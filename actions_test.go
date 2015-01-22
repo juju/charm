@@ -723,3 +723,121 @@ func (s *ActionsSuite) TestRecurseMapOnKeys(c *gc.C) {
 		}
 	}
 }
+
+func (s *ActionsSuite) TestInsertDefaultValues(c *gc.C) {
+	schemas := map[string]string{
+		"simple": `
+act:
+  params:
+    val:
+      type: string
+      default: somestr
+`[1:],
+		"complicated": `
+act:
+  params:
+    val:
+      type: object
+      properties:
+        foo:
+          type: string
+        bar:
+          type: object
+          properties:
+            baz:
+              type: string
+              default: boz
+`[1:],
+		"default-object": `
+act:
+  params:
+    val:
+      type: object
+      default:
+        foo: bar
+        bar:
+          baz: woz
+`[1:],
+		"none": `
+act:
+  params:
+    val:
+      type: string
+`[1:]}
+
+	for i, t := range []struct {
+		should         string
+		schema         string
+		withParams     map[string]interface{}
+		expectedResult map[string]interface{}
+		expectedError  string
+	}{{
+		should:        "error with no schema",
+		expectedError: "schema must be of type object",
+	}, {
+		should:         "create a simple default value",
+		schema:         schemas["simple"],
+		withParams:     map[string]interface{}{},
+		expectedResult: map[string]interface{}{"val": "somestr"},
+	}, {
+		should:     "insert a default value within a nested map",
+		schema:     schemas["complicated"],
+		withParams: map[string]interface{}{},
+		expectedResult: map[string]interface{}{
+			"val": map[string]interface{}{
+				"bar": map[string]interface{}{
+					"baz": "boz",
+				}}},
+	}, {
+		should:     "create a default value which is an object",
+		schema:     schemas["default-object"],
+		withParams: map[string]interface{}{},
+		expectedResult: map[string]interface{}{
+			"val": map[string]interface{}{
+				"foo": "bar",
+				"bar": map[string]interface{}{
+					"baz": "woz",
+				}}},
+	}, {
+		should:         "not overwrite existing values with default objects",
+		schema:         schemas["default-object"],
+		withParams:     map[string]interface{}{"val": 5},
+		expectedResult: map[string]interface{}{"val": 5},
+	}, {
+		should: "interleave defaults into existing objects",
+		schema: schemas["complicated"],
+		withParams: map[string]interface{}{
+			"val": map[string]interface{}{
+				"foo": "bar",
+				"bar": map[string]interface{}{
+					"faz": "foz",
+				}}},
+		expectedResult: map[string]interface{}{
+			"val": map[string]interface{}{
+				"foo": "bar",
+				"bar": map[string]interface{}{
+					"baz": "boz",
+					"faz": "foz",
+				}}},
+	}} {
+		c.Logf("test %d: should %s", i, t.should)
+		schema := getSchemaForAction(c, t.schema)
+		// Testing this method
+		err := schema.InsertDefaults(t.withParams)
+		if t.expectedError != "" {
+			c.Check(err, gc.ErrorMatches, t.expectedError)
+			continue
+		}
+		c.Check(err, jc.ErrorIsNil)
+		c.Check(t.withParams, jc.DeepEquals, t.expectedResult)
+	}
+}
+
+func getSchemaForAction(c *gc.C, wholeSchema string) ActionSpec {
+	// Load up the YAML schema definition.
+	reader := bytes.NewReader([]byte(wholeSchema))
+	loadedActions, err := ReadActionsYaml(reader)
+	c.Assert(err, gc.IsNil)
+	// Same action name for all tests, "act".
+	return loadedActions.ActionSpecs["act"]
+}
