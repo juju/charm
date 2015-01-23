@@ -21,11 +21,24 @@ func (s *ActionsSuite) TestNewActions(c *gc.C) {
 }
 
 func (s *ActionsSuite) TestValidateOk(c *gc.C) {
-	var validActionTests = []struct {
-		description    string
-		actionSpec     *ActionSpec
-		goodActionJson string
+	for i, test := range []struct {
+		description      string
+		actionSpec       *ActionSpec
+		objectToValidate map[string]interface{}
 	}{{
+		description: "Validation of an empty object is ok.",
+		actionSpec: &ActionSpec{
+			Description: "Take a snapshot of the database.",
+			Params: map[string]interface{}{
+				"title":       "snapshot",
+				"description": "Take a snapshot of the database.",
+				"type":        "object",
+				"properties": map[string]interface{}{
+					"outfile": map[string]interface{}{
+						"description": "The file to write out to.",
+						"type":        "string"}}}},
+		objectToValidate: nil,
+	}, {
 		description: "Validation of one required value.",
 		actionSpec: &ActionSpec{
 			Description: "Take a snapshot of the database.",
@@ -38,7 +51,9 @@ func (s *ActionsSuite) TestValidateOk(c *gc.C) {
 						"description": "The file to write out to.",
 						"type":        "string"}},
 				"required": []interface{}{"outfile"}}},
-		goodActionJson: `{"outfile": "out-2014-06-12.bz2"}`,
+		objectToValidate: map[string]interface{}{
+			"outfile": "out-2014-06-12.bz2",
+		},
 	}, {
 		description: "Validation of one required and one optional value.",
 		actionSpec: &ActionSpec{
@@ -57,7 +72,9 @@ func (s *ActionsSuite) TestValidateOk(c *gc.C) {
 						"minimum":     0,
 						"maximum":     9}},
 				"required": []interface{}{"outfile"}}},
-		goodActionJson: `{"outfile": "out-2014-06-12.bz2"}`,
+		objectToValidate: map[string]interface{}{
+			"outfile": "out-2014-06-12.bz2",
+		},
 	}, {
 		description: "Validation of an optional, range limited value.",
 		actionSpec: &ActionSpec{
@@ -76,18 +93,14 @@ func (s *ActionsSuite) TestValidateOk(c *gc.C) {
 						"minimum":     0,
 						"maximum":     9}},
 				"required": []interface{}{"outfile"}}},
-		goodActionJson: `
-{ "outfile": "out-2014-06-12.bz2", "quality": 5 }`,
-	}}
-
-	for i, test := range validActionTests {
+		objectToValidate: map[string]interface{}{
+			"outfile": "out-2014-06-12.bz2",
+			"quality": 5,
+		},
+	}} {
 		c.Logf("test %d: %s", i, test.description)
-		var params interface{}
-		jsonBytes := []byte(test.goodActionJson)
-		err := json.Unmarshal(jsonBytes, &params)
-		c.Assert(err, gc.IsNil)
-		_, err = test.actionSpec.ValidateParams(params)
-		c.Assert(err, gc.IsNil)
+		err := test.actionSpec.ValidateParams(test.objectToValidate)
+		c.Assert(err, jc.ErrorIsNil)
 	}
 }
 
@@ -111,7 +124,7 @@ func (s *ActionsSuite) TestValidateFail(c *gc.C) {
 						"type":        "string"}},
 				"required": []interface{}{"outfile"}}},
 		badActionJson: `{"outfile": 5}`,
-		expectedError: "JSON validation failed: (root).outfile : must be of type string, given 5",
+		expectedError: "validation failed: (root).outfile : must be of type string, given 5",
 	}, {
 		description: "Restrict to only one property",
 		actionSpec: &ActionSpec{
@@ -127,7 +140,7 @@ func (s *ActionsSuite) TestValidateFail(c *gc.C) {
 				"required":             []interface{}{"outfile"},
 				"additionalProperties": false}},
 		badActionJson: `{"outfile": "foo.bz", "bar": "foo"}`,
-		expectedError: "JSON validation failed: (root) : additional property \"bar\" is not allowed, given {\"bar\":\"foo\",\"outfile\":\"foo.bz\"}",
+		expectedError: "validation failed: (root) : additional property \"bar\" is not allowed, given {\"bar\":\"foo\",\"outfile\":\"foo.bz\"}",
 	}, {
 		description: "Validation of one required and one optional value.",
 		actionSpec: &ActionSpec{
@@ -147,7 +160,7 @@ func (s *ActionsSuite) TestValidateFail(c *gc.C) {
 						"maximum":     9}},
 				"required": []interface{}{"outfile"}}},
 		badActionJson: `{"quality": 5}`,
-		expectedError: "JSON validation failed: (root) : \"outfile\" property is missing and required, given {\"quality\":5}",
+		expectedError: "validation failed: (root) : \"outfile\" property is missing and required, given {\"quality\":5}",
 	}, {
 		description: "Validation of an optional, range limited value.",
 		actionSpec: &ActionSpec{
@@ -168,16 +181,16 @@ func (s *ActionsSuite) TestValidateFail(c *gc.C) {
 				"required": []interface{}{"outfile"}}},
 		badActionJson: `
 { "outfile": "out-2014-06-12.bz2", "quality": "two" }`,
-		expectedError: "JSON validation failed: (root).quality : must be of type integer, given \"two\"",
+		expectedError: "validation failed: (root).quality : must be of type integer, given \"two\"",
 	}}
 
 	for i, test := range validActionTests {
 		c.Logf("test %d: %s", i, test.description)
-		var params interface{}
+		var params map[string]interface{}
 		jsonBytes := []byte(test.badActionJson)
 		err := json.Unmarshal(jsonBytes, &params)
 		c.Assert(err, gc.IsNil)
-		_, err = test.actionSpec.ValidateParams(params)
+		err = test.actionSpec.ValidateParams(params)
 		c.Assert(err.Error(), gc.Equals, test.expectedError)
 	}
 }
