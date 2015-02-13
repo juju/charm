@@ -17,7 +17,7 @@ const (
 	UpgradeCharm       Kind = "upgrade-charm"
 	Stop               Kind = "stop"
 	ActionRequested    Kind = "action-requested" // TODO: remove in charm v5, DEPRECATED
-	Action             Kind = "action"
+	Action             Kind = "action"           // TODO: remove in charm v5, DEPRECATED
 	CollectMetrics     Kind = "collect-metrics"
 	MeterStatusChanged Kind = "meter-status-changed"
 
