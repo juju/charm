@@ -15,7 +15,7 @@ import (
 	"github.com/juju/testing/filetesting"
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/juju/charm.v4"
+	"gopkg.in/juju/charm.v5-unstable"
 )
 
 // Charm holds a charm for testing. It does not
