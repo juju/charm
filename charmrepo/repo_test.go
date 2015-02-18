@@ -13,6 +13,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/juju/charm.v5-unstable"
+	"gopkg.in/juju/charm.v5-unstable/charmrepo"
 	charmtesting "gopkg.in/juju/charm.v5-unstable/testing"
 )
 
@@ -37,7 +38,7 @@ func (s *StoreSuite) SetUpSuite(c *gc.C) {
 func (s *StoreSuite) SetUpTest(c *gc.C) {
 	s.FakeHomeSuite.SetUpTest(c)
 	s.PatchValue(&charm.CacheDir, c.MkDir())
-	s.store = charm.NewStore(s.server.Address())
+	s.store = newStore(s.server.Address())
 	s.server.Downloads = nil
 	s.server.Authorizations = nil
 	s.server.Metadata = nil
@@ -225,7 +226,7 @@ func (s *StoreSuite) TestInfoTestModeFlag(c *gc.C) {
 }
 
 func (s *StoreSuite) TestInfoDNSError(c *gc.C) {
-	store := charm.NewStore("http://127.1.2.3")
+	store := newStore("http://127.1.2.3")
 	charmURL := charm.MustParseURL("cs:series/good")
 	resp, err := store.Info(charmURL)
 	c.Assert(resp, gc.IsNil)
@@ -520,4 +521,8 @@ func (s *LocalRepoSuite) TestFindsSymlinks(c *gc.C) {
 	ch, err := s.repo.Get(charm.MustParseURL("local:quantal/dummy"))
 	c.Assert(err, gc.IsNil)
 	checkDummy(c, ch, linkPath)
+}
+
+func newStore(url string) *charmrepo.CharmStore {
+	return &charmrepo.CharmStore{BaseURL: url}
 }
