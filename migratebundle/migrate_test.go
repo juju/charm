@@ -18,6 +18,7 @@ import (
 	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v5-unstable"
+	"gopkg.in/juju/charm.v5-unstable/charmrepo"
 )
 
 var _ = gc.Suite(&migrateSuite{})
@@ -43,7 +44,7 @@ const charmCacheFile = "allcharms.json.gz"
 
 func (*migrateSuite) SetUpSuite(c *gc.C) {
 	if *updateCharms {
-		charm.CacheDir = c.MkDir()
+		charmrepo.CacheDir = c.MkDir()
 		return
 	}
 	f, err := os.Open(charmCacheFile)
@@ -82,24 +83,24 @@ var migrateTests = []struct {
 }{{
 	about: "single bundle, no relations cs:~jorge/bundle/wordpress",
 	bundles: `
-		|wordpress-simple: 
+		|wordpress-simple:
 		|    series: precise
-		|    services: 
-		|        wordpress: 
+		|    services:
+		|        wordpress:
 		|            charm: "cs:precise/wordpress-20"
 		|            num_units: 1
-		|            options: 
+		|            options:
 		|                debug: "no"
 		|                engine: nginx
 		|                tuning: single
 		|                "wp-content": ""
-		|            annotations: 
+		|            annotations:
 		|                "gui-x": 529
 		|                "gui-y": -97
-		|        mysql: 
+		|        mysql:
 		|            charm: "cs:precise/mysql-28"
 		|            num_units: 2
-		|            options: 
+		|            options:
 		|                "binlog-format": MIXED
 		|                "block-size": 5
 		|                "dataset-size": "80%"
@@ -107,7 +108,7 @@ var migrateTests = []struct {
 		|                "query-cache-size": -1
 		|                "query-cache-type": "OFF"
 		|                vip_iface: eth0
-		|            annotations: 
+		|            annotations:
 		|                "gui-x": 530
 		|                "gui-y": 185
 		|`,
@@ -152,9 +153,9 @@ var migrateTests = []struct {
 }, {
 	about: "missing num_units interpreted as single unit",
 	bundles: `
-		|wordpress-simple: 
-		|    services: 
-		|        wordpress: 
+		|wordpress-simple:
+		|    services:
+		|        wordpress:
 		|            charm: "cs:precise/wordpress-20"
 		|`,
 	expect: map[string]*charm.BundleData{
@@ -170,9 +171,9 @@ var migrateTests = []struct {
 }, {
 	about: "missing charm taken from service name",
 	bundles: `
-		|wordpress-simple: 
-		|    services: 
-		|        wordpress: 
+		|wordpress-simple:
+		|    services:
+		|        wordpress:
 		|`,
 	expect: map[string]*charm.BundleData{
 		"wordpress-simple": {
@@ -187,8 +188,8 @@ var migrateTests = []struct {
 }, {
 	about: "services with placement directives",
 	bundles: `
-		|wordpress: 
-		|    services: 
+		|wordpress:
+		|    services:
 		|        wordpress1:
 		|            num_units: 1
 		|            to: 0
@@ -240,8 +241,8 @@ var migrateTests = []struct {
 }, {
 	about: "service with single indirect placement directive",
 	bundles: `
-		|wordpress: 
-		|    services: 
+		|wordpress:
+		|    services:
 		|        wordpress:
 		|            to: kvm:0
 		|`,
@@ -262,8 +263,8 @@ var migrateTests = []struct {
 }, {
 	about: "service with invalid placement directive",
 	bundles: `
-		|wordpress: 
-		|    services: 
+		|wordpress:
+		|    services:
 		|        wordpress:
 		|            to: kvm::0
 		|`,
@@ -273,7 +274,7 @@ var migrateTests = []struct {
 	bundles: `
 		|wordpress:
 		|    inherits: base
-		|    services: 
+		|    services:
 		|        wordpress:
 		|            charm: precise/wordpress
 		|            annotations:
@@ -829,7 +830,7 @@ func getCharm(id *charm.Reference) (charm.Charm, error) {
 		return m, nil
 	}
 	log.Printf("getting %s", url)
-	ch, err := charm.Store.Get(url)
+	ch, err := charmrepo.Store.Get(url)
 	if err != nil {
 		charmDataCache[url.String()] = nil
 		return nil, err

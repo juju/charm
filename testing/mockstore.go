@@ -18,6 +18,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/juju/charm.v5-unstable"
+	"gopkg.in/juju/charm.v5-unstable/charmrepo"
 )
 
 var logger = loggo.GetLogger("juju.charm.testing.mockstore")
@@ -94,9 +95,9 @@ func (s *MockStore) serveInfo(w http.ResponseWriter, r *http.Request) {
 		s.InfoRequestCount += 1
 	}
 
-	response := map[string]*charm.InfoResponse{}
+	response := map[string]*charmrepo.InfoResponse{}
 	for _, url := range r.Form["charms"] {
-		cr := &charm.InfoResponse{}
+		cr := &charmrepo.InfoResponse{}
 		response[url] = cr
 		charmURL, err := charm.ParseURL(url)
 		if err == charm.ErrUnresolvedUrl {
@@ -144,14 +145,14 @@ func (s *MockStore) serveInfo(w http.ResponseWriter, r *http.Request) {
 
 func (s *MockStore) serveEvent(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	response := map[string]*charm.EventResponse{}
+	response := map[string]*charmrepo.EventResponse{}
 	for _, url := range r.Form["charms"] {
 		digest := ""
 		if i := strings.Index(url, "@"); i >= 0 {
 			digest = url[i+1:]
 			url = url[:i]
 		}
-		er := &charm.EventResponse{}
+		er := &charmrepo.EventResponse{}
 		response[url] = er
 		if digest != "" && digest != "the-digest" {
 			er.Kind = "not-found"

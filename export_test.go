@@ -6,7 +6,3 @@ package charm
 // Export meaningful bits for tests only.
 
 var IfaceExpander = ifaceExpander
-
-func NewStore(url string) *CharmStore {
-	return &CharmStore{BaseURL: url}
-}

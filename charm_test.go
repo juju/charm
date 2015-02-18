@@ -54,37 +54,6 @@ func (s *CharmSuite) TestReadCharmArchiveError(c *gc.C) {
 	c.Assert(ch, gc.Equals, nil)
 }
 
-var inferRepoTests = []struct {
-	url  string
-	path string
-}{
-	{"cs:precise/wordpress", ""},
-	{"local:oneiric/wordpress", "/some/path"},
-}
-
-func (s *CharmSuite) TestInferRepository(c *gc.C) {
-	for i, t := range inferRepoTests {
-		c.Logf("test %d", i)
-		ref, err := charm.ParseReference(t.url)
-		c.Assert(err, gc.IsNil)
-		repo, err := charm.InferRepository(ref, "/some/path")
-		c.Assert(err, gc.IsNil)
-		switch repo := repo.(type) {
-		case *charm.LocalRepository:
-			c.Assert(repo.Path, gc.Equals, t.path)
-		default:
-			c.Assert(repo, gc.Equals, charm.Store)
-		}
-	}
-	ref, err := charm.ParseReference("local:whatever")
-	c.Assert(err, gc.IsNil)
-	_, err = charm.InferRepository(ref, "")
-	c.Assert(err, gc.ErrorMatches, "path to local repository not specified")
-	ref.Schema = "foo"
-	_, err = charm.InferRepository(ref, "")
-	c.Assert(err, gc.ErrorMatches, "unknown schema for charm reference.*")
-}
-
 func checkDummy(c *gc.C, f charm.Charm, path string) {
 	c.Assert(f.Revision(), gc.Equals, 1)
 	c.Assert(f.Meta().Name, gc.Equals, "dummy")
