@@ -13,6 +13,7 @@ import (
 	"github.com/juju/utils/fs"
 
 	"gopkg.in/juju/charm.v5-unstable"
+	"gopkg.in/juju/charm.v5-unstable/charmrepo"
 )
 
 func check(err error) {
@@ -280,8 +281,8 @@ func (s *MockCharmStore) Get(charmURL *charm.URL) (charm.Charm, error) {
 }
 
 // Latest implements charm.Repository.Latest.
-func (s *MockCharmStore) Latest(charmURLs ...*charm.URL) ([]charm.CharmRevision, error) {
-	result := make([]charm.CharmRevision, len(charmURLs))
+func (s *MockCharmStore) Latest(charmURLs ...*charm.URL) ([]charmrepo.CharmRevision, error) {
+	result := make([]charmrepo.CharmRevision, len(charmURLs))
 	for i, curl := range charmURLs {
 		charmURL := curl.WithRevision(-1)
 		base, rev := s.interpret(charmURL)
