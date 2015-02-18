@@ -16,10 +16,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/juju/loggo"
 	"github.com/juju/utils"
 
 	"gopkg.in/juju/charm.v5-unstable"
 )
+
+var logger = loggo.GetLogger("juju.charm.charmrepo")
 
 // CacheDir stores the charm cache directory path.
 var CacheDir string
