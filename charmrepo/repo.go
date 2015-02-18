@@ -5,6 +5,7 @@ package charmrepo
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -152,7 +153,7 @@ func (s *CharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
 	if infos[0].CanonicalURL == "" {
 		return nil, fmt.Errorf("cannot resolve charm URL: %q", ref)
 	}
-	curl, err := ParseURL(infos[0].CanonicalURL)
+	curl, err := charm.ParseURL(infos[0].CanonicalURL)
 	if err != nil {
 		return nil, err
 	}
@@ -325,13 +326,13 @@ func (s *CharmStore) CharmURL(location string) (*charm.URL, error) {
 		}
 		u := strings.Split(l, "/")
 		if len(u) == 3 && u[0] == "charms" {
-			return ParseURL(fmt.Sprintf("cs:%s/%s", u[1], u[2]))
+			return charm.ParseURL(fmt.Sprintf("cs:%s/%s", u[1], u[2]))
 		}
 		if len(u) == 4 && u[0] == "charms" && u[3] == "trunk" {
-			return ParseURL(fmt.Sprintf("cs:%s/%s", u[1], u[2]))
+			return charm.ParseURL(fmt.Sprintf("cs:%s/%s", u[1], u[2]))
 		}
 		if len(u) == 5 && u[1] == "charms" && u[4] == "trunk" && len(u[0]) > 0 && u[0][0] == '~' {
-			return ParseURL(fmt.Sprintf("cs:%s/%s/%s", u[0], u[2], u[3]))
+			return charm.ParseURL(fmt.Sprintf("cs:%s/%s/%s", u[0], u[2], u[3]))
 		}
 	}
 	return nil, fmt.Errorf("unknown branch location: %q", location)
@@ -376,7 +377,7 @@ func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 	} else if curl.Revision != rev {
 		return nil, fmt.Errorf("store returned charm with wrong revision %d for %q", rev, curl.String())
 	}
-	path := filepath.Join(CacheDir, Quote(curl.String())+".charm")
+	path := filepath.Join(CacheDir, charm.Quote(curl.String())+".charm")
 	if verify(path, digest) != nil {
 		store_url := s.BaseURL + "/charm/" + url.QueryEscape(curl.Path())
 		if s.testMode {
@@ -407,7 +408,7 @@ func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 	if err := verify(path, digest); err != nil {
 		return nil, err
 	}
-	return ReadCharmArchive(path)
+	return charm.ReadCharmArchive(path)
 }
 
 // LocalRepository represents a local directory containing subdirectories
@@ -500,7 +501,7 @@ func (r *LocalRepository) Get(curl *charm.URL) (charm.Charm, error) {
 		if !mightBeCharm(info) {
 			continue
 		}
-		if ch, err := ReadCharm(chPath); err != nil {
+		if ch, err := charm.ReadCharm(chPath); err != nil {
 			logger.Warningf("failed to load charm at %q: %s", chPath, err)
 		} else if ch.Meta().Name == curl.Name {
 			if ch.Revision() == curl.Revision {
