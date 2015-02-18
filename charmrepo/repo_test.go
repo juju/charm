@@ -523,6 +523,29 @@ func (s *LocalRepoSuite) TestFindsSymlinks(c *gc.C) {
 	checkDummy(c, ch, linkPath)
 }
 
+func (s *CharmSuite) TestInferRepository(c *gc.C) {
+	for i, t := range inferRepoTests {
+		c.Logf("test %d", i)
+		ref, err := charm.ParseReference(t.url)
+		c.Assert(err, gc.IsNil)
+		repo, err := charmrepo.InferRepository(ref, "/some/path")
+		c.Assert(err, gc.IsNil)
+		switch repo := repo.(type) {
+		case *charmrepo.LocalRepository:
+			c.Assert(repo.Path, gc.Equals, t.path)
+		default:
+			c.Assert(repo, gc.Equals, charm.Store)
+		}
+	}
+	ref, err := charm.ParseReference("local:whatever")
+	c.Assert(err, gc.IsNil)
+	_, err = charm.InferRepository(ref, "")
+	c.Assert(err, gc.ErrorMatches, "path to local repository not specified")
+	ref.Schema = "foo"
+	_, err = charm.InferRepository(ref, "")
+	c.Assert(err, gc.ErrorMatches, "unknown schema for charm reference.*")
+}
+
 func newStore(url string) *charmrepo.CharmStore {
 	return &charmrepo.CharmStore{BaseURL: url}
 }
