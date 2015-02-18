@@ -166,8 +166,8 @@ func (r *Repo) CharmArchive(dst, name string) *charm.CharmArchive {
 	return ch
 }
 
-// MockCharmStore implements charm.Repository and is used to isolate tests
-// that would otherwise need to hit the real charm store.
+// MockCharmStore implements charm/charmrepo.Interface and is used to isolate
+// tests that would otherwise need to hit the real charm store.
 type MockCharmStore struct {
 	charms map[string]map[int]*charm.CharmArchive
 
@@ -223,7 +223,7 @@ func (s *MockCharmStore) DefaultSeries() string {
 	return s.defaultSeries
 }
 
-// Resolve implements charm.Repository.Resolve.
+// Resolve implements charm/charmrepo.Interface.Resolve.
 func (s *MockCharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
 	return ref.URL(s.DefaultSeries())
 }
@@ -270,7 +270,7 @@ func (s *MockCharmStore) interpret(charmURL *charm.URL) (base string, rev int) {
 	return
 }
 
-// Get implements charm.Repository.Get.
+// Get implements charm/charmrepo.Interface.Get.
 func (s *MockCharmStore) Get(charmURL *charm.URL) (charm.Charm, error) {
 	base, rev := s.interpret(charmURL)
 	charm, found := s.charms[base][rev]
@@ -280,7 +280,7 @@ func (s *MockCharmStore) Get(charmURL *charm.URL) (charm.Charm, error) {
 	return charm, nil
 }
 
-// Latest implements charm.Repository.Latest.
+// Latest implements charm/charmrepo.Interface.Latest.
 func (s *MockCharmStore) Latest(charmURLs ...*charm.URL) ([]charmrepo.CharmRevision, error) {
 	result := make([]charmrepo.CharmRevision, len(charmURLs))
 	for i, curl := range charmURLs {

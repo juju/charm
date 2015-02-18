@@ -55,8 +55,8 @@ type CharmRevision struct {
 	Err      error
 }
 
-// Repository represents a collection of charms.
-type Repository interface {
+// Interface represents a charm repository (a collection of charms).
+type Interface interface {
 	Get(curl *charm.URL) (charm.Charm, error)
 	Latest(curls ...*charm.URL) ([]CharmRevision, error)
 	Resolve(ref *charm.Reference) (*charm.URL, error)
@@ -65,7 +65,7 @@ type Repository interface {
 // Latest returns the latest revision of the charm referenced by curl, regardless
 // of the revision set on each curl.
 // This is a helper which calls the bulk method and unpacks a single result.
-func Latest(repo Repository, curl *charm.URL) (int, error) {
+func Latest(repo Interface, curl *charm.URL) (int, error) {
 	revs, err := repo.Latest(curl)
 	if err != nil {
 		return 0, err
@@ -89,7 +89,7 @@ func (e *NotFoundError) Error() string {
 	return e.msg
 }
 
-// CharmStore is a Repository that provides access to the public juju charm store.
+// CharmStore is a repository Interface that provides access to the public juju charm store.
 type CharmStore struct {
 	BaseURL   string
 	authAttrs string // a list of attr=value pairs, comma separated
@@ -97,29 +97,29 @@ type CharmStore struct {
 	testMode  bool
 }
 
-var _ Repository = (*CharmStore)(nil)
+var _ Interface = (*CharmStore)(nil)
 
 var Store = &CharmStore{BaseURL: "https://store.juju.ubuntu.com"}
 
-// WithAuthAttrs return a Repository with the authentication token list set.
-// authAttrs is a list of attr=value pairs.
-func (s *CharmStore) WithAuthAttrs(authAttrs string) Repository {
+// WithAuthAttrs return a repository Interface with the authentication token
+// list set. authAttrs is a list of attr=value pairs.
+func (s *CharmStore) WithAuthAttrs(authAttrs string) Interface {
 	authCS := *s
 	authCS.authAttrs = authAttrs
 	return &authCS
 }
 
-// WithTestMode returns a Repository where testMode is set to value passed to
-// this method.
-func (s *CharmStore) WithTestMode(testMode bool) Repository {
+// WithTestMode returns a repository Interface where testMode is set to value
+// passed to this method.
+func (s *CharmStore) WithTestMode(testMode bool) Interface {
 	newRepo := *s
 	newRepo.testMode = testMode
 	return &newRepo
 }
 
-// WithJujuAttrs returns a Repository with the Juju metadata attributes set.
-// jujuAttrs is a list of attr=value pairs.
-func (s *CharmStore) WithJujuAttrs(jujuAttrs string) Repository {
+// WithJujuAttrs returns a repository Interface with the Juju metadata
+// attributes set. jujuAttrs is a list of attr=value pairs.
+func (s *CharmStore) WithJujuAttrs(jujuAttrs string) Interface {
 	jujuCS := *s
 	jujuCS.jujuAttrs = jujuAttrs
 	return &jujuCS
@@ -426,10 +426,11 @@ type LocalRepository struct {
 	defaultSeries string
 }
 
-var _ Repository = (*LocalRepository)(nil)
+var _ Interface = (*LocalRepository)(nil)
 
-// WithDefaultSeries returns a Repository with the default series set.
-func (r *LocalRepository) WithDefaultSeries(defaultSeries string) Repository {
+// WithDefaultSeries returns a repository Interface with the default series
+// set.
+func (r *LocalRepository) WithDefaultSeries(defaultSeries string) Interface {
 	localRepo := *r
 	localRepo.defaultSeries = defaultSeries
 	return &localRepo
@@ -523,7 +524,7 @@ func (r *LocalRepository) Get(curl *charm.URL) (charm.Charm, error) {
 
 // InferRepository returns a charm repository inferred from the provided charm
 // or bundle reference. Local references will use the provided path.
-func InferRepository(ref *charm.Reference, localRepoPath string) (repo Repository, err error) {
+func InferRepository(ref *charm.Reference, localRepoPath string) (repo Interface, err error) {
 	switch ref.Schema {
 	case "cs":
 		repo = Store
