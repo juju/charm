@@ -54,14 +54,6 @@ func (s *CharmSuite) TestReadCharmArchiveError(c *gc.C) {
 	c.Assert(ch, gc.Equals, nil)
 }
 
-var inferRepoTests = []struct {
-	url  string
-	path string
-}{
-	{"cs:precise/wordpress", ""},
-	{"local:oneiric/wordpress", "/some/path"},
-}
-
 func checkDummy(c *gc.C, f charm.Charm, path string) {
 	c.Assert(f.Revision(), gc.Equals, 1)
 	c.Assert(f.Meta().Name, gc.Equals, "dummy")
