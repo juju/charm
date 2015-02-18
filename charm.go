@@ -4,8 +4,6 @@
 package charm
 
 import (
-	"errors"
-	"fmt"
 	"os"
 
 	"github.com/juju/loggo"
@@ -39,22 +37,4 @@ func ReadCharm(path string) (charm Charm, err error) {
 		return nil, err
 	}
 	return charm, nil
-}
-
-// InferRepository returns a charm repository inferred from the provided charm
-// or bundle reference. Local references will use the provided path.
-func InferRepository(ref *Reference, localRepoPath string) (repo Repository, err error) {
-	switch ref.Schema {
-	case "cs":
-		repo = Store
-	case "local":
-		if localRepoPath == "" {
-			return nil, errors.New("path to local repository not specified")
-		}
-		repo = &LocalRepository{Path: localRepoPath}
-	default:
-		// TODO fix this error message to reference bundles too?
-		return nil, fmt.Errorf("unknown schema for charm reference %q", ref)
-	}
-	return
 }

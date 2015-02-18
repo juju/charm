@@ -516,3 +516,21 @@ func (r *LocalRepository) Get(curl *charm.URL) (charm.Charm, error) {
 	}
 	return nil, charmNotFound(curl, r.Path)
 }
+
+// InferRepository returns a charm repository inferred from the provided charm
+// or bundle reference. Local references will use the provided path.
+func InferRepository(ref *charm.Reference, localRepoPath string) (repo Repository, err error) {
+	switch ref.Schema {
+	case "cs":
+		repo = Store
+	case "local":
+		if localRepoPath == "" {
+			return nil, errors.New("path to local repository not specified")
+		}
+		repo = &LocalRepository{Path: localRepoPath}
+	default:
+		// TODO fix this error message to reference bundles too?
+		return nil, fmt.Errorf("unknown schema for charm reference %q", ref)
+	}
+	return
+}
