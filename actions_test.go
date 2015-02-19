@@ -762,7 +762,13 @@ act:
 act:
   params:
     val:
-      type: string
+      type: object
+      properties: 
+        var:
+          type: object
+          properties:
+            x:
+              type: string
 `[1:]}
 
 	for i, t := range []struct {
@@ -779,6 +785,11 @@ act:
 		schema:         schemas["simple"],
 		withParams:     map[string]interface{}{},
 		expectedResult: map[string]interface{}{"val": "somestr"},
+	}, {
+		should:         "do nothing for no default value",
+		schema:         schemas["none"],
+		withParams:     map[string]interface{}{},
+		expectedResult: map[string]interface{}{},
 	}, {
 		should:     "insert a default value within a nested map",
 		schema:     schemas["complicated"],
