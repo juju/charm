@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/juju/schema"
+	"github.com/juju/utils"
 	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v4/hooks"
@@ -92,12 +93,30 @@ type Storage struct {
 	// CountMax defaults to 1 for singleton stores.
 	CountMax int `bson:"countmax"`
 
+	// MinimumSize is the minimum size of store that the charm needs to
+	// work at all. This is not a recommended size or a comfortable size
+	// or a will-work-well size, just a bare minimum below which the charm
+	// is going to break.
+	// MinimumSize requires a unit, one of MGTPEZY, and is stored as MiB.
+	//
+	// There is no default MinimumSize; if left unspecified, a provider
+	// specific default will be used, typically 1GB for block storage.
+	MinimumSize uint64 `bson:"minimum-size"`
+
 	// Location is the mount location for filesystem stores. For multi-
 	// stores, the location acts as the parent directory for each mounted
 	// store.
 	//
 	// Location has no default, and is optional.
 	Location string `bson:"location,omitempty"`
+
+	// Properties allow the charm author to characterise the relative storage
+	// performance requirements and sensitivities for each store.
+	// eg “transient” is used to indicate that non persistent storage is acceptable,
+	// such as tmpfs or ephemeral instance disks.
+	//
+	// Properties has no default, and is optional.
+	Properties []string `bson:properties,omitempty`
 }
 
 // Relation represents a single relation defined in the charm
@@ -532,8 +551,16 @@ func parseStorage(stores interface{}) map[string]Storage {
 				store.CountMin, store.CountMax = r[0], r[1]
 			}
 		}
+		if minSize, ok := storeMap["minimum-size"].(uint64); ok {
+			store.MinimumSize = minSize
+		}
 		if loc, ok := storeMap["location"].(string); ok {
 			store.Location = loc
+		}
+		if properties, ok := storeMap["properties"].([]interface{}); ok {
+			for _, p := range properties {
+				store.Properties = append(store.Properties, p.(string))
+			}
 		}
 		result[name] = store
 	}
@@ -551,15 +578,19 @@ var storageSchema = schema.FieldMap(
 			},
 			schema.Defaults{},
 		),
-		"location":    schema.String(),
-		"description": schema.String(),
+		"minimum-size": storageSizeC{},
+		"location":     schema.String(),
+		"description":  schema.String(),
+		"properties":   schema.List(propertiesC{}),
 	},
 	schema.Defaults{
-		"shared":      false,
-		"read-only":   false,
-		"multiple":    schema.Omit,
-		"location":    schema.Omit,
-		"description": schema.Omit,
+		"shared":       false,
+		"read-only":    false,
+		"multiple":     schema.Omit,
+		"location":     schema.Omit,
+		"description":  schema.Omit,
+		"properties":   schema.Omit,
+		"minimum-size": schema.Omit,
 	},
 )
 
@@ -599,6 +630,22 @@ func (c storageCountC) Coerce(v interface{}, path []string) (newv interface{}, e
 		}
 	}
 	return [2]int{m, n}, nil
+}
+
+type storageSizeC struct{}
+
+func (c storageSizeC) Coerce(v interface{}, path []string) (newv interface{}, err error) {
+	s, err := schema.String().Coerce(v, path)
+	if err != nil {
+		return nil, err
+	}
+	return utils.ParseSize(s.(string))
+}
+
+type propertiesC struct{}
+
+func (c propertiesC) Coerce(v interface{}, path []string) (newv interface{}, err error) {
+	return schema.OneOf(schema.Const("transient")).Coerce(v, path)
 }
 
 var charmSchema = schema.FieldMap(

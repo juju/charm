@@ -675,6 +675,18 @@ storage:
 		desc: "location cannot be specified for block type storage",
 		yaml: "  type: block\n  location: /dev/sdc",
 		err:  `charm "a" storage "store-bad": location may not be specified for "type: block"`,
+	}, {
+		desc: "minimum size must parse correctly",
+		yaml: "  type: block\n  minimum-size: foo",
+		err:  `metadata: expected a non-negative number, got "foo"`,
+	}, {
+		desc: "minimum size must have valid suffix",
+		yaml: "  type: block\n  minimum-size: 10Q",
+		err:  `metadata: invalid multiplier suffix "Q", expected one of MGTPEZY`,
+	}, {
+		desc: "properties must contain valid valies must have valid suffix",
+		yaml: "  type: block\n  properties: [transient, foo]",
+		err:  `metadata: .* unexpected value "foo"`,
 	}}
 
 	for i, test := range tests {
@@ -725,6 +737,38 @@ storage:
 	store := meta.Storage["store0"]
 	c.Assert(store, gc.NotNil)
 	c.Assert(store.Location, gc.Equals, "/var/lib/things")
+}
+
+func (s *MetaSuite) TestStorageMinimumSize(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+storage:
+    store0:
+        type: filesystem
+        minimum-size: 10G
+`))
+	c.Assert(err, gc.IsNil)
+	store := meta.Storage["store0"]
+	c.Assert(store, gc.NotNil)
+	c.Assert(store.MinimumSize, gc.Equals, uint64(10*1024))
+}
+
+func (s *MetaSuite) TestStorageProperties(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+storage:
+    store0:
+        type: filesystem
+        properties: [transient]
+`))
+	c.Assert(err, gc.IsNil)
+	store := meta.Storage["store0"]
+	c.Assert(store, gc.NotNil)
+	c.Assert(store.Properties, jc.SameContents, []string{"transient"})
 }
 
 type dummyCharm struct{}
