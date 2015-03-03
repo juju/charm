@@ -684,7 +684,7 @@ storage:
 		yaml: "  type: block\n  minimum-size: 10Q",
 		err:  `metadata: invalid multiplier suffix "Q", expected one of MGTPEZY`,
 	}, {
-		desc: "properties must contain valid valies must have valid suffix",
+		desc: "properties must contain valid values",
 		yaml: "  type: block\n  properties: [transient, foo]",
 		err:  `metadata: .* unexpected value "foo"`,
 	}}
