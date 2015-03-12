@@ -781,6 +781,16 @@ act:
 		should:        "error with no schema",
 		expectedError: "schema must be of type object",
 	}, {
+		should:         "create a map if handed nil",
+		schema:         schemas["none"],
+		withParams:     nil,
+		expectedResult: map[string]interface{}{},
+	}, {
+		should:         "create and fill target if handed nil",
+		schema:         schemas["simple"],
+		withParams:     nil,
+		expectedResult: map[string]interface{}{"val": "somestr"},
+	}, {
 		should:         "create a simple default value",
 		schema:         schemas["simple"],
 		withParams:     map[string]interface{}{},
@@ -834,13 +844,13 @@ act:
 		c.Logf("test %d: should %s", i, t.should)
 		schema := getSchemaForAction(c, t.schema)
 		// Testing this method
-		err := schema.InsertDefaults(t.withParams)
+		result, err := schema.InsertDefaults(t.withParams)
 		if t.expectedError != "" {
 			c.Check(err, gc.ErrorMatches, t.expectedError)
 			continue
 		}
-		c.Check(err, jc.ErrorIsNil)
-		c.Check(t.withParams, jc.DeepEquals, t.expectedResult)
+		c.Assert(err, jc.ErrorIsNil)
+		c.Check(result, jc.DeepEquals, t.expectedResult)
 	}
 }
 
