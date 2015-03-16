@@ -24,7 +24,7 @@ import (
 var CacheDir string
 
 // LegacyCharmStore is a repository Interface that provides access to the
-// public Juju charm store.
+// legacy Juju charm store.
 type LegacyCharmStore struct {
 	BaseURL   string
 	authAttrs string // a list of attr=value pairs, comma separated

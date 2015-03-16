@@ -46,7 +46,7 @@ type NewCharmStoreParams struct {
 	CacheDir string
 }
 
-// NewCharmStore creates and return a charm store repository.
+// NewCharmStore creates and returns a charm store repository.
 // The given parameters are used to instantiate the charm store.
 func NewCharmStore(p NewCharmStoreParams) (Interface, error) {
 	if p.CacheDir == "" {
