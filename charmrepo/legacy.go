@@ -23,21 +23,22 @@ import (
 // CacheDir stores the charm cache directory path.
 var CacheDir string
 
-// CharmStore is a repository Interface that provides access to the public juju charm store.
-type CharmStore struct {
+// LegacyCharmStore is a repository Interface that provides access to the
+// legacy Juju charm store.
+type LegacyCharmStore struct {
 	BaseURL   string
 	authAttrs string // a list of attr=value pairs, comma separated
 	jujuAttrs string // a list of attr=value pairs, comma separated
 	testMode  bool
 }
 
-var _ Interface = (*CharmStore)(nil)
+var _ Interface = (*LegacyCharmStore)(nil)
 
-var Store = &CharmStore{BaseURL: "https://store.juju.ubuntu.com"}
+var Store = &LegacyCharmStore{BaseURL: "https://store.juju.ubuntu.com"}
 
 // WithAuthAttrs return a repository Interface with the authentication token
 // list set. authAttrs is a list of attr=value pairs.
-func (s *CharmStore) WithAuthAttrs(authAttrs string) Interface {
+func (s *LegacyCharmStore) WithAuthAttrs(authAttrs string) Interface {
 	authCS := *s
 	authCS.authAttrs = authAttrs
 	return &authCS
@@ -45,7 +46,7 @@ func (s *CharmStore) WithAuthAttrs(authAttrs string) Interface {
 
 // WithTestMode returns a repository Interface where testMode is set to value
 // passed to this method.
-func (s *CharmStore) WithTestMode(testMode bool) Interface {
+func (s *LegacyCharmStore) WithTestMode(testMode bool) Interface {
 	newRepo := *s
 	newRepo.testMode = testMode
 	return &newRepo
@@ -53,14 +54,14 @@ func (s *CharmStore) WithTestMode(testMode bool) Interface {
 
 // WithJujuAttrs returns a repository Interface with the Juju metadata
 // attributes set. jujuAttrs is a list of attr=value pairs.
-func (s *CharmStore) WithJujuAttrs(jujuAttrs string) Interface {
+func (s *LegacyCharmStore) WithJujuAttrs(jujuAttrs string) Interface {
 	jujuCS := *s
 	jujuCS.jujuAttrs = jujuAttrs
 	return &jujuCS
 }
 
 // Perform an http get, adding custom auth header if necessary.
-func (s *CharmStore) get(url string) (resp *http.Response, err error) {
+func (s *LegacyCharmStore) get(url string) (resp *http.Response, err error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -79,7 +80,7 @@ func (s *CharmStore) get(url string) (resp *http.Response, err error) {
 }
 
 // Resolve canonicalizes charm URLs any implied series in the reference.
-func (s *CharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
+func (s *LegacyCharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
 	infos, err := s.Info(ref)
 	if err != nil {
 		return nil, err
@@ -98,7 +99,7 @@ func (s *CharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
 }
 
 // Info returns details for all the specified charms in the charm store.
-func (s *CharmStore) Info(curls ...charm.Location) ([]*InfoResponse, error) {
+func (s *LegacyCharmStore) Info(curls ...charm.Location) ([]*InfoResponse, error) {
 	baseURL := s.BaseURL + "/charm-info?"
 	queryParams := make([]string, len(curls), len(curls)+1)
 	for i, curl := range curls {
@@ -153,7 +154,7 @@ func (s *CharmStore) Info(curls ...charm.Location) ([]*InfoResponse, error) {
 // Event returns details for a charm event in the charm store.
 //
 // If digest is empty, the latest event is returned.
-func (s *CharmStore) Event(curl *charm.URL, digest string) (*EventResponse, error) {
+func (s *LegacyCharmStore) Event(curl *charm.URL, digest string) (*EventResponse, error) {
 	key := curl.String()
 	query := key
 	if digest != "" {
@@ -187,7 +188,7 @@ func (s *CharmStore) Event(curl *charm.URL, digest string) (*EventResponse, erro
 }
 
 // revisions returns the revisions of the charms referenced by curls.
-func (s *CharmStore) revisions(curls ...charm.Location) (revisions []CharmRevision, err error) {
+func (s *LegacyCharmStore) revisions(curls ...charm.Location) (revisions []CharmRevision, err error) {
 	infos, err := s.Info(curls...)
 	if err != nil {
 		return nil, err
@@ -214,7 +215,7 @@ func (s *CharmStore) revisions(curls ...charm.Location) (revisions []CharmRevisi
 
 // Latest returns the latest revision of the charms referenced by curls, regardless
 // of the revision set on each curl.
-func (s *CharmStore) Latest(curls ...*charm.URL) ([]CharmRevision, error) {
+func (s *LegacyCharmStore) Latest(curls ...*charm.URL) ([]CharmRevision, error) {
 	baseCurls := make([]charm.Location, len(curls))
 	for i, curl := range curls {
 		baseCurls[i] = curl.WithRevision(-1)
@@ -223,7 +224,7 @@ func (s *CharmStore) Latest(curls ...*charm.URL) ([]CharmRevision, error) {
 }
 
 // BranchLocation returns the location for the branch holding the charm at curl.
-func (s *CharmStore) BranchLocation(curl *charm.URL) string {
+func (s *LegacyCharmStore) BranchLocation(curl *charm.URL) string {
 	if curl.User != "" {
 		return fmt.Sprintf("lp:~%s/charms/%s/%s/trunk", curl.User, curl.Series, curl.Name)
 	}
@@ -245,7 +246,7 @@ var branchPrefixes = []string{
 }
 
 // CharmURL returns the charm URL for the branch at location.
-func (s *CharmStore) CharmURL(location string) (*charm.URL, error) {
+func (s *LegacyCharmStore) CharmURL(location string) (*charm.URL, error) {
 	var l string
 	if len(location) > 0 && location[0] == '~' {
 		l = location
@@ -290,7 +291,7 @@ func verify(path, digest string) error {
 
 // Get returns the charm referenced by curl.
 // CacheDir must have been set, otherwise Get will panic.
-func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
+func (s *LegacyCharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 	// The cache location must have been previously set.
 	if CacheDir == "" {
 		panic("charm cache directory path is empty")

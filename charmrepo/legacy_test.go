@@ -18,15 +18,15 @@ import (
 	charmtesting "gopkg.in/juju/charm.v5-unstable/testing"
 )
 
-type StoreSuite struct {
+type legacyCharmStoreSuite struct {
 	gitjujutesting.FakeHomeSuite
 	server *charmtesting.MockStore
-	store  *charmrepo.CharmStore
+	store  *charmrepo.LegacyCharmStore
 }
 
-var _ = gc.Suite(&StoreSuite{})
+var _ = gc.Suite(&legacyCharmStoreSuite{})
 
-func (s *StoreSuite) SetUpSuite(c *gc.C) {
+func (s *legacyCharmStoreSuite) SetUpSuite(c *gc.C) {
 	s.FakeHomeSuite.SetUpSuite(c)
 	s.server = charmtesting.NewMockStore(c, TestCharms, map[string]int{
 		"cs:series/good":   23,
@@ -36,10 +36,10 @@ func (s *StoreSuite) SetUpSuite(c *gc.C) {
 	})
 }
 
-func (s *StoreSuite) SetUpTest(c *gc.C) {
+func (s *legacyCharmStoreSuite) SetUpTest(c *gc.C) {
 	s.FakeHomeSuite.SetUpTest(c)
 	s.PatchValue(&charmrepo.CacheDir, c.MkDir())
-	s.store = newStore(s.server.Address())
+	s.store = newLegacyStore(s.server.Address())
 	s.server.Downloads = nil
 	s.server.Authorizations = nil
 	s.server.Metadata = nil
@@ -48,12 +48,12 @@ func (s *StoreSuite) SetUpTest(c *gc.C) {
 	s.server.InfoRequestCountNoStats = 0
 }
 
-func (s *StoreSuite) TearDownSuite(c *gc.C) {
+func (s *legacyCharmStoreSuite) TearDownSuite(c *gc.C) {
 	s.server.Close()
 	s.FakeHomeSuite.TearDownSuite(c)
 }
 
-func (s *StoreSuite) TestMissing(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestMissing(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/missing")
 	expect := `charm not found: cs:series/missing`
 	_, err := charmrepo.Latest(s.store, charmURL)
@@ -62,7 +62,7 @@ func (s *StoreSuite) TestMissing(c *gc.C) {
 	c.Assert(err, gc.ErrorMatches, expect)
 }
 
-func (s *StoreSuite) TestError(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestError(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/borken")
 	expect := `charm info errors for "cs:series/borken": badness`
 	_, err := charmrepo.Latest(s.store, charmURL)
@@ -71,7 +71,7 @@ func (s *StoreSuite) TestError(c *gc.C) {
 	c.Assert(err, gc.ErrorMatches, expect)
 }
 
-func (s *StoreSuite) TestWarning(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestWarning(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/unwise")
 	expect := `.* WARNING juju.charm.charmrepo charm store reports for "cs:series/unwise": foolishness` + "\n"
 	r, err := charmrepo.Latest(s.store, charmURL)
@@ -84,7 +84,7 @@ func (s *StoreSuite) TestWarning(c *gc.C) {
 	c.Assert(c.GetTestLog(), gc.Matches, expect+expect)
 }
 
-func (s *StoreSuite) TestLatest(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestLatest(c *gc.C) {
 	urls := []*charm.URL{
 		charm.MustParseURL("cs:series/good"),
 		charm.MustParseURL("cs:series/good-2"),
@@ -99,7 +99,7 @@ func (s *StoreSuite) TestLatest(c *gc.C) {
 	})
 }
 
-func (s *StoreSuite) assertCached(c *gc.C, charmURL *charm.URL) {
+func (s *legacyCharmStoreSuite) assertCached(c *gc.C, charmURL *charm.URL) {
 	s.server.Downloads = nil
 	ch, err := s.store.Get(charmURL)
 	c.Assert(err, gc.IsNil)
@@ -107,7 +107,7 @@ func (s *StoreSuite) assertCached(c *gc.C, charmURL *charm.URL) {
 	c.Assert(s.server.Downloads, gc.IsNil)
 }
 
-func (s *StoreSuite) TestGetCacheImplicitRevision(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestGetCacheImplicitRevision(c *gc.C) {
 	base := "cs:series/good"
 	charmURL := charm.MustParseURL(base)
 	revCharmURL := charm.MustParseURL(base + "-23")
@@ -119,7 +119,7 @@ func (s *StoreSuite) TestGetCacheImplicitRevision(c *gc.C) {
 	s.assertCached(c, revCharmURL)
 }
 
-func (s *StoreSuite) TestGetCacheExplicitRevision(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestGetCacheExplicitRevision(c *gc.C) {
 	base := "cs:series/good-12"
 	charmURL := charm.MustParseURL(base)
 	ch, err := s.store.Get(charmURL)
@@ -129,7 +129,7 @@ func (s *StoreSuite) TestGetCacheExplicitRevision(c *gc.C) {
 	s.assertCached(c, charmURL)
 }
 
-func (s *StoreSuite) TestGetBadCache(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestGetBadCache(c *gc.C) {
 	c.Assert(os.Mkdir(filepath.Join(charmrepo.CacheDir, "cache"), 0777), gc.IsNil)
 	base := "cs:series/good"
 	charmURL := charm.MustParseURL(base)
@@ -145,7 +145,7 @@ func (s *StoreSuite) TestGetBadCache(c *gc.C) {
 	s.assertCached(c, revCharmURL)
 }
 
-func (s *StoreSuite) TestGetTestModeFlag(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestGetTestModeFlag(c *gc.C) {
 	base := "cs:series/good-12"
 	charmURL := charm.MustParseURL(base)
 	ch, err := s.store.Get(charmURL)
@@ -170,7 +170,7 @@ func (s *StoreSuite) TestGetTestModeFlag(c *gc.C) {
 
 // The following tests cover the low-level CharmStore-specific API.
 
-func (s *StoreSuite) TestInfo(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestInfo(c *gc.C) {
 	charmURLs := []charm.Location{
 		charm.MustParseURL("cs:series/good"),
 		charm.MustParseURL("cs:series/better"),
@@ -186,7 +186,7 @@ func (s *StoreSuite) TestInfo(c *gc.C) {
 	}
 }
 
-func (s *StoreSuite) TestInfoNotFound(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestInfoNotFound(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/missing")
 	info, err := s.store.Info(charmURL)
 	c.Assert(err, gc.IsNil)
@@ -195,7 +195,7 @@ func (s *StoreSuite) TestInfoNotFound(c *gc.C) {
 	c.Assert(info[0].Errors[0], gc.Matches, `charm not found: cs:series/missing`)
 }
 
-func (s *StoreSuite) TestInfoError(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestInfoError(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/borken")
 	info, err := s.store.Info(charmURL)
 	c.Assert(err, gc.IsNil)
@@ -203,7 +203,7 @@ func (s *StoreSuite) TestInfoError(c *gc.C) {
 	c.Assert(info[0].Errors, jc.DeepEquals, []string{"badness"})
 }
 
-func (s *StoreSuite) TestInfoWarning(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestInfoWarning(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/unwise")
 	info, err := s.store.Info(charmURL)
 	c.Assert(err, gc.IsNil)
@@ -211,14 +211,14 @@ func (s *StoreSuite) TestInfoWarning(c *gc.C) {
 	c.Assert(info[0].Warnings, jc.DeepEquals, []string{"foolishness"})
 }
 
-func (s *StoreSuite) TestInfoTestModeFlag(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestInfoTestModeFlag(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/good")
 	_, err := s.store.Info(charmURL)
 	c.Assert(err, gc.IsNil)
 	c.Assert(s.server.InfoRequestCount, gc.Equals, 1)
 	c.Assert(s.server.InfoRequestCountNoStats, gc.Equals, 0)
 
-	storeInTestMode, ok := s.store.WithTestMode(true).(*charmrepo.CharmStore)
+	storeInTestMode, ok := s.store.WithTestMode(true).(*charmrepo.LegacyCharmStore)
 	c.Assert(ok, gc.Equals, true)
 	_, err = storeInTestMode.Info(charmURL)
 	c.Assert(err, gc.IsNil)
@@ -226,8 +226,8 @@ func (s *StoreSuite) TestInfoTestModeFlag(c *gc.C) {
 	c.Assert(s.server.InfoRequestCountNoStats, gc.Equals, 1)
 }
 
-func (s *StoreSuite) TestInfoDNSError(c *gc.C) {
-	store := newStore("http://127.1.2.3")
+func (s *legacyCharmStoreSuite) TestInfoDNSError(c *gc.C) {
+	store := newLegacyStore("http://127.1.2.3")
 	charmURL := charm.MustParseURL("cs:series/good")
 	resp, err := store.Info(charmURL)
 	c.Assert(resp, gc.IsNil)
@@ -235,7 +235,7 @@ func (s *StoreSuite) TestInfoDNSError(c *gc.C) {
 	c.Assert(err, gc.ErrorMatches, expect)
 }
 
-func (s *StoreSuite) TestEvent(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestEvent(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/good")
 	event, err := s.store.Event(charmURL, "")
 	c.Assert(err, gc.IsNil)
@@ -244,7 +244,7 @@ func (s *StoreSuite) TestEvent(c *gc.C) {
 	c.Assert(event.Digest, gc.Equals, "the-digest")
 }
 
-func (s *StoreSuite) TestEventWithDigest(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestEventWithDigest(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/good")
 	event, err := s.store.Event(charmURL, "the-digest")
 	c.Assert(err, gc.IsNil)
@@ -253,28 +253,28 @@ func (s *StoreSuite) TestEventWithDigest(c *gc.C) {
 	c.Assert(event.Digest, gc.Equals, "the-digest")
 }
 
-func (s *StoreSuite) TestEventNotFound(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestEventNotFound(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/missing")
 	event, err := s.store.Event(charmURL, "")
 	c.Assert(err, gc.ErrorMatches, `charm event not found for "cs:series/missing"`)
 	c.Assert(event, gc.IsNil)
 }
 
-func (s *StoreSuite) TestEventNotFoundDigest(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestEventNotFoundDigest(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/good")
 	event, err := s.store.Event(charmURL, "missing-digest")
 	c.Assert(err, gc.ErrorMatches, `charm event not found for "cs:series/good" with digest "missing-digest"`)
 	c.Assert(event, gc.IsNil)
 }
 
-func (s *StoreSuite) TestEventError(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestEventError(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/borken")
 	event, err := s.store.Event(charmURL, "")
 	c.Assert(err, gc.IsNil)
 	c.Assert(event.Errors, jc.DeepEquals, []string{"badness"})
 }
 
-func (s *StoreSuite) TestAuthorization(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestAuthorization(c *gc.C) {
 	store := s.store.WithAuthAttrs("token=value")
 
 	base := "cs:series/good"
@@ -287,7 +287,7 @@ func (s *StoreSuite) TestAuthorization(c *gc.C) {
 	c.Assert(s.server.Authorizations[0], gc.Equals, "charmstore token=value")
 }
 
-func (s *StoreSuite) TestNilAuthorization(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestNilAuthorization(c *gc.C) {
 	store := s.store.WithAuthAttrs("")
 
 	base := "cs:series/good"
@@ -298,7 +298,7 @@ func (s *StoreSuite) TestNilAuthorization(c *gc.C) {
 	c.Assert(s.server.Authorizations, gc.HasLen, 0)
 }
 
-func (s *StoreSuite) TestMetadata(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestMetadata(c *gc.C) {
 	store := s.store.WithJujuAttrs("juju-metadata")
 
 	base := "cs:series/good"
@@ -310,7 +310,7 @@ func (s *StoreSuite) TestMetadata(c *gc.C) {
 	c.Assert(s.server.Metadata[0], gc.Equals, "juju-metadata")
 }
 
-func (s *StoreSuite) TestNilMetadata(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestNilMetadata(c *gc.C) {
 	base := "cs:series/good"
 	charmURL := charm.MustParseURL(base)
 	_, err := s.store.Get(charmURL)
@@ -319,14 +319,14 @@ func (s *StoreSuite) TestNilMetadata(c *gc.C) {
 	c.Assert(s.server.Metadata, gc.HasLen, 0)
 }
 
-func (s *StoreSuite) TestEventWarning(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestEventWarning(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/unwise")
 	event, err := s.store.Event(charmURL, "")
 	c.Assert(err, gc.IsNil)
 	c.Assert(event.Warnings, jc.DeepEquals, []string{"foolishness"})
 }
 
-func (s *StoreSuite) TestBranchLocation(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestBranchLocation(c *gc.C) {
 	charmURL := charm.MustParseURL("cs:series/name")
 	location := s.store.BranchLocation(charmURL)
 	c.Assert(location, gc.Equals, "lp:charms/series/name")
@@ -336,7 +336,7 @@ func (s *StoreSuite) TestBranchLocation(c *gc.C) {
 	c.Assert(location, gc.Equals, "lp:~user/charms/series/name/trunk")
 }
 
-func (s *StoreSuite) TestCharmURL(c *gc.C) {
+func (s *legacyCharmStoreSuite) TestCharmURL(c *gc.C) {
 	tests := []struct{ url, loc string }{
 		{"cs:precise/wordpress", "lp:charms/precise/wordpress"},
 		{"cs:precise/wordpress", "http://launchpad.net/+branch/charms/precise/wordpress"},
@@ -371,6 +371,6 @@ func (s *StoreSuite) TestCharmURL(c *gc.C) {
 	}
 }
 
-func newStore(url string) *charmrepo.CharmStore {
-	return &charmrepo.CharmStore{BaseURL: url}
+func newLegacyStore(url string) *charmrepo.LegacyCharmStore {
+	return &charmrepo.LegacyCharmStore{BaseURL: url}
 }
