@@ -85,6 +85,7 @@ var migrateTests = []struct {
 	bundles: `
 		|wordpress-simple:
 		|    series: precise
+		|    tags: ["foo", "bar"]
 		|    services:
 		|        wordpress:
 		|            charm: "cs:precise/wordpress-20"
@@ -115,6 +116,7 @@ var migrateTests = []struct {
 	expect: map[string]*charm.BundleData{
 		"wordpress-simple": {
 			Series: "precise",
+			Tags:   []string{"foo", "bar"},
 			Services: map[string]*charm.ServiceSpec{
 				"wordpress": {
 					Charm:    "cs:precise/wordpress-20",
