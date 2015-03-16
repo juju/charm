@@ -4,7 +4,9 @@
 package charmrepo_test
 
 import (
+	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
+	"gopkg.in/juju/charmstore.v4/csclient"
 
 	"gopkg.in/juju/charm.v5-unstable"
 	"gopkg.in/juju/charm.v5-unstable/charmrepo"
@@ -17,33 +19,46 @@ type inferRepoSuite struct{}
 
 var _ = gc.Suite(&inferRepoSuite{})
 
-var inferRepoTests = []struct {
-	url  string
-	path string
-}{
-	{"cs:precise/wordpress", ""},
-	{"local:oneiric/wordpress", "/some/path"},
-}
+var inferRepositoryTests = []struct {
+	url              string
+	charmStoreParams charmrepo.NewCharmStoreParams
+	localRepoPath    string
+	err              string
+}{{
+	url: "cs:trusty/django",
+	err: "charm cache directory path is empty",
+}, {
+	url: "local:precise/wordpress",
+	err: "path to local repository not specified",
+}, {
+	url: "cs:trusty/wordpress-42",
+	charmStoreParams: charmrepo.NewCharmStoreParams{
+		CacheDir: "/tmp/cache-dir",
+	},
+}, {
+	url:           "local:precise/haproxy-47",
+	localRepoPath: "/tmp/repo-path",
+}}
 
 func (s *inferRepoSuite) TestInferRepository(c *gc.C) {
-	for i, t := range inferRepoTests {
-		c.Logf("test %d", i)
-		ref, err := charm.ParseReference(t.url)
-		c.Assert(err, gc.IsNil)
-		repo, err := charmrepo.InferRepository(ref, "/some/path")
-		c.Assert(err, gc.IsNil)
-		switch repo := repo.(type) {
+	for i, test := range inferRepositoryTests {
+		c.Logf("test %d: %s", i, test.url)
+		ref := charm.MustParseReference(test.url)
+		repo, err := charmrepo.InferRepository(
+			ref, test.charmStoreParams, test.localRepoPath)
+		if test.err != "" {
+			c.Assert(err, gc.ErrorMatches, test.err)
+			c.Assert(repo, gc.IsNil)
+			continue
+		}
+		c.Assert(err, jc.ErrorIsNil)
+		switch store := repo.(type) {
 		case *charmrepo.LocalRepository:
-			c.Assert(repo.Path, gc.Equals, t.path)
+			c.Assert(store.Path, gc.Equals, test.localRepoPath)
+		case *charmrepo.CharmStore:
+			c.Assert(store.URL(), gc.Equals, csclient.ServerURL)
 		default:
-			c.Assert(repo, gc.Equals, charmrepo.Store)
+			c.Fatal("unknown repository type")
 		}
 	}
-	ref, err := charm.ParseReference("local:whatever")
-	c.Assert(err, gc.IsNil)
-	_, err = charmrepo.InferRepository(ref, "")
-	c.Assert(err, gc.ErrorMatches, "path to local repository not specified")
-	ref.Schema = "foo"
-	_, err = charmrepo.InferRepository(ref, "")
-	c.Assert(err, gc.ErrorMatches, "unknown schema for charm reference.*")
 }

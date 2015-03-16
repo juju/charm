@@ -6,7 +6,6 @@
 package charmrepo
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/juju/loggo"
@@ -18,8 +17,14 @@ var logger = loggo.GetLogger("juju.charm.charmrepo")
 
 // Interface represents a charm repository (a collection of charms).
 type Interface interface {
+	// Get returns the charm referenced by curl.
 	Get(curl *charm.URL) (charm.Charm, error)
+
+	// Latest returns the latest revision of the charms referenced by curls,
+	// regardless of the revision set on each curl.
 	Latest(curls ...*charm.URL) ([]CharmRevision, error)
+
+	// Resolve canonicalizes charm URLs any implied series in the reference.
 	Resolve(ref *charm.Reference) (*charm.URL, error)
 }
 
@@ -42,19 +47,16 @@ func Latest(repo Interface, curl *charm.URL) (int, error) {
 }
 
 // InferRepository returns a charm repository inferred from the provided charm
-// or bundle reference. Local references will use the provided path.
-func InferRepository(ref *charm.Reference, localRepoPath string) (repo Interface, err error) {
+// or bundle reference.
+// Charm store references will use the provided parameters.
+// Local references will use the provided path.
+func InferRepository(ref *charm.Reference, charmStoreParams NewCharmStoreParams, localRepoPath string) (Interface, error) {
 	switch ref.Schema {
 	case "cs":
-		repo = Store
+		return NewCharmStore(charmStoreParams)
 	case "local":
-		if localRepoPath == "" {
-			return nil, errors.New("path to local repository not specified")
-		}
-		repo = &LocalRepository{Path: localRepoPath}
-	default:
-		// TODO fix this error message to reference bundles too?
-		return nil, fmt.Errorf("unknown schema for charm reference %q", ref)
+		return NewLocalRepository(localRepoPath)
 	}
-	return
+	// TODO fix this error message to reference bundles too?
+	return nil, fmt.Errorf("unknown schema for charm reference %q", ref)
 }

@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"gopkg.in/errgo.v1"
+
 	"gopkg.in/juju/charm.v5-unstable"
 )
 
@@ -26,6 +28,17 @@ type LocalRepository struct {
 }
 
 var _ Interface = (*LocalRepository)(nil)
+
+// NewLocalRepository creates and return a new local Juju repository pointing
+// to the given local path.
+func NewLocalRepository(path string) (Interface, error) {
+	if path == "" {
+		return nil, errgo.New("path to local repository not specified")
+	}
+	return &LocalRepository{
+		Path: path,
+	}, nil
+}
 
 // WithDefaultSeries returns a repository Interface with the default series
 // set.
