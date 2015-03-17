@@ -53,3 +53,9 @@ func repoNotFound(path string) error {
 func charmNotFound(curl *charm.URL, repoPath string) error {
 	return &NotFoundError{fmt.Sprintf("charm not found in %q: %s", repoPath, curl)}
 }
+
+func CharmNotFound(url string) error {
+	return &NotFoundError{
+		msg: "charm not found: " + url,
+	}
+}

@@ -4,11 +4,14 @@
 package charmrepo
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"gopkg.in/errgo.v1"
 	"gopkg.in/juju/charmstore.v4/csclient"
+	"gopkg.in/juju/charmstore.v4/params"
 
 	"gopkg.in/juju/charm.v5-unstable"
 )
@@ -71,7 +74,58 @@ func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 
 // Latest implements Interface.Latest.
 func (s *CharmStore) Latest(curls ...*charm.URL) ([]CharmRevision, error) {
-	return nil, notImplemented
+	if len(curls) == 0 {
+		return nil, nil
+	}
+
+	// Prepare the request to the charm store.
+	urls := make([]string, len(curls))
+	ids := make([]string, len(curls))
+	for i, curl := range curls {
+		url := curl.WithRevision(-1).String()
+		urls[i] = url
+		ids[i] = "id=" + url
+	}
+	path := "/meta/any?include=id-revision&include=hash256&" + strings.Join(ids, "&")
+
+	// Execute the request and retrieve results.
+	var results map[string]struct {
+		Meta map[string]json.RawMessage
+	}
+	if err := s.client.Get(path, &results); err != nil {
+		return nil, errgo.Notef(err, "cannot get metadata from the charm store")
+	}
+
+	// Build the response.
+	responses := make([]CharmRevision, len(curls))
+	for i, url := range urls {
+		result, found := results[url]
+		if !found {
+			responses[i] = CharmRevision{
+				Err: CharmNotFound(url),
+			}
+			continue
+		}
+		var rev params.IdRevisionResponse
+		if err := json.Unmarshal(result.Meta["id-revision"], &rev); err != nil {
+			responses[i] = CharmRevision{
+				Err: errgo.Notef(err, "cannot retrieve entity revision"),
+			}
+			continue
+		}
+		var hash params.HashResponse
+		if err := json.Unmarshal(result.Meta["hash256"], &hash); err != nil {
+			responses[i] = CharmRevision{
+				Err: errgo.Notef(err, "cannot retrieve entity hash"),
+			}
+			continue
+		}
+		responses[i] = CharmRevision{
+			Revision: rev.Revision,
+			Sha256:   hash.Sum,
+		}
+	}
+	return responses, nil
 }
 
 // Resolve implements Interface.Resolve.
