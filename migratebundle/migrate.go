@@ -16,6 +16,7 @@ type legacyBundle struct {
 	// ["r1", "r2"] or ["r1", ["r2", "r3", ...]]
 	Relations []interface{}          `yaml:",omitempty"` // []string or []interface{}{"", []string{...}}
 	Overrides map[string]interface{} `yaml:",omitempty"`
+	Tags      []string               `yaml:",omitempty"`
 }
 
 // legacyService represents a service from a legacy bundle.
@@ -86,6 +87,7 @@ func migrate(b *legacyBundle) (*charm.BundleData, error) {
 		Services: make(map[string]*charm.ServiceSpec),
 		Series:   b.Series,
 		Machines: make(map[string]*charm.MachineSpec),
+		Tags:     b.Tags,
 	}
 	for name, svc := range b.Services {
 		if svc == nil {
