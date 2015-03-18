@@ -190,6 +190,59 @@ func (s *charmStoreRepoSuite) TestLatest(c *gc.C) {
 	}
 }
 
+func (s *charmStoreRepoSuite) TestResolve(c *gc.C) {
+	// Add some charms to the charm store.
+	s.addCharm(c, "~who/trusty/mysql", "mysql")
+	// Use different charms so that revision is actually increased
+	s.addCharm(c, "~who/precise/wordpress", "logging")
+	s.addCharm(c, "~who/precise/wordpress", "wordpress")
+	s.addCharm(c, "~dalek/utopic/riak", "wordpress")
+	s.addCharm(c, "~dalek/utopic/riak", "riak")
+	s.addCharm(c, "~dalek/utopic/riak", "wordpress")
+	s.addCharm(c, "~dalek/utopic/riak", "riak")
+
+	// Define the tests to be run.
+	tests := []struct {
+		id  string
+		url string
+		err string
+	}{{
+		id:  "~who/mysql",
+		url: "cs:~who/trusty/mysql",
+	}, {
+		id:  "~who/trusty/mysql",
+		url: "cs:~who/trusty/mysql",
+	}, {
+		id:  "~who/wordpress",
+		url: "cs:~who/precise/wordpress",
+	}, {
+		id:  "~who/wordpress-1",
+		url: "cs:~who/precise/wordpress-1",
+	}, {
+		id:  "~dalek/riak",
+		url: "cs:~dalek/utopic/riak",
+	}, {
+		id:  "~dalek/utopic/riak-2",
+		url: "cs:~dalek/utopic/riak-2",
+	}, {
+		id:  "no-such",
+		err: `cannot get metadata from the charm store: cannot get "/no-such/meta/any?include=id-series": no matching charm or bundle for "cs:no-such"`,
+	}}
+
+	// Run the tests.
+	for i, test := range tests {
+		c.Logf("test %d: %s", i, test.id)
+		url, err := s.repo.Resolve(charm.MustParseReference(test.id))
+		if test.err != "" {
+			c.Assert(err.Error(), gc.Equals, test.err)
+			c.Assert(url, gc.IsNil)
+			continue
+		}
+		c.Assert(err, jc.ErrorIsNil)
+		c.Assert(url, jc.DeepEquals, charm.MustParseURL(test.url))
+	}
+}
+
 // newStoreRepo creates and returns a charm store with the given URL.
 // The cache directory is set to a temporary path.
 func newStoreRepo(c *gc.C, url string) charmrepo.Interface {

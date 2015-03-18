@@ -122,7 +122,15 @@ func (s *CharmStore) Latest(curls ...*charm.URL) ([]CharmRevision, error) {
 
 // Resolve implements Interface.Resolve.
 func (s *CharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
-	return nil, notImplemented
+	var result struct {
+		IdSeries params.IdSeriesResponse
+	}
+	if _, err := s.client.Meta(ref, &result); err != nil {
+		return nil, errgo.Notef(err, "cannot get metadata from the charm store")
+	}
+	url := charm.URL(*ref)
+	url.Series = result.IdSeries.Series
+	return &url, nil
 }
 
 // URL returns the root endpoint URL of the charm store.

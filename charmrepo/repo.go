@@ -24,7 +24,7 @@ type Interface interface {
 	// regardless of the revision set on each curl.
 	Latest(curls ...*charm.URL) ([]CharmRevision, error)
 
-	// Resolve resolves the series and revision of the given entity reference.
+	// Resolve resolves the series of the given entity reference.
 	Resolve(ref *charm.Reference) (*charm.URL, error)
 }
 
