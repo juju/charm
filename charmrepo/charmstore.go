@@ -9,6 +9,7 @@ import (
 
 	"gopkg.in/errgo.v1"
 	"gopkg.in/juju/charmstore.v4/csclient"
+	"gopkg.in/juju/charmstore.v4/params"
 
 	"gopkg.in/juju/charm.v5-unstable"
 )
@@ -71,7 +72,52 @@ func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 
 // Latest implements Interface.Latest.
 func (s *CharmStore) Latest(curls ...*charm.URL) ([]CharmRevision, error) {
-	return nil, notImplemented
+	if len(curls) == 0 {
+		return nil, nil
+	}
+
+	// Prepare the request to the charm store.
+	urls := make([]string, len(curls))
+	values := url.Values{}
+	values.Add("include", "id-revision")
+	values.Add("include", "hash256")
+	for i, curl := range curls {
+		url := curl.WithRevision(-1).String()
+		urls[i] = url
+		values.Add("id", url)
+	}
+	u := url.URL{
+		Path:     "/meta/any",
+		RawQuery: values.Encode(),
+	}
+
+	// Execute the request and retrieve results.
+	var results map[string]struct {
+		Meta struct {
+			IdRevision params.IdRevisionResponse `json:"id-revision"`
+			Hash256    params.HashResponse       `json:"hash256"`
+		}
+	}
+	if err := s.client.Get(u.String(), &results); err != nil {
+		return nil, errgo.Notef(err, "cannot get metadata from the charm store")
+	}
+
+	// Build the response.
+	responses := make([]CharmRevision, len(curls))
+	for i, url := range urls {
+		result, found := results[url]
+		if !found {
+			responses[i] = CharmRevision{
+				Err: CharmNotFound(url),
+			}
+			continue
+		}
+		responses[i] = CharmRevision{
+			Revision: result.Meta.IdRevision.Revision,
+			Sha256:   result.Meta.Hash256.Sum,
+		}
+	}
+	return responses, nil
 }
 
 // Resolve implements Interface.Resolve.
