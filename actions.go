@@ -81,7 +81,8 @@ func (spec *ActionSpec) InsertDefaults(into map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	return schema.InsertDefaults(into)
+	_, err = schema.InsertDefaults(into)
+	return err
 }
 
 // ReadActions builds an Actions spec from a charm's actions.yaml.
