@@ -4,9 +4,16 @@
 package charmrepo
 
 import (
+	"crypto/sha512"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 
+	"github.com/juju/utils"
 	"gopkg.in/errgo.v1"
 	"gopkg.in/juju/charmstore.v4/csclient"
 	"gopkg.in/juju/charmstore.v4/params"
@@ -19,7 +26,6 @@ import (
 type CharmStore struct {
 	client   *csclient.Client
 	cacheDir string
-	testMode bool
 }
 
 var _ Interface = (*CharmStore)(nil)
@@ -63,11 +69,73 @@ func NewCharmStore(p NewCharmStoreParams) (Interface, error) {
 	}, nil
 }
 
-var notImplemented = errgo.New("not implemented")
-
 // Get implements Interface.Get.
 func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
-	return nil, notImplemented
+	if curl.Series == "bundle" {
+		return nil, errgo.Newf("expected a charm URL, got bundle URL %q", curl)
+	}
+
+	// Prepare the cache directory and retrieve the charm.
+	if err := os.MkdirAll(s.cacheDir, 0755); err != nil {
+		return nil, errgo.Notef(err, "cannot create the cache directory")
+	}
+	r, id, expectHash, expectSize, err := s.client.GetArchive(curl.Reference())
+	if err != nil {
+		return nil, errgo.Notef(err, "cannot retrieve charm")
+	}
+	defer r.Close()
+
+	// Check if the archive already exists in the cache.
+	path := filepath.Join(s.cacheDir, charm.Quote(id.String())+".charm")
+	if verifyHash384AndSize(path, expectHash, expectSize) == nil {
+		return charm.ReadCharmArchive(path)
+	}
+
+	// Verify and save the new archive.
+	f, err := ioutil.TempFile(s.cacheDir, "charm-download")
+	if err != nil {
+		return nil, errgo.Notef(err, "cannot make temporary file")
+	}
+	defer f.Close()
+	hash := sha512.New384()
+	size, err := io.Copy(io.MultiWriter(hash, f), r)
+	if err != nil {
+		return nil, errgo.Notef(err, "cannot read charm archive")
+	}
+	if size != expectSize {
+		return nil, errgo.Newf("size mismatch; network corruption?")
+	}
+	if fmt.Sprintf("%x", hash.Sum(nil)) != expectHash {
+		return nil, errgo.Newf("hash mismatch; network corruption?")
+	}
+
+	// Move the archive to the expected place, and return the charm.
+	if err := utils.ReplaceFile(f.Name(), path); err != nil {
+		return nil, errgo.Notef(err, "cannot move the charm archive")
+	}
+	return charm.ReadCharmArchive(path)
+}
+
+func verifyHash384AndSize(path, expectHash string, expectSize int64) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return errgo.Mask(err)
+	}
+	defer f.Close()
+	hash := sha512.New384()
+	size, err := io.Copy(hash, f)
+	if err != nil {
+		return errgo.Mask(err)
+	}
+	if size != expectSize {
+		logger.Debugf("size mismatch for %q", path)
+		return errgo.Newf("size mismatch for %q", path)
+	}
+	if fmt.Sprintf("%x", hash.Sum(nil)) != expectHash {
+		logger.Debugf("hash mismatch for %q", path)
+		return errgo.Newf("hash mismatch for %q", path)
+	}
+	return nil
 }
 
 // Latest implements Interface.Latest.
@@ -138,10 +206,11 @@ func (s *CharmStore) URL() string {
 	return s.client.ServerURL()
 }
 
-// WithTestMode returns a repository Interface where testMode is set to value
-// passed to this method.
-func (s *CharmStore) WithTestMode(testMode bool) Interface {
+// WithTestMode returns a repository Interface where test mode is enabled,
+// meaning charm store download stats are not increased when charms are
+// retrieved.
+func (s *CharmStore) WithTestMode() Interface {
 	newRepo := *s
-	newRepo.testMode = testMode
+	newRepo.client.DisableStats()
 	return &newRepo
 }
