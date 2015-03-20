@@ -71,16 +71,15 @@ func NewCharmStore(p NewCharmStoreParams) (Interface, error) {
 
 // Get implements Interface.Get.
 func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
-	// Disable bundle deployment.
 	if curl.Series == "bundle" {
 		return nil, errgo.Newf("expected a charm URL, got bundle URL %q", curl)
 	}
 
 	// Prepare the cache directory and retrieve the charm.
-	if err := os.MkdirAll(s.cacheDir, os.FileMode(0755)); err != nil {
+	if err := os.MkdirAll(s.cacheDir, 0755); err != nil {
 		return nil, errgo.Notef(err, "cannot create the cache directory")
 	}
-	r, id, expectHash, _, err := s.client.GetArchive(curl.Reference())
+	r, id, expectHash, expectSize, err := s.client.GetArchive(curl.Reference())
 	if err != nil {
 		return nil, errgo.Notef(err, "cannot retrieve charm")
 	}
@@ -88,7 +87,7 @@ func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 
 	// Check if the archive already exists in the cache.
 	path := filepath.Join(s.cacheDir, charm.Quote(id.String())+".charm")
-	if verifyHash384(path, expectHash) == nil {
+	if verifyHash384AndSize(path, expectHash, expectSize) == nil {
 		return charm.ReadCharmArchive(path)
 	}
 
@@ -99,9 +98,12 @@ func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 	}
 	defer f.Close()
 	hash := sha512.New384()
-	_, err = io.Copy(io.MultiWriter(hash, f), r)
+	size, err := io.Copy(io.MultiWriter(hash, f), r)
 	if err != nil {
 		return nil, errgo.Notef(err, "cannot read charm archive")
+	}
+	if size != expectSize {
+		return nil, errgo.Newf("size mismatch; network corruption?")
 	}
 	if fmt.Sprintf("%x", hash.Sum(nil)) != expectHash {
 		return nil, errgo.Newf("hash mismatch; network corruption?")
@@ -114,17 +116,23 @@ func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 	return charm.ReadCharmArchive(path)
 }
 
-func verifyHash384(path, expectHash string) error {
+func verifyHash384AndSize(path, expectHash string, expectSize int64) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return errgo.Mask(err)
 	}
 	defer f.Close()
 	hash := sha512.New384()
-	if _, err := io.Copy(hash, f); err != nil {
+	size, err := io.Copy(hash, f)
+	if err != nil {
 		return errgo.Mask(err)
 	}
+	if size != expectSize {
+		logger.Debugf("size mismatch for %q", path)
+		return errgo.Newf("size mismatch for %q", path)
+	}
 	if fmt.Sprintf("%x", hash.Sum(nil)) != expectHash {
+		logger.Debugf("hash mismatch for %q", path)
 		return errgo.Newf("hash mismatch for %q", path)
 	}
 	return nil
