@@ -7,8 +7,3 @@ package charmrepo
 func CharmStoreCacheDir(r Interface) string {
 	return r.(*CharmStore).cacheDir
 }
-
-// CharmStoreTestMode reports whether the given charm store is in test mode.
-func CharmStoreTestMode(r Interface) bool {
-	return r.(*CharmStore).testMode
-}
