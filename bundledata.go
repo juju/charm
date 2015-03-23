@@ -56,6 +56,7 @@ type BundleData struct {
 type MachineSpec struct {
 	Constraints string            `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 	Annotations map[string]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+	Series      string            `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 }
 
 // ServiceSpec represents a single service that will
@@ -276,6 +277,9 @@ func (verifier *bundleDataVerifier) verifyMachines() {
 			if err := verifier.verifyConstraints(m.Constraints); err != nil {
 				verifier.addErrorf("invalid constraints %q in machine %q: %v", m.Constraints, id, err)
 			}
+		}
+		if m.Series != "" && !IsValidSeries(m.Series) {
+			verifier.addErrorf("invalid series %s for machine %q", m.Series, id)
 		}
 	}
 }

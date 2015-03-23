@@ -169,6 +169,7 @@ machines:
          constraints: 'bad constraints'
          annotations:
              foo: bar
+         series: 'bad series'
     bogus:
     3:
 services: 
@@ -228,6 +229,7 @@ relations:
 		`relation ["mysql:db" "mediawiki:db"] is defined more than once`,
 		`invalid placement syntax "bad placement"`,
 		`invalid relation syntax "mediawiki/db"`,
+		`invalid series bad series for machine "0"`,
 	},
 }, {
 	about: "mediawiki should be ok",
