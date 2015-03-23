@@ -5,6 +5,7 @@ package charmrepo
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -34,7 +35,7 @@ type LegacyCharmStore struct {
 
 var _ Interface = (*LegacyCharmStore)(nil)
 
-var Store = &LegacyCharmStore{BaseURL: "https://store.juju.ubuntu.com"}
+var LegacyStore = &LegacyCharmStore{BaseURL: "https://store.juju.ubuntu.com"}
 
 // WithAuthAttrs return a repository Interface with the authentication token
 // list set. authAttrs is a list of attr=value pairs.
@@ -347,4 +348,21 @@ func (s *LegacyCharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 		return nil, err
 	}
 	return charm.ReadCharmArchive(path)
+}
+
+// LegacyInferRepository returns a charm repository inferred from the provided
+// charm or bundle reference. Local references will use the provided path.
+func LegacyInferRepository(ref *charm.Reference, localRepoPath string) (repo Interface, err error) {
+	switch ref.Schema {
+	case "cs":
+		repo = LegacyStore
+	case "local":
+		if localRepoPath == "" {
+			return nil, errors.New("path to local repository not specified")
+		}
+		repo = &LocalRepository{Path: localRepoPath}
+	default:
+		return nil, fmt.Errorf("unknown schema for charm reference %q", ref)
+	}
+	return
 }
