@@ -73,16 +73,20 @@ func (spec *ActionSpec) ValidateParams(params map[string]interface{}) error {
 	return errors.Errorf("validation failed: %s", strings.Join(errorStrings, "; "))
 }
 
-// InsertDefaults inserts default values in a map[string]interface{} using
-// github.com/juju/gojsonschema.
-func (spec *ActionSpec) InsertDefaults(into map[string]interface{}) error {
+// InsertDefaults inserts the schema's default values in target using
+// github.com/juju/gojsonschema.  If a nil target is received, an empty map
+// will be created as the target.  The target is then mutated to include the
+// defaults.
+//
+// The returned map will be the transformed or created target map.
+func (spec *ActionSpec) InsertDefaults(target map[string]interface{}) (map[string]interface{}, error) {
 	specLoader := gjs.NewGoLoader(spec.Params)
 	schema, err := gjs.NewSchema(specLoader)
 	if err != nil {
-		return err
+		return target, err
 	}
-	_, err = schema.InsertDefaults(into)
-	return err
+
+	return schema.InsertDefaults(target)
 }
 
 // ReadActions builds an Actions spec from a charm's actions.yaml.
