@@ -832,7 +832,7 @@ func getCharm(id *charm.Reference) (charm.Charm, error) {
 		return m, nil
 	}
 	log.Printf("getting %s", url)
-	ch, err := charmrepo.Store.Get(url)
+	ch, err := charmrepo.LegacyStore.Get(url)
 	if err != nil {
 		charmDataCache[url.String()] = nil
 		return nil, err
