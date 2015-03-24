@@ -195,11 +195,13 @@ func (s *MockCharmStore) AuthAttrs() string {
 	return s.authAttrs
 }
 
-// SetTestMode enables or disables test mode.
-func (s *MockCharmStore) SetTestMode(testMode bool) {
+// WithTestMode returns a repository Interface where testMode is set to value
+// passed to this method.
+func (s *MockCharmStore) WithTestMode(testMode bool) charmrepo.Interface {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.testMode = testMode
+	return s
 }
 
 // TestMode returns the test mode setting of this charm store.
