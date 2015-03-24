@@ -170,7 +170,7 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 		schemaLoader := gjs.NewGoLoader(thisActionSchema)
 		_, err := gjs.NewSchema(schemaLoader)
 		if err != nil {
-			return nil, errors.Annotatef(err, "invalid params schema for action schema %s", name)
+			return nil, errors.Annotatef(err, "invalid schema for action %q", name)
 		}
 
 		// Now assign the resulting schema to the final entry for the result.
@@ -241,23 +241,23 @@ func recurseMapOnKeys(keys []string, params map[string]interface{}) (interface{}
 	key, rest := keys[0], keys[1:]
 	answer, ok := params[key]
 
-	// If we're out of keys, we have our answer.
 	if len(rest) == 0 {
+		// If we're out of keys, we have our answer.
 		return answer, ok
 	}
 
-	// If we're not out of keys, but we tried a key that wasn't in the
-	// map, there's no answer.
 	if !ok {
+		// If we're not out of keys, but we tried a key that wasn't in the
+		// map, there's no answer.
 		return nil, false
 	}
 
 	switch typed := answer.(type) {
-	// If our value is a map[s]i{}, we can keep recursing.
 	case map[string]interface{}:
+		// If our value is a map[s]i{}, we can keep recursing.
 		return recurseMapOnKeys(keys[1:], typed)
-	// If it's a map[i{}]i{}, we need to check whether it's a map[s]i{}.
 	case map[interface{}]interface{}:
+		// If it's a map[i{}]i{}, we need to check whether it's a map[s]i{}.
 		m := make(map[string]interface{})
 		for k, v := range typed {
 			if tK, ok := k.(string); ok {
@@ -271,9 +271,9 @@ func recurseMapOnKeys(keys []string, params map[string]interface{}) (interface{}
 		// If it is, recurse into it.
 		return recurseMapOnKeys(keys[1:], m)
 
-	// Otherwise, we're trying to recurse into something we don't know
-	// how to deal with, so our answer is that we don't have an answer.
 	default:
+		// Otherwise, we're trying to recurse into something we don't know
+		// how to deal with, so our answer is that we don't have an answer.
 		return nil, false
 	}
 }
