@@ -36,28 +36,15 @@ type charmStoreSuite struct {
 var _ = gc.Suite(&charmStoreSuite{})
 
 func (s *charmStoreSuite) TestURL(c *gc.C) {
-	store := newStoreRepo(c, "https://1.2.3.4/charmstore").(*charmrepo.CharmStore)
-	c.Assert(store.URL(), gc.Equals, "https://1.2.3.4/charmstore")
+	repo := charmrepo.NewCharmStore(charmrepo.NewCharmStoreParams{
+		URL: "https://1.2.3.4/charmstore",
+	})
+	c.Assert(repo.(*charmrepo.CharmStore).URL(), gc.Equals, "https://1.2.3.4/charmstore")
 }
 
 func (s *charmStoreSuite) TestDefaultURL(c *gc.C) {
-	store := newStoreRepo(c, "").(*charmrepo.CharmStore)
-	c.Assert(store.URL(), gc.Equals, csclient.ServerURL)
-}
-
-func (s *charmStoreSuite) TestCacheDir(c *gc.C) {
-	cacheDir := c.MkDir()
-	repo, err := charmrepo.NewCharmStore(charmrepo.NewCharmStoreParams{
-		CacheDir: cacheDir,
-	})
-	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(charmrepo.CharmStoreCacheDir(repo), gc.Equals, cacheDir)
-}
-
-func (s *charmStoreSuite) TestCacheDirError(c *gc.C) {
-	repo, err := charmrepo.NewCharmStore(charmrepo.NewCharmStoreParams{})
-	c.Assert(err, gc.ErrorMatches, "charm cache directory path is empty")
-	c.Assert(repo, gc.IsNil)
+	repo := charmrepo.NewCharmStore(charmrepo.NewCharmStoreParams{})
+	c.Assert(repo.(*charmrepo.CharmStore).URL(), gc.Equals, csclient.ServerURL)
 }
 
 var serverParams = charmstore.ServerParams{
@@ -76,7 +63,10 @@ var _ = gc.Suite(&charmStoreBaseSuite{})
 func (s *charmStoreBaseSuite) SetUpTest(c *gc.C) {
 	s.IsolatedMgoSuite.SetUpTest(c)
 	s.srv = newServer(c, s.Session)
-	s.repo = newStoreRepo(c, s.srv.URL)
+	s.repo = charmrepo.NewCharmStore(charmrepo.NewCharmStoreParams{
+		URL: s.srv.URL,
+	})
+	s.PatchValue(&charmrepo.CacheDir, c.MkDir())
 }
 
 func (s *charmStoreBaseSuite) TearDownTest(c *gc.C) {
@@ -222,21 +212,16 @@ func (s *charmStoreRepoSuite) TestGetErrorCacheDir(c *gc.C) {
 	err := os.Chmod(parentDir, 0)
 	c.Assert(err, jc.ErrorIsNil)
 	defer os.Chmod(parentDir, 0755)
+	s.PatchValue(&charmrepo.CacheDir, filepath.Join(parentDir, "cache"))
 
-	repo, err := charmrepo.NewCharmStore(charmrepo.NewCharmStoreParams{
-		URL:      s.srv.URL,
-		CacheDir: filepath.Join(parentDir, "cache"),
-	})
-	c.Assert(err, jc.ErrorIsNil)
-
-	ch, err := repo.Get(charm.MustParseURL("cs:trusty/django"))
+	ch, err := s.repo.Get(charm.MustParseURL("cs:trusty/django"))
 	c.Assert(err, gc.ErrorMatches, `cannot create the cache directory: .*: permission denied`)
 	c.Assert(ch, gc.IsNil)
 }
 
 func (s *charmStoreRepoSuite) TestGetErrorCharmNotFound(c *gc.C) {
 	ch, err := s.repo.Get(charm.MustParseURL("cs:trusty/no-such"))
-	c.Assert(err, gc.ErrorMatches, `cannot retrieve charm: cannot get archive: no matching charm or bundle for "cs:trusty/no-such"`)
+	c.Assert(err, gc.ErrorMatches, `cannot retrieve charm "cs:trusty/no-such": charm not found`)
 	c.Assert(ch, gc.IsNil)
 }
 
@@ -248,9 +233,11 @@ func (s *charmStoreRepoSuite) TestGetErrorServer(c *gc.C) {
 	defer srv.Close()
 
 	// Try getting a charm from the server.
-	repo := newStoreRepo(c, srv.URL)
+	repo := charmrepo.NewCharmStore(charmrepo.NewCharmStoreParams{
+		URL: srv.URL,
+	})
 	ch, err := repo.Get(charm.MustParseURL("cs:trusty/django"))
-	c.Assert(err, gc.ErrorMatches, `cannot retrieve charm: cannot get archive: bad wolf`)
+	c.Assert(err, gc.ErrorMatches, `cannot retrieve charm "cs:trusty/django": cannot get archive: bad wolf`)
 	c.Assert(ch, gc.IsNil)
 }
 
@@ -271,7 +258,9 @@ func (s *charmStoreRepoSuite) TestGetErrorHashMismatch(c *gc.C) {
 	defer srv.Close()
 
 	// Try getting a charm from the server.
-	repo := newStoreRepo(c, srv.URL)
+	repo := charmrepo.NewCharmStore(charmrepo.NewCharmStoreParams{
+		URL: srv.URL,
+	})
 	ch, err := repo.Get(url)
 	c.Assert(err, gc.ErrorMatches, `hash mismatch; network corruption\?`)
 	c.Assert(ch, gc.IsNil)
@@ -389,7 +378,7 @@ func (s *charmStoreRepoSuite) TestResolve(c *gc.C) {
 		url: "cs:~dalek/utopic/riak-2",
 	}, {
 		id:  "no-such",
-		err: `cannot get metadata from the charm store: cannot get "/no-such/meta/any?include=id-series": no matching charm or bundle for "cs:no-such"`,
+		err: `cannot resolve charm URL "cs:no-such": charm not found`,
 	}}
 
 	// Run the tests.
@@ -435,17 +424,6 @@ func (s *charmStoreRepoSuite) checkCharmDownloads(c *gc.C, url *charm.URL, expec
 		}
 	}
 	c.Errorf("downloads count for %s is %d, expected %d", url, count, expect)
-}
-
-// newStoreRepo creates and returns a charm store with the given URL.
-// The cache directory is set to a temporary path.
-func newStoreRepo(c *gc.C, url string) charmrepo.Interface {
-	store, err := charmrepo.NewCharmStore(charmrepo.NewCharmStoreParams{
-		URL:      url,
-		CacheDir: c.MkDir(),
-	})
-	c.Assert(err, jc.ErrorIsNil)
-	return store
 }
 
 // newServer instantiates a new charm store server.

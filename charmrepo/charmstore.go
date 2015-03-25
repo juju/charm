@@ -21,11 +21,13 @@ import (
 	"gopkg.in/juju/charm.v5-unstable"
 )
 
+// CacheDir stores the charm cache directory path.
+var CacheDir string
+
 // CharmStore is a repository Interface that provides access to the public Juju
 // charm store.
 type CharmStore struct {
-	client   *csclient.Client
-	cacheDir string
+	client *csclient.Client
 }
 
 var _ Interface = (*CharmStore)(nil)
@@ -47,52 +49,51 @@ type NewCharmStoreParams struct {
 	// the user visits a web page to authenticate themselves.
 	// If nil, a default function that returns an error will be used.
 	VisitWebPage func(url *url.URL) error
-
-	// CacheDir holds the charm cache directory path where to store retrieved
-	// charms.
-	CacheDir string
 }
 
 // NewCharmStore creates and returns a charm store repository.
 // The given parameters are used to instantiate the charm store.
-func NewCharmStore(p NewCharmStoreParams) (Interface, error) {
-	if p.CacheDir == "" {
-		return nil, errgo.New("charm cache directory path is empty")
-	}
+func NewCharmStore(p NewCharmStoreParams) Interface {
 	return &CharmStore{
 		client: csclient.New(csclient.Params{
 			URL:          p.URL,
 			HTTPClient:   p.HTTPClient,
 			VisitWebPage: p.VisitWebPage,
 		}),
-		cacheDir: p.CacheDir,
-	}, nil
+	}
 }
 
 // Get implements Interface.Get.
 func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
+	// The cache location must have been previously set.
+	if CacheDir == "" {
+		panic("charm cache directory path is empty")
+	}
 	if curl.Series == "bundle" {
 		return nil, errgo.Newf("expected a charm URL, got bundle URL %q", curl)
 	}
 
 	// Prepare the cache directory and retrieve the charm.
-	if err := os.MkdirAll(s.cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(CacheDir, 0755); err != nil {
 		return nil, errgo.Notef(err, "cannot create the cache directory")
 	}
 	r, id, expectHash, expectSize, err := s.client.GetArchive(curl.Reference())
 	if err != nil {
-		return nil, errgo.Notef(err, "cannot retrieve charm")
+		if errgo.Cause(err) == params.ErrNotFound {
+			return nil, errgo.WithCausef(nil, params.ErrNotFound, "cannot retrieve charm %q: charm not found", curl)
+		}
+		return nil, errgo.Notef(err, "cannot retrieve charm %q", curl)
 	}
 	defer r.Close()
 
 	// Check if the archive already exists in the cache.
-	path := filepath.Join(s.cacheDir, charm.Quote(id.String())+".charm")
+	path := filepath.Join(CacheDir, charm.Quote(id.String())+".charm")
 	if verifyHash384AndSize(path, expectHash, expectSize) == nil {
 		return charm.ReadCharmArchive(path)
 	}
 
 	// Verify and save the new archive.
-	f, err := ioutil.TempFile(s.cacheDir, "charm-download")
+	f, err := ioutil.TempFile(CacheDir, "charm-download")
 	if err != nil {
 		return nil, errgo.Notef(err, "cannot make temporary file")
 	}
@@ -194,7 +195,10 @@ func (s *CharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
 		IdSeries params.IdSeriesResponse
 	}
 	if _, err := s.client.Meta(ref, &result); err != nil {
-		return nil, errgo.Notef(err, "cannot get metadata from the charm store")
+		if errgo.Cause(err) == params.ErrNotFound {
+			return nil, errgo.WithCausef(nil, params.ErrNotFound, "cannot resolve charm URL %q: charm not found", ref)
+		}
+		return nil, errgo.Notef(err, "cannot resolve charm URL %q", ref)
 	}
 	url := charm.URL(*ref)
 	url.Series = result.IdSeries.Series

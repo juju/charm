@@ -21,9 +21,6 @@ import (
 	"gopkg.in/juju/charm.v5-unstable"
 )
 
-// CacheDir stores the charm cache directory path.
-var CacheDir string
-
 // LegacyCharmStore is a repository Interface that provides access to the
 // legacy Juju charm store.
 type LegacyCharmStore struct {
