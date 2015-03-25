@@ -20,21 +20,14 @@ type inferRepoSuite struct{}
 var _ = gc.Suite(&inferRepoSuite{})
 
 var inferRepositoryTests = []struct {
-	url              string
-	charmStoreParams charmrepo.NewCharmStoreParams
-	localRepoPath    string
-	err              string
+	url           string
+	localRepoPath string
+	err           string
 }{{
 	url: "cs:trusty/django",
-	err: "charm cache directory path is empty",
 }, {
 	url: "local:precise/wordpress",
 	err: "path to local repository not specified",
-}, {
-	url: "cs:trusty/wordpress-42",
-	charmStoreParams: charmrepo.NewCharmStoreParams{
-		CacheDir: "/tmp/cache-dir",
-	},
 }, {
 	url:           "local:precise/haproxy-47",
 	localRepoPath: "/tmp/repo-path",
@@ -45,7 +38,7 @@ func (s *inferRepoSuite) TestInferRepository(c *gc.C) {
 		c.Logf("test %d: %s", i, test.url)
 		ref := charm.MustParseReference(test.url)
 		repo, err := charmrepo.InferRepository(
-			ref, test.charmStoreParams, test.localRepoPath)
+			ref, charmrepo.NewCharmStoreParams{}, test.localRepoPath)
 		if test.err != "" {
 			c.Assert(err, gc.ErrorMatches, test.err)
 			c.Assert(repo, gc.IsNil)

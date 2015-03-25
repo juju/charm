@@ -53,7 +53,7 @@ func Latest(repo Interface, curl *charm.URL) (int, error) {
 func InferRepository(ref *charm.Reference, charmStoreParams NewCharmStoreParams, localRepoPath string) (Interface, error) {
 	switch ref.Schema {
 	case "cs":
-		return NewCharmStore(charmStoreParams)
+		return NewCharmStore(charmStoreParams), nil
 	case "local":
 		return NewLocalRepository(localRepoPath)
 	}
