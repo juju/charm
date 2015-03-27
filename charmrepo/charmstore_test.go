@@ -22,7 +22,7 @@ import (
 	"gopkg.in/juju/charmstore.v4"
 	"gopkg.in/juju/charmstore.v4/csclient"
 	"gopkg.in/juju/charmstore.v4/params"
-	"gopkg.in/mgo.v2"
+	charmstoretesting "gopkg.in/juju/charmstore.v4/testing"
 
 	"gopkg.in/juju/charm.v5-unstable"
 	"gopkg.in/juju/charm.v5-unstable/charmrepo"
@@ -54,7 +54,7 @@ var serverParams = charmstore.ServerParams{
 
 type charmStoreBaseSuite struct {
 	charmtesting.IsolatedMgoSuite
-	srv  *httptest.Server
+	srv  *charmstoretesting.Server
 	repo charmrepo.Interface
 }
 
@@ -62,9 +62,9 @@ var _ = gc.Suite(&charmStoreBaseSuite{})
 
 func (s *charmStoreBaseSuite) SetUpTest(c *gc.C) {
 	s.IsolatedMgoSuite.SetUpTest(c)
-	s.srv = newServer(c, s.Session)
+	s.srv = charmstoretesting.OpenServer(c, s.Session, serverParams)
 	s.repo = charmrepo.NewCharmStore(charmrepo.NewCharmStoreParams{
-		URL: s.srv.URL,
+		URL: s.srv.URL(),
 	})
 	s.PatchValue(&charmrepo.CacheDir, c.MkDir())
 }
@@ -77,14 +77,14 @@ func (s *charmStoreBaseSuite) TearDownTest(c *gc.C) {
 // addCharm uploads a charm to the testing charm store, and returns the
 // resulting charm and charm URL.
 func (s *charmStoreBaseSuite) addCharm(c *gc.C, url, name string) (charm.Charm, *charm.URL) {
-	client := csclient.New(csclient.Params{
-		URL:      s.srv.URL,
-		User:     serverParams.AuthUsername,
-		Password: serverParams.AuthPassword,
-	})
-	ch := TestCharms.CharmDir(name)
-	id, err := client.UploadCharm(charm.MustParseReference(url), ch)
-	c.Assert(err, jc.ErrorIsNil)
+	id := charm.MustParseReference(url)
+	promulgated := false
+	if id.User == "" {
+		id.User = "who"
+		promulgated = true
+	}
+	ch := TestCharms.CharmArchive(c.MkDir(), name)
+	id = s.srv.UploadCharm(c, ch, id, promulgated)
 	return ch, (*charm.URL)(id)
 }
 
@@ -94,18 +94,55 @@ type charmStoreRepoSuite struct {
 
 var _ = gc.Suite(&charmStoreRepoSuite{})
 
+// checkCharmDownloads checks that the charm represented by the given URL has
+// been downloaded the expected number of times.
+func (s *charmStoreRepoSuite) checkCharmDownloads(c *gc.C, url *charm.URL, expect int) {
+	client := csclient.New(csclient.Params{
+		URL: s.srv.URL(),
+	})
+
+	key := []string{params.StatsArchiveDownload, url.Series, url.Name, url.User, strconv.Itoa(url.Revision)}
+	path := "/stats/counter/" + strings.Join(key, ":")
+	var count int
+
+	getDownloads := func() int {
+		var result []params.Statistic
+		err := client.Get(path, &result)
+		c.Assert(err, jc.ErrorIsNil)
+		return int(result[0].Count)
+	}
+
+	for retry := 0; retry < 10; retry++ {
+		time.Sleep(100 * time.Millisecond)
+		if count = getDownloads(); count == expect {
+			if expect == 0 && retry < 2 {
+				// Wait a bit to make sure.
+				continue
+			}
+			return
+		}
+	}
+	c.Errorf("downloads count for %s is %d, expected %d", url, count, expect)
+}
+
 func (s *charmStoreRepoSuite) TestGet(c *gc.C) {
-	expect, url := s.addCharm(c, "~who/trusty/mysql", "mysql")
+	expect, url := s.addCharm(c, "~who/trusty/mysql-0", "mysql")
+	ch, err := s.repo.Get(url)
+	c.Assert(err, jc.ErrorIsNil)
+	checkCharm(c, ch, expect)
+}
+
+func (s *charmStoreRepoSuite) TestGetPromulgated(c *gc.C) {
+	expect, url := s.addCharm(c, "trusty/mysql-42", "mysql")
 	ch, err := s.repo.Get(url)
 	c.Assert(err, jc.ErrorIsNil)
 	checkCharm(c, ch, expect)
 }
 
 func (s *charmStoreRepoSuite) TestGetRevisions(c *gc.C) {
-	// Use different charms so that revision is actually increased.
-	s.addCharm(c, "~dalek/trusty/riak", "wordpress")
-	expect1, url1 := s.addCharm(c, "~dalek/trusty/riak", "riak")
-	expect2, _ := s.addCharm(c, "~dalek/trusty/riak", "wordpress")
+	s.addCharm(c, "~dalek/trusty/riak-0", "riak")
+	expect1, url1 := s.addCharm(c, "~dalek/trusty/riak-1", "riak")
+	expect2, _ := s.addCharm(c, "~dalek/trusty/riak-2", "riak")
 
 	// Retrieve an old revision.
 	ch, err := s.repo.Get(url1)
@@ -119,7 +156,7 @@ func (s *charmStoreRepoSuite) TestGetRevisions(c *gc.C) {
 }
 
 func (s *charmStoreRepoSuite) TestGetCache(c *gc.C) {
-	_, url := s.addCharm(c, "~who/trusty/mysql", "mysql")
+	_, url := s.addCharm(c, "~who/trusty/mysql-42", "mysql")
 	ch, err := s.repo.Get(url)
 	c.Assert(err, jc.ErrorIsNil)
 	path := ch.(*charm.CharmArchive).Path
@@ -127,7 +164,7 @@ func (s *charmStoreRepoSuite) TestGetCache(c *gc.C) {
 }
 
 func (s *charmStoreRepoSuite) TestGetSameCharm(c *gc.C) {
-	_, url := s.addCharm(c, "~who/precise/wordpress", "wordpress")
+	_, url := s.addCharm(c, "precise/wordpress-47", "wordpress")
 	getModTime := func(path string) time.Time {
 		info, err := os.Stat(path)
 		c.Assert(err, jc.ErrorIsNil)
@@ -155,7 +192,7 @@ func (s *charmStoreRepoSuite) TestGetSameCharm(c *gc.C) {
 }
 
 func (s *charmStoreRepoSuite) TestGetInvalidCache(c *gc.C) {
-	_, url := s.addCharm(c, "~who/trusty/mysql", "mysql")
+	_, url := s.addCharm(c, "~who/trusty/mysql-1", "mysql")
 
 	// Retrieve a charm.
 	ch1, err := s.repo.Get(url)
@@ -175,7 +212,7 @@ func (s *charmStoreRepoSuite) TestGetInvalidCache(c *gc.C) {
 }
 
 func (s *charmStoreRepoSuite) TestGetIncreaseStats(c *gc.C) {
-	_, url := s.addCharm(c, "~who/precise/wordpress", "wordpress")
+	_, url := s.addCharm(c, "~who/precise/wordpress-2", "wordpress")
 
 	// Retrieve the charm.
 	_, err := s.repo.Get(url)
@@ -189,7 +226,7 @@ func (s *charmStoreRepoSuite) TestGetIncreaseStats(c *gc.C) {
 }
 
 func (s *charmStoreRepoSuite) TestGetWithTestMode(c *gc.C) {
-	_, url := s.addCharm(c, "~who/precise/wordpress", "wordpress")
+	_, url := s.addCharm(c, "~who/precise/wordpress-42", "wordpress")
 
 	// Use a repo with test mode enabled to download a charm a couple of
 	// times, and check the downloads count is not increased.
@@ -242,15 +279,12 @@ func (s *charmStoreRepoSuite) TestGetErrorServer(c *gc.C) {
 }
 
 func (s *charmStoreRepoSuite) TestGetErrorHashMismatch(c *gc.C) {
-	_, url := s.addCharm(c, "~dalek/trusty/riak", "riak")
+	_, url := s.addCharm(c, "trusty/riak-0", "riak")
 
 	// Set up a proxy server that modifies the returned hash.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		db := s.Session.DB("charm-testing")
-		handler, err := charmstore.NewServer(db, nil, "", serverParams, charmstore.V4)
-		c.Assert(err, jc.ErrorIsNil)
 		rec := httptest.NewRecorder()
-		handler.ServeHTTP(rec, r)
+		s.srv.Handler().ServeHTTP(rec, r)
 		w.Header().Set(params.EntityIdHeader, rec.Header().Get(params.EntityIdHeader))
 		w.Header().Set(params.ContentHashHeader, "invalid")
 		w.Write(rec.Body.Bytes())
@@ -268,13 +302,11 @@ func (s *charmStoreRepoSuite) TestGetErrorHashMismatch(c *gc.C) {
 
 func (s *charmStoreRepoSuite) TestLatest(c *gc.C) {
 	// Add some charms to the charm store.
-	s.addCharm(c, "~who/trusty/mysql", "mysql")
-	s.addCharm(c, "~who/precise/wordpress", "wordpress")
-	// Use different charms so that revision is actually increased.
-	s.addCharm(c, "~dalek/trusty/riak", "wordpress")
-	s.addCharm(c, "~dalek/trusty/riak", "riak")
-	s.addCharm(c, "~dalek/trusty/riak", "wordpress")
-	s.addCharm(c, "~dalek/trusty/riak", "riak")
+	s.addCharm(c, "~who/trusty/mysql-0", "mysql")
+	s.addCharm(c, "~who/precise/wordpress-1", "wordpress")
+	s.addCharm(c, "~dalek/trusty/riak-0", "riak")
+	s.addCharm(c, "~dalek/trusty/riak-1", "riak")
+	s.addCharm(c, "~dalek/trusty/riak-3", "riak")
 
 	// Calculate and store the expected hashes for re uploaded charms.
 	mysqlHash := hashOfCharm(c, "mysql")
@@ -320,7 +352,7 @@ func (s *charmStoreRepoSuite) TestLatest(c *gc.C) {
 			charm.MustParseURL("cs:~dalek/trusty/riak-0"),
 		},
 		revs: []charmrepo.CharmRevision{{
-			Revision: 0,
+			Revision: 1,
 			Sha256:   wordpressHash,
 		}, {
 			Revision: 0,
@@ -344,14 +376,10 @@ func (s *charmStoreRepoSuite) TestLatest(c *gc.C) {
 
 func (s *charmStoreRepoSuite) TestResolve(c *gc.C) {
 	// Add some charms to the charm store.
-	s.addCharm(c, "~who/trusty/mysql", "mysql")
-	// Use different charms so that revision is actually increased.
-	s.addCharm(c, "~who/precise/wordpress", "logging")
-	s.addCharm(c, "~who/precise/wordpress", "wordpress")
-	s.addCharm(c, "~dalek/utopic/riak", "wordpress")
-	s.addCharm(c, "~dalek/utopic/riak", "riak")
-	s.addCharm(c, "~dalek/utopic/riak", "wordpress")
-	s.addCharm(c, "~dalek/utopic/riak", "riak")
+	s.addCharm(c, "~who/trusty/mysql-0", "mysql")
+	s.addCharm(c, "~who/precise/wordpress-2", "wordpress")
+	s.addCharm(c, "~dalek/utopic/riak-42", "riak")
+	s.addCharm(c, "utopic/mysql-47", "mysql")
 
 	// Define the tests to be run.
 	tests := []struct {
@@ -368,14 +396,23 @@ func (s *charmStoreRepoSuite) TestResolve(c *gc.C) {
 		id:  "~who/wordpress",
 		url: "cs:~who/precise/wordpress",
 	}, {
-		id:  "~who/wordpress-1",
-		url: "cs:~who/precise/wordpress-1",
+		id:  "~who/wordpress-2",
+		url: "cs:~who/precise/wordpress-2",
 	}, {
 		id:  "~dalek/riak",
 		url: "cs:~dalek/utopic/riak",
 	}, {
-		id:  "~dalek/utopic/riak-2",
-		url: "cs:~dalek/utopic/riak-2",
+		id:  "~dalek/utopic/riak-42",
+		url: "cs:~dalek/utopic/riak-42",
+	}, {
+		id:  "utopic/mysql",
+		url: "cs:utopic/mysql",
+	}, {
+		id:  "utopic/mysql-47",
+		url: "cs:utopic/mysql-47",
+	}, {
+		id:  "~dalek/utopic/riak-100",
+		err: `cannot resolve charm URL "cs:~dalek/utopic/riak-100": charm not found`,
 	}, {
 		id:  "no-such",
 		err: `cannot resolve charm URL "cs:no-such": charm not found`,
@@ -393,45 +430,6 @@ func (s *charmStoreRepoSuite) TestResolve(c *gc.C) {
 		c.Assert(err, jc.ErrorIsNil)
 		c.Assert(url, jc.DeepEquals, charm.MustParseURL(test.url))
 	}
-}
-
-// checkCharmDownloads checks that the charm represented by the given URL has
-// been downloaded the expected number of times.
-func (s *charmStoreRepoSuite) checkCharmDownloads(c *gc.C, url *charm.URL, expect int) {
-	client := csclient.New(csclient.Params{
-		URL: s.srv.URL,
-	})
-
-	key := []string{params.StatsArchiveDownload, url.Series, url.Name, url.User, strconv.Itoa(url.Revision)}
-	path := "/stats/counter/" + strings.Join(key, ":")
-	var count int
-
-	getDownloads := func() int {
-		var result []params.Statistic
-		err := client.Get(path, &result)
-		c.Assert(err, jc.ErrorIsNil)
-		return int(result[0].Count)
-	}
-
-	for retry := 0; retry < 10; retry++ {
-		time.Sleep(100 * time.Millisecond)
-		if count = getDownloads(); count == expect {
-			if expect == 0 && retry < 2 {
-				// Wait a bit to make sure.
-				continue
-			}
-			return
-		}
-	}
-	c.Errorf("downloads count for %s is %d, expected %d", url, count, expect)
-}
-
-// newServer instantiates a new charm store server.
-func newServer(c *gc.C, session *mgo.Session) *httptest.Server {
-	db := session.DB("charm-testing")
-	handler, err := charmstore.NewServer(db, nil, "", serverParams, charmstore.V4)
-	c.Assert(err, jc.ErrorIsNil)
-	return httptest.NewServer(handler)
 }
 
 // hashOfCharm returns the SHA256 hash sum for the given charm name.
