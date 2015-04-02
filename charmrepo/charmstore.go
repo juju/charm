@@ -192,7 +192,7 @@ func (s *CharmStore) Latest(curls ...*charm.URL) ([]CharmRevision, error) {
 // Resolve implements Interface.Resolve.
 func (s *CharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
 	var result struct {
-		IdSeries params.IdSeriesResponse
+		Id params.IdResponse
 	}
 	if _, err := s.client.Meta(ref, &result); err != nil {
 		if errgo.Cause(err) == params.ErrNotFound {
@@ -200,9 +200,11 @@ func (s *CharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
 		}
 		return nil, errgo.Notef(err, "cannot resolve charm URL %q", ref)
 	}
-	url := charm.URL(*ref)
-	url.Series = result.IdSeries.Series
-	return &url, nil
+	url, err := result.Id.Id.URL("")
+	if err != nil {
+		return nil, errgo.Notef(err, "cannot make fully resolved entity URL from %s", url)
+	}
+	return url, nil
 }
 
 // URL returns the root endpoint URL of the charm store.

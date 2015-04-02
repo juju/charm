@@ -23,8 +23,7 @@ import (
 //   /path/to/repository/precise/mongodb.charm
 //   /path/to/repository/precise/wordpress/
 type LocalRepository struct {
-	Path          string
-	defaultSeries string
+	Path string
 }
 
 var _ Interface = (*LocalRepository)(nil)
@@ -40,21 +39,28 @@ func NewLocalRepository(path string) (Interface, error) {
 	}, nil
 }
 
-// WithDefaultSeries returns a repository Interface with the default series
-// set.
-func (r *LocalRepository) WithDefaultSeries(defaultSeries string) Interface {
-	localRepo := *r
-	localRepo.defaultSeries = defaultSeries
-	return &localRepo
-}
-
-// Resolve canonicalizes charm URLs, resolving references and implied series.
+// Resolve implements Interface.Resolve.
 func (r *LocalRepository) Resolve(ref *charm.Reference) (*charm.URL, error) {
-	return ref.URL(r.defaultSeries)
+	if ref.Series == "" {
+		return nil, errgo.Newf("no series specified for %s", ref)
+	}
+	u, err := ref.URL("")
+	if err != nil {
+		return nil, err
+	}
+	if ref.Revision != -1 {
+		return u, nil
+	}
+	ch, err := r.Get(u)
+	if err != nil {
+		return nil, err
+	}
+	return u.WithRevision(ch.Revision()), nil
 }
 
-// Latest returns the latest revision of the charm referenced by curl, regardless
-// of the revision set on curl itself.
+// Latest implements Interface.Latest by finding the
+// latest revision of each of the given charm URLs in
+// the local repository.
 func (r *LocalRepository) Latest(curls ...*charm.URL) ([]CharmRevision, error) {
 	result := make([]CharmRevision, len(curls))
 	for i, curl := range curls {
