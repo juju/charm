@@ -388,25 +388,25 @@ func (s *charmStoreRepoSuite) TestResolve(c *gc.C) {
 		err string
 	}{{
 		id:  "~who/mysql",
-		url: "cs:~who/trusty/mysql",
+		url: "cs:~who/trusty/mysql-0",
 	}, {
 		id:  "~who/trusty/mysql",
-		url: "cs:~who/trusty/mysql",
+		url: "cs:~who/trusty/mysql-0",
 	}, {
 		id:  "~who/wordpress",
-		url: "cs:~who/precise/wordpress",
+		url: "cs:~who/precise/wordpress-2",
 	}, {
 		id:  "~who/wordpress-2",
 		url: "cs:~who/precise/wordpress-2",
 	}, {
 		id:  "~dalek/riak",
-		url: "cs:~dalek/utopic/riak",
+		url: "cs:~dalek/utopic/riak-42",
 	}, {
 		id:  "~dalek/utopic/riak-42",
 		url: "cs:~dalek/utopic/riak-42",
 	}, {
 		id:  "utopic/mysql",
-		url: "cs:utopic/mysql",
+		url: "cs:utopic/mysql-47",
 	}, {
 		id:  "utopic/mysql-47",
 		url: "cs:utopic/mysql-47",
