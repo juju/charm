@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	gitjujutesting "github.com/juju/testing"
+	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/juju/charm.v5-unstable"
@@ -169,4 +170,59 @@ func (s *LocalRepoSuite) TestFindsSymlinks(c *gc.C) {
 	c.Assert(ch.Meta().Name, gc.Equals, "dummy")
 	c.Assert(ch.Config().Options["title"].Default, gc.Equals, "My Title")
 	c.Assert(ch.(*charm.CharmDir).Path, gc.Equals, linkPath)
+}
+
+func (s *LocalRepoSuite) TestResolve(c *gc.C) {
+	// Add some charms to the local repo.
+	s.addDir("upgrade1")
+	s.addDir("upgrade2")
+	s.addDir("wordpress")
+	s.addDir("riak")
+
+	// Define the tests to be run.
+	tests := []struct {
+		id  string
+		url string
+		err string
+	}{{
+		id:  "local:quantal/upgrade",
+		url: "local:quantal/upgrade-2",
+	}, {
+		id:  "local:quantal/upgrade-1",
+		url: "local:quantal/upgrade-1",
+	}, {
+		id:  "local:quantal/wordpress",
+		url: "local:quantal/wordpress-3",
+	}, {
+		id:  "local:quantal/riak",
+		url: "local:quantal/riak-7",
+	}, {
+		id:  "local:quantal/wordpress-3",
+		url: "local:quantal/wordpress-3",
+	}, {
+		id:  "local:quantal/wordpress-2",
+		url: "local:quantal/wordpress-2",
+	}, {
+		id:  "local:trusty/riak",
+		err: "charm not found .*: local:trusty/riak",
+	}, {
+		id:  "local:quantal/no-such",
+		err: "charm not found .*: local:quantal/no-such",
+	}, {
+		id:  "local:upgrade",
+		err: "no series specified for local:upgrade",
+	}}
+
+	// Run the tests.
+	for i, test := range tests {
+		c.Logf("test %d: %s", i, test.id)
+		url, err := s.repo.Resolve(charm.MustParseReference(test.id))
+		if test.err != "" {
+			c.Assert(err.Error(), gc.Matches, test.err)
+			c.Assert(url, gc.IsNil)
+			continue
+		}
+		c.Assert(err, jc.ErrorIsNil)
+		c.Assert(url, jc.DeepEquals, charm.MustParseURL(test.url))
+	}
 }
