@@ -79,8 +79,11 @@ func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 	}
 	r, id, expectHash, expectSize, err := s.client.GetArchive(curl.Reference())
 	if err != nil {
-		if errgo.Cause(err) == params.ErrNotFound {
+		switch errgo.Cause(err) {
+		case params.ErrNotFound:
 			return nil, errgo.WithCausef(nil, params.ErrNotFound, "cannot retrieve charm %q: charm not found", curl)
+		case params.ErrUnauthorized:
+			return nil, errgo.WithCausef(nil, params.ErrUnauthorized, "access denied to charm URL %q", curl)
 		}
 		return nil, errgo.Notef(err, "cannot retrieve charm %q", curl)
 	}
@@ -195,8 +198,11 @@ func (s *CharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
 		Id params.IdResponse
 	}
 	if _, err := s.client.Meta(ref, &result); err != nil {
-		if errgo.Cause(err) == params.ErrNotFound {
+		switch errgo.Cause(err) {
+		case params.ErrNotFound:
 			return nil, errgo.WithCausef(nil, params.ErrNotFound, "cannot resolve charm URL %q: charm not found", ref)
+		case params.ErrUnauthorized:
+			return nil, errgo.WithCausef(nil, params.ErrUnauthorized, "access denied to charm URL %q", ref)
 		}
 		return nil, errgo.Notef(err, "cannot resolve charm URL %q", ref)
 	}
