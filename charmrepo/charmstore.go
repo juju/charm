@@ -53,6 +53,10 @@ type NewCharmStoreParams struct {
 
 // NewCharmStore creates and returns a charm store repository.
 // The given parameters are used to instantiate the charm store.
+//
+// The errors returned from the interface methods will
+// preserve the causes returned from the underlying csclient
+// methods.
 func NewCharmStore(p NewCharmStoreParams) Interface {
 	return &CharmStore{
 		client: csclient.New(csclient.Params{
@@ -79,13 +83,11 @@ func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 	}
 	r, id, expectHash, expectSize, err := s.client.GetArchive(curl.Reference())
 	if err != nil {
-		switch errgo.Cause(err) {
-		case params.ErrNotFound:
+		if errgo.Cause(err) == params.ErrNotFound {
+			// Make a prettier error message for the user.
 			return nil, errgo.WithCausef(nil, params.ErrNotFound, "cannot retrieve charm %q: charm not found", curl)
-		case params.ErrUnauthorized:
-			return nil, errgo.WithCausef(nil, params.ErrUnauthorized, "access denied to charm URL %q", curl)
 		}
-		return nil, errgo.Notef(err, "cannot retrieve charm %q", curl)
+		return nil, errgo.NoteMask(err, fmt.Sprintf("cannot retrieve charm %q", curl), errgo.Any)
 	}
 	defer r.Close()
 
@@ -171,7 +173,7 @@ func (s *CharmStore) Latest(curls ...*charm.URL) ([]CharmRevision, error) {
 		}
 	}
 	if err := s.client.Get(u.String(), &results); err != nil {
-		return nil, errgo.Notef(err, "cannot get metadata from the charm store")
+		return nil, errgo.NoteMask(err, "cannot get metadata from the charm store", errgo.Any)
 	}
 
 	// Build the response.
@@ -198,13 +200,11 @@ func (s *CharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
 		Id params.IdResponse
 	}
 	if _, err := s.client.Meta(ref, &result); err != nil {
-		switch errgo.Cause(err) {
-		case params.ErrNotFound:
+		if errgo.Cause(err) == params.ErrNotFound {
+			// Make a prettier error message for the user.
 			return nil, errgo.WithCausef(nil, params.ErrNotFound, "cannot resolve charm URL %q: charm not found", ref)
-		case params.ErrUnauthorized:
-			return nil, errgo.WithCausef(nil, params.ErrUnauthorized, "access denied to charm URL %q", ref)
 		}
-		return nil, errgo.Notef(err, "cannot resolve charm URL %q", ref)
+		return nil, errgo.NoteMask(err, fmt.Sprintf("cannot resolve charm URL %q"), errgo.Any)
 	}
 	url, err := result.Id.Id.URL("")
 	if err != nil {
