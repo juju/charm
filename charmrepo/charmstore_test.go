@@ -20,9 +20,9 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/juju/charmstore.v4"
+	"gopkg.in/juju/charmstore.v4/charmstoretesting"
 	"gopkg.in/juju/charmstore.v4/csclient"
 	"gopkg.in/juju/charmstore.v4/params"
-	charmstoretesting "gopkg.in/juju/charmstore.v4/testing"
 
 	"gopkg.in/juju/charm.v5-unstable"
 	"gopkg.in/juju/charm.v5-unstable/charmrepo"
