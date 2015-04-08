@@ -116,7 +116,7 @@ type Storage struct {
 	// such as tmpfs or ephemeral instance disks.
 	//
 	// Properties has no default, and is optional.
-	Properties []string `bson:properties,omitempty`
+	Properties []string `bson:"properties,omitempty"`
 }
 
 // Relation represents a single relation defined in the charm
