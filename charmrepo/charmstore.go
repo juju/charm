@@ -204,7 +204,7 @@ func (s *CharmStore) Resolve(ref *charm.Reference) (*charm.URL, error) {
 			// Make a prettier error message for the user.
 			return nil, errgo.WithCausef(nil, params.ErrNotFound, "cannot resolve charm URL %q: charm not found", ref)
 		}
-		return nil, errgo.NoteMask(err, fmt.Sprintf("cannot resolve charm URL %q"), errgo.Any)
+		return nil, errgo.NoteMask(err, fmt.Sprintf("cannot resolve charm URL %q", ref), errgo.Any)
 	}
 	url, err := result.Id.Id.URL("")
 	if err != nil {
