@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -236,6 +237,44 @@ func (s *charmStoreRepoSuite) TestGetWithTestMode(c *gc.C) {
 	_, err = repo.Get(url)
 	c.Assert(err, jc.ErrorIsNil)
 	s.checkCharmDownloads(c, url, 0)
+}
+
+func (s *charmStoreRepoSuite) TestGetWithJujuAttrs(c *gc.C) {
+	_, url := s.addCharm(c, "trusty/riak-0", "riak")
+
+	// Set up a proxy server that stores the request header.
+	var header http.Header
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header = r.Header
+		s.srv.Handler().ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+
+	repo := charmrepo.NewCharmStore(charmrepo.NewCharmStoreParams{
+		URL: srv.URL,
+	})
+
+	// Make a first request without Juju attrs.
+	_, err := repo.Get(url)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(header.Get(charmrepo.JujuMetadataHTTPHeader), gc.Equals, "")
+
+	// Make a second request after setting Juju attrs.
+	repo = repo.(*charmrepo.CharmStore).WithJujuAttrs(map[string]string{
+		"k1": "v1",
+		"k2": "v2",
+	})
+	_, err = repo.Get(url)
+	c.Assert(err, jc.ErrorIsNil)
+	values := header[http.CanonicalHeaderKey(charmrepo.JujuMetadataHTTPHeader)]
+	sort.Strings(values)
+	c.Assert(values, jc.DeepEquals, []string{"k1=v1", "k2=v2"})
+
+	// Make a third request after restoring empty attrs.
+	repo = repo.(*charmrepo.CharmStore).WithJujuAttrs(nil)
+	_, err = repo.Get(url)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(header.Get(charmrepo.JujuMetadataHTTPHeader), gc.Equals, "")
 }
 
 func (s *charmStoreRepoSuite) TestGetErrorBundle(c *gc.C) {
