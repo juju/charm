@@ -261,7 +261,8 @@ func (s *charmStoreRepoSuite) TestGetWithJujuAttrs(c *gc.C) {
 
 	// Make a second request after setting Juju attrs.
 	repo = repo.(*charmrepo.CharmStore).WithJujuAttrs(map[string]string{
-		"k1": "v1", "k2": "v2",
+		"k1": "v1",
+		"k2": "v2",
 	})
 	_, err = repo.Get(url)
 	c.Assert(err, jc.ErrorIsNil)
