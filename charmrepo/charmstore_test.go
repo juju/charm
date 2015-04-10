@@ -25,9 +25,9 @@ import (
 	"gopkg.in/juju/charmstore.v4/csclient"
 	"gopkg.in/juju/charmstore.v4/params"
 
-	"gopkg.in/juju/charm.v5-unstable"
-	"gopkg.in/juju/charm.v5-unstable/charmrepo"
-	charmtesting "gopkg.in/juju/charm.v5-unstable/testing"
+	"gopkg.in/juju/charm.v5"
+	"gopkg.in/juju/charm.v5/charmrepo"
+	charmtesting "gopkg.in/juju/charm.v5/testing"
 )
 
 type charmStoreSuite struct {

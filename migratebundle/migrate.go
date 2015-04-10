@@ -4,7 +4,7 @@ import (
 	"gopkg.in/errgo.v1"
 	"gopkg.in/yaml.v1"
 
-	"gopkg.in/juju/charm.v5-unstable"
+	"gopkg.in/juju/charm.v5"
 )
 
 // legacyBundle represents an old-style bundle.

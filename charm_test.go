@@ -14,8 +14,8 @@ import (
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v1"
 
-	"gopkg.in/juju/charm.v5-unstable"
-	charmtesting "gopkg.in/juju/charm.v5-unstable/testing"
+	"gopkg.in/juju/charm.v5"
+	charmtesting "gopkg.in/juju/charm.v5/testing"
 )
 
 func Test(t *stdtesting.T) {
