@@ -8,9 +8,9 @@ import (
 	gc "gopkg.in/check.v1"
 	"gopkg.in/juju/charmstore.v4/csclient"
 
-	"gopkg.in/juju/charm.v5-unstable"
-	"gopkg.in/juju/charm.v5-unstable/charmrepo"
-	charmtesting "gopkg.in/juju/charm.v5-unstable/testing"
+	"gopkg.in/juju/charm.v5"
+	"gopkg.in/juju/charm.v5/charmrepo"
+	charmtesting "gopkg.in/juju/charm.v5/testing"
 )
 
 var TestCharms = charmtesting.NewRepo("../internal/test-charm-repo", "quantal")

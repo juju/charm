@@ -12,8 +12,8 @@ import (
 
 	"github.com/juju/utils/fs"
 
-	"gopkg.in/juju/charm.v5-unstable"
-	"gopkg.in/juju/charm.v5-unstable/charmrepo"
+	"gopkg.in/juju/charm.v5"
+	"gopkg.in/juju/charm.v5/charmrepo"
 )
 
 func check(err error) {

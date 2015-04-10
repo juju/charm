@@ -13,9 +13,9 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/juju/charm.v5-unstable"
-	"gopkg.in/juju/charm.v5-unstable/charmrepo"
-	charmtesting "gopkg.in/juju/charm.v5-unstable/testing"
+	"gopkg.in/juju/charm.v5"
+	"gopkg.in/juju/charm.v5/charmrepo"
+	charmtesting "gopkg.in/juju/charm.v5/testing"
 )
 
 type legacyCharmStoreSuite struct {
