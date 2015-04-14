@@ -116,6 +116,10 @@ func (s *CharmStore) Get(curl *charm.URL) (charm.Charm, error) {
 	}
 
 	// Move the archive to the expected place, and return the charm.
+	err = f.Close()
+	if err != nil {
+		return nil, err
+	}
 	if err := utils.ReplaceFile(f.Name(), path); err != nil {
 		return nil, errgo.Notef(err, "cannot move the charm archive")
 	}
