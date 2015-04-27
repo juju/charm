@@ -11,15 +11,19 @@ const (
 	// None of these hooks are ever associated with a relation; each of them
 	// represents a change to the state of the unit as a whole. The values
 	// themselves are all valid hook names.
-	Install            Kind = "install"
-	Start              Kind = "start"
-	ConfigChanged      Kind = "config-changed"
-	UpgradeCharm       Kind = "upgrade-charm"
-	Stop               Kind = "stop"
-	ActionRequested    Kind = "action-requested" // TODO: remove in charm v5, DEPRECATED
-	Action             Kind = "action"
-	CollectMetrics     Kind = "collect-metrics"
-	MeterStatusChanged Kind = "meter-status-changed"
+	Install               Kind = "install"
+	Start                 Kind = "start"
+	ConfigChanged         Kind = "config-changed"
+	UpgradeCharm          Kind = "upgrade-charm"
+	Stop                  Kind = "stop"
+	ActionRequested       Kind = "action-requested" // TODO: remove in charm v5, DEPRECATED
+	Action                Kind = "action"
+	CollectMetrics        Kind = "collect-metrics"
+	UpdateStatus          Kind = "update-status"
+	MeterStatusChanged    Kind = "meter-status-changed"
+	LeaderElected         Kind = "leader-elected"
+	LeaderDeposed         Kind = "leader-deposed"
+	LeaderSettingsChanged Kind = "leader-settings-changed"
 
 	// These hooks require an associated relation, and the name of the relation
 	// unit whose change triggered the hook. The hook file names that these
@@ -48,7 +52,11 @@ var unitHooks = []Kind{
 	UpgradeCharm,
 	Stop,
 	CollectMetrics,
+	UpdateStatus,
 	MeterStatusChanged,
+	LeaderElected,
+	LeaderDeposed,
+	LeaderSettingsChanged,
 }
 
 // UnitHooks returns all known unit hook kinds.
