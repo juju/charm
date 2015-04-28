@@ -51,13 +51,16 @@ type NewCharmStoreParams struct {
 	VisitWebPage func(url *url.URL) error
 }
 
-// NewCharmStore creates and returns a charm store repository.
+// Override for testing.
+var NewCharmStore = newCharmStore 
+
+// newCharmStore creates and returns a charm store repository.
 // The given parameters are used to instantiate the charm store.
 //
 // The errors returned from the interface methods will
 // preserve the causes returned from the underlying csclient
 // methods.
-func NewCharmStore(p NewCharmStoreParams) Interface {
+func newCharmStore(p NewCharmStoreParams) Interface {
 	return &CharmStore{
 		client: csclient.New(csclient.Params{
 			URL:          p.URL,
