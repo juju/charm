@@ -11,7 +11,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/juju/charm.v5"
+	"gopkg.in/juju/charm.v6-unstable"
 )
 
 var _ = gc.Suite(&BundleArchiveSuite{})
@@ -21,7 +21,7 @@ type BundleArchiveSuite struct {
 }
 
 func (s *BundleArchiveSuite) SetUpSuite(c *gc.C) {
-	s.archivePath = TestCharms.BundleArchivePath(c.MkDir(), "wordpress-simple")
+	s.archivePath = archivePath(c, readBundleDir(c, "wordpress-simple"))
 }
 
 func (s *BundleArchiveSuite) TestReadBundleArchive(c *gc.C) {
@@ -60,7 +60,7 @@ func (s *BundleArchiveSuite) TestReadBundleArchiveWithoutREADME(c *gc.C) {
 }
 
 func testReadBundleArchiveWithoutFile(c *gc.C, fileToRemove string) {
-	path := TestCharms.ClonedBundleDirPath(c.MkDir(), "wordpress-simple")
+	path := cloneDir(c, bundleDirPath(c, "wordpress-simple"))
 	dir, err := charm.ReadBundleDir(path)
 	c.Assert(err, gc.IsNil)
 

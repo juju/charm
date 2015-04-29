@@ -8,7 +8,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/juju/charm.v5"
+	"gopkg.in/juju/charm.v6-unstable"
 )
 
 var _ = gc.Suite(&BundleSuite{})
@@ -18,7 +18,7 @@ type BundleSuite struct {
 }
 
 func (*BundleSuite) TestReadBundleDir(c *gc.C) {
-	path := TestCharms.BundleDirPath("wordpress-simple")
+	path := bundleDirPath(c, "wordpress-simple")
 	b, err := charm.ReadBundle(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
@@ -26,7 +26,7 @@ func (*BundleSuite) TestReadBundleDir(c *gc.C) {
 }
 
 func (*BundleSuite) TestReadBundleArchive(c *gc.C) {
-	path := TestCharms.BundleDirPath("wordpress-simple")
+	path := bundleDirPath(c, "wordpress-simple")
 	b, err := charm.ReadBundle(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
@@ -35,8 +35,8 @@ func (*BundleSuite) TestReadBundleArchive(c *gc.C) {
 
 func checkWordpressBundle(c *gc.C, b charm.Bundle, path string) {
 	// Load the charms required by the bundle.
-	wordpressCharm := TestCharms.CharmDir("wordpress")
-	mysqlCharm := TestCharms.CharmDir("mysql")
+	wordpressCharm := readCharmDir(c, "wordpress")
+	mysqlCharm := readCharmDir(c, "mysql")
 
 	bd := b.Data()
 	c.Assert(bd.RequiredCharms(), jc.DeepEquals, []string{"mysql", "wordpress"})

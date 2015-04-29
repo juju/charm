@@ -12,7 +12,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/juju/charm.v5"
+	"gopkg.in/juju/charm.v6-unstable"
 )
 
 type bundleDataSuite struct {
@@ -292,13 +292,13 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 }
 
 func (*bundleDataSuite) TestVerifyBundleUsingJujuInfoRelation(c *gc.C) {
-	b := TestCharms.BundleDir("wordpress-with-logging")
+	b := readBundleDir(c, "wordpress-with-logging")
 	bd := b.Data()
 
 	charms := map[string]charm.Charm{
-		"wordpress": TestCharms.CharmDir("wordpress"),
-		"mysql":     TestCharms.CharmDir("mysql"),
-		"logging":   TestCharms.CharmDir("logging"),
+		"wordpress": readCharmDir(c, "wordpress"),
+		"mysql":     readCharmDir(c, "mysql"),
+		"logging":   readCharmDir(c, "logging"),
 	}
 	err := bd.VerifyWithCharms(nil, charms)
 	c.Assert(err, gc.IsNil)

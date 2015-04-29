@@ -16,7 +16,7 @@ import (
 	"github.com/juju/testing"
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/juju/charm.v5"
+	"gopkg.in/juju/charm.v6-unstable"
 )
 
 type CharmDirSuite struct {
@@ -26,14 +26,14 @@ type CharmDirSuite struct {
 var _ = gc.Suite(&CharmDirSuite{})
 
 func (s *CharmDirSuite) TestReadCharmDir(c *gc.C) {
-	path := TestCharms.CharmDirPath("dummy")
+	path := charmDirPath(c, "dummy")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 	checkDummy(c, dir, path)
 }
 
 func (s *CharmDirSuite) TestReadCharmDirWithoutConfig(c *gc.C) {
-	path := TestCharms.CharmDirPath("varnish")
+	path := charmDirPath(c, "varnish")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
@@ -43,7 +43,7 @@ func (s *CharmDirSuite) TestReadCharmDirWithoutConfig(c *gc.C) {
 }
 
 func (s *CharmDirSuite) TestReadCharmDirWithoutMetrics(c *gc.C) {
-	path := TestCharms.CharmDirPath("varnish")
+	path := charmDirPath(c, "varnish")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
@@ -53,14 +53,14 @@ func (s *CharmDirSuite) TestReadCharmDirWithoutMetrics(c *gc.C) {
 }
 
 func (s *CharmDirSuite) TestReadCharmDirWithEmptyMetrics(c *gc.C) {
-	path := TestCharms.CharmDirPath("metered-empty")
+	path := charmDirPath(c, "metered-empty")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(Keys(dir.Metrics()), gc.HasLen, 0)
 }
 
 func (s *CharmDirSuite) TestReadCharmDirWithCustomMetrics(c *gc.C) {
-	path := TestCharms.CharmDirPath("metered")
+	path := charmDirPath(c, "metered")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
@@ -69,7 +69,7 @@ func (s *CharmDirSuite) TestReadCharmDirWithCustomMetrics(c *gc.C) {
 }
 
 func (s *CharmDirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
-	path := TestCharms.CharmDirPath("wordpress")
+	path := charmDirPath(c, "wordpress")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
@@ -80,19 +80,17 @@ func (s *CharmDirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
 
 func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
-	charmDir := TestCharms.ClonedDirPath(baseDir, "dummy")
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
 	s.assertArchiveTo(c, baseDir, charmDir)
 }
 
-func (s *CharmDirSuite) TestArchiveToWithSymLinkedRootDir(c *gc.C) {
-	dir := c.MkDir()
-	baseDir := filepath.Join(dir, "precise")
-	err := os.MkdirAll(baseDir, 0755)
+func (s *CharmDirSuite) TestArchiveToWithSymlinkedRootDir(c *gc.C) {
+	path := cloneDir(c, charmDirPath(c, "dummy"))
+	baseDir := filepath.Dir(path)
+	err := os.Symlink(filepath.Join("dummy"), filepath.Join(baseDir, "newdummy"))
 	c.Assert(err, gc.IsNil)
-	TestCharms.ClonedDirPath(dir, "dummy")
-	err = os.Symlink(filepath.Join("..", "dummy"), filepath.Join(baseDir, "dummy"))
-	c.Assert(err, gc.IsNil)
-	charmDir := filepath.Join(baseDir, "dummy")
+	charmDir := filepath.Join(baseDir, "newdummy")
+
 	s.assertArchiveTo(c, baseDir, charmDir)
 }
 
@@ -183,7 +181,7 @@ func (s *CharmDirSuite) TestArchiveToWithNonExecutableHooks(c *gc.C) {
 		}
 	}
 
-	dir := TestCharms.CharmDir("all-hooks")
+	dir := readCharmDir(c, "all-hooks")
 	path := filepath.Join(c.MkDir(), "archive.charm")
 	file, err := os.Create(path)
 	c.Assert(err, gc.IsNil)
@@ -222,7 +220,7 @@ func (s *CharmDirSuite) TestArchiveToWithNonExecutableHooks(c *gc.C) {
 }
 
 func (s *CharmDirSuite) TestArchiveToWithBadType(c *gc.C) {
-	charmDir := TestCharms.ClonedDirPath(c.MkDir(), "dummy")
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
 	badFile := filepath.Join(charmDir, "hooks", "badfile")
 
 	// Symlink targeting a path outside of the charm.
@@ -259,7 +257,7 @@ func (s *CharmDirSuite) TestArchiveToWithBadType(c *gc.C) {
 }
 
 func (s *CharmDirSuite) TestDirRevisionFile(c *gc.C) {
-	charmDir := TestCharms.ClonedDirPath(c.MkDir(), "dummy")
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
 	revPath := filepath.Join(charmDir, "revision")
 
 	// Missing revision file
@@ -290,13 +288,15 @@ func (s *CharmDirSuite) TestDirRevisionFile(c *gc.C) {
 }
 
 func (s *CharmDirSuite) TestDirSetRevision(c *gc.C) {
-	dir := TestCharms.ClonedDir(c.MkDir(), "dummy")
+	path := cloneDir(c, charmDirPath(c, "dummy"))
+	dir, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Revision(), gc.Equals, 1)
 	dir.SetRevision(42)
 	c.Assert(dir.Revision(), gc.Equals, 42)
 
 	var b bytes.Buffer
-	err := dir.ArchiveTo(&b)
+	err = dir.ArchiveTo(&b)
 	c.Assert(err, gc.IsNil)
 
 	archive, err := charm.ReadCharmArchiveBytes(b.Bytes())
@@ -304,7 +304,7 @@ func (s *CharmDirSuite) TestDirSetRevision(c *gc.C) {
 }
 
 func (s *CharmDirSuite) TestDirSetDiskRevision(c *gc.C) {
-	charmDir := TestCharms.ClonedDirPath(c.MkDir(), "dummy")
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
 	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 

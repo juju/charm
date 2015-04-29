@@ -10,7 +10,7 @@ import (
 	"github.com/juju/testing"
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/juju/charm.v5"
+	"gopkg.in/juju/charm.v6-unstable"
 )
 
 type BundleDirSuite struct {
@@ -20,14 +20,14 @@ type BundleDirSuite struct {
 var _ = gc.Suite(&BundleDirSuite{})
 
 func (s *BundleDirSuite) TestReadBundleDir(c *gc.C) {
-	path := TestCharms.BundleDirPath("wordpress-simple")
+	path := bundleDirPath(c, "wordpress-simple")
 	dir, err := charm.ReadBundleDir(path)
 	c.Assert(err, gc.IsNil)
 	checkWordpressBundle(c, dir, path)
 }
 
 func (s *BundleDirSuite) TestReadBundleDirWithoutREADME(c *gc.C) {
-	path := TestCharms.ClonedBundleDirPath(c.MkDir(), "wordpress-simple")
+	path := cloneDir(c, bundleDirPath(c, "wordpress-simple"))
 	err := os.Remove(filepath.Join(path, "README.md"))
 	c.Assert(err, gc.IsNil)
 	dir, err := charm.ReadBundleDir(path)
@@ -37,7 +37,7 @@ func (s *BundleDirSuite) TestReadBundleDirWithoutREADME(c *gc.C) {
 
 func (s *BundleDirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
-	charmDir := TestCharms.ClonedBundleDirPath(baseDir, "wordpress-simple")
+	charmDir := cloneDir(c, bundleDirPath(c, "wordpress-simple"))
 	s.assertArchiveTo(c, baseDir, charmDir)
 }
 

@@ -16,21 +16,17 @@ import (
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v1"
 
-	"gopkg.in/juju/charm.v5"
+	"gopkg.in/juju/charm.v6-unstable"
 )
 
-func repoMeta(name string) io.Reader {
-	charmDir := TestCharms.CharmDirPath(name)
+func repoMeta(c *gc.C, name string) io.Reader {
+	charmDir := charmDirPath(c, name)
 	file, err := os.Open(filepath.Join(charmDir, "metadata.yaml"))
-	if err != nil {
-		panic(err)
-	}
+	c.Assert(err, gc.IsNil)
 	defer file.Close()
 	data, err := ioutil.ReadAll(file)
-	if err != nil {
-		panic(err)
-	}
-	return bytes.NewBuffer(data)
+	c.Assert(err, gc.IsNil)
+	return bytes.NewReader(data)
 }
 
 type MetaSuite struct{}
@@ -38,7 +34,7 @@ type MetaSuite struct{}
 var _ = gc.Suite(&MetaSuite{})
 
 func (s *MetaSuite) TestReadMetaVersion1(c *gc.C) {
-	meta, err := charm.ReadMeta(repoMeta("dummy"))
+	meta, err := charm.ReadMeta(repoMeta(c, "dummy"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Name, gc.Equals, "dummy")
 	c.Assert(meta.Summary, gc.Equals, "That's a dummy charm.")
@@ -50,7 +46,7 @@ func (s *MetaSuite) TestReadMetaVersion1(c *gc.C) {
 }
 
 func (s *MetaSuite) TestReadMetaVersion2(c *gc.C) {
-	meta, err := charm.ReadMeta(repoMeta("format2"))
+	meta, err := charm.ReadMeta(repoMeta(c, "format2"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Name, gc.Equals, "format2")
 	c.Assert(meta.Format, gc.Equals, 2)
@@ -58,25 +54,25 @@ func (s *MetaSuite) TestReadMetaVersion2(c *gc.C) {
 }
 
 func (s *MetaSuite) TestReadCategory(c *gc.C) {
-	meta, err := charm.ReadMeta(repoMeta("category"))
+	meta, err := charm.ReadMeta(repoMeta(c, "category"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Categories, jc.DeepEquals, []string{"database"})
 }
 
 func (s *MetaSuite) TestReadTags(c *gc.C) {
-	meta, err := charm.ReadMeta(repoMeta("category"))
+	meta, err := charm.ReadMeta(repoMeta(c, "category"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Tags, jc.DeepEquals, []string{"openstack", "storage"})
 }
 
 func (s *MetaSuite) TestSubordinate(c *gc.C) {
-	meta, err := charm.ReadMeta(repoMeta("logging"))
+	meta, err := charm.ReadMeta(repoMeta(c, "logging"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Subordinate, gc.Equals, true)
 }
 
 func (s *MetaSuite) TestSubordinateWithoutContainerRelation(c *gc.C) {
-	r := repoMeta("dummy")
+	r := repoMeta(c, "dummy")
 	hackYaml := ReadYaml(r)
 	hackYaml["subordinate"] = true
 	_, err := charm.ReadMeta(hackYaml.Reader())
@@ -84,7 +80,7 @@ func (s *MetaSuite) TestSubordinateWithoutContainerRelation(c *gc.C) {
 }
 
 func (s *MetaSuite) TestScopeConstraint(c *gc.C) {
-	meta, err := charm.ReadMeta(repoMeta("logging"))
+	meta, err := charm.ReadMeta(repoMeta(c, "logging"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Provides["logging-client"].Scope, gc.Equals, charm.ScopeGlobal)
 	c.Assert(meta.Requires["logging-directory"].Scope, gc.Equals, charm.ScopeContainer)
@@ -92,7 +88,7 @@ func (s *MetaSuite) TestScopeConstraint(c *gc.C) {
 }
 
 func (s *MetaSuite) TestParseMetaRelations(c *gc.C) {
-	meta, err := charm.ReadMeta(repoMeta("mysql"))
+	meta, err := charm.ReadMeta(repoMeta(c, "mysql"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Provides["server"], gc.Equals, charm.Relation{
 		Name:      "server",
@@ -103,7 +99,7 @@ func (s *MetaSuite) TestParseMetaRelations(c *gc.C) {
 	c.Assert(meta.Requires, gc.IsNil)
 	c.Assert(meta.Peers, gc.IsNil)
 
-	meta, err = charm.ReadMeta(repoMeta("riak"))
+	meta, err = charm.ReadMeta(repoMeta(c, "riak"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Provides["endpoint"], gc.Equals, charm.Relation{
 		Name:      "endpoint",
@@ -126,7 +122,7 @@ func (s *MetaSuite) TestParseMetaRelations(c *gc.C) {
 	})
 	c.Assert(meta.Requires, gc.IsNil)
 
-	meta, err = charm.ReadMeta(repoMeta("terracotta"))
+	meta, err = charm.ReadMeta(repoMeta(c, "terracotta"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Provides["dso"], gc.Equals, charm.Relation{
 		Name:      "dso",
@@ -144,7 +140,7 @@ func (s *MetaSuite) TestParseMetaRelations(c *gc.C) {
 	})
 	c.Assert(meta.Requires, gc.IsNil)
 
-	meta, err = charm.ReadMeta(repoMeta("wordpress"))
+	meta, err = charm.ReadMeta(repoMeta(c, "wordpress"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Provides["url"], gc.Equals, charm.Relation{
 		Name:      "url",
@@ -366,7 +362,7 @@ func (s *MetaSuite) TestIfaceExpander(c *gc.C) {
 }
 
 func (s *MetaSuite) TestMetaHooks(c *gc.C) {
-	meta, err := charm.ReadMeta(repoMeta("wordpress"))
+	meta, err := charm.ReadMeta(repoMeta(c, "wordpress"))
 	c.Assert(err, gc.IsNil)
 	hooks := meta.Hooks()
 	expectedHooks := map[string]bool{
@@ -620,14 +616,14 @@ storage:
 `))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Storage, gc.DeepEquals, map[string]charm.Storage{
-		"store0": charm.Storage{
+		"store0": {
 			Name:        "store0",
 			Description: "woo tee bix",
 			Type:        charm.StorageBlock,
 			CountMin:    1, // singleton
 			CountMax:    1,
 		},
-		"store1": charm.Storage{
+		"store1": {
 			Name:     "store1",
 			Type:     charm.StorageFilesystem,
 			CountMin: 1, // singleton

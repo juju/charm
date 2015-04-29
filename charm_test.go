@@ -7,34 +7,33 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	stdtesting "testing"
 
 	jc "github.com/juju/testing/checkers"
+	"github.com/juju/utils/fs"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v1"
 
-	"gopkg.in/juju/charm.v5"
-	charmtesting "gopkg.in/juju/charm.v5/testing"
+	"gopkg.in/juju/charm.v6-unstable"
 )
 
 func Test(t *stdtesting.T) {
 	gc.TestingT(t)
 }
 
-var TestCharms = charmtesting.NewRepo("internal/test-charm-repo", "quantal")
-
 type CharmSuite struct{}
 
 var _ = gc.Suite(&CharmSuite{})
 
 func (s *CharmSuite) TestReadCharm(c *gc.C) {
-	bPath := TestCharms.CharmArchivePath(c.MkDir(), "dummy")
-	ch, err := charm.ReadCharm(bPath)
+	ch, err := charm.ReadCharm(charmDirPath(c, "dummy"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(ch.Meta().Name, gc.Equals, "dummy")
-	dPath := TestCharms.CharmDirPath("dummy")
-	ch, err = charm.ReadCharm(dPath)
+
+	bPath := archivePath(c, readCharmDir(c, "dummy"))
+	ch, err = charm.ReadCharm(bPath)
 	c.Assert(err, gc.IsNil)
 	c.Assert(ch.Meta().Name, gc.Equals, "dummy")
 }
@@ -61,7 +60,7 @@ func checkDummy(c *gc.C, f charm.Charm, path string) {
 	c.Assert(f.Actions(), jc.DeepEquals,
 		&charm.Actions{
 			map[string]charm.ActionSpec{
-				"snapshot": charm.ActionSpec{
+				"snapshot": {
 					Description: "Take a snapshot of the database.",
 					Params: map[string]interface{}{
 						"type":        "object",
@@ -102,4 +101,72 @@ func (yh YamlHacker) Reader() io.Reader {
 		panic(err)
 	}
 	return bytes.NewBuffer(data)
+}
+
+// charmDirPath returns the path to the charm with the
+// given name in the testing repository.
+func charmDirPath(c *gc.C, name string) string {
+	path := filepath.Join("internal/test-charm-repo/quantal", name)
+	assertIsDir(c, path)
+	return path
+}
+
+// bundleDirPath returns the path to the bundle with the
+// given name in the testing repository.
+func bundleDirPath(c *gc.C, name string) string {
+	path := filepath.Join("internal/test-charm-repo/bundle", name)
+	assertIsDir(c, path)
+	return path
+}
+
+func assertIsDir(c *gc.C, path string) {
+	info, err := os.Stat(path)
+	c.Assert(err, gc.IsNil)
+	c.Assert(info.IsDir(), gc.Equals, true)
+}
+
+// readCharmDir returns the charm with the given
+// name from the testing repository.
+func readCharmDir(c *gc.C, name string) *charm.CharmDir {
+	path := charmDirPath(c, name)
+	ch, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
+	return ch
+}
+
+// readBundleDir returns the bundle with the
+// given name from the testing repository.
+func readBundleDir(c *gc.C, name string) *charm.BundleDir {
+	path := bundleDirPath(c, name)
+	ch, err := charm.ReadBundleDir(path)
+	c.Assert(err, gc.IsNil)
+	return ch
+}
+
+type ArchiverTo interface {
+	ArchiveTo(w io.Writer) error
+}
+
+// archivePath archives the given charm or bundle
+// to a newly created file and returns the path to the
+// file.
+func archivePath(c *gc.C, a ArchiverTo) string {
+	dir := c.MkDir()
+	path := filepath.Join(dir, "archive")
+	file, err := os.Create(path)
+	c.Assert(err, gc.IsNil)
+	defer file.Close()
+	err = a.ArchiveTo(file)
+	c.Assert(err, gc.IsNil)
+	return path
+}
+
+// cloneDir recursively copies the path directory
+// into a new directory and returns the path
+// to it.
+func cloneDir(c *gc.C, path string) string {
+	newPath := filepath.Join(c.MkDir(), filepath.Base(path))
+	err := fs.Copy(path, newPath)
+	c.Assert(err, gc.IsNil)
+	return newPath
 }

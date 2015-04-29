@@ -322,7 +322,7 @@ snapshot:
    required: ["outfile"]
 `,
 		expectedActions: &Actions{map[string]ActionSpec{
-			"snapshot": ActionSpec{
+			"snapshot": {
 				Description: "Take a snapshot of the database.",
 				Params: map[string]interface{}{
 					"title":       "snapshot",
@@ -372,7 +372,7 @@ remote-sync:
    required: ["file", "remote-uri"]
 `,
 		expectedActions: &Actions{map[string]ActionSpec{
-			"snapshot": ActionSpec{
+			"snapshot": {
 				Description: "Take a snapshot of the database.",
 				Params: map[string]interface{}{
 					"title":       "snapshot",
@@ -388,7 +388,7 @@ remote-sync:
 							"minimum":          0,
 							"maximum":          9,
 							"exclusiveMaximum": false}}}},
-			"remote-sync": ActionSpec{
+			"remote-sync": {
 				Description: "Sync a file to a remote host.",
 				Params: map[string]interface{}{
 					"title":       "remote-sync",
@@ -428,7 +428,7 @@ snapshot:
       something-else: {}
 `,
 		expectedActions: &Actions{map[string]ActionSpec{
-			"snapshot": ActionSpec{
+			"snapshot": {
 				Description: "Take a snapshot of the database.",
 				Params: map[string]interface{}{
 					"title":       "snapshot",
@@ -462,7 +462,7 @@ snapshot:
 `,
 
 		expectedActions: &Actions{map[string]ActionSpec{
-			"snapshot": ActionSpec{
+			"snapshot": {
 				Description: "Take a snapshot of the database.",
 				Params: map[string]interface{}{
 					"description": "Take a snapshot of the database.",
@@ -477,7 +477,7 @@ snapshot:
 `,
 
 		expectedActions: &Actions{map[string]ActionSpec{
-			"snapshot": ActionSpec{
+			"snapshot": {
 				Description: "No description",
 				Params: map[string]interface{}{
 					"description": "No description",
