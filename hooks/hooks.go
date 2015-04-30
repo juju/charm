@@ -37,8 +37,8 @@ const (
 	// These hooks require an associated storage. The hook file names that these
 	// kinds represent will be prefixed by the storage name; for example,
 	// "shared-fs-storage-attached".
-	StorageAttached Kind = "storage-attached"
-	StorageDetached Kind = "storage-detached"
+	StorageAttached  Kind = "storage-attached"
+	StorageDetaching Kind = "storage-detaching"
 )
 
 var unitHooks = []Kind{
@@ -74,7 +74,7 @@ func RelationHooks() []Kind {
 
 var storageHooks = []Kind{
 	StorageAttached,
-	StorageDetached,
+	StorageDetaching,
 }
 
 // StorageHooks returns all known storage hook kinds.
@@ -96,7 +96,7 @@ func (kind Kind) IsRelation() bool {
 // IsStorage returns whether the Kind represents a storage hook.
 func (kind Kind) IsStorage() bool {
 	switch kind {
-	case StorageAttached, StorageDetached:
+	case StorageAttached, StorageDetaching:
 		return true
 	}
 	return false
