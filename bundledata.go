@@ -68,7 +68,11 @@ type ServiceSpec struct {
 
 	// NumUnits holds the number of units of the
 	// service that will be deployed.
-	NumUnits int `yaml:"num_units"`
+	// 
+	// For a subordinate service, this must be nil;
+	// otherwise a nil value represents the default
+	// of a single unit.
+	NumUnits *int `yaml:"num_units,omitempty" json:",omitempty"`
 
 	// To may hold up to NumUnits members with
 	// each member specifying a desired placement
@@ -296,18 +300,70 @@ func (verifier *bundleDataVerifier) verifyServices() {
 		if err := verifier.verifyConstraints(svc.Constraints); err != nil {
 			verifier.addErrorf("invalid constraints %q in service %q: %v", svc.Constraints, name, err)
 		}
-		verifier.verifyPlacement(svc.To)
-		if svc.NumUnits < 0 {
-			verifier.addErrorf("negative number of units specified on service %q", name)
-		} else if len(svc.To) > svc.NumUnits {
-			verifier.addErrorf("too many units specified in unit placement for service %q", name)
+		numUnitsKnown := false
+		var numUnits int
+		if svc.NumUnits != nil {
+			numUnits = *svc.NumUnits
+			numUnitsKnown = true
 		}
 		if verifier.charms != nil {
-			if _, ok := verifier.charms[svc.Charm]; !ok {
+			if ch, ok := verifier.charms[svc.Charm]; ok {
+				if ch.Meta().Subordinate {
+					if len(svc.To) > 0 {
+						verifier.addErrorf("service %q is subordinate but specifies unit placement", name)
+					}
+					if numUnitsKnown {
+						verifier.addErrorf("service %q is subordinate but specifies num_units", name)
+						numUnitsKnown = false
+					}
+				} else if !numUnitsKnown {
+					numUnits = 1
+					numUnitsKnown = true
+				}
+			} else {
 				verifier.addErrorf("service %q refers to non-existent charm %q", name, svc.Charm)
 			}
 		}
+		if numUnitsKnown {
+			if numUnits < 0 {
+				verifier.addErrorf("negative number of units specified on service %q", name)
+			} else if len(svc.To) > numUnits {
+				verifier.addErrorf("too many units specified in unit placement for service %q", name)
+			}
+		} else {
+			// The default number of units for a non-subordinate charm
+			// is 1, and for a subordinate charm, the to: clause is not
+			// allowed, so the maximum possible number of entries in the
+			// to: clause when there is no num_units clause is 1.
+			if len(svc.To) > 1 {
+				verifier.addErrorf("too many units specified in unit placement for service %q", name)
+			}
+		}
+				
+		verifier.verifyPlacement(svc.To)
 	}
+}
+
+// numUnits returns a best guess at the number of units
+// in given service. It returns 1 if the service does not
+// specify the number of units and there is no charm
+// information that can be used to verify whether it's
+// a subordinate or not. It returns 0 for subordinate services.
+func (verifier *bundleDataVerifier) numUnits(svc *ServiceSpec) int {
+	if svc.NumUnits != nil {
+		return *svc.NumUnits
+	}
+	if verifier.charms == nil {
+		return 1
+	}
+	ch, ok := verifier.charms[svc.Charm]
+	if !ok {
+		return 1
+	}
+	if ch.Meta().Subordinate {
+		return 0
+	}
+	return 1
 }
 
 func (verifier *bundleDataVerifier) verifyPlacement(to []string) {
@@ -324,8 +380,8 @@ func (verifier *bundleDataVerifier) verifyPlacement(to []string) {
 				verifier.addErrorf("placement %q refers to a service not defined in this bundle", p)
 				continue
 			}
-			if up.Unit >= 0 && up.Unit >= spec.NumUnits {
-				verifier.addErrorf("placement %q specifies a unit greater than the %d unit(s) started by the target service", p, spec.NumUnits)
+			if up.Unit >= 0 && up.Unit >= verifier.numUnits(spec) {
+				verifier.addErrorf("placement %q specifies a unit greater than the %d unit(s) started by the target service", p, verifier.numUnits(spec))
 			}
 		case up.Machine == "new":
 		default:

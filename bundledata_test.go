@@ -78,7 +78,7 @@ var parseTests = []struct {
 		Services: map[string]*charm.ServiceSpec{
 			"mediawiki": {
 				Charm:    "cs:precise/mediawiki-10",
-				NumUnits: 1,
+				NumUnits: newInt(1),
 				Options: map[string]interface{}{
 					"debug": false,
 					"name":  "Please set name of wiki",
@@ -91,7 +91,7 @@ var parseTests = []struct {
 			},
 			"mysql": {
 				Charm:    "cs:precise/mysql-28",
-				NumUnits: 2,
+				NumUnits: newInt(2),
 				To:       []string{"0", "mediawiki/0"},
 				Options: map[string]interface{}{
 					"binlog-format": "MIXED",
@@ -337,6 +337,9 @@ func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
 //	    db:
 //	        interface: mysql
 //
+// If the charm name has a "-sub" suffix, the
+// returned charm will have Meta.Subordinate = true.
+//
 func testCharm(name string, relations string) charm.Charm {
 	var provides, requires string
 	parts := strings.Split(relations, "|")
@@ -350,6 +353,9 @@ func testCharm(name string, relations string) charm.Charm {
 		Description: name,
 		Provides:    parseRelations(provides, charm.RoleProvider),
 		Requires:    parseRelations(requires, charm.RoleRequirer),
+	}
+	if strings.HasSuffix(name, "-sub") {
+		meta.Subordinate = true
 	}
 	configStr := `
 options:
@@ -713,6 +719,64 @@ services:
 		`cannot validate service "service1": configuration option "unknown-option" not found in charm "test"`,
 		`cannot validate service "service2": configuration option "another-unknown" not found in charm "test"`,
 		`cannot validate service "service2": option "title" expected string, got 123`,
+	},
+}, {
+	about: "subordinate charm with specified number of units",
+	data: `
+services:
+    testsub:
+        charm: "testsub"
+        num_units: 1
+`,
+	charms: map[string]charm.Charm{
+		"testsub": testCharm("test-sub", ""),
+	},
+	errors: []string{
+		`service "testsub" is subordinate but specifies num_units`,
+	},
+}, {
+	about: "subordinate charm with specified number of units",
+	data: `
+services:
+    testsub:
+        charm: "testsub"
+        num_units: 1
+`,
+	charms: map[string]charm.Charm{
+		"testsub": testCharm("test-sub", ""),
+	},
+	errors: []string{
+		`service "testsub" is subordinate but specifies num_units`,
+	},
+}, {
+	about: "subordinate charm with to-clause",
+	data: `
+services:
+    testsub:
+        charm: "testsub"
+        to: [0]
+machines:
+    0:
+`,
+	charms: map[string]charm.Charm{
+		"testsub": testCharm("test-sub", ""),
+	},
+	errors: []string{
+		`service "testsub" is subordinate but specifies unit placement`,
+	},
+}, {
+	about: "charm with unspecified units and more than one to: entry",
+	data: `
+services:
+    test:
+        charm: "test"
+        to: [0, 1]
+machines:
+    0:
+    1:
+`,
+	errors: []string{
+		`too many units specified in unit placement for service "test"`,
 	},
 }}
 
