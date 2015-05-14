@@ -157,6 +157,9 @@ func (s *CharmStore) Latest(curls ...*charm.URL) ([]CharmRevision, error) {
 	// Prepare the request to the charm store.
 	urls := make([]string, len(curls))
 	values := url.Values{}
+	// Include the ignore-auth flag so that non-public results do not generate
+	// an error for the whole request.
+	values.Add("ignore-auth", "1")
 	values.Add("include", "id-revision")
 	values.Add("include", "hash256")
 	for i, curl := range curls {
