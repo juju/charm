@@ -78,7 +78,7 @@ var parseTests = []struct {
 		Services: map[string]*charm.ServiceSpec{
 			"mediawiki": {
 				Charm:    "cs:precise/mediawiki-10",
-				NumUnits: newInt(1),
+				NumUnits: 1,
 				Options: map[string]interface{}{
 					"debug": false,
 					"name":  "Please set name of wiki",
@@ -91,7 +91,7 @@ var parseTests = []struct {
 			},
 			"mysql": {
 				Charm:    "cs:precise/mysql-28",
-				NumUnits: newInt(2),
+				NumUnits: 2,
 				To:       []string{"0", "mediawiki/0"},
 				Options: map[string]interface{}{
 					"binlog-format": "MIXED",
@@ -721,7 +721,7 @@ services:
 		`cannot validate service "service2": option "title" expected string, got 123`,
 	},
 }, {
-	about: "subordinate charm with specified number of units",
+	about: "subordinate charm with more than zero units",
 	data: `
 services:
     testsub:
@@ -732,10 +732,10 @@ services:
 		"testsub": testCharm("test-sub", ""),
 	},
 	errors: []string{
-		`service "testsub" is subordinate but specifies num_units`,
+		`service "testsub" is subordinate but has non-zero num_units`,
 	},
 }, {
-	about: "subordinate charm with specified number of units",
+	about: "subordinate charm with more than one unit",
 	data: `
 services:
     testsub:
@@ -746,7 +746,7 @@ services:
 		"testsub": testCharm("test-sub", ""),
 	},
 	errors: []string{
-		`service "testsub" is subordinate but specifies num_units`,
+		`service "testsub" is subordinate but has non-zero num_units`,
 	},
 }, {
 	about: "subordinate charm with to-clause",
@@ -763,6 +763,7 @@ machines:
 	},
 	errors: []string{
 		`service "testsub" is subordinate but specifies unit placement`,
+		`too many units specified in unit placement for service "testsub"`,
 	},
 }, {
 	about: "charm with unspecified units and more than one to: entry",

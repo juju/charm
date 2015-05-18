@@ -50,11 +50,11 @@ func checkWordpressBundle(c *gc.C, b charm.Bundle, path string) {
 
 	c.Assert(bd.Services, jc.DeepEquals, map[string]*charm.ServiceSpec{
 		"wordpress": {
-			Charm:    "wordpress",
+			Charm: "wordpress",
 		},
 		"mysql": {
 			Charm:    "mysql",
-			NumUnits: newInt(1),
+			NumUnits: 1,
 		},
 	})
 	c.Assert(bd.Relations, jc.DeepEquals, [][]string{
@@ -67,10 +67,6 @@ func checkWordpressBundle(c *gc.C, b charm.Bundle, path string) {
 	case *charm.BundleDir:
 		c.Assert(b.Path, gc.Equals, path)
 	}
-}
-
-func newInt(i int) *int {
-	return &i
 }
 
 func verifyOk(string) error {
