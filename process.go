@@ -11,11 +11,13 @@ import (
 	"github.com/juju/schema"
 )
 
+// ProcessPort is network port information for a workload process.
 type ProcessPort struct {
 	PortA int
 	PortB int
 }
 
+// ProcessVolume is storage volume information for a workload process.
 type ProcessVolume struct {
 	ConcreteMount string
 	VirtualMount  string
@@ -23,6 +25,7 @@ type ProcessVolume struct {
 	Storage       string
 }
 
+// Process is the static definition of a workload process in a charm.
 type Process struct {
 	Name        string
 	Type        string
@@ -34,14 +37,17 @@ type Process struct {
 	EnvVars     map[string]string
 }
 
-func ParseProcess(name string, procMap map[string]interface{}) (*Process, error) {
-	raw, err := processSchema.Coerce(procMap, []string{name})
+// ParseProcess parses the provided data and converts it to a Process.
+// The data will most likely have been de-serialized, perhaps from YAML.
+func ParseProcess(name string, data map[string]interface{}) (*Process, error) {
+	raw, err := processSchema.Coerce(data, []string{name})
 	if err != nil {
 		return nil, err
 	}
 	return raw.(*Process), nil
 }
 
+// Validate checks the Process for errors.
 func (p Process) Validate(storage map[string]Storage) error {
 	if p.Name == "" {
 		return fmt.Errorf("missing name")
