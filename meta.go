@@ -428,7 +428,7 @@ func (meta Meta) Check() error {
 		names[name] = true
 	}
 
-	if err := checkProcesses(meta.Processes); err != nil {
+	if err := checkProcesses(meta.Processes, meta.Storage); err != nil {
 		return err
 	}
 

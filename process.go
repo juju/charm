@@ -118,12 +118,12 @@ func parseProcess(name string, coerced map[string]interface{}) Process {
 		proc.EnvVars = envMap.(map[string]string)
 	}
 
-	return proc, nil
+	return proc
 }
 
 func checkProcesses(procs map[string]Process, storage map[string]Storage) error {
 	for _, proc := range procs {
-		if err := proc.Validate(); err != nil {
+		if err := proc.Validate(storage); err != nil {
 			return err
 		}
 	}
@@ -194,7 +194,7 @@ func (c processVolumeSchema) Coerce(v interface{}, path []string) (interface{}, 
 
 	if len(parts) == 3 {
 		mode := parts[2]
-		if err := schema.OneOf(schema.Const("rw"), schema.Const("ro")).Coerce(mode, path); err != nil {
+		if _, err := schema.OneOf(schema.Const("rw"), schema.Const("ro")).Coerce(mode, path); err != nil {
 			return nil, err
 		}
 		volume.Mode = mode
@@ -203,5 +203,5 @@ func (c processVolumeSchema) Coerce(v interface{}, path []string) (interface{}, 
 	if strings.HasPrefix(volume.ConcreteMount, "{") && strings.HasSuffix(volume.ConcreteMount, "}") {
 		volume.Storage = volume.ConcreteMount[1 : len(volume.ConcreteMount)-1]
 	}
-	return &ProcessVolume, nil
+	return &volume, nil
 }
