@@ -6,7 +6,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
-	"github.com/juju/charm"
+	"gopkg.in/juju/charm.v6-unstable"
 )
 
 func (s *MetaSuite) TestProcessNameRequired(c *gc.C) {
