@@ -22,6 +22,7 @@ summary: b
 description: c
 processes:
   proc0:
+    description: a process
     type:
       name: docker
       publish_all: true
@@ -43,8 +44,9 @@ processes:
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Processes, gc.DeepEquals, map[string]charm.Process{
 		"proc0": {
-			Name: "proc0",
-			Type: "docker",
+			Name:        "proc0",
+			Description: "a process",
+			Type:        "docker",
 			TypeOptions: map[string]string{
 				"publish_all": "true",
 			},
