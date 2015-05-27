@@ -92,10 +92,16 @@ func parseProcess(name string, coerced map[string]interface{}) Process {
 	}
 
 	if typeMap, ok := coerced["type"]; ok {
-		options := typeMap.(map[string]string)
-		proc.Type, _ = options["name"]
+		options := typeMap.(map[string]interface{})
+		proc.Type = options["name"].(string)
 		delete(options, "name")
-		proc.TypeOptions = options
+
+		if len(options) > 0 {
+			proc.TypeOptions = make(map[string]string)
+			for k, v := range options {
+				proc.TypeOptions[k] = v.(string)
+			}
+		}
 	}
 
 	if command, ok := coerced["command"]; ok {
@@ -107,15 +113,22 @@ func parseProcess(name string, coerced map[string]interface{}) Process {
 	}
 
 	if portsList, ok := coerced["ports"]; ok {
-		proc.Ports = portsList.([]ProcessPort)
+		for _, port := range portsList.([]interface{}) {
+			proc.Ports = append(proc.Ports, *port.(*ProcessPort))
+		}
 	}
 
 	if volumeList, ok := coerced["volumes"]; ok {
-		proc.Volumes = volumeList.([]ProcessVolume)
+		for _, volume := range volumeList.([]interface{}) {
+			proc.Volumes = append(proc.Volumes, *volume.(*ProcessVolume))
+		}
 	}
 
 	if envMap, ok := coerced["env"]; ok {
-		proc.EnvVars = envMap.(map[string]string)
+		proc.EnvVars = make(map[string]string)
+		for k, v := range envMap.(map[string]interface{}) {
+			proc.EnvVars[k] = v.(string)
+		}
 	}
 
 	return proc
@@ -132,7 +145,7 @@ func checkProcesses(procs map[string]Process, storage map[string]Storage) error 
 
 var processSchema = schema.FieldMap(
 	schema.Fields{
-		"type":    schema.StringMap(schema.String()),
+		"type":    schema.StringMap(processTypeOptionSchema{}),
 		"command": schema.String(),
 		"image":   schema.String(),
 		"ports":   schema.List(processPortsSchema{}),
@@ -147,6 +160,12 @@ var processSchema = schema.FieldMap(
 		"env":     schema.Omit,
 	},
 )
+
+type processTypeOptionSchema struct{}
+
+func (c processTypeOptionSchema) Coerce(v interface{}, path []string) (interface{}, error) {
+	return fmt.Sprintf("%v", v), nil
+}
 
 type processPortsSchema struct{}
 
