@@ -53,7 +53,7 @@ func (p Process) Validate(storage map[string]Storage) error {
 		return fmt.Errorf("missing name")
 	}
 	if p.Type == "" {
-		return fmt.Errorf("missing type")
+		return fmt.Errorf("metadata: processes.%s.type: name is required", p.Name)
 	}
 
 	for _, volume := range p.Volumes {
@@ -66,7 +66,7 @@ func (p Process) Validate(storage map[string]Storage) error {
 				}
 			}
 			if !matched {
-				return fmt.Errorf("specified storage %q unknown for %v", volume.Storage, volume)
+				return fmt.Errorf("metadata: processes.%s.volumes: specified storage %q unknown for %v", p.Name, volume.Storage, volume)
 			}
 		}
 	}
@@ -93,7 +93,8 @@ func parseProcess(name string, coerced map[string]interface{}) Process {
 
 	if typeMap, ok := coerced["type"]; ok {
 		options := typeMap.(map[string]interface{})
-		proc.Type = options["name"].(string)
+		// proc.Type validation is handled by Validate()
+		proc.Type, _ = options["name"].(string)
 		delete(options, "name")
 
 		if len(options) > 0 {
@@ -145,11 +146,11 @@ func checkProcesses(procs map[string]Process, storage map[string]Storage) error 
 
 var processSchema = schema.FieldMap(
 	schema.Fields{
-		"type":    schema.StringMap(processTypeOptionSchema{}),
+		"type":    schema.StringMap(processTypeOptionChecker{}),
 		"command": schema.String(),
 		"image":   schema.String(),
-		"ports":   schema.List(processPortsSchema{}),
-		"volumes": schema.List(processVolumeSchema{}),
+		"ports":   schema.List(processPortsChecker{}),
+		"volumes": schema.List(processVolumeChecker{}),
 		"env":     schema.StringMap(schema.String()),
 	},
 	schema.Defaults{
@@ -161,15 +162,15 @@ var processSchema = schema.FieldMap(
 	},
 )
 
-type processTypeOptionSchema struct{}
+type processTypeOptionChecker struct{}
 
-func (c processTypeOptionSchema) Coerce(v interface{}, path []string) (interface{}, error) {
+func (c processTypeOptionChecker) Coerce(v interface{}, path []string) (interface{}, error) {
 	return fmt.Sprintf("%v", v), nil
 }
 
-type processPortsSchema struct{}
+type processPortsChecker struct{}
 
-func (c processPortsSchema) Coerce(v interface{}, path []string) (interface{}, error) {
+func (c processPortsChecker) Coerce(v interface{}, path []string) (interface{}, error) {
 	if _, err := schema.String().Coerce(v, path); err != nil {
 		return nil, err
 	}
@@ -193,9 +194,9 @@ func (c processPortsSchema) Coerce(v interface{}, path []string) (interface{}, e
 	return &ProcessPort{portA, portB}, nil
 }
 
-type processVolumeSchema struct{}
+type processVolumeChecker struct{}
 
-func (c processVolumeSchema) Coerce(v interface{}, path []string) (interface{}, error) {
+func (c processVolumeChecker) Coerce(v interface{}, path []string) (interface{}, error) {
 	if _, err := schema.String().Coerce(v, path); err != nil {
 		return nil, err
 	}
@@ -219,7 +220,7 @@ func (c processVolumeSchema) Coerce(v interface{}, path []string) (interface{}, 
 		volume.Mode = mode
 	}
 
-	if strings.HasPrefix(volume.ConcreteMount, "{") && strings.HasSuffix(volume.ConcreteMount, "}") {
+	if strings.HasPrefix(volume.ConcreteMount, "<") && strings.HasSuffix(volume.ConcreteMount, ">") {
 		volume.Storage = volume.ConcreteMount[1 : len(volume.ConcreteMount)-1]
 	}
 	return &volume, nil
