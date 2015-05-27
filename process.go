@@ -35,6 +35,8 @@ type ProcessVolume struct {
 type Process struct {
 	// Name is the name of the process.
 	Name string
+	// Description is a brief description of the process.
+	Description string
 	// Type is the name of the process type.
 	Type string
 	// TypeOptions is a map of arguments for the process type.
@@ -105,6 +107,10 @@ func parseProcess(name string, coerced map[string]interface{}) Process {
 		Name: name,
 	}
 
+	if description, ok := coerced["description"]; ok {
+		proc.Description = description.(string)
+	}
+
 	if typeMap, ok := coerced["type"]; ok {
 		options := typeMap.(map[string]interface{})
 		// proc.Type validation is handled by Validate()
@@ -160,19 +166,21 @@ func checkProcesses(procs map[string]Process, storage map[string]Storage) error 
 
 var processSchema = schema.FieldMap(
 	schema.Fields{
-		"type":    schema.StringMap(processTypeOptionChecker{}),
-		"command": schema.String(),
-		"image":   schema.String(),
-		"ports":   schema.List(processPortsChecker{}),
-		"volumes": schema.List(processVolumeChecker{}),
-		"env":     schema.StringMap(schema.String()),
+		"description": schema.String(),
+		"type":        schema.StringMap(processTypeOptionChecker{}),
+		"command":     schema.String(),
+		"image":       schema.String(),
+		"ports":       schema.List(processPortsChecker{}),
+		"volumes":     schema.List(processVolumeChecker{}),
+		"env":         schema.StringMap(schema.String()),
 	},
 	schema.Defaults{
-		"command": schema.Omit,
-		"image":   schema.Omit,
-		"ports":   schema.Omit,
-		"volumes": schema.Omit,
-		"env":     schema.Omit,
+		"description": schema.Omit,
+		"command":     schema.Omit,
+		"image":       schema.Omit,
+		"ports":       schema.Omit,
+		"volumes":     schema.Omit,
+		"env":         schema.Omit,
 	},
 )
 
