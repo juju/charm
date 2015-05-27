@@ -51,19 +51,19 @@ processes:
 			Command: "foocmd",
 			Image:   "nginx/nginx",
 			Ports: []charm.ProcessPort{{
-				PortA: 80,
-				PortB: 8080,
+				External: 80,
+				Internal: 8080,
 			}, {
-				PortA: 443,
-				PortB: 8081,
+				External: 443,
+				Internal: 8081,
 			}},
 			Volumes: []charm.ProcessVolume{{
-				ConcreteMount: "/var/www/html",
-				VirtualMount:  "/usr/share/nginx/html",
+				ExternalMount: "/var/www/html",
+				InternalMount: "/usr/share/nginx/html",
 				Mode:          "ro",
 			}, {
-				ConcreteMount: "/var/nginx/conf",
-				VirtualMount:  "/etc/nginx",
+				ExternalMount: "/var/nginx/conf",
+				InternalMount: "/etc/nginx",
 				Mode:          "ro",
 			}},
 			EnvVars: map[string]string{
