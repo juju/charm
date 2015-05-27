@@ -271,7 +271,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 		meta.Series = series.(string)
 	}
 	meta.Storage = parseStorage(m["storage"])
-	meta.Processes = parseProcesses(m["processes"])
+	meta.Processes = parseProcesses(m["processes"], meta.Storage)
 	if err := meta.Check(); err != nil {
 		return nil, err
 	}
@@ -428,7 +428,7 @@ func (meta Meta) Check() error {
 		names[name] = true
 	}
 
-	if err := checkProcesses(meta.Processes, meta.Storage); err != nil {
+	if err := checkProcesses(meta.Processes); err != nil {
 		return err
 	}
 
