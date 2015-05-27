@@ -13,28 +13,42 @@ import (
 
 // ProcessPort is network port information for a workload process.
 type ProcessPort struct {
-	PortA int
-	PortB int
+	// External is the port on the host.
+	External int
+	// Internal is the port on the process.
+	Internal int
 }
 
 // ProcessVolume is storage volume information for a workload process.
 type ProcessVolume struct {
-	ConcreteMount string
-	VirtualMount  string
-	Mode          string
-	Storage       string
+	// ExternalMount is the path on the host.
+	ExternalMount string
+	// InternalMount is the path on the process.
+	InternalMount string
+	// Mode is the "ro" OR "rw"
+	Mode string
+	// Storage is the name the metadata entry, if any.
+	Storage string
 }
 
 // Process is the static definition of a workload process in a charm.
 type Process struct {
-	Name        string
-	Type        string
+	// Name is the name of the process.
+	Name string
+	// Type is the name of the process type.
+	Type string
+	// TypeOptions is a map of arguments for the process type.
 	TypeOptions map[string]string
-	Command     string
-	Image       string
-	Ports       []ProcessPort
-	Volumes     []ProcessVolume
-	EnvVars     map[string]string
+	// Command is use command executed used by the process, if any.
+	Command string
+	// Image is the image used by the process, if any.
+	Image string
+	// Ports is a list of ProcessPort.
+	Ports []ProcessPort
+	// Volumes is a list of ProcessVolume.
+	Volumes []ProcessVolume
+	// EnvVars is map of environment variables used by the process.
+	EnvVars map[string]string
 }
 
 // ParseProcess parses the provided data and converts it to a Process.
@@ -208,8 +222,8 @@ func (c processVolumeChecker) Coerce(v interface{}, path []string) (interface{},
 	}
 
 	volume := ProcessVolume{
-		ConcreteMount: parts[0],
-		VirtualMount:  parts[1],
+		ExternalMount: parts[0],
+		InternalMount: parts[1],
 	}
 
 	if len(parts) == 3 {
@@ -220,8 +234,8 @@ func (c processVolumeChecker) Coerce(v interface{}, path []string) (interface{},
 		volume.Mode = mode
 	}
 
-	if strings.HasPrefix(volume.ConcreteMount, "<") && strings.HasSuffix(volume.ConcreteMount, ">") {
-		volume.Storage = volume.ConcreteMount[1 : len(volume.ConcreteMount)-1]
+	if strings.HasPrefix(volume.ExternalMount, "<") && strings.HasSuffix(volume.ExternalMount, ">") {
+		volume.Storage = volume.ExternalMount[1 : len(volume.ExternalMount)-1]
 	}
 	return &volume, nil
 }
