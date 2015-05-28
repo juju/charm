@@ -29,12 +29,17 @@ type ProcessVolume struct {
 	Mode string
 	// Storage is the name the metadata entry, if any.
 	Storage string
+
+	// storage is the storage that matched the Storage field.
+	storage *Storage
 }
 
 // Process is the static definition of a workload process in a charm.
 type Process struct {
 	// Name is the name of the process.
 	Name string
+	// Description is a brief description of the process.
+	Description string
 	// Type is the name of the process type.
 	Type string
 	// TypeOptions is a map of arguments for the process type.
@@ -62,7 +67,7 @@ func ParseProcess(name string, data map[string]interface{}) (*Process, error) {
 }
 
 // Validate checks the Process for errors.
-func (p Process) Validate(storage map[string]Storage) error {
+func (p Process) Validate() error {
 	if p.Name == "" {
 		return fmt.Errorf("missing name")
 	}
@@ -71,16 +76,16 @@ func (p Process) Validate(storage map[string]Storage) error {
 	}
 
 	for _, volume := range p.Volumes {
-		if volume.Storage != "" {
-			var matched bool
-			for name := range storage {
-				if volume.Storage == name {
-					matched = true
-					break
-				}
-			}
-			if !matched {
+		//panic(fmt.Sprintf("%#v", volume))
+		if volume.Storage != "" && volume.ExternalMount == "" {
+			if volume.storage == nil {
 				return fmt.Errorf("metadata: processes.%s.volumes: specified storage %q unknown for %v", p.Name, volume.Storage, volume)
+			}
+			if volume.storage.Type != StorageFilesystem {
+				return fmt.Errorf("metadata: processes.%s.volumes: linked storage %q must be filesystem for %v", p.Name, volume.Storage, volume)
+			}
+			if volume.storage.Location == "" {
+				return fmt.Errorf("metadata: processes.%s.volumes: linked storage %q missing location for %v", p.Name, volume.Storage, volume)
 			}
 		}
 	}
@@ -88,21 +93,25 @@ func (p Process) Validate(storage map[string]Storage) error {
 	return nil
 }
 
-func parseProcesses(data interface{}) map[string]Process {
+func parseProcesses(data interface{}, storage map[string]Storage) map[string]Process {
 	if data == nil {
 		return nil
 	}
 	result := make(map[string]Process)
 	for name, procData := range data.(map[string]interface{}) {
 		procMap := procData.(map[string]interface{})
-		result[name] = parseProcess(name, procMap)
+		result[name] = parseProcess(name, procMap, storage)
 	}
 	return result
 }
 
-func parseProcess(name string, coerced map[string]interface{}) Process {
+func parseProcess(name string, coerced map[string]interface{}, storage map[string]Storage) Process {
 	proc := Process{
 		Name: name,
+	}
+
+	if description, ok := coerced["description"]; ok {
+		proc.Description = description.(string)
 	}
 
 	if typeMap, ok := coerced["type"]; ok {
@@ -134,8 +143,22 @@ func parseProcess(name string, coerced map[string]interface{}) Process {
 	}
 
 	if volumeList, ok := coerced["volumes"]; ok {
-		for _, volume := range volumeList.([]interface{}) {
-			proc.Volumes = append(proc.Volumes, *volume.(*ProcessVolume))
+		for _, volumeRaw := range volumeList.([]interface{}) {
+			volume := *volumeRaw.(*ProcessVolume)
+			if volume.Storage != "" {
+				volume.ExternalMount = ""
+				for sName, s := range storage {
+					if volume.Storage == sName {
+						copied := s
+						volume.storage = &copied
+						if s.Type == StorageFilesystem {
+							volume.ExternalMount = s.Location
+						}
+						break
+					}
+				}
+			}
+			proc.Volumes = append(proc.Volumes, volume)
 		}
 	}
 
@@ -149,9 +172,9 @@ func parseProcess(name string, coerced map[string]interface{}) Process {
 	return proc
 }
 
-func checkProcesses(procs map[string]Process, storage map[string]Storage) error {
+func checkProcesses(procs map[string]Process) error {
 	for _, proc := range procs {
-		if err := proc.Validate(storage); err != nil {
+		if err := proc.Validate(); err != nil {
 			return err
 		}
 	}
@@ -160,19 +183,21 @@ func checkProcesses(procs map[string]Process, storage map[string]Storage) error 
 
 var processSchema = schema.FieldMap(
 	schema.Fields{
-		"type":    schema.StringMap(processTypeOptionChecker{}),
-		"command": schema.String(),
-		"image":   schema.String(),
-		"ports":   schema.List(processPortsChecker{}),
-		"volumes": schema.List(processVolumeChecker{}),
-		"env":     schema.StringMap(schema.String()),
+		"description": schema.String(),
+		"type":        schema.StringMap(processTypeOptionChecker{}),
+		"command":     schema.String(),
+		"image":       schema.String(),
+		"ports":       schema.List(processPortsChecker{}),
+		"volumes":     schema.List(processVolumeChecker{}),
+		"env":         schema.StringMap(schema.String()),
 	},
 	schema.Defaults{
-		"command": schema.Omit,
-		"image":   schema.Omit,
-		"ports":   schema.Omit,
-		"volumes": schema.Omit,
-		"env":     schema.Omit,
+		"description": schema.Omit,
+		"command":     schema.Omit,
+		"image":       schema.Omit,
+		"ports":       schema.Omit,
+		"volumes":     schema.Omit,
+		"env":         schema.Omit,
 	},
 )
 

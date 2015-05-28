@@ -11,7 +11,7 @@ import (
 
 func (s *MetaSuite) TestProcessNameRequired(c *gc.C) {
 	proc := charm.Process{}
-	c.Assert(proc.Validate(nil), gc.ErrorMatches, "missing name")
+	c.Assert(proc.Validate(), gc.ErrorMatches, "missing name")
 }
 
 func (s *MetaSuite) TestProcesses(c *gc.C) {
@@ -22,6 +22,7 @@ summary: b
 description: c
 processes:
   proc0:
+    description: a process
     type:
       name: docker
       publish_all: true
@@ -40,11 +41,12 @@ processes:
     type:
       name: rkt
 `))
-	c.Assert(err, gc.IsNil)
+	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(meta.Processes, gc.DeepEquals, map[string]charm.Process{
 		"proc0": {
-			Name: "proc0",
-			Type: "docker",
+			Name:        "proc0",
+			Description: "a process",
+			Type:        "docker",
 			TypeOptions: map[string]string{
 				"publish_all": "true",
 			},
@@ -120,7 +122,7 @@ name: a
 summary: b
 description: c
 processes:
-  badproc:
+  storageproc:
     type:
       name: docker
     volumes:
@@ -130,8 +132,11 @@ storage:
       type: filesystem
       location: /var/lib/things
 `)
-	_, err := charm.ReadMeta(storageProc)
+	meta, err := charm.ReadMeta(storageProc)
 	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(meta.Processes["storageproc"].Volumes[0].ExternalMount, gc.Equals, "/var/lib/things")
+	c.Check(meta.Processes["storageproc"].Volumes[0].Storage, gc.Equals, "store0")
 }
 
 func (s *MetaSuite) TestProcessesStorageNotFound(c *gc.C) {
@@ -152,4 +157,42 @@ storage:
 `)
 	_, err := charm.ReadMeta(storageProc)
 	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.volumes: specified storage \"store1\" unknown for .*")
+}
+
+func (s *MetaSuite) TestProcessesStorageNotFilesystem(c *gc.C) {
+	storageProc := strings.NewReader(`
+name: a
+summary: b
+description: c
+processes:
+  badproc:
+    type:
+      name: docker
+    volumes:
+      - <store0>:/var/www/html:ro
+storage:
+    store0:
+        type: block
+`)
+	_, err := charm.ReadMeta(storageProc)
+	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.volumes: linked storage \"store0\" must be filesystem for .*")
+}
+
+func (s *MetaSuite) TestProcessesStorageMissingLocation(c *gc.C) {
+	storageProc := strings.NewReader(`
+name: a
+summary: b
+description: c
+processes:
+  badproc:
+    type:
+      name: docker
+    volumes:
+      - <store0>:/var/www/html:ro
+storage:
+    store0:
+        type: filesystem
+`)
+	_, err := charm.ReadMeta(storageProc)
+	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.volumes: linked storage \"store0\" missing location for .*")
 }
