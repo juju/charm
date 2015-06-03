@@ -76,7 +76,6 @@ func (p Process) Validate() error {
 	}
 
 	for _, volume := range p.Volumes {
-		//panic(fmt.Sprintf("%#v", volume))
 		if volume.Storage != "" && volume.ExternalMount == "" {
 			if volume.storage == nil {
 				return fmt.Errorf("metadata: processes.%s.volumes: specified storage %q unknown for %v", p.Name, volume.Storage, volume)
