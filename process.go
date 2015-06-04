@@ -27,8 +27,8 @@ type ProcessVolume struct {
 	InternalMount string
 	// Mode is the "ro" OR "rw"
 	Mode string
-	// Storage is the name the metadata entry, if any.
-	Storage string
+	// Name is the name of the storage metadata entry, if any.
+	Name string
 
 	// storage is the storage that matched the Storage field.
 	storage *Storage
@@ -76,15 +76,15 @@ func (p Process) Validate() error {
 	}
 
 	for _, volume := range p.Volumes {
-		if volume.Storage != "" && volume.ExternalMount == "" {
+		if volume.Name != "" && volume.ExternalMount == "" {
 			if volume.storage == nil {
-				return fmt.Errorf("metadata: processes.%s.volumes: specified storage %q unknown for %v", p.Name, volume.Storage, volume)
+				return fmt.Errorf("metadata: processes.%s.volumes: specified storage %q unknown for %v", p.Name, volume.Name, volume)
 			}
 			if volume.storage.Type != StorageFilesystem {
-				return fmt.Errorf("metadata: processes.%s.volumes: linked storage %q must be filesystem for %v", p.Name, volume.Storage, volume)
+				return fmt.Errorf("metadata: processes.%s.volumes: linked storage %q must be filesystem for %v", p.Name, volume.Name, volume)
 			}
 			if volume.storage.Location == "" {
-				return fmt.Errorf("metadata: processes.%s.volumes: linked storage %q missing location for %v", p.Name, volume.Storage, volume)
+				return fmt.Errorf("metadata: processes.%s.volumes: linked storage %q missing location for %v", p.Name, volume.Name, volume)
 			}
 		}
 	}
@@ -144,10 +144,10 @@ func parseProcess(name string, coerced map[string]interface{}, storage map[strin
 	if volumeList, ok := coerced["volumes"]; ok {
 		for _, volumeRaw := range volumeList.([]interface{}) {
 			volume := *volumeRaw.(*ProcessVolume)
-			if volume.Storage != "" {
+			if volume.Name != "" {
 				volume.ExternalMount = ""
 				for sName, s := range storage {
-					if volume.Storage == sName {
+					if volume.Name == sName {
 						copied := s
 						volume.storage = &copied
 						if s.Type == StorageFilesystem {
@@ -259,7 +259,7 @@ func (c processVolumeChecker) Coerce(v interface{}, path []string) (interface{},
 	}
 
 	if strings.HasPrefix(volume.ExternalMount, "<") && strings.HasSuffix(volume.ExternalMount, ">") {
-		volume.Storage = volume.ExternalMount[1 : len(volume.ExternalMount)-1]
+		volume.Name = volume.ExternalMount[1 : len(volume.ExternalMount)-1]
 	}
 	return &volume, nil
 }
