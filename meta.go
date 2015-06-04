@@ -428,11 +428,7 @@ func (meta Meta) Check() error {
 		names[name] = true
 	}
 
-	if err := checkProcesses(meta.Processes); err != nil {
-		return err
-	}
-
-	return nil
+	return checkProcesses(meta.Processes)
 }
 
 func reservedName(name string) bool {
