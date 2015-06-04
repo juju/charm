@@ -136,7 +136,7 @@ storage:
 	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(meta.Processes["storageproc"].Volumes[0].ExternalMount, gc.Equals, "/var/lib/things")
-	c.Check(meta.Processes["storageproc"].Volumes[0].Storage, gc.Equals, "store0")
+	c.Check(meta.Processes["storageproc"].Volumes[0].Name, gc.Equals, "store0")
 }
 
 func (s *MetaSuite) TestProcessesStorageNotFound(c *gc.C) {
