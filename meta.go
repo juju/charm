@@ -187,6 +187,7 @@ type Meta struct {
 	Tags        []string            `bson:"tags,omitempty"`
 	Series      string              `bson:"series,omitempty"`
 	Storage     map[string]Storage  `bson:"storage,omitempty"`
+	Processes   map[string]Process  `bson:"processes,omitempty"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -270,6 +271,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 		meta.Series = series.(string)
 	}
 	meta.Storage = parseStorage(m["storage"])
+	meta.Processes = parseProcesses(m["processes"], meta.Storage)
 	if err := meta.Check(); err != nil {
 		return nil, err
 	}
@@ -426,7 +428,7 @@ func (meta Meta) Check() error {
 		names[name] = true
 	}
 
-	return nil
+	return checkProcesses(meta.Processes)
 }
 
 func reservedName(name string) bool {
@@ -663,6 +665,7 @@ var charmSchema = schema.FieldMap(
 		"tags":        schema.List(schema.String()),
 		"series":      schema.String(),
 		"storage":     schema.StringMap(storageSchema),
+		"processes":   schema.StringMap(processSchema),
 	},
 	schema.Defaults{
 		"provides":    schema.Omit,
@@ -675,5 +678,6 @@ var charmSchema = schema.FieldMap(
 		"tags":        schema.Omit,
 		"series":      schema.Omit,
 		"storage":     schema.Omit,
+		"processes":   schema.Omit,
 	},
 )
