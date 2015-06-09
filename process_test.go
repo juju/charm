@@ -115,6 +115,52 @@ processes:
 	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.type: expected string, got nothing")
 }
 
+func (s *MetaSuite) TestProcessesPortEndpointFound(c *gc.C) {
+	storageProc := strings.NewReader(`
+name: a
+summary: b
+description: c
+processes:
+  endpointproc:
+    type: docker
+    ports:
+        - <website>:8080
+        - 443:8081
+provides:
+  website:
+    interface: http
+`)
+	meta, err := charm.ReadMeta(storageProc)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(meta.Processes["endpointproc"].Ports[0].External, gc.Equals, 0)
+	c.Check(meta.Processes["endpointproc"].Ports[0].Internal, gc.Equals, 8080)
+	c.Check(meta.Processes["endpointproc"].Ports[0].Endpoint, gc.Equals, "website")
+	c.Check(meta.Processes["endpointproc"].Ports[1].External, gc.Equals, 443)
+	c.Check(meta.Processes["endpointproc"].Ports[1].Internal, gc.Equals, 8081)
+	c.Check(meta.Processes["endpointproc"].Ports[1].Endpoint, gc.Equals, "")
+}
+
+func (s *MetaSuite) TestProcessesPortEndpointNotFound(c *gc.C) {
+	storageProc := strings.NewReader(`
+name: a
+summary: b
+description: c
+processes:
+  endpointproc:
+    type: docker
+    ports:
+        - <website>:8080
+        - 443:8081
+provides:
+  mysql:
+    interface: db
+`)
+	_, err := charm.ReadMeta(storageProc)
+
+	c.Assert(err, gc.ErrorMatches, `.* specified endpoint "website" unknown for .*`)
+}
+
 func (s *MetaSuite) TestProcessesStorageFound(c *gc.C) {
 	storageProc := strings.NewReader(`
 name: a
