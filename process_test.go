@@ -23,8 +23,8 @@ description: c
 processes:
   proc0:
     description: a process
-    type:
-      name: docker
+    type: docker
+    type-options:
       publish_all: true
     command: foocmd
     image: nginx/nginx
@@ -38,8 +38,7 @@ processes:
         ENV_VAR: config:config-var
         OTHER_VAR: some value
   proc1:
-    type:
-      name: rkt
+    type: rkt
 `))
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(meta.Processes, gc.DeepEquals, map[string]charm.Process{
@@ -99,6 +98,7 @@ processes:
   badproc:
 `)
 	_, err := charm.ReadMeta(badProc)
+	//c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.type: name is required")
 	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc: expected map, got nothing")
 }
 
@@ -109,11 +109,10 @@ summary: b
 description: c
 processes:
   badproc:
-    type:
-      foo: bar
+    foo: bar
 `)
 	_, err := charm.ReadMeta(badProc)
-	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.type: name is required")
+	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.type: expected string, got nothing")
 }
 
 func (s *MetaSuite) TestProcessesStorageFound(c *gc.C) {
@@ -123,8 +122,7 @@ summary: b
 description: c
 processes:
   storageproc:
-    type:
-      name: docker
+    type: docker
     volumes:
       - <store0>:/var/www/html:ro
 storage:
@@ -146,8 +144,7 @@ summary: b
 description: c
 processes:
   badproc:
-    type:
-      name: docker
+    type: docker
     volumes:
       - <store1>:/var/www/html:ro
 storage:
@@ -166,8 +163,7 @@ summary: b
 description: c
 processes:
   badproc:
-    type:
-      name: docker
+    type: docker
     volumes:
       - <store0>:/var/www/html:ro
 storage:
@@ -185,8 +181,7 @@ summary: b
 description: c
 processes:
   badproc:
-    type:
-      name: docker
+    type: docker
     volumes:
       - <store0>:/var/www/html:ro
 storage:
