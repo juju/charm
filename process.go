@@ -17,6 +17,9 @@ type ProcessPort struct {
 	External int
 	// Internal is the port on the process.
 	Internal int
+	// Endpoint is the unit-relation endpoint matching the external
+	// port, if any.
+	Endpoint string
 }
 
 // ProcessVolume is storage volume information for a workload process.
@@ -75,6 +78,27 @@ func (p Process) Validate() error {
 		return fmt.Errorf("metadata: processes.%s.type: name is required", p.Name)
 	}
 
+	if err := p.validatePorts(); err != nil {
+		return err
+	}
+
+	if err := p.validateStorage(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p Process) validatePorts() error {
+	for _, port := range p.Ports {
+		if port.External < 0 {
+			return fmt.Errorf("metadata: processes.%s.ports: specified endpoint %q unknown for %v", p.Name, port.Endpoint, port)
+		}
+	}
+	return nil
+}
+
+func (p Process) validateStorage() error {
 	for _, volume := range p.Volumes {
 		if volume.Name != "" && volume.ExternalMount == "" {
 			if volume.storage == nil {
@@ -88,23 +112,22 @@ func (p Process) Validate() error {
 			}
 		}
 	}
-
 	return nil
 }
 
-func parseProcesses(data interface{}, storage map[string]Storage) map[string]Process {
+func parseProcesses(data interface{}, provides map[string]Relation, storage map[string]Storage) map[string]Process {
 	if data == nil {
 		return nil
 	}
 	result := make(map[string]Process)
 	for name, procData := range data.(map[string]interface{}) {
 		procMap := procData.(map[string]interface{})
-		result[name] = parseProcess(name, procMap, storage)
+		result[name] = parseProcess(name, procMap, provides, storage)
 	}
 	return result
 }
 
-func parseProcess(name string, coerced map[string]interface{}, storage map[string]Storage) Process {
+func parseProcess(name string, coerced map[string]interface{}, provides map[string]Relation, storage map[string]Storage) Process {
 	proc := Process{
 		Name: name,
 		Type: coerced["type"].(string),
@@ -133,8 +156,18 @@ func parseProcess(name string, coerced map[string]interface{}, storage map[strin
 	}
 
 	if portsList, ok := coerced["ports"]; ok {
-		for _, port := range portsList.([]interface{}) {
-			proc.Ports = append(proc.Ports, *port.(*ProcessPort))
+		for _, portRaw := range portsList.([]interface{}) {
+			port := portRaw.(*ProcessPort)
+			if port.External == 0 {
+				port.External = -1
+				for endpoint := range provides {
+					if port.Endpoint == endpoint {
+						port.External = 0
+						break
+					}
+				}
+			}
+			proc.Ports = append(proc.Ports, *port)
 		}
 	}
 
@@ -218,9 +251,17 @@ func (c processPortsChecker) Coerce(v interface{}, path []string) (interface{}, 
 		return nil, fmt.Errorf("%s: invalid value %q", strings.Join(path[1:], ""), item)
 	}
 
-	portA, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return nil, fmt.Errorf("%s: expected int got %q", strings.Join(path[1:], ""), parts[0])
+	portA := 0
+	external := parts[0]
+	if !strings.HasPrefix(external, "<") || !strings.HasSuffix(external, ">") {
+		external = ""
+		port, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return nil, fmt.Errorf("%s: expected int got %q", strings.Join(path[1:], ""), parts[0])
+		}
+		portA = port
+	} else {
+		external = external[1 : len(external)-1]
 	}
 
 	portB, err := strconv.Atoi(parts[1])
@@ -228,7 +269,7 @@ func (c processPortsChecker) Coerce(v interface{}, path []string) (interface{}, 
 		return nil, fmt.Errorf("%s: expected int got %q", strings.Join(path[1:], ""), parts[1])
 	}
 
-	return &ProcessPort{portA, portB}, nil
+	return &ProcessPort{portA, portB, external}, nil
 }
 
 type processVolumeChecker struct{}
