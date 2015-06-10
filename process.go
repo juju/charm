@@ -22,6 +22,21 @@ type ProcessPort struct {
 	Endpoint string
 }
 
+// Set parses the provided string and sets the appropriate fields.
+func (p *ProcessPort) Set(raw string) error {
+	parts := strings.SplitN(raw, ":", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid value %q", raw)
+	}
+	if err := p.SetExternal(parts[0]); err != nil {
+		return err
+	}
+	if err := p.SetInternal(parts[1]); err != nil {
+		return err
+	}
+	return nil
+}
+
 // SetExternal parses the provided string and sets the appropriate fields.
 func (p *ProcessPort) SetExternal(portStr string) error {
 	p.External = 0
@@ -70,6 +85,22 @@ type ProcessVolume struct {
 func (copied ProcessVolume) Copy() ProcessVolume {
 	copied.storage = nil
 	return copied
+}
+
+// Set parses the provided string and sets the appropriate fields.
+func (pv *ProcessVolume) Set(raw string) error {
+	parts := strings.SplitN(raw, ":", 3)
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid value %q", raw)
+	}
+	pv.SetExternal(parts[0])
+	pv.SetInternal(parts[1])
+	if len(parts) == 3 {
+		if err := pv.SetMode(parts[2]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SetExternal parses the provided string and sets the appropriate fields.
@@ -148,6 +179,176 @@ func (copied Process) Copy() Process {
 	copied.Volumes = volumes
 
 	return copied
+}
+
+// ProcessFieldValue describes a requested change to a Process.
+type ProcessFieldValue struct {
+	Field    string
+	Subfield string
+	Value    string
+}
+
+// Override updates the Process with the provided value. If the
+// identified field is not already set then Override fails.
+func (p *Process) Override(value ProcessFieldValue) error {
+	switch value.Field {
+	case "name":
+		// TODO(ericsnow) Allow overriding the name (for multiple copies)?
+		return fmt.Errorf(`cannot override "name"`)
+	case "description":
+		if p.Description == "" {
+			return fmt.Errorf(`cannot override "description", not set`)
+		}
+		p.Description = value.Value
+	case "type":
+		return fmt.Errorf(`cannot override "type"`)
+	case "type-options":
+		if value.Subfield == "" {
+			return fmt.Errorf(`cannot override "type-options" without sub-field`)
+		}
+		if _, ok := p.TypeOptions[value.Subfield]; !ok {
+			return fmt.Errorf(`cannot override "type-options" field %q, not set`, value.Subfield)
+		}
+		p.TypeOptions[value.Subfield] = value.Value
+	case "command":
+		if p.Command == "" {
+			return fmt.Errorf(`cannot override "command", not set`)
+		}
+		p.Command = value.Value
+	case "image":
+		if p.Image == "" {
+			return fmt.Errorf(`cannot override "image", not set`)
+		}
+		p.Image = value.Value
+	case "ports":
+		if value.Subfield == "" {
+			return fmt.Errorf(`cannot override "ports" without sub-field`)
+		}
+		index, err := strconv.Atoi(value.Subfield)
+		if err != nil {
+			return fmt.Errorf(`"ports" sub-field must be an integer index`)
+		}
+		if index < 0 || index >= len(p.Ports) {
+			return fmt.Errorf(`"ports" index %d out of range`, index)
+		}
+		var port ProcessPort
+		if err := port.Set(value.Value); err != nil {
+			return err
+		}
+		p.Ports[index] = port
+	case "volumes":
+		if value.Subfield == "" {
+			return fmt.Errorf(`cannot override "volumes" without sub-field`)
+		}
+		index, err := strconv.Atoi(value.Subfield)
+		if err != nil {
+			return fmt.Errorf(`"ports" sub-field must be an integer index`)
+		}
+		if index < 0 || index >= len(p.Ports) {
+			return fmt.Errorf(`"ports" index %d out of range`, index)
+		}
+		var volume ProcessVolume
+		if err := volume.Set(value.Value); err != nil {
+			return err
+		}
+		p.Volumes[index] = volume
+	case "env":
+		if value.Subfield == "" {
+			return fmt.Errorf(`cannot override "env" without sub-field`)
+		}
+		if _, ok := p.EnvVars[value.Subfield]; !ok {
+			return fmt.Errorf(`cannot override "env" field %q, not set`, value.Subfield)
+		}
+		p.EnvVars[value.Subfield] = value.Value
+	default:
+		return fmt.Errorf("unrecognized field %q", value.Field)
+	}
+	return nil
+}
+
+// Extend updates the Process with the provided value. If the
+// identified field is already set then Extend fails.
+func (p *Process) Extend(value ProcessFieldValue) error {
+	switch value.Field {
+	case "name":
+		// TODO(ericsnow) Allow overriding the name (for multiple copies)?
+		return fmt.Errorf(`"name" already set`)
+	case "description":
+		if p.Description != "" {
+			return fmt.Errorf(`"description" already set`)
+		}
+		p.Description = value.Value
+	case "type":
+		return fmt.Errorf(`"type" already set`)
+	case "type-options":
+		if value.Subfield == "" {
+			return fmt.Errorf(`cannot extend "type-options" without sub-field`)
+		}
+		if p.TypeOptions == nil {
+			p.TypeOptions = make(map[string]string)
+		} else if _, ok := p.TypeOptions[value.Subfield]; ok {
+			return fmt.Errorf(`"type-options" field %q already set`, value.Subfield)
+		}
+		p.TypeOptions[value.Subfield] = value.Value
+	case "command":
+		if p.Command != "" {
+			return fmt.Errorf(`cannot extend "command" already set`)
+		}
+		p.Command = value.Value
+	case "image":
+		if p.Image != "" {
+			return fmt.Errorf(`cannot extend "image" already set`)
+		}
+		p.Image = value.Value
+	case "ports":
+		if value.Subfield != "" {
+			return fmt.Errorf(`cannot extend "ports" with sub-field`)
+		}
+		var port ProcessPort
+		if err := port.Set(value.Value); err != nil {
+			return err
+		}
+		p.Ports = append(p.Ports, port)
+	case "volumes":
+		if value.Subfield != "" {
+			return fmt.Errorf(`cannot extend "volumes" with sub-field`)
+		}
+		var volume ProcessVolume
+		if err := volume.Set(value.Value); err != nil {
+			return err
+		}
+		p.Volumes = append(p.Volumes, volume)
+	case "env":
+		if value.Subfield == "" {
+			return fmt.Errorf(`cannot extend "env" without sub-field`)
+		}
+		if p.EnvVars == nil {
+			p.EnvVars = make(map[string]string)
+		} else if _, ok := p.EnvVars[value.Subfield]; ok {
+			return fmt.Errorf(`"env" field %q already set`, value.Subfield)
+		}
+		p.EnvVars[value.Subfield] = value.Value
+	default:
+		return fmt.Errorf("unrecognized field %q", value.Field)
+	}
+	return nil
+}
+
+// Apply makes a copy of the Process and applies the given overrides
+// and additions to that copy.
+func (p *Process) Apply(overrides []ProcessFieldValue, additions []ProcessFieldValue) (*Process, error) {
+	process := p.Copy()
+	for _, value := range overrides {
+		if err := process.Override(value); err != nil {
+			return nil, err
+		}
+	}
+	for _, value := range additions {
+		if err := process.Extend(value); err != nil {
+			return nil, err
+		}
+	}
+	return &process, nil
 }
 
 // ParseProcess parses the provided data and converts it to a Process.
@@ -348,21 +549,10 @@ func (c processPortsChecker) Coerce(v interface{}, path []string) (interface{}, 
 	}
 	item := v.(string)
 
-	parts := strings.SplitN(item, ":", 2)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("%s: invalid value %q", strings.Join(path[1:], ""), item)
-	}
-
 	var port ProcessPort
-
-	if err := port.SetExternal(parts[0]); err != nil {
+	if err := port.Set(item); err != nil {
 		return nil, fmt.Errorf("%s: %v", strings.Join(path[1:], ""), err)
 	}
-
-	if err := port.SetInternal(parts[1]); err != nil {
-		return nil, fmt.Errorf("%s: %v", strings.Join(path[1:], ""), err)
-	}
-
 	return &port, nil
 }
 
@@ -375,21 +565,9 @@ func (c processVolumeChecker) Coerce(v interface{}, path []string) (interface{},
 	}
 	item := v.(string)
 
-	parts := strings.SplitN(item, ":", 3)
-	if len(parts) < 2 {
-		return nil, fmt.Errorf("%s: invalid value %q", strings.Join(path[1:], ""), item)
-	}
-
 	var volume ProcessVolume
-
-	volume.SetExternal(parts[0])
-	volume.SetInternal(parts[1])
-
-	if len(parts) == 3 {
-		if err := volume.SetMode(parts[2]); err != nil {
-			return nil, fmt.Errorf("%s: %v", strings.Join(path[1:], ""), err)
-		}
+	if err := volume.Set(item); err != nil {
+		return nil, fmt.Errorf("%s: %v", strings.Join(path[1:], ""), err)
 	}
-
 	return &volume, nil
 }
