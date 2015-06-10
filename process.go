@@ -11,125 +11,6 @@ import (
 	"github.com/juju/schema"
 )
 
-// ProcessPort is network port information for a workload process.
-type ProcessPort struct {
-	// External is the port on the host.
-	External int
-	// Internal is the port on the process.
-	Internal int
-	// Endpoint is the unit-relation endpoint matching the external
-	// port, if any.
-	Endpoint string
-}
-
-// Set parses the provided string and sets the appropriate fields.
-func (p *ProcessPort) Set(raw string) error {
-	parts := strings.SplitN(raw, ":", 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid value %q", raw)
-	}
-	if err := p.SetExternal(parts[0]); err != nil {
-		return err
-	}
-	if err := p.SetInternal(parts[1]); err != nil {
-		return err
-	}
-	return nil
-}
-
-// SetExternal parses the provided string and sets the appropriate fields.
-func (p *ProcessPort) SetExternal(portStr string) error {
-	p.External = 0
-	p.Endpoint = ""
-	if strings.HasPrefix(portStr, "<") && strings.HasSuffix(portStr, ">") {
-		// The port was specified by a relation endpoint rather than a
-		// port number.
-		p.Endpoint = portStr[1 : len(portStr)-1]
-	} else {
-		// It's just a port number.
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			return fmt.Errorf("expected int got %q", portStr)
-		}
-		p.External = port
-	}
-	return nil
-}
-
-// SetInternal parses the provided string and sets the appropriate fields.
-func (p *ProcessPort) SetInternal(portStr string) error {
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return fmt.Errorf("expected int got %q", portStr)
-	}
-	p.Internal = port
-	return nil
-}
-
-// ProcessVolume is storage volume information for a workload process.
-type ProcessVolume struct {
-	// ExternalMount is the path on the host.
-	ExternalMount string
-	// InternalMount is the path on the process.
-	InternalMount string
-	// Mode is the "ro" OR "rw"
-	Mode string
-	// Name is the name of the storage metadata entry, if any.
-	Name string
-
-	// storage is the storage that matched the Storage field.
-	storage *Storage
-}
-
-// Copy create a deep copy of the ProcessVolume.
-func (copied ProcessVolume) Copy() ProcessVolume {
-	copied.storage = nil
-	return copied
-}
-
-// Set parses the provided string and sets the appropriate fields.
-func (pv *ProcessVolume) Set(raw string) error {
-	parts := strings.SplitN(raw, ":", 3)
-	if len(parts) < 2 {
-		return fmt.Errorf("invalid value %q", raw)
-	}
-	pv.SetExternal(parts[0])
-	pv.SetInternal(parts[1])
-	if len(parts) == 3 {
-		if err := pv.SetMode(parts[2]); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// SetExternal parses the provided string and sets the appropriate fields.
-func (pv *ProcessVolume) SetExternal(volume string) {
-	pv.Name = ""
-	pv.ExternalMount = ""
-	if strings.HasPrefix(volume, "<") && strings.HasSuffix(volume, ">") {
-		// It's a reference to a defined storage attachment.
-		pv.Name = volume[1 : len(volume)-1]
-	} else {
-		// It's just a volume name.
-		pv.ExternalMount = volume
-	}
-}
-
-// SetInternal parses the provided string and sets the appropriate fields.
-func (pv *ProcessVolume) SetInternal(volume string) {
-	pv.InternalMount = volume
-}
-
-// SetMode parses the provided string and sets the appropriate fields.
-func (pv *ProcessVolume) SetMode(mode string) error {
-	if _, err := schema.OneOf(schema.Const("rw"), schema.Const("ro")).Coerce(mode, nil); err != nil {
-		return fmt.Errorf(`expected "rw" or "ro" for mode, got %q`, mode)
-	}
-	pv.Mode = mode
-	return nil
-}
-
 // Process is the static definition of a workload process in a charm.
 type Process struct {
 	// Name is the name of the process.
@@ -150,6 +31,16 @@ type Process struct {
 	Volumes []ProcessVolume
 	// EnvVars is map of environment variables used by the process.
 	EnvVars map[string]string
+}
+
+// ParseProcess parses the provided data and converts it to a Process.
+// The data will most likely have been de-serialized, perhaps from YAML.
+func ParseProcess(name string, data map[string]interface{}) (*Process, error) {
+	raw, err := processSchema.Coerce(data, []string{name})
+	if err != nil {
+		return nil, err
+	}
+	return raw.(*Process), nil
 }
 
 // Copy create a deep copy of the Process.
@@ -351,16 +242,6 @@ func (p *Process) Apply(overrides []ProcessFieldValue, additions []ProcessFieldV
 	return &process, nil
 }
 
-// ParseProcess parses the provided data and converts it to a Process.
-// The data will most likely have been de-serialized, perhaps from YAML.
-func ParseProcess(name string, data map[string]interface{}) (*Process, error) {
-	raw, err := processSchema.Coerce(data, []string{name})
-	if err != nil {
-		return nil, err
-	}
-	return raw.(*Process), nil
-}
-
 // Validate checks the Process for errors.
 func (p Process) Validate() error {
 	if p.Name == "" {
@@ -404,6 +285,125 @@ func (p Process) validateStorage() error {
 			}
 		}
 	}
+	return nil
+}
+
+// ProcessPort is network port information for a workload process.
+type ProcessPort struct {
+	// External is the port on the host.
+	External int
+	// Internal is the port on the process.
+	Internal int
+	// Endpoint is the unit-relation endpoint matching the external
+	// port, if any.
+	Endpoint string
+}
+
+// Set parses the provided string and sets the appropriate fields.
+func (p *ProcessPort) Set(raw string) error {
+	parts := strings.SplitN(raw, ":", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid value %q", raw)
+	}
+	if err := p.SetExternal(parts[0]); err != nil {
+		return err
+	}
+	if err := p.SetInternal(parts[1]); err != nil {
+		return err
+	}
+	return nil
+}
+
+// SetExternal parses the provided string and sets the appropriate fields.
+func (p *ProcessPort) SetExternal(portStr string) error {
+	p.External = 0
+	p.Endpoint = ""
+	if strings.HasPrefix(portStr, "<") && strings.HasSuffix(portStr, ">") {
+		// The port was specified by a relation endpoint rather than a
+		// port number.
+		p.Endpoint = portStr[1 : len(portStr)-1]
+	} else {
+		// It's just a port number.
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return fmt.Errorf("expected int got %q", portStr)
+		}
+		p.External = port
+	}
+	return nil
+}
+
+// SetInternal parses the provided string and sets the appropriate fields.
+func (p *ProcessPort) SetInternal(portStr string) error {
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return fmt.Errorf("expected int got %q", portStr)
+	}
+	p.Internal = port
+	return nil
+}
+
+// ProcessVolume is storage volume information for a workload process.
+type ProcessVolume struct {
+	// ExternalMount is the path on the host.
+	ExternalMount string
+	// InternalMount is the path on the process.
+	InternalMount string
+	// Mode is the "ro" OR "rw"
+	Mode string
+	// Name is the name of the storage metadata entry, if any.
+	Name string
+
+	// storage is the storage that matched the Storage field.
+	storage *Storage
+}
+
+// Copy create a deep copy of the ProcessVolume.
+func (copied ProcessVolume) Copy() ProcessVolume {
+	copied.storage = nil
+	return copied
+}
+
+// Set parses the provided string and sets the appropriate fields.
+func (pv *ProcessVolume) Set(raw string) error {
+	parts := strings.SplitN(raw, ":", 3)
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid value %q", raw)
+	}
+	pv.SetExternal(parts[0])
+	pv.SetInternal(parts[1])
+	if len(parts) == 3 {
+		if err := pv.SetMode(parts[2]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SetExternal parses the provided string and sets the appropriate fields.
+func (pv *ProcessVolume) SetExternal(volume string) {
+	pv.Name = ""
+	pv.ExternalMount = ""
+	if strings.HasPrefix(volume, "<") && strings.HasSuffix(volume, ">") {
+		// It's a reference to a defined storage attachment.
+		pv.Name = volume[1 : len(volume)-1]
+	} else {
+		// It's just a volume name.
+		pv.ExternalMount = volume
+	}
+}
+
+// SetInternal parses the provided string and sets the appropriate fields.
+func (pv *ProcessVolume) SetInternal(volume string) {
+	pv.InternalMount = volume
+}
+
+// SetMode parses the provided string and sets the appropriate fields.
+func (pv *ProcessVolume) SetMode(mode string) error {
+	if _, err := schema.OneOf(schema.Const("rw"), schema.Const("ro")).Coerce(mode, nil); err != nil {
+		return fmt.Errorf(`expected "rw" or "ro" for mode, got %q`, mode)
+	}
+	pv.Mode = mode
 	return nil
 }
 
