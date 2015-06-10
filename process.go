@@ -22,6 +22,35 @@ type ProcessPort struct {
 	Endpoint string
 }
 
+// SetExternal parses the provided string and sets the appropriate fields.
+func (p *ProcessPort) SetExternal(portStr string) error {
+	p.External = 0
+	p.Endpoint = ""
+	if strings.HasPrefix(portStr, "<") && strings.HasSuffix(portStr, ">") {
+		// The port was specified by a relation endpoint rather than a
+		// port number.
+		p.Endpoint = portStr[1 : len(portStr)-1]
+	} else {
+		// It's just a port number.
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return fmt.Errorf("expected int got %q", portStr)
+		}
+		p.External = port
+	}
+	return nil
+}
+
+// SetInternal parses the provided string and sets the appropriate fields.
+func (p *ProcessPort) SetInternal(portStr string) error {
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return fmt.Errorf("expected int got %q", portStr)
+	}
+	p.Internal = port
+	return nil
+}
+
 // ProcessVolume is storage volume information for a workload process.
 type ProcessVolume struct {
 	// ExternalMount is the path on the host.
@@ -35,6 +64,33 @@ type ProcessVolume struct {
 
 	// storage is the storage that matched the Storage field.
 	storage *Storage
+}
+
+// SetExternal parses the provided string and sets the appropriate fields.
+func (pv *ProcessVolume) SetExternal(volume string) {
+	pv.Name = ""
+	pv.ExternalMount = ""
+	if strings.HasPrefix(volume, "<") && strings.HasSuffix(volume, ">") {
+		// It's a reference to a defined storage attachment.
+		pv.Name = volume[1 : len(volume)-1]
+	} else {
+		// It's just a volume name.
+		pv.ExternalMount = volume
+	}
+}
+
+// SetInternal parses the provided string and sets the appropriate fields.
+func (pv *ProcessVolume) SetInternal(volume string) {
+	pv.InternalMount = volume
+}
+
+// SetMode parses the provided string and sets the appropriate fields.
+func (pv *ProcessVolume) SetMode(mode string) error {
+	if _, err := schema.OneOf(schema.Const("rw"), schema.Const("ro")).Coerce(mode, nil); err != nil {
+		return fmt.Errorf(`expected "rw" or "ro" for mode, got %q`, mode)
+	}
+	pv.Mode = mode
+	return nil
 }
 
 // Process is the static definition of a workload process in a charm.
@@ -262,25 +318,17 @@ func (c processPortsChecker) Coerce(v interface{}, path []string) (interface{}, 
 		return nil, fmt.Errorf("%s: invalid value %q", strings.Join(path[1:], ""), item)
 	}
 
-	portA := 0
-	external := parts[0]
-	if !strings.HasPrefix(external, "<") || !strings.HasSuffix(external, ">") {
-		external = ""
-		port, err := strconv.Atoi(parts[0])
-		if err != nil {
-			return nil, fmt.Errorf("%s: expected int got %q", strings.Join(path[1:], ""), parts[0])
-		}
-		portA = port
-	} else {
-		external = external[1 : len(external)-1]
+	var port ProcessPort
+
+	if err := port.SetExternal(parts[0]); err != nil {
+		return nil, fmt.Errorf("%s: %v", strings.Join(path[1:], ""), err)
 	}
 
-	portB, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return nil, fmt.Errorf("%s: expected int got %q", strings.Join(path[1:], ""), parts[1])
+	if err := port.SetInternal(parts[1]); err != nil {
+		return nil, fmt.Errorf("%s: %v", strings.Join(path[1:], ""), err)
 	}
 
-	return &ProcessPort{portA, portB, external}, nil
+	return &port, nil
 }
 
 type processVolumeChecker struct{}
@@ -297,21 +345,16 @@ func (c processVolumeChecker) Coerce(v interface{}, path []string) (interface{},
 		return nil, fmt.Errorf("%s: invalid value %q", strings.Join(path[1:], ""), item)
 	}
 
-	volume := ProcessVolume{
-		ExternalMount: parts[0],
-		InternalMount: parts[1],
-	}
+	var volume ProcessVolume
+
+	volume.SetExternal(parts[0])
+	volume.SetInternal(parts[1])
 
 	if len(parts) == 3 {
-		mode := parts[2]
-		if _, err := schema.OneOf(schema.Const("rw"), schema.Const("ro")).Coerce(mode, path); err != nil {
-			return nil, err
+		if err := volume.SetMode(parts[2]); err != nil {
+			return nil, fmt.Errorf("%s: %v", strings.Join(path[1:], ""), err)
 		}
-		volume.Mode = mode
 	}
 
-	if strings.HasPrefix(volume.ExternalMount, "<") && strings.HasSuffix(volume.ExternalMount, ">") {
-		volume.Name = volume.ExternalMount[1 : len(volume.ExternalMount)-1]
-	}
 	return &volume, nil
 }
