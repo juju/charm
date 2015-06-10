@@ -5,9 +5,65 @@ import (
 
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
+	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v6-unstable"
 )
+
+func (s *MetaSuite) TestProcessParse(c *gc.C) {
+	raw := make(map[interface{}]interface{})
+	err := yaml.Unmarshal([]byte(`
+description: a process
+type: docker
+type-options:
+  publish_all: true
+command: foocmd
+image: nginx/nginx
+ports:
+    - 80:8080
+    - 443:8081
+volumes:
+    - /var/www/html:/usr/share/nginx/html:ro
+    - /var/nginx/conf:/etc/nginx:ro
+env:
+    ENV_VAR: config:config-var
+    OTHER_VAR: some value
+`), raw)
+	c.Assert(err, jc.ErrorIsNil)
+	proc, err := charm.ParseProcess("proc0", raw)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(proc, gc.DeepEquals, &charm.Process{
+		Name:        "proc0",
+		Description: "a process",
+		Type:        "docker",
+		TypeOptions: map[string]string{
+			"publish_all": "true",
+		},
+		Command: "foocmd",
+		Image:   "nginx/nginx",
+		Ports: []charm.ProcessPort{{
+			External: 80,
+			Internal: 8080,
+		}, {
+			External: 443,
+			Internal: 8081,
+		}},
+		Volumes: []charm.ProcessVolume{{
+			ExternalMount: "/var/www/html",
+			InternalMount: "/usr/share/nginx/html",
+			Mode:          "ro",
+		}, {
+			ExternalMount: "/var/nginx/conf",
+			InternalMount: "/etc/nginx",
+			Mode:          "ro",
+		}},
+		EnvVars: map[string]string{
+			"ENV_VAR":   "config:config-var",
+			"OTHER_VAR": "some value",
+		},
+	})
+}
 
 func (s *MetaSuite) TestProcessCopyVolume(c *gc.C) {
 	vol := charm.ProcessVolume{
