@@ -234,6 +234,7 @@ var processSchema = schema.FieldMap(
 
 type forcedStringChecker struct{}
 
+// Coerce implements schema.Checker.
 func (c forcedStringChecker) Coerce(v interface{}, path []string) (interface{}, error) {
 	_, err := schema.OneOf(
 		schema.Bool(),
@@ -249,6 +250,7 @@ func (c forcedStringChecker) Coerce(v interface{}, path []string) (interface{}, 
 
 type processPortsChecker struct{}
 
+// Coerce implements schema.Checker.
 func (c processPortsChecker) Coerce(v interface{}, path []string) (interface{}, error) {
 	if _, err := schema.String().Coerce(v, path); err != nil {
 		return nil, err
@@ -283,6 +285,7 @@ func (c processPortsChecker) Coerce(v interface{}, path []string) (interface{}, 
 
 type processVolumeChecker struct{}
 
+// Coerce implements schema.Checker.
 func (c processVolumeChecker) Coerce(v interface{}, path []string) (interface{}, error) {
 	if _, err := schema.String().Coerce(v, path); err != nil {
 		return nil, err
