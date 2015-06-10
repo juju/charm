@@ -9,6 +9,54 @@ import (
 	"gopkg.in/juju/charm.v5-unstable"
 )
 
+func (s *MetaSuite) TestProcessCopyVolume(c *gc.C) {
+	vol := charm.ProcessVolume{
+		ExternalMount: "a",
+		InternalMount: "b",
+		Mode:          "ro",
+		Name:          "spam",
+	}
+	copied := vol.Copy()
+
+	c.Check(copied, jc.DeepEquals, vol)
+}
+
+func (s *MetaSuite) TestProcessCopyProcess(c *gc.C) {
+	proc := charm.Process{
+		Name:        "proc0",
+		Description: "a process",
+		Type:        "docker",
+		TypeOptions: map[string]string{
+			"publish_all": "true",
+		},
+		Command: "foocmd",
+		Image:   "nginx/nginx",
+		Ports: []charm.ProcessPort{{
+			External: 80,
+			Internal: 8080,
+		}, {
+			External: 443,
+			Internal: 8081,
+		}},
+		Volumes: []charm.ProcessVolume{{
+			ExternalMount: "/var/www/html",
+			InternalMount: "/usr/share/nginx/html",
+			Mode:          "ro",
+		}, {
+			ExternalMount: "/var/nginx/conf",
+			InternalMount: "/etc/nginx",
+			Mode:          "ro",
+		}},
+		EnvVars: map[string]string{
+			"ENV_VAR":   "config:config-var",
+			"OTHER_VAR": "some value",
+		},
+	}
+	copied := proc.Copy()
+
+	c.Check(copied, jc.DeepEquals, proc)
+}
+
 func (s *MetaSuite) TestProcessNameRequired(c *gc.C) {
 	proc := charm.Process{}
 	c.Assert(proc.Validate(), gc.ErrorMatches, "missing name")

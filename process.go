@@ -66,6 +66,12 @@ type ProcessVolume struct {
 	storage *Storage
 }
 
+// Copy create a deep copy of the ProcessVolume.
+func (copied ProcessVolume) Copy() ProcessVolume {
+	copied.storage = nil
+	return copied
+}
+
 // SetExternal parses the provided string and sets the appropriate fields.
 func (pv *ProcessVolume) SetExternal(volume string) {
 	pv.Name = ""
@@ -113,6 +119,35 @@ type Process struct {
 	Volumes []ProcessVolume
 	// EnvVars is map of environment variables used by the process.
 	EnvVars map[string]string
+}
+
+// Copy create a deep copy of the Process.
+func (copied Process) Copy() Process {
+	typeOptions := make(map[string]string)
+	for k, v := range copied.TypeOptions {
+		typeOptions[k] = v
+	}
+	copied.TypeOptions = typeOptions
+
+	envVars := make(map[string]string)
+	for k, v := range copied.EnvVars {
+		envVars[k] = v
+	}
+	copied.EnvVars = envVars
+
+	var ports []ProcessPort
+	for _, port := range copied.Ports {
+		ports = append(ports, port)
+	}
+	copied.Ports = ports
+
+	var volumes []ProcessVolume
+	for _, volume := range copied.Volumes {
+		volumes = append(volumes, volume.Copy())
+	}
+	copied.Volumes = volumes
+
+	return copied
 }
 
 // ParseProcess parses the provided data and converts it to a Process.
