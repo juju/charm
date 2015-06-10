@@ -214,12 +214,12 @@ var processSchema = schema.FieldMap(
 	schema.Fields{
 		"description":  schema.String(),
 		"type":         schema.String(),
-		"type-options": schema.StringMap(processTypeOptionChecker{}),
+		"type-options": schema.StringMap(forcedStringChecker{}),
 		"command":      schema.String(),
 		"image":        schema.String(),
 		"ports":        schema.List(processPortsChecker{}),
 		"volumes":      schema.List(processVolumeChecker{}),
-		"env":          schema.StringMap(schema.String()),
+		"env":          schema.StringMap(forcedStringChecker{}),
 	},
 	schema.Defaults{
 		"description":  schema.Omit,
@@ -232,9 +232,9 @@ var processSchema = schema.FieldMap(
 	},
 )
 
-type processTypeOptionChecker struct{}
+type forcedStringChecker struct{}
 
-func (c processTypeOptionChecker) Coerce(v interface{}, path []string) (interface{}, error) {
+func (c forcedStringChecker) Coerce(v interface{}, path []string) (interface{}, error) {
 	return fmt.Sprintf("%v", v), nil
 }
 
