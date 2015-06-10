@@ -35,12 +35,22 @@ type Process struct {
 
 // ParseProcess parses the provided data and converts it to a Process.
 // The data will most likely have been de-serialized, perhaps from YAML.
-func ParseProcess(name string, data map[string]interface{}) (*Process, error) {
+func ParseProcess(name string, data map[interface{}]interface{}) (*Process, error) {
+	return ParseProcessWithRefs(name, data, nil, nil)
+}
+
+// ParseProcess parses the provided data and converts it to a Process.
+// The data will most likely have been de-serialized, perhaps from YAML.
+func ParseProcessWithRefs(name string, data map[interface{}]interface{}, provides map[string]Relation, storage map[string]Storage) (*Process, error) {
 	raw, err := processSchema.Coerce(data, []string{name})
 	if err != nil {
 		return nil, err
 	}
-	return raw.(*Process), nil
+	proc := parseProcess(name, raw.(map[string]interface{}), provides, storage)
+	if err := proc.Validate(); err != nil {
+		return nil, err
+	}
+	return &proc, nil
 }
 
 // Copy create a deep copy of the Process.
