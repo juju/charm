@@ -516,12 +516,12 @@ var processSchema = schema.FieldMap(
 	schema.Fields{
 		"description":  schema.String(),
 		"type":         schema.String(),
-		"type-options": schema.StringMap(forcedStringChecker{}),
+		"type-options": schema.StringMap(schema.Stringified()),
 		"command":      schema.String(),
 		"image":        schema.String(),
 		"ports":        schema.List(processPortsChecker{}),
 		"volumes":      schema.List(processVolumeChecker{}),
-		"env":          schema.StringMap(forcedStringChecker{}),
+		"env":          schema.StringMap(schema.Stringified()),
 	},
 	schema.Defaults{
 		"description":  schema.Omit,
@@ -533,22 +533,6 @@ var processSchema = schema.FieldMap(
 		"env":          schema.Omit,
 	},
 )
-
-type forcedStringChecker struct{}
-
-// Coerce implements schema.Checker.
-func (c forcedStringChecker) Coerce(v interface{}, path []string) (interface{}, error) {
-	_, err := schema.OneOf(
-		schema.Bool(),
-		schema.Int(),
-		schema.Float(),
-		schema.String(),
-	).Coerce(v, path)
-	if err != nil {
-		return nil, err
-	}
-	return fmt.Sprint(v), nil
-}
 
 type processPortsChecker struct{}
 
