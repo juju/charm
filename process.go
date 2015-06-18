@@ -84,9 +84,12 @@ func (copied Process) Copy() Process {
 
 // ProcessFieldValue describes a requested change to a Process.
 type ProcessFieldValue struct {
-	Field    string
+	// Field is the name of the metadata field.
+	Field string
+	// Field is the name of the metadata sub-field, if applicable.
 	Subfield string
-	Value    string
+	// Value is the value to assign to the field.
+	Value string
 }
 
 // Override updates the Process with the provided value. If the
