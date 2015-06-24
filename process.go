@@ -19,7 +19,7 @@ type Process struct {
 	Description string
 	// Type is the name of the process type.
 	Type string
-	// TypeOptions is a map of arguments for the process type.
+	// TypeOptions is a map of options for the process type handler.
 	TypeOptions map[string]string
 	// Command is use command executed used by the process, if any.
 	Command string
