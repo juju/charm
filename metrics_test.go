@@ -89,12 +89,10 @@ metrics:
     type: gauge
     description: A gauge metric.
   juju-unit-time:
-    type: gauge
-    description: Unit time.
 `))
 	c.Assert(err, gc.IsNil)
 	c.Assert(metrics, gc.NotNil)
-	c.Assert(Keys(metrics), gc.DeepEquals, []string{"blips", "blops", "juju-unit-time"})
+	c.Assert(Keys(metrics), gc.DeepEquals, []string{"blips", "blops", "juju-unit"})
 
 	testCases := []struct {
 		about string
@@ -149,4 +147,28 @@ metrics:
 		}
 	}
 
+}
+
+func (s *MetricsSuite) TestBuiltInMetrics(c *gc.C) {
+	tests := []string{`
+metrics:
+  some-metric:
+    type: gauge
+    description: Some description.
+  juju-unit-time:
+    type: absolute
+`, `
+metrics:
+  some-metric:
+    type: gauge
+    description: Some description.
+  juju-unit-time:
+    description: Some description
+`,
+	}
+	for _, test := range tests {
+		c.Logf("%s", test)
+		_, err := charm.ReadMetrics(strings.NewReader(test))
+		c.Assert(err, gc.ErrorMatches, `metric "juju-unit-time" is using a prefix reserved for built-in metrics: it should not have type or description specification`)
+	}
 }
