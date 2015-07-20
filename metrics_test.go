@@ -79,6 +79,29 @@ metrics:
 	c.Assert(metrics.Metrics["some-metric"].Type, gc.Equals, charm.MetricTypeAbsolute)
 }
 
+func (s *MetricsSuite) TestIsBuiltinMetric(c *gc.C) {
+	tests := []struct {
+		input     string
+		isbuiltin bool
+	}{{
+		"juju-thing",
+		true,
+	}, {
+		"jujuthing",
+		true,
+	}, {
+		"thing",
+		false,
+	},
+	}
+
+	for i, test := range tests {
+		c.Logf("test %d isBuiltinMetric(%v) = %v", i, test.input, test.isbuiltin)
+		is := charm.IsBuiltinMetric(test.input)
+		c.Assert(is, gc.Equals, test.isbuiltin)
+	}
+}
+
 func (s *MetricsSuite) TestValidYaml(c *gc.C) {
 	metrics, err := charm.ReadMetrics(strings.NewReader(`
 metrics:
@@ -92,7 +115,7 @@ metrics:
 `))
 	c.Assert(err, gc.IsNil)
 	c.Assert(metrics, gc.NotNil)
-	c.Assert(Keys(metrics), gc.DeepEquals, []string{"blips", "blops", "juju-unit"})
+	c.Assert(Keys(metrics), gc.DeepEquals, []string{"blips", "blops", "juju-unit-time"})
 
 	testCases := []struct {
 		about string
