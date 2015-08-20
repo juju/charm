@@ -39,8 +39,9 @@ func ParseWorkload(name string, data map[interface{}]interface{}) (*Workload, er
 	return ParseWorkloadWithRefs(name, data, nil, nil)
 }
 
-// ParseWorkload parses the provided data and converts it to a Workload.
-// The data will most likely have been de-serialized, perhaps from YAML.
+// ParseWorkloadWithRefs parses the provided data and converts it to a
+// Workload. The data will most likely have been de-serialized, perhaps
+// from YAML.
 func ParseWorkloadWithRefs(name string, data map[interface{}]interface{}, provides map[string]Relation, storage map[string]Storage) (*Workload, error) {
 	raw, err := workloadSchema.Coerce(data, []string{name})
 	if err != nil {
