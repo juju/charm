@@ -54,7 +54,7 @@ func ParseWorkloadWithRefs(name string, data map[interface{}]interface{}, provid
 	return &workload, nil
 }
 
-// Copy create a deep copy of the Workload.
+// Copy creates a deep copy of the Workload.
 func (copied Workload) Copy() Workload {
 	if copied.TypeOptions != nil {
 		typeOptions := make(map[string]string)
