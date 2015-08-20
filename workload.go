@@ -56,17 +56,21 @@ func ParseWorkloadWithRefs(name string, data map[interface{}]interface{}, provid
 
 // Copy create a deep copy of the Workload.
 func (copied Workload) Copy() Workload {
-	typeOptions := make(map[string]string)
-	for k, v := range copied.TypeOptions {
-		typeOptions[k] = v
+	if copied.TypeOptions != nil {
+		typeOptions := make(map[string]string)
+		for k, v := range copied.TypeOptions {
+			typeOptions[k] = v
+		}
+		copied.TypeOptions = typeOptions
 	}
-	copied.TypeOptions = typeOptions
 
-	envVars := make(map[string]string)
-	for k, v := range copied.EnvVars {
-		envVars[k] = v
+	if copied.EnvVars != nil {
+		envVars := make(map[string]string)
+		for k, v := range copied.EnvVars {
+			envVars[k] = v
+		}
+		copied.EnvVars = envVars
 	}
-	copied.EnvVars = envVars
 
 	var ports []WorkloadPort
 	for _, port := range copied.Ports {
