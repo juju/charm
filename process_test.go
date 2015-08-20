@@ -10,7 +10,7 @@ import (
 	"gopkg.in/juju/charm.v6-unstable"
 )
 
-func (s *MetaSuite) TestWorkloadParse(c *gc.C) {
+func (s *MetaSuite) TestWorkloadParseOkay(c *gc.C) {
 	raw := make(map[interface{}]interface{})
 	err := yaml.Unmarshal([]byte(`
 description: a workload
@@ -33,7 +33,7 @@ env:
 	workload, err := charm.ParseWorkload("workload0", raw)
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(workload, gc.DeepEquals, &charm.Workload{
+	c.Check(workload, jc.DeepEquals, &charm.Workload{
 		Name:        "workload0",
 		Description: "a workload",
 		Type:        "docker",
@@ -65,6 +65,32 @@ env:
 	})
 }
 
+func (s *MetaSuite) TestWorkloadParseMinimal(c *gc.C) {
+	raw := make(map[interface{}]interface{})
+	err := yaml.Unmarshal([]byte(`
+type: docker
+`), raw)
+	c.Assert(err, jc.ErrorIsNil)
+	workload, err := charm.ParseWorkload("workload0", raw)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(workload, jc.DeepEquals, &charm.Workload{
+		Name:        "workload0",
+		Description: "",
+		Type:        "docker",
+		TypeOptions: nil,
+		Command:     "",
+		Image:       "",
+		Ports:       nil,
+		Volumes:     nil,
+		EnvVars:     nil,
+	})
+	c.Check(workload, jc.DeepEquals, &charm.Workload{
+		Name: "workload0",
+		Type: "docker",
+	})
+}
+
 func (s *MetaSuite) TestWorkloadCopyVolume(c *gc.C) {
 	vol := charm.WorkloadVolume{
 		ExternalMount: "a",
@@ -77,7 +103,7 @@ func (s *MetaSuite) TestWorkloadCopyVolume(c *gc.C) {
 	c.Check(copied, jc.DeepEquals, vol)
 }
 
-func (s *MetaSuite) TestWorkloadCopyWorkload(c *gc.C) {
+func (s *MetaSuite) TestWorkloadCopyWorkloadOkay(c *gc.C) {
 	workload := charm.Workload{
 		Name:        "workload0",
 		Description: "a workload",
@@ -107,6 +133,16 @@ func (s *MetaSuite) TestWorkloadCopyWorkload(c *gc.C) {
 			"ENV_VAR":   "config:config-var",
 			"OTHER_VAR": "some value",
 		},
+	}
+	copied := workload.Copy()
+
+	c.Check(copied, jc.DeepEquals, workload)
+}
+
+func (s *MetaSuite) TestWorkloadCopyWorkloadMinimal(c *gc.C) {
+	workload := charm.Workload{
+		Name: "workload0",
+		Type: "docker",
 	}
 	copied := workload.Copy()
 
@@ -273,6 +309,31 @@ func (s *MetaSuite) TestWorkloadApplyEmpty(c *gc.C) {
 			"ENV_VAR":   "config:config-var",
 			"OTHER_VAR": "some value",
 		},
+	})
+}
+
+func (s *MetaSuite) TestWorkloadApplyMinimal(c *gc.C) {
+	workload := &charm.Workload{
+		Name:  "workload0",
+		Type:  "docker",
+		Image: "nginx/nginx",
+	}
+	overrides := []charm.WorkloadFieldValue{{
+		Field: "image",
+		Value: "nginx/nginx-2",
+	}}
+	additions := []charm.WorkloadFieldValue{{
+		Field: "description",
+		Value: "my workload",
+	}}
+	applied, err := workload.Apply(overrides, additions)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(applied, jc.DeepEquals, &charm.Workload{
+		Name:        "workload0",
+		Description: "my workload",
+		Type:        "docker",
+		Image:       "nginx/nginx-2",
 	})
 }
 
