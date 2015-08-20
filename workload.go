@@ -39,8 +39,9 @@ func ParseWorkload(name string, data map[interface{}]interface{}) (*Workload, er
 	return ParseWorkloadWithRefs(name, data, nil, nil)
 }
 
-// ParseWorkload parses the provided data and converts it to a Workload.
-// The data will most likely have been de-serialized, perhaps from YAML.
+// ParseWorkloadWithRefs parses the provided data and converts it to a
+// Workload. The data will most likely have been de-serialized, perhaps
+// from YAML.
 func ParseWorkloadWithRefs(name string, data map[interface{}]interface{}, provides map[string]Relation, storage map[string]Storage) (*Workload, error) {
 	raw, err := workloadSchema.Coerce(data, []string{name})
 	if err != nil {
@@ -53,19 +54,23 @@ func ParseWorkloadWithRefs(name string, data map[interface{}]interface{}, provid
 	return &workload, nil
 }
 
-// Copy create a deep copy of the Workload.
+// Copy creates a deep copy of the Workload.
 func (copied Workload) Copy() Workload {
-	typeOptions := make(map[string]string)
-	for k, v := range copied.TypeOptions {
-		typeOptions[k] = v
+	if copied.TypeOptions != nil {
+		typeOptions := make(map[string]string)
+		for k, v := range copied.TypeOptions {
+			typeOptions[k] = v
+		}
+		copied.TypeOptions = typeOptions
 	}
-	copied.TypeOptions = typeOptions
 
-	envVars := make(map[string]string)
-	for k, v := range copied.EnvVars {
-		envVars[k] = v
+	if copied.EnvVars != nil {
+		envVars := make(map[string]string)
+		for k, v := range copied.EnvVars {
+			envVars[k] = v
+		}
+		copied.EnvVars = envVars
 	}
-	copied.EnvVars = envVars
 
 	var ports []WorkloadPort
 	for _, port := range copied.Ports {
