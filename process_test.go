@@ -10,10 +10,10 @@ import (
 	"gopkg.in/juju/charm.v6-unstable"
 )
 
-func (s *MetaSuite) TestProcessParse(c *gc.C) {
+func (s *MetaSuite) TestWorkloadParseOkay(c *gc.C) {
 	raw := make(map[interface{}]interface{})
 	err := yaml.Unmarshal([]byte(`
-description: a process
+description: a workload
 type: docker
 type-options:
   publish_all: true
@@ -30,26 +30,26 @@ env:
     OTHER_VAR: some value
 `), raw)
 	c.Assert(err, jc.ErrorIsNil)
-	proc, err := charm.ParseProcess("proc0", raw)
+	workload, err := charm.ParseWorkload("workload0", raw)
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(proc, gc.DeepEquals, &charm.Process{
-		Name:        "proc0",
-		Description: "a process",
+	c.Check(workload, jc.DeepEquals, &charm.Workload{
+		Name:        "workload0",
+		Description: "a workload",
 		Type:        "docker",
 		TypeOptions: map[string]string{
 			"publish_all": "true",
 		},
 		Command: "foocmd",
 		Image:   "nginx/nginx",
-		Ports: []charm.ProcessPort{{
+		Ports: []charm.WorkloadPort{{
 			External: 80,
 			Internal: 8080,
 		}, {
 			External: 443,
 			Internal: 8081,
 		}},
-		Volumes: []charm.ProcessVolume{{
+		Volumes: []charm.WorkloadVolume{{
 			ExternalMount: "/var/www/html",
 			InternalMount: "/usr/share/nginx/html",
 			Mode:          "ro",
@@ -65,8 +65,34 @@ env:
 	})
 }
 
-func (s *MetaSuite) TestProcessCopyVolume(c *gc.C) {
-	vol := charm.ProcessVolume{
+func (s *MetaSuite) TestWorkloadParseMinimal(c *gc.C) {
+	raw := make(map[interface{}]interface{})
+	err := yaml.Unmarshal([]byte(`
+type: docker
+`), raw)
+	c.Assert(err, jc.ErrorIsNil)
+	workload, err := charm.ParseWorkload("workload0", raw)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(workload, jc.DeepEquals, &charm.Workload{
+		Name:        "workload0",
+		Description: "",
+		Type:        "docker",
+		TypeOptions: nil,
+		Command:     "",
+		Image:       "",
+		Ports:       nil,
+		Volumes:     nil,
+		EnvVars:     nil,
+	})
+	c.Check(workload, jc.DeepEquals, &charm.Workload{
+		Name: "workload0",
+		Type: "docker",
+	})
+}
+
+func (s *MetaSuite) TestWorkloadCopyVolume(c *gc.C) {
+	vol := charm.WorkloadVolume{
 		ExternalMount: "a",
 		InternalMount: "b",
 		Mode:          "ro",
@@ -77,24 +103,24 @@ func (s *MetaSuite) TestProcessCopyVolume(c *gc.C) {
 	c.Check(copied, jc.DeepEquals, vol)
 }
 
-func (s *MetaSuite) TestProcessCopyProcess(c *gc.C) {
-	proc := charm.Process{
-		Name:        "proc0",
-		Description: "a process",
+func (s *MetaSuite) TestWorkloadCopyWorkloadOkay(c *gc.C) {
+	workload := charm.Workload{
+		Name:        "workload0",
+		Description: "a workload",
 		Type:        "docker",
 		TypeOptions: map[string]string{
 			"publish_all": "true",
 		},
 		Command: "foocmd",
 		Image:   "nginx/nginx",
-		Ports: []charm.ProcessPort{{
+		Ports: []charm.WorkloadPort{{
 			External: 80,
 			Internal: 8080,
 		}, {
 			External: 443,
 			Internal: 8081,
 		}},
-		Volumes: []charm.ProcessVolume{{
+		Volumes: []charm.WorkloadVolume{{
 			ExternalMount: "/var/www/html",
 			InternalMount: "/usr/share/nginx/html",
 			Mode:          "ro",
@@ -108,24 +134,34 @@ func (s *MetaSuite) TestProcessCopyProcess(c *gc.C) {
 			"OTHER_VAR": "some value",
 		},
 	}
-	copied := proc.Copy()
+	copied := workload.Copy()
 
-	c.Check(copied, jc.DeepEquals, proc)
+	c.Check(copied, jc.DeepEquals, workload)
 }
 
-func (s *MetaSuite) TestProcessApplyOkay(c *gc.C) {
-	proc := &charm.Process{
-		Name: "a proc",
+func (s *MetaSuite) TestWorkloadCopyWorkloadMinimal(c *gc.C) {
+	workload := charm.Workload{
+		Name: "workload0",
+		Type: "docker",
+	}
+	copied := workload.Copy()
+
+	c.Check(copied, jc.DeepEquals, workload)
+}
+
+func (s *MetaSuite) TestWorkloadApplyOkay(c *gc.C) {
+	workload := &charm.Workload{
+		Name: "a workload",
 		Type: "docker",
 		TypeOptions: map[string]string{
 			"publish_all": "true",
 		},
 		Image: "nginx/nginx-2",
-		Ports: []charm.ProcessPort{{
+		Ports: []charm.WorkloadPort{{
 			External: 81,
 			Internal: 8001,
 		}},
-		Volumes: []charm.ProcessVolume{{
+		Volumes: []charm.WorkloadVolume{{
 			ExternalMount: "/var/www/html",
 			InternalMount: "/usr/share/nginx/html",
 			Mode:          "rw",
@@ -134,7 +170,7 @@ func (s *MetaSuite) TestProcessApplyOkay(c *gc.C) {
 			"ENV_VAR": "spam",
 		},
 	}
-	overrides := []charm.ProcessFieldValue{{
+	overrides := []charm.WorkloadFieldValue{{
 		Field:    "type-options",
 		Subfield: "publish_all",
 		Value:    "NO",
@@ -154,9 +190,9 @@ func (s *MetaSuite) TestProcessApplyOkay(c *gc.C) {
 		Subfield: "ENV_VAR",
 		Value:    "config:config-var",
 	}}
-	additions := []charm.ProcessFieldValue{{
+	additions := []charm.WorkloadFieldValue{{
 		Field: "description",
-		Value: "my proc",
+		Value: "my workload",
 	}, {
 		Field: "command",
 		Value: "foocmd",
@@ -171,26 +207,26 @@ func (s *MetaSuite) TestProcessApplyOkay(c *gc.C) {
 		Subfield: "OTHER_VAR",
 		Value:    "some value",
 	}}
-	applied, err := proc.Apply(overrides, additions)
+	applied, err := workload.Apply(overrides, additions)
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(applied, jc.DeepEquals, &charm.Process{
-		Name:        "a proc",
+	c.Check(applied, jc.DeepEquals, &charm.Workload{
+		Name:        "a workload",
 		Type:        "docker",
-		Description: "my proc",
+		Description: "my workload",
 		TypeOptions: map[string]string{
 			"publish_all": "NO",
 		},
 		Command: "foocmd",
 		Image:   "nginx/nginx",
-		Ports: []charm.ProcessPort{{
+		Ports: []charm.WorkloadPort{{
 			External: 80,
 			Internal: 8080,
 		}, {
 			External: 443,
 			Internal: 8081,
 		}},
-		Volumes: []charm.ProcessVolume{{
+		Volumes: []charm.WorkloadVolume{{
 			ExternalMount: "/var/www/html",
 			InternalMount: "/usr/share/nginx/html",
 			Mode:          "ro",
@@ -206,16 +242,16 @@ func (s *MetaSuite) TestProcessApplyOkay(c *gc.C) {
 	})
 }
 
-func (s *MetaSuite) TestProcessApplyEmpty(c *gc.C) {
-	proc := &charm.Process{}
-	var overrides []charm.ProcessFieldValue
-	additions := []charm.ProcessFieldValue{{
+func (s *MetaSuite) TestWorkloadApplyEmpty(c *gc.C) {
+	workload := &charm.Workload{}
+	var overrides []charm.WorkloadFieldValue
+	additions := []charm.WorkloadFieldValue{{
 		Field:    "type-options",
 		Subfield: "publish_all",
 		Value:    "NO",
 	}, {
 		Field: "description",
-		Value: "my proc",
+		Value: "my workload",
 	}, {
 		Field: "image",
 		Value: "nginx/nginx",
@@ -243,24 +279,24 @@ func (s *MetaSuite) TestProcessApplyEmpty(c *gc.C) {
 		Subfield: "OTHER_VAR",
 		Value:    "some value",
 	}}
-	applied, err := proc.Apply(overrides, additions)
+	applied, err := workload.Apply(overrides, additions)
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(applied, jc.DeepEquals, &charm.Process{
-		Description: "my proc",
+	c.Check(applied, jc.DeepEquals, &charm.Workload{
+		Description: "my workload",
 		TypeOptions: map[string]string{
 			"publish_all": "NO",
 		},
 		Command: "foocmd",
 		Image:   "nginx/nginx",
-		Ports: []charm.ProcessPort{{
+		Ports: []charm.WorkloadPort{{
 			External: 80,
 			Internal: 8080,
 		}, {
 			External: 443,
 			Internal: 8081,
 		}},
-		Volumes: []charm.ProcessVolume{{
+		Volumes: []charm.WorkloadVolume{{
 			ExternalMount: "/var/www/html",
 			InternalMount: "/usr/share/nginx/html",
 			Mode:          "ro",
@@ -276,24 +312,49 @@ func (s *MetaSuite) TestProcessApplyEmpty(c *gc.C) {
 	})
 }
 
-func (s *MetaSuite) TestProcessApplyNoChange(c *gc.C) {
-	proc := &charm.Process{
-		Name:        "a proc",
+func (s *MetaSuite) TestWorkloadApplyMinimal(c *gc.C) {
+	workload := &charm.Workload{
+		Name:  "workload0",
+		Type:  "docker",
+		Image: "nginx/nginx",
+	}
+	overrides := []charm.WorkloadFieldValue{{
+		Field: "image",
+		Value: "nginx/nginx-2",
+	}}
+	additions := []charm.WorkloadFieldValue{{
+		Field: "description",
+		Value: "my workload",
+	}}
+	applied, err := workload.Apply(overrides, additions)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(applied, jc.DeepEquals, &charm.Workload{
+		Name:        "workload0",
+		Description: "my workload",
 		Type:        "docker",
-		Description: "my proc",
+		Image:       "nginx/nginx-2",
+	})
+}
+
+func (s *MetaSuite) TestWorkloadApplyNoChange(c *gc.C) {
+	workload := &charm.Workload{
+		Name:        "a workload",
+		Type:        "docker",
+		Description: "my workload",
 		TypeOptions: map[string]string{
 			"publish_all": "NO",
 		},
 		Command: "foocmd",
 		Image:   "nginx/nginx",
-		Ports: []charm.ProcessPort{{
+		Ports: []charm.WorkloadPort{{
 			External: 80,
 			Internal: 8080,
 		}, {
 			External: 443,
 			Internal: 8081,
 		}},
-		Volumes: []charm.ProcessVolume{{
+		Volumes: []charm.WorkloadVolume{{
 			ExternalMount: "/var/www/html",
 			InternalMount: "/usr/share/nginx/html",
 			Mode:          "ro",
@@ -307,27 +368,27 @@ func (s *MetaSuite) TestProcessApplyNoChange(c *gc.C) {
 			"OTHER_VAR": "some value",
 		},
 	}
-	var overrides, additions []charm.ProcessFieldValue
-	applied, err := proc.Apply(overrides, additions)
+	var overrides, additions []charm.WorkloadFieldValue
+	applied, err := workload.Apply(overrides, additions)
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(applied, jc.DeepEquals, &charm.Process{
-		Name:        "a proc",
+	c.Check(applied, jc.DeepEquals, &charm.Workload{
+		Name:        "a workload",
 		Type:        "docker",
-		Description: "my proc",
+		Description: "my workload",
 		TypeOptions: map[string]string{
 			"publish_all": "NO",
 		},
 		Command: "foocmd",
 		Image:   "nginx/nginx",
-		Ports: []charm.ProcessPort{{
+		Ports: []charm.WorkloadPort{{
 			External: 80,
 			Internal: 8080,
 		}, {
 			External: 443,
 			Internal: 8081,
 		}},
-		Volumes: []charm.ProcessVolume{{
+		Volumes: []charm.WorkloadVolume{{
 			ExternalMount: "/var/www/html",
 			InternalMount: "/usr/share/nginx/html",
 			Mode:          "ro",
@@ -343,7 +404,7 @@ func (s *MetaSuite) TestProcessApplyNoChange(c *gc.C) {
 	})
 }
 
-type procTest struct {
+type workloadTest struct {
 	desc     string
 	field    string
 	subfield string
@@ -351,20 +412,20 @@ type procTest struct {
 	err      string
 }
 
-func (t procTest) log(c *gc.C, i int) {
+func (t workloadTest) log(c *gc.C, i int) {
 	c.Logf("test %d: %s", i, t.desc)
 }
 
-func (t procTest) changes() []charm.ProcessFieldValue {
-	return []charm.ProcessFieldValue{{
+func (t workloadTest) changes() []charm.WorkloadFieldValue {
+	return []charm.WorkloadFieldValue{{
 		Field:    t.field,
 		Subfield: t.subfield,
 		Value:    t.value,
 	}}
 }
 
-func (s *MetaSuite) TestProcessApplyBadOverride(c *gc.C) {
-	tests := []procTest{{
+func (s *MetaSuite) TestWorkloadApplyBadOverride(c *gc.C) {
+	tests := []workloadTest{{
 		desc:  "unknown field",
 		field: "spam",
 		err:   "unrecognized field.*",
@@ -405,24 +466,24 @@ func (s *MetaSuite) TestProcessApplyBadOverride(c *gc.C) {
 		err:      ".* index 1 out of range",
 	}}
 
-	proc := &charm.Process{
-		Name: "a proc",
+	workload := &charm.Workload{
+		Name: "a workload",
 		Type: "docker",
 	}
 
 	for i, t := range tests {
 		t.log(c, i)
-		var additions []charm.ProcessFieldValue
+		var additions []charm.WorkloadFieldValue
 		overrides := t.changes()
-		_, err := proc.Apply(overrides, additions)
+		_, err := workload.Apply(overrides, additions)
 		c.Assert(err, gc.NotNil)
 
 		c.Check(err, gc.ErrorMatches, t.err)
 	}
 }
 
-func (s *MetaSuite) TestProcessApplyBadAddition(c *gc.C) {
-	tests := []procTest{{
+func (s *MetaSuite) TestWorkloadApplyBadAddition(c *gc.C) {
+	tests := []workloadTest{{
 		desc:  "unknown field",
 		field: "spam",
 		err:   "unrecognized field.*",
@@ -454,14 +515,14 @@ func (s *MetaSuite) TestProcessApplyBadAddition(c *gc.C) {
 		err:      "cannot extend.* with sub-field",
 	}}
 
-	proc := &charm.Process{
-		Name:        "a proc",
+	workload := &charm.Workload{
+		Name:        "a workload",
 		Type:        "docker",
-		Description: "my proc",
+		Description: "my workload",
 		EnvVars: map[string]string{
 			"ENV_VAR": "yes",
 		},
-		Ports: []charm.ProcessPort{{
+		Ports: []charm.WorkloadPort{{
 			External: 80,
 			Internal: 8080,
 		}},
@@ -469,29 +530,29 @@ func (s *MetaSuite) TestProcessApplyBadAddition(c *gc.C) {
 
 	for i, t := range tests {
 		t.log(c, i)
-		var overrides []charm.ProcessFieldValue
+		var overrides []charm.WorkloadFieldValue
 		additions := t.changes()
-		_, err := proc.Apply(overrides, additions)
+		_, err := workload.Apply(overrides, additions)
 		c.Assert(err, gc.NotNil)
 
 		c.Check(err, gc.ErrorMatches, t.err)
 	}
 }
 
-func (s *MetaSuite) TestProcessNameRequired(c *gc.C) {
-	proc := charm.Process{}
-	c.Assert(proc.Validate(), gc.ErrorMatches, "missing name")
+func (s *MetaSuite) TestWorkloadNameRequired(c *gc.C) {
+	workload := charm.Workload{}
+	c.Assert(workload.Validate(), gc.ErrorMatches, "missing name")
 }
 
-func (s *MetaSuite) TestProcesses(c *gc.C) {
+func (s *MetaSuite) TestWorkloads(c *gc.C) {
 	// "type" is the only required attribute for storage.
 	meta, err := charm.ReadMeta(strings.NewReader(`
 name: a
 summary: b
 description: c
-processes:
-  proc0:
-    description: a process
+workloads:
+  workload0:
+    description: a workload
     type: docker
     type-options:
       publish_all: true
@@ -506,28 +567,28 @@ processes:
     env:
         ENV_VAR: config:config-var
         OTHER_VAR: some value
-  proc1:
+  workload1:
     type: rkt
 `))
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(meta.Processes, gc.DeepEquals, map[string]charm.Process{
-		"proc0": {
-			Name:        "proc0",
-			Description: "a process",
+	c.Assert(meta.Workloads, gc.DeepEquals, map[string]charm.Workload{
+		"workload0": {
+			Name:        "workload0",
+			Description: "a workload",
 			Type:        "docker",
 			TypeOptions: map[string]string{
 				"publish_all": "true",
 			},
 			Command: "foocmd",
 			Image:   "nginx/nginx",
-			Ports: []charm.ProcessPort{{
+			Ports: []charm.WorkloadPort{{
 				External: 80,
 				Internal: 8080,
 			}, {
 				External: 443,
 				Internal: 8081,
 			}},
-			Volumes: []charm.ProcessVolume{{
+			Volumes: []charm.WorkloadVolume{{
 				ExternalMount: "/var/www/html",
 				InternalMount: "/usr/share/nginx/html",
 				Mode:          "ro",
@@ -541,56 +602,56 @@ processes:
 				"OTHER_VAR": "some value",
 			},
 		},
-		"proc1": {
-			Name: "proc1",
+		"workload1": {
+			Name: "workload1",
 			Type: "rkt",
 		},
 	})
 }
 
-func (s *MetaSuite) TestProcessesNotRequired(c *gc.C) {
-	noProc := strings.NewReader(`
+func (s *MetaSuite) TestWorkloadsNotRequired(c *gc.C) {
+	noWorkload := strings.NewReader(`
 name: a
 summary: b
 description: c
 `)
-	_, err := charm.ReadMeta(noProc)
+	_, err := charm.ReadMeta(noWorkload)
 	c.Assert(err, jc.ErrorIsNil)
 }
 
-func (s *MetaSuite) TestProcessesTypeRequired(c *gc.C) {
-	badProc := strings.NewReader(`
+func (s *MetaSuite) TestWorkloadsTypeRequired(c *gc.C) {
+	badWorkload := strings.NewReader(`
 name: a
 summary: b
 description: c
-processes:
-  badproc:
+workloads:
+  badworkload:
 `)
-	_, err := charm.ReadMeta(badProc)
-	//c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.type: name is required")
-	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc: expected map, got nothing")
+	_, err := charm.ReadMeta(badWorkload)
+	//c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload.type: name is required")
+	c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload: expected map, got nothing")
 }
 
-func (s *MetaSuite) TestProcessesTypeNameRequired(c *gc.C) {
-	badProc := strings.NewReader(`
+func (s *MetaSuite) TestWorkloadsTypeNameRequired(c *gc.C) {
+	badWorkload := strings.NewReader(`
 name: a
 summary: b
 description: c
-processes:
-  badproc:
+workloads:
+  badworkload:
     foo: bar
 `)
-	_, err := charm.ReadMeta(badProc)
-	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.type: expected string, got nothing")
+	_, err := charm.ReadMeta(badWorkload)
+	c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload.type: expected string, got nothing")
 }
 
-func (s *MetaSuite) TestProcessesPortEndpointFound(c *gc.C) {
-	storageProc := strings.NewReader(`
+func (s *MetaSuite) TestWorkloadsPortEndpointFound(c *gc.C) {
+	storageWorkload := strings.NewReader(`
 name: a
 summary: b
 description: c
-processes:
-  endpointproc:
+workloads:
+  endpointworkload:
     type: docker
     ports:
         - <website>:8080
@@ -599,24 +660,24 @@ provides:
   website:
     interface: http
 `)
-	meta, err := charm.ReadMeta(storageProc)
+	meta, err := charm.ReadMeta(storageWorkload)
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(meta.Processes["endpointproc"].Ports[0].External, gc.Equals, 0)
-	c.Check(meta.Processes["endpointproc"].Ports[0].Internal, gc.Equals, 8080)
-	c.Check(meta.Processes["endpointproc"].Ports[0].Endpoint, gc.Equals, "website")
-	c.Check(meta.Processes["endpointproc"].Ports[1].External, gc.Equals, 443)
-	c.Check(meta.Processes["endpointproc"].Ports[1].Internal, gc.Equals, 8081)
-	c.Check(meta.Processes["endpointproc"].Ports[1].Endpoint, gc.Equals, "")
+	c.Check(meta.Workloads["endpointworkload"].Ports[0].External, gc.Equals, 0)
+	c.Check(meta.Workloads["endpointworkload"].Ports[0].Internal, gc.Equals, 8080)
+	c.Check(meta.Workloads["endpointworkload"].Ports[0].Endpoint, gc.Equals, "website")
+	c.Check(meta.Workloads["endpointworkload"].Ports[1].External, gc.Equals, 443)
+	c.Check(meta.Workloads["endpointworkload"].Ports[1].Internal, gc.Equals, 8081)
+	c.Check(meta.Workloads["endpointworkload"].Ports[1].Endpoint, gc.Equals, "")
 }
 
-func (s *MetaSuite) TestProcessesPortEndpointNotFound(c *gc.C) {
-	storageProc := strings.NewReader(`
+func (s *MetaSuite) TestWorkloadsPortEndpointNotFound(c *gc.C) {
+	storageWorkload := strings.NewReader(`
 name: a
 summary: b
 description: c
-processes:
-  endpointproc:
+workloads:
+  endpointworkload:
     type: docker
     ports:
         - <website>:8080
@@ -625,18 +686,18 @@ provides:
   mysql:
     interface: db
 `)
-	_, err := charm.ReadMeta(storageProc)
+	_, err := charm.ReadMeta(storageWorkload)
 
 	c.Assert(err, gc.ErrorMatches, `.* specified endpoint "website" unknown for .*`)
 }
 
-func (s *MetaSuite) TestProcessesStorageFound(c *gc.C) {
-	storageProc := strings.NewReader(`
+func (s *MetaSuite) TestWorkloadsStorageFound(c *gc.C) {
+	storageWorkload := strings.NewReader(`
 name: a
 summary: b
 description: c
-processes:
-  storageproc:
+workloads:
+  storageworkload:
     type: docker
     volumes:
       - <store0>:/var/www/html:ro
@@ -645,20 +706,20 @@ storage:
       type: filesystem
       location: /var/lib/things
 `)
-	meta, err := charm.ReadMeta(storageProc)
+	meta, err := charm.ReadMeta(storageWorkload)
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(meta.Processes["storageproc"].Volumes[0].ExternalMount, gc.Equals, "/var/lib/things")
-	c.Check(meta.Processes["storageproc"].Volumes[0].Name, gc.Equals, "store0")
+	c.Check(meta.Workloads["storageworkload"].Volumes[0].ExternalMount, gc.Equals, "/var/lib/things")
+	c.Check(meta.Workloads["storageworkload"].Volumes[0].Name, gc.Equals, "store0")
 }
 
-func (s *MetaSuite) TestProcessesStorageNotFound(c *gc.C) {
-	storageProc := strings.NewReader(`
+func (s *MetaSuite) TestWorkloadsStorageNotFound(c *gc.C) {
+	storageWorkload := strings.NewReader(`
 name: a
 summary: b
 description: c
-processes:
-  badproc:
+workloads:
+  badworkload:
     type: docker
     volumes:
       - <store1>:/var/www/html:ro
@@ -667,17 +728,17 @@ storage:
         type: filesystem
         location: /var/lib/things
 `)
-	_, err := charm.ReadMeta(storageProc)
-	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.volumes: specified storage \"store1\" unknown for .*")
+	_, err := charm.ReadMeta(storageWorkload)
+	c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload.volumes: specified storage \"store1\" unknown for .*")
 }
 
-func (s *MetaSuite) TestProcessesStorageNotFilesystem(c *gc.C) {
-	storageProc := strings.NewReader(`
+func (s *MetaSuite) TestWorkloadsStorageNotFilesystem(c *gc.C) {
+	storageWorkload := strings.NewReader(`
 name: a
 summary: b
 description: c
-processes:
-  badproc:
+workloads:
+  badworkload:
     type: docker
     volumes:
       - <store0>:/var/www/html:ro
@@ -685,17 +746,17 @@ storage:
     store0:
         type: block
 `)
-	_, err := charm.ReadMeta(storageProc)
-	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.volumes: linked storage \"store0\" must be filesystem for .*")
+	_, err := charm.ReadMeta(storageWorkload)
+	c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload.volumes: linked storage \"store0\" must be filesystem for .*")
 }
 
-func (s *MetaSuite) TestProcessesStorageMissingLocation(c *gc.C) {
-	storageProc := strings.NewReader(`
+func (s *MetaSuite) TestWorkloadsStorageMissingLocation(c *gc.C) {
+	storageWorkload := strings.NewReader(`
 name: a
 summary: b
 description: c
-processes:
-  badproc:
+workloads:
+  badworkload:
     type: docker
     volumes:
       - <store0>:/var/www/html:ro
@@ -703,6 +764,6 @@ storage:
     store0:
         type: filesystem
 `)
-	_, err := charm.ReadMeta(storageProc)
-	c.Assert(err, gc.ErrorMatches, "metadata: processes.badproc.volumes: linked storage \"store0\" missing location for .*")
+	_, err := charm.ReadMeta(storageWorkload)
+	c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload.volumes: linked storage \"store0\" missing location for .*")
 }

@@ -79,6 +79,29 @@ metrics:
 	c.Assert(metrics.Metrics["some-metric"].Type, gc.Equals, charm.MetricTypeAbsolute)
 }
 
+func (s *MetricsSuite) TestIsBuiltinMetric(c *gc.C) {
+	tests := []struct {
+		input     string
+		isbuiltin bool
+	}{{
+		"juju-thing",
+		true,
+	}, {
+		"jujuthing",
+		true,
+	}, {
+		"thing",
+		false,
+	},
+	}
+
+	for i, test := range tests {
+		c.Logf("test %d isBuiltinMetric(%v) = %v", i, test.input, test.isbuiltin)
+		is := charm.IsBuiltinMetric(test.input)
+		c.Assert(is, gc.Equals, test.isbuiltin)
+	}
+}
+
 func (s *MetricsSuite) TestValidYaml(c *gc.C) {
 	metrics, err := charm.ReadMetrics(strings.NewReader(`
 metrics:
@@ -89,8 +112,6 @@ metrics:
     type: gauge
     description: A gauge metric.
   juju-unit-time:
-    type: gauge
-    description: Unit time.
 `))
 	c.Assert(err, gc.IsNil)
 	c.Assert(metrics, gc.NotNil)
@@ -149,4 +170,28 @@ metrics:
 		}
 	}
 
+}
+
+func (s *MetricsSuite) TestBuiltInMetrics(c *gc.C) {
+	tests := []string{`
+metrics:
+  some-metric:
+    type: gauge
+    description: Some description.
+  juju-unit-time:
+    type: absolute
+`, `
+metrics:
+  some-metric:
+    type: gauge
+    description: Some description.
+  juju-unit-time:
+    description: Some description
+`,
+	}
+	for _, test := range tests {
+		c.Logf("%s", test)
+		_, err := charm.ReadMetrics(strings.NewReader(test))
+		c.Assert(err, gc.ErrorMatches, `metric "juju-unit-time" is using a prefix reserved for built-in metrics: it should not have type or description specification`)
+	}
 }

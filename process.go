@@ -11,69 +11,74 @@ import (
 	"github.com/juju/schema"
 )
 
-// Process is the static definition of a workload process in a charm.
-type Process struct {
-	// Name is the name of the process.
+// Workload is the static definition of a workload workload in a charm.
+type Workload struct {
+	// Name is the name of the workload.
 	Name string
-	// Description is a brief description of the process.
+	// Description is a brief description of the workload.
 	Description string
-	// Type is the name of the process type.
+	// Type is the name of the workload type.
 	Type string
-	// TypeOptions is a map of arguments for the process type.
+	// TypeOptions is a map of arguments for the workload type.
 	TypeOptions map[string]string
-	// Command is use command executed used by the process, if any.
+	// Command is use command executed used by the workload, if any.
 	Command string
-	// Image is the image used by the process, if any.
+	// Image is the image used by the workload, if any.
 	Image string
-	// Ports is a list of ProcessPort.
-	Ports []ProcessPort
-	// Volumes is a list of ProcessVolume.
-	Volumes []ProcessVolume
-	// EnvVars is map of environment variables used by the process.
+	// Ports is a list of WorkloadPort.
+	Ports []WorkloadPort
+	// Volumes is a list of WorkloadVolume.
+	Volumes []WorkloadVolume
+	// EnvVars is map of environment variables used by the workload.
 	EnvVars map[string]string
 }
 
-// ParseProcess parses the provided data and converts it to a Process.
+// ParseWorkload parses the provided data and converts it to a Workload.
 // The data will most likely have been de-serialized, perhaps from YAML.
-func ParseProcess(name string, data map[interface{}]interface{}) (*Process, error) {
-	return ParseProcessWithRefs(name, data, nil, nil)
+func ParseWorkload(name string, data map[interface{}]interface{}) (*Workload, error) {
+	return ParseWorkloadWithRefs(name, data, nil, nil)
 }
 
-// ParseProcess parses the provided data and converts it to a Process.
-// The data will most likely have been de-serialized, perhaps from YAML.
-func ParseProcessWithRefs(name string, data map[interface{}]interface{}, provides map[string]Relation, storage map[string]Storage) (*Process, error) {
-	raw, err := processSchema.Coerce(data, []string{name})
+// ParseWorkloadWithRefs parses the provided data and converts it to a
+// Workload. The data will most likely have been de-serialized, perhaps
+// from YAML.
+func ParseWorkloadWithRefs(name string, data map[interface{}]interface{}, provides map[string]Relation, storage map[string]Storage) (*Workload, error) {
+	raw, err := workloadSchema.Coerce(data, []string{name})
 	if err != nil {
 		return nil, err
 	}
-	proc := parseProcess(name, raw.(map[string]interface{}), provides, storage)
-	if err := proc.Validate(); err != nil {
+	workload := parseWorkload(name, raw.(map[string]interface{}), provides, storage)
+	if err := workload.Validate(); err != nil {
 		return nil, err
 	}
-	return &proc, nil
+	return &workload, nil
 }
 
-// Copy create a deep copy of the Process.
-func (copied Process) Copy() Process {
-	typeOptions := make(map[string]string)
-	for k, v := range copied.TypeOptions {
-		typeOptions[k] = v
+// Copy creates a deep copy of the Workload.
+func (copied Workload) Copy() Workload {
+	if copied.TypeOptions != nil {
+		typeOptions := make(map[string]string)
+		for k, v := range copied.TypeOptions {
+			typeOptions[k] = v
+		}
+		copied.TypeOptions = typeOptions
 	}
-	copied.TypeOptions = typeOptions
 
-	envVars := make(map[string]string)
-	for k, v := range copied.EnvVars {
-		envVars[k] = v
+	if copied.EnvVars != nil {
+		envVars := make(map[string]string)
+		for k, v := range copied.EnvVars {
+			envVars[k] = v
+		}
+		copied.EnvVars = envVars
 	}
-	copied.EnvVars = envVars
 
-	var ports []ProcessPort
+	var ports []WorkloadPort
 	for _, port := range copied.Ports {
 		ports = append(ports, port)
 	}
 	copied.Ports = ports
 
-	var volumes []ProcessVolume
+	var volumes []WorkloadVolume
 	for _, volume := range copied.Volumes {
 		volumes = append(volumes, volume.Copy())
 	}
@@ -82,8 +87,8 @@ func (copied Process) Copy() Process {
 	return copied
 }
 
-// ProcessFieldValue describes a requested change to a Process.
-type ProcessFieldValue struct {
+// WorkloadFieldValue describes a requested change to a Workload.
+type WorkloadFieldValue struct {
 	// Field is the name of the metadata field.
 	Field string
 	// Field is the name of the metadata sub-field, if applicable.
@@ -92,38 +97,38 @@ type ProcessFieldValue struct {
 	Value string
 }
 
-// Override updates the Process with the provided value. If the
+// Override updates the Workload with the provided value. If the
 // identified field is not already set then Override fails.
-func (p *Process) Override(value ProcessFieldValue) error {
+func (w *Workload) Override(value WorkloadFieldValue) error {
 	switch value.Field {
 	case "name":
 		// TODO(ericsnow) Allow overriding the name (for multiple copies)?
 		return fmt.Errorf(`cannot override "name"`)
 	case "description":
-		if p.Description == "" {
+		if w.Description == "" {
 			return fmt.Errorf(`cannot override "description", not set`)
 		}
-		p.Description = value.Value
+		w.Description = value.Value
 	case "type":
 		return fmt.Errorf(`cannot override "type"`)
 	case "type-options":
 		if value.Subfield == "" {
 			return fmt.Errorf(`cannot override "type-options" without sub-field`)
 		}
-		if _, ok := p.TypeOptions[value.Subfield]; !ok {
+		if _, ok := w.TypeOptions[value.Subfield]; !ok {
 			return fmt.Errorf(`cannot override "type-options" field %q, not set`, value.Subfield)
 		}
-		p.TypeOptions[value.Subfield] = value.Value
+		w.TypeOptions[value.Subfield] = value.Value
 	case "command":
-		if p.Command == "" {
+		if w.Command == "" {
 			return fmt.Errorf(`cannot override "command", not set`)
 		}
-		p.Command = value.Value
+		w.Command = value.Value
 	case "image":
-		if p.Image == "" {
+		if w.Image == "" {
 			return fmt.Errorf(`cannot override "image", not set`)
 		}
-		p.Image = value.Value
+		w.Image = value.Value
 	case "ports":
 		if value.Subfield == "" {
 			return fmt.Errorf(`cannot override "ports" without sub-field`)
@@ -132,14 +137,14 @@ func (p *Process) Override(value ProcessFieldValue) error {
 		if err != nil {
 			return fmt.Errorf(`"ports" sub-field must be an integer index`)
 		}
-		if index < 0 || index >= len(p.Ports) {
+		if index < 0 || index >= len(w.Ports) {
 			return fmt.Errorf(`"ports" index %d out of range`, index)
 		}
-		var port ProcessPort
+		var port WorkloadPort
 		if err := port.Set(value.Value); err != nil {
 			return err
 		}
-		p.Ports[index] = port
+		w.Ports[index] = port
 	case "volumes":
 		if value.Subfield == "" {
 			return fmt.Errorf(`cannot override "volumes" without sub-field`)
@@ -148,164 +153,164 @@ func (p *Process) Override(value ProcessFieldValue) error {
 		if err != nil {
 			return fmt.Errorf(`"ports" sub-field must be an integer index`)
 		}
-		if index < 0 || index >= len(p.Ports) {
+		if index < 0 || index >= len(w.Ports) {
 			return fmt.Errorf(`"ports" index %d out of range`, index)
 		}
-		var volume ProcessVolume
+		var volume WorkloadVolume
 		if err := volume.Set(value.Value); err != nil {
 			return err
 		}
-		p.Volumes[index] = volume
+		w.Volumes[index] = volume
 	case "env":
 		if value.Subfield == "" {
 			return fmt.Errorf(`cannot override "env" without sub-field`)
 		}
-		if _, ok := p.EnvVars[value.Subfield]; !ok {
+		if _, ok := w.EnvVars[value.Subfield]; !ok {
 			return fmt.Errorf(`cannot override "env" field %q, not set`, value.Subfield)
 		}
-		p.EnvVars[value.Subfield] = value.Value
+		w.EnvVars[value.Subfield] = value.Value
 	default:
 		return fmt.Errorf("unrecognized field %q", value.Field)
 	}
 	return nil
 }
 
-// Extend updates the Process with the provided value. If the
+// Extend updates the Workload with the provided value. If the
 // identified field is already set then Extend fails.
-func (p *Process) Extend(value ProcessFieldValue) error {
+func (w *Workload) Extend(value WorkloadFieldValue) error {
 	switch value.Field {
 	case "name":
 		// TODO(ericsnow) Allow overriding the name (for multiple copies)?
 		return fmt.Errorf(`"name" already set`)
 	case "description":
-		if p.Description != "" {
+		if w.Description != "" {
 			return fmt.Errorf(`"description" already set`)
 		}
-		p.Description = value.Value
+		w.Description = value.Value
 	case "type":
 		return fmt.Errorf(`"type" already set`)
 	case "type-options":
 		if value.Subfield == "" {
 			return fmt.Errorf(`cannot extend "type-options" without sub-field`)
 		}
-		if p.TypeOptions == nil {
-			p.TypeOptions = make(map[string]string)
-		} else if _, ok := p.TypeOptions[value.Subfield]; ok {
+		if w.TypeOptions == nil {
+			w.TypeOptions = make(map[string]string)
+		} else if _, ok := w.TypeOptions[value.Subfield]; ok {
 			return fmt.Errorf(`"type-options" field %q already set`, value.Subfield)
 		}
-		p.TypeOptions[value.Subfield] = value.Value
+		w.TypeOptions[value.Subfield] = value.Value
 	case "command":
-		if p.Command != "" {
+		if w.Command != "" {
 			return fmt.Errorf(`cannot extend "command" already set`)
 		}
-		p.Command = value.Value
+		w.Command = value.Value
 	case "image":
-		if p.Image != "" {
+		if w.Image != "" {
 			return fmt.Errorf(`cannot extend "image" already set`)
 		}
-		p.Image = value.Value
+		w.Image = value.Value
 	case "ports":
 		if value.Subfield != "" {
 			return fmt.Errorf(`cannot extend "ports" with sub-field`)
 		}
-		var port ProcessPort
+		var port WorkloadPort
 		if err := port.Set(value.Value); err != nil {
 			return err
 		}
-		p.Ports = append(p.Ports, port)
+		w.Ports = append(w.Ports, port)
 	case "volumes":
 		if value.Subfield != "" {
 			return fmt.Errorf(`cannot extend "volumes" with sub-field`)
 		}
-		var volume ProcessVolume
+		var volume WorkloadVolume
 		if err := volume.Set(value.Value); err != nil {
 			return err
 		}
-		p.Volumes = append(p.Volumes, volume)
+		w.Volumes = append(w.Volumes, volume)
 	case "env":
 		if value.Subfield == "" {
 			return fmt.Errorf(`cannot extend "env" without sub-field`)
 		}
-		if p.EnvVars == nil {
-			p.EnvVars = make(map[string]string)
-		} else if _, ok := p.EnvVars[value.Subfield]; ok {
+		if w.EnvVars == nil {
+			w.EnvVars = make(map[string]string)
+		} else if _, ok := w.EnvVars[value.Subfield]; ok {
 			return fmt.Errorf(`"env" field %q already set`, value.Subfield)
 		}
-		p.EnvVars[value.Subfield] = value.Value
+		w.EnvVars[value.Subfield] = value.Value
 	default:
 		return fmt.Errorf("unrecognized field %q", value.Field)
 	}
 	return nil
 }
 
-// Apply makes a copy of the Process and applies the given overrides
+// Apply makes a copy of the Workload and applies the given overrides
 // and additions to that copy.
-func (p *Process) Apply(overrides []ProcessFieldValue, additions []ProcessFieldValue) (*Process, error) {
-	process := p.Copy()
+func (w *Workload) Apply(overrides []WorkloadFieldValue, additions []WorkloadFieldValue) (*Workload, error) {
+	workload := w.Copy()
 	for _, value := range overrides {
-		if err := process.Override(value); err != nil {
+		if err := workload.Override(value); err != nil {
 			return nil, err
 		}
 	}
 	for _, value := range additions {
-		if err := process.Extend(value); err != nil {
+		if err := workload.Extend(value); err != nil {
 			return nil, err
 		}
 	}
-	return &process, nil
+	return &workload, nil
 }
 
-// Validate checks the Process for errors.
-func (p Process) Validate() error {
-	if p.Name == "" {
+// Validate checks the Workload for errors.
+func (w Workload) Validate() error {
+	if w.Name == "" {
 		return fmt.Errorf("missing name")
 	}
-	if p.Type == "" {
-		return fmt.Errorf("metadata: processes.%s.type: name is required", p.Name)
+	if w.Type == "" {
+		return fmt.Errorf("metadata: workloads.%s.type: name is required", w.Name)
 	}
 
-	if err := p.validatePorts(); err != nil {
+	if err := w.validatePorts(); err != nil {
 		return err
 	}
 
-	if err := p.validateStorage(); err != nil {
+	if err := w.validateStorage(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (p Process) validatePorts() error {
-	for _, port := range p.Ports {
+func (w Workload) validatePorts() error {
+	for _, port := range w.Ports {
 		if port.External < 0 {
-			return fmt.Errorf("metadata: processes.%s.ports: specified endpoint %q unknown for %v", p.Name, port.Endpoint, port)
+			return fmt.Errorf("metadata: workloads.%s.ports: specified endpoint %q unknown for %v", w.Name, port.Endpoint, port)
 		}
 	}
 	return nil
 }
 
-func (p Process) validateStorage() error {
-	for _, volume := range p.Volumes {
+func (w Workload) validateStorage() error {
+	for _, volume := range w.Volumes {
 		if volume.Name != "" && volume.ExternalMount == "" {
 			if volume.storage == nil {
-				return fmt.Errorf("metadata: processes.%s.volumes: specified storage %q unknown for %v", p.Name, volume.Name, volume)
+				return fmt.Errorf("metadata: workloads.%s.volumes: specified storage %q unknown for %v", w.Name, volume.Name, volume)
 			}
 			if volume.storage.Type != StorageFilesystem {
-				return fmt.Errorf("metadata: processes.%s.volumes: linked storage %q must be filesystem for %v", p.Name, volume.Name, volume)
+				return fmt.Errorf("metadata: workloads.%s.volumes: linked storage %q must be filesystem for %v", w.Name, volume.Name, volume)
 			}
 			if volume.storage.Location == "" {
-				return fmt.Errorf("metadata: processes.%s.volumes: linked storage %q missing location for %v", p.Name, volume.Name, volume)
+				return fmt.Errorf("metadata: workloads.%s.volumes: linked storage %q missing location for %v", w.Name, volume.Name, volume)
 			}
 		}
 	}
 	return nil
 }
 
-// ProcessPort is network port information for a workload process.
-type ProcessPort struct {
+// WorkloadPort is network port information for a workload workload.
+type WorkloadPort struct {
 	// External is the port on the host.
 	External int
-	// Internal is the port on the process.
+	// Internal is the port on the workload.
 	Internal int
 	// Endpoint is the unit-relation endpoint matching the external
 	// port, if any.
@@ -313,54 +318,54 @@ type ProcessPort struct {
 }
 
 // Set parses the provided string and sets the appropriate fields.
-func (p *ProcessPort) Set(raw string) error {
+func (w *WorkloadPort) Set(raw string) error {
 	parts := strings.SplitN(raw, ":", 2)
 	if len(parts) != 2 {
 		return fmt.Errorf("invalid value %q", raw)
 	}
-	if err := p.SetExternal(parts[0]); err != nil {
+	if err := w.SetExternal(parts[0]); err != nil {
 		return err
 	}
-	if err := p.SetInternal(parts[1]); err != nil {
+	if err := w.SetInternal(parts[1]); err != nil {
 		return err
 	}
 	return nil
 }
 
 // SetExternal parses the provided string and sets the appropriate fields.
-func (p *ProcessPort) SetExternal(portStr string) error {
-	p.External = 0
-	p.Endpoint = ""
+func (w *WorkloadPort) SetExternal(portStr string) error {
+	w.External = 0
+	w.Endpoint = ""
 	if strings.HasPrefix(portStr, "<") && strings.HasSuffix(portStr, ">") {
 		// The port was specified by a relation endpoint rather than a
 		// port number.
-		p.Endpoint = portStr[1 : len(portStr)-1]
+		w.Endpoint = portStr[1 : len(portStr)-1]
 	} else {
 		// It's just a port number.
 		port, err := strconv.Atoi(portStr)
 		if err != nil {
 			return fmt.Errorf("expected int got %q", portStr)
 		}
-		p.External = port
+		w.External = port
 	}
 	return nil
 }
 
 // SetInternal parses the provided string and sets the appropriate fields.
-func (p *ProcessPort) SetInternal(portStr string) error {
+func (w *WorkloadPort) SetInternal(portStr string) error {
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		return fmt.Errorf("expected int got %q", portStr)
 	}
-	p.Internal = port
+	w.Internal = port
 	return nil
 }
 
-// ProcessVolume is storage volume information for a workload process.
-type ProcessVolume struct {
+// WorkloadVolume is storage volume information for a workload workload.
+type WorkloadVolume struct {
 	// ExternalMount is the path on the host.
 	ExternalMount string
-	// InternalMount is the path on the process.
+	// InternalMount is the path on the workload.
 	InternalMount string
 	// Mode is the "ro" OR "rw"
 	Mode string
@@ -371,14 +376,14 @@ type ProcessVolume struct {
 	storage *Storage
 }
 
-// Copy create a deep copy of the ProcessVolume.
-func (copied ProcessVolume) Copy() ProcessVolume {
+// Copy create a deep copy of the WorkloadVolume.
+func (copied WorkloadVolume) Copy() WorkloadVolume {
 	copied.storage = nil
 	return copied
 }
 
 // Set parses the provided string and sets the appropriate fields.
-func (pv *ProcessVolume) Set(raw string) error {
+func (pv *WorkloadVolume) Set(raw string) error {
 	parts := strings.SplitN(raw, ":", 3)
 	if len(parts) < 2 {
 		return fmt.Errorf("invalid value %q", raw)
@@ -394,7 +399,7 @@ func (pv *ProcessVolume) Set(raw string) error {
 }
 
 // SetExternal parses the provided string and sets the appropriate fields.
-func (pv *ProcessVolume) SetExternal(volume string) {
+func (pv *WorkloadVolume) SetExternal(volume string) {
 	pv.Name = ""
 	pv.ExternalMount = ""
 	if strings.HasPrefix(volume, "<") && strings.HasSuffix(volume, ">") {
@@ -407,12 +412,12 @@ func (pv *ProcessVolume) SetExternal(volume string) {
 }
 
 // SetInternal parses the provided string and sets the appropriate fields.
-func (pv *ProcessVolume) SetInternal(volume string) {
+func (pv *WorkloadVolume) SetInternal(volume string) {
 	pv.InternalMount = volume
 }
 
 // SetMode parses the provided string and sets the appropriate fields.
-func (pv *ProcessVolume) SetMode(mode string) error {
+func (pv *WorkloadVolume) SetMode(mode string) error {
 	if _, err := schema.OneOf(schema.Const("rw"), schema.Const("ro")).Coerce(mode, nil); err != nil {
 		return fmt.Errorf(`expected "rw" or "ro" for mode, got %q`, mode)
 	}
@@ -420,49 +425,49 @@ func (pv *ProcessVolume) SetMode(mode string) error {
 	return nil
 }
 
-func parseProcesses(data interface{}, provides map[string]Relation, storage map[string]Storage) map[string]Process {
+func parseWorkloads(data interface{}, provides map[string]Relation, storage map[string]Storage) map[string]Workload {
 	if data == nil {
 		return nil
 	}
-	result := make(map[string]Process)
-	for name, procData := range data.(map[string]interface{}) {
-		procMap := procData.(map[string]interface{})
-		result[name] = parseProcess(name, procMap, provides, storage)
+	result := make(map[string]Workload)
+	for name, workloadData := range data.(map[string]interface{}) {
+		workloadMap := workloadData.(map[string]interface{})
+		result[name] = parseWorkload(name, workloadMap, provides, storage)
 	}
 	return result
 }
 
-func parseProcess(name string, coerced map[string]interface{}, provides map[string]Relation, storage map[string]Storage) Process {
-	proc := Process{
+func parseWorkload(name string, coerced map[string]interface{}, provides map[string]Relation, storage map[string]Storage) Workload {
+	workload := Workload{
 		Name: name,
 		Type: coerced["type"].(string),
 	}
 
 	if description, ok := coerced["description"]; ok {
-		proc.Description = description.(string)
+		workload.Description = description.(string)
 	}
 
 	if typeMap, ok := coerced["type-options"]; ok {
 		options := typeMap.(map[string]interface{})
 		if len(options) > 0 {
-			proc.TypeOptions = make(map[string]string)
+			workload.TypeOptions = make(map[string]string)
 			for k, v := range options {
-				proc.TypeOptions[k] = v.(string)
+				workload.TypeOptions[k] = v.(string)
 			}
 		}
 	}
 
 	if command, ok := coerced["command"]; ok {
-		proc.Command = command.(string)
+		workload.Command = command.(string)
 	}
 
 	if image, ok := coerced["image"]; ok {
-		proc.Image = image.(string)
+		workload.Image = image.(string)
 	}
 
 	if portsList, ok := coerced["ports"]; ok {
 		for _, portRaw := range portsList.([]interface{}) {
-			port := portRaw.(*ProcessPort)
+			port := portRaw.(*WorkloadPort)
 			if port.External == 0 {
 				port.External = -1
 				for endpoint := range provides {
@@ -472,13 +477,13 @@ func parseProcess(name string, coerced map[string]interface{}, provides map[stri
 					}
 				}
 			}
-			proc.Ports = append(proc.Ports, *port)
+			workload.Ports = append(workload.Ports, *port)
 		}
 	}
 
 	if volumeList, ok := coerced["volumes"]; ok {
 		for _, volumeRaw := range volumeList.([]interface{}) {
-			volume := *volumeRaw.(*ProcessVolume)
+			volume := *volumeRaw.(*WorkloadVolume)
 			if volume.Name != "" {
 				volume.ExternalMount = ""
 				for sName, s := range storage {
@@ -492,38 +497,38 @@ func parseProcess(name string, coerced map[string]interface{}, provides map[stri
 					}
 				}
 			}
-			proc.Volumes = append(proc.Volumes, volume)
+			workload.Volumes = append(workload.Volumes, volume)
 		}
 	}
 
 	if envMap, ok := coerced["env"]; ok {
-		proc.EnvVars = make(map[string]string)
+		workload.EnvVars = make(map[string]string)
 		for k, v := range envMap.(map[string]interface{}) {
-			proc.EnvVars[k] = v.(string)
+			workload.EnvVars[k] = v.(string)
 		}
 	}
 
-	return proc
+	return workload
 }
 
-func checkProcesses(procs map[string]Process) error {
-	for _, proc := range procs {
-		if err := proc.Validate(); err != nil {
+func checkWorkloads(workloads map[string]Workload) error {
+	for _, workload := range workloads {
+		if err := workload.Validate(); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-var processSchema = schema.FieldMap(
+var workloadSchema = schema.FieldMap(
 	schema.Fields{
 		"description":  schema.String(),
 		"type":         schema.String(),
 		"type-options": schema.StringMap(schema.Stringified()),
 		"command":      schema.String(),
 		"image":        schema.String(),
-		"ports":        schema.List(processPortsChecker{}),
-		"volumes":      schema.List(processVolumeChecker{}),
+		"ports":        schema.List(workloadPortsChecker{}),
+		"volumes":      schema.List(workloadVolumeChecker{}),
 		"env":          schema.StringMap(schema.Stringified()),
 	},
 	schema.Defaults{
@@ -537,32 +542,32 @@ var processSchema = schema.FieldMap(
 	},
 )
 
-type processPortsChecker struct{}
+type workloadPortsChecker struct{}
 
 // Coerce implements schema.Checker.
-func (c processPortsChecker) Coerce(v interface{}, path []string) (interface{}, error) {
+func (c workloadPortsChecker) Coerce(v interface{}, path []string) (interface{}, error) {
 	if _, err := schema.String().Coerce(v, path); err != nil {
 		return nil, err
 	}
 	item := v.(string)
 
-	var port ProcessPort
+	var port WorkloadPort
 	if err := port.Set(item); err != nil {
 		return nil, fmt.Errorf("%s: %v", strings.Join(path[1:], ""), err)
 	}
 	return &port, nil
 }
 
-type processVolumeChecker struct{}
+type workloadVolumeChecker struct{}
 
 // Coerce implements schema.Checker.
-func (c processVolumeChecker) Coerce(v interface{}, path []string) (interface{}, error) {
+func (c workloadVolumeChecker) Coerce(v interface{}, path []string) (interface{}, error) {
 	if _, err := schema.String().Coerce(v, path); err != nil {
 		return nil, err
 	}
 	item := v.(string)
 
-	var volume ProcessVolume
+	var volume WorkloadVolume
 	if err := volume.Set(item); err != nil {
 		return nil, fmt.Errorf("%s: %v", strings.Join(path[1:], ""), err)
 	}

@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"strconv"
+	"strings"
 
 	goyaml "gopkg.in/yaml.v1"
 )
@@ -16,10 +17,17 @@ import (
 type MetricType string
 
 const (
+	builtinMetricPrefix = "juju"
+
 	// Supported metric types.
 	MetricTypeGauge    MetricType = "gauge"
 	MetricTypeAbsolute MetricType = "absolute"
 )
+
+// IsBuiltinMetric reports whether the given metric key is in the builtin metric namespace
+func IsBuiltinMetric(key string) bool {
+	return strings.HasPrefix(key, builtinMetricPrefix)
+}
 
 // validateValue checks if the supplied metric value fits the requirements
 // of its expected type.
@@ -67,6 +75,12 @@ func ReadMetrics(r io.Reader) (*Metrics, error) {
 		return &metrics, nil
 	}
 	for name, metric := range metrics.Metrics {
+		if IsBuiltinMetric(name) {
+			if metric.Type != MetricType("") || metric.Description != "" {
+				return nil, fmt.Errorf("metric %q is using a prefix reserved for built-in metrics: it should not have type or description specification", name)
+			}
+			continue
+		}
 		switch metric.Type {
 		case MetricTypeGauge, MetricTypeAbsolute:
 		default:
