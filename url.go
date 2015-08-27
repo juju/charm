@@ -155,7 +155,7 @@ func parseReference(url string) (*Reference, error) {
 	i := strings.Index(url, ":")
 	if i >= 0 {
 		r.Schema = url[:i]
-		if r.Schema != "cs" && r.Schema != "local" && r.Schema != "bundle" {
+		if r.Schema != "cs" && r.Schema != "local" {
 			return nil, fmt.Errorf("entity URL has invalid schema: %q", url)
 		}
 		i++

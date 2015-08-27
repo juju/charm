@@ -53,9 +53,6 @@ var urlTests = []struct {
 	s:   "local:name",
 	ref: &charm.Reference{"local", "", "name", -1, ""},
 }, {
-	s:   "bundle:name",
-	ref: &charm.Reference{"bundle", "", "name", -1, ""},
-}, {
 	s:   "bs:~user/series/name-1",
 	err: "entity URL has invalid schema: .*",
 }, {
