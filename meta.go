@@ -187,7 +187,6 @@ type Meta struct {
 	Tags        []string            `bson:"tags,omitempty"`
 	Series      string              `bson:"series,omitempty"`
 	Storage     map[string]Storage  `bson:"storage,omitempty"`
-	Workloads   map[string]Workload `bson:"workloads,omitempty"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -271,7 +270,6 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 		meta.Series = series.(string)
 	}
 	meta.Storage = parseStorage(m["storage"])
-	meta.Workloads = parseWorkloads(m["workloads"], meta.Provides, meta.Storage)
 	if err := meta.Check(); err != nil {
 		return nil, err
 	}
@@ -428,7 +426,7 @@ func (meta Meta) Check() error {
 		names[name] = true
 	}
 
-	return checkWorkloads(meta.Workloads)
+	return nil
 }
 
 func reservedName(name string) bool {
@@ -665,7 +663,6 @@ var charmSchema = schema.FieldMap(
 		"tags":        schema.List(schema.String()),
 		"series":      schema.String(),
 		"storage":     schema.StringMap(storageSchema),
-		"workloads":   schema.StringMap(workloadSchema),
 	},
 	schema.Defaults{
 		"provides":    schema.Omit,
@@ -678,6 +675,5 @@ var charmSchema = schema.FieldMap(
 		"tags":        schema.Omit,
 		"series":      schema.Omit,
 		"storage":     schema.Omit,
-		"workloads":   schema.Omit,
 	},
 )
