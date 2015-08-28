@@ -14,6 +14,10 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const (
+	charmstoreURL string = "jujucharms.com"
+)
+
 // Location represents a charm location, which must declare a path component
 // and a string representaion.
 type Location interface {
@@ -49,6 +53,7 @@ var ErrUnresolvedUrl error = fmt.Errorf("charm url series is not resolved")
 var (
 	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
 	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
+	validStore  = regexp.MustCompile(fmt.Sprintf("^https?://(www\\.)?%s/", charmstoreURL))
 )
 
 // IsValidSeries returns whether series is a valid series in charm URLs.
@@ -152,64 +157,78 @@ func ParseReference(url string) (*Reference, error) {
 
 func parseReference(url string) (*Reference, error) {
 	var r Reference
-	i := strings.Index(url, ":")
-	if i >= 0 {
-		r.Schema = url[:i]
-		if r.Schema != "cs" && r.Schema != "local" {
-			return nil, fmt.Errorf("charm URL has invalid schema: %q", url)
+	urlVersion := 1
+	httpPosition := strings.Index(url, "http")
+	if httpPosition > -1 {
+		urlVersion = 2
+		if !validStore.MatchString(url) {
+			return nil, fmt.Errorf("entity URL has invalid charmstore: %q", url)
 		}
-		i++
-	} else {
-		i = 0
+		r.Schema = "cs"
+		url = validStore.ReplaceAll([]byte(url), []byte(""))
 	}
-	parts := strings.Split(url[i:], "/")
-	if len(parts) < 1 || len(parts) > 3 {
-		return nil, fmt.Errorf("charm URL has invalid form: %q", url)
-	}
-
-	// ~<username>
-	if strings.HasPrefix(parts[0], "~") {
-		if r.Schema == "local" {
-			return nil, fmt.Errorf("local charm URL with user name: %q", url)
-		}
-		r.User = parts[0][1:]
-		if !names.IsValidUser(r.User) {
-			return nil, fmt.Errorf("charm URL has invalid user name: %q", url)
-		}
-		parts = parts[1:]
-	}
-	if len(parts) > 2 {
-		return nil, fmt.Errorf("charm URL has invalid form: %q", url)
-	}
-	// <series>
-	if len(parts) == 2 {
-		r.Series = parts[0]
-		if !IsValidSeries(r.Series) {
-			return nil, fmt.Errorf("charm URL has invalid series: %q", url)
-		}
-		parts = parts[1:]
-	}
-	if len(parts) < 1 {
-		return nil, fmt.Errorf("charm URL without charm name: %q", url)
-	}
-
-	// <name>[-<revision>]
-	r.Name = parts[0]
-	r.Revision = -1
-	for i := len(r.Name) - 1; i > 0; i-- {
-		c := r.Name[i]
-		if c >= '0' && c <= '9' {
-			continue
-		}
-		if c == '-' && i != len(r.Name)-1 {
-			var err error
-			r.Revision, err = strconv.Atoi(r.Name[i+1:])
-			if err != nil {
-				panic(err) // We just checked it was right.
+	if urlVersion == 1 {
+		i := strings.Index(url, ":")
+		if i >= 0 {
+			r.Schema = url[:i]
+			if r.Schema != "cs" && r.Schema != "local" {
+				return nil, fmt.Errorf("charm URL has invalid schema: %q", url)
 			}
-			r.Name = r.Name[:i]
+			i++
+		} else {
+			i = 0
 		}
-		break
+		parts := strings.Split(url[i:], "/")
+		if len(parts) < 1 || len(parts) > 3 {
+			return nil, fmt.Errorf("charm URL has invalid form: %q", url)
+		}
+
+		// ~<username>
+		if strings.HasPrefix(parts[0], "~") {
+			if r.Schema == "local" {
+				return nil, fmt.Errorf("local charm URL with user name: %q", url)
+			}
+			r.User = parts[0][1:]
+			if !names.IsValidUser(r.User) {
+				return nil, fmt.Errorf("charm URL has invalid user name: %q", url)
+			}
+			parts = parts[1:]
+		}
+		if len(parts) > 2 {
+			return nil, fmt.Errorf("charm URL has invalid form: %q", url)
+		}
+		// <series>
+		if len(parts) == 2 {
+			r.Series = parts[0]
+			if !IsValidSeries(r.Series) {
+				return nil, fmt.Errorf("charm URL has invalid series: %q", url)
+			}
+			parts = parts[1:]
+		}
+		if len(parts) < 1 {
+			return nil, fmt.Errorf("charm URL without charm name: %q", url)
+		}
+
+		// <name>[-<revision>]
+		r.Name = parts[0]
+		r.Revision = -1
+		for i := len(r.Name) - 1; i > 0; i-- {
+			c := r.Name[i]
+			if c >= '0' && c <= '9' {
+				continue
+			}
+			if c == '-' && i != len(r.Name)-1 {
+				var err error
+				r.Revision, err = strconv.Atoi(r.Name[i+1:])
+				if err != nil {
+					panic(err) // We just checked it was right.
+				}
+				r.Name = r.Name[:i]
+			}
+			break
+		}
+	} else {
+		//
 	}
 	if !IsValidName(r.Name) {
 		return nil, fmt.Errorf("charm URL has invalid charm name: %q", url)
