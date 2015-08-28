@@ -23,29 +23,29 @@ var _ = gc.Suite(&bundleDataSuite{})
 
 const mediawikiBundle = `
 series: precise
-services: 
-    mediawiki: 
+services:
+    mediawiki:
         charm: "cs:precise/mediawiki-10"
         num_units: 1
-        options: 
+        options:
             debug: false
             name: Please set name of wiki
             skin: vector
-        annotations: 
+        annotations:
             "gui-x": 609
             "gui-y": -15
-    mysql: 
+    mysql:
         charm: "cs:precise/mysql-28"
         num_units: 2
         to: [0, mediawiki/0]
-        options: 
+        options:
             "binlog-format": MIXED
             "block-size": 5
             "dataset-size": "80%"
             flavor: distro
             "ha-bindiface": eth0
             "ha-mcastport": 5411
-        annotations: 
+        annotations:
             "gui-x": 610
             "gui-y": 255
         constraints: "mem=8g"
@@ -172,29 +172,29 @@ machines:
          series: 'bad series'
     bogus:
     3:
-services: 
-    mediawiki: 
+services:
+    mediawiki:
         charm: "bogus:precise/mediawiki-10"
         num_units: -4
-        options: 
+        options:
             debug: false
             name: Please set name of wiki
             skin: vector
-        annotations: 
+        annotations:
             "gui-x": 609
             "gui-y": -15
-    mysql: 
+    mysql:
         charm: "cs:precise/mysql-28"
         num_units: 2
         to: [0, mediawiki/0, nowhere/3, 2, "bad placement"]
-        options: 
+        options:
             "binlog-format": MIXED
             "block-size": 5
             "dataset-size": "80%"
             flavor: distro
             "ha-bindiface": eth0
             "ha-mcastport": 5411
-        annotations: 
+        annotations:
             "gui-x": 610
             "gui-y": 255
         constraints: "bad constraints"
@@ -216,7 +216,7 @@ relations:
 		`machine "bogus" is not referred to by a placement directive`,
 		`invalid machine id "bogus" found in machines`,
 		`invalid constraints "bad constraints" in machine "0": bad constraint`,
-		`invalid charm URL in service "mediawiki": charm URL has invalid schema: "bogus:precise/mediawiki-10"`,
+		`invalid charm URL in service "mediawiki": entity URL has invalid schema: "bogus:precise/mediawiki-10"`,
 		`invalid constraints "bad constraints" in service "mysql": bad constraint`,
 		`negative number of units specified on service "mediawiki"`,
 		`too many units specified in unit placement for service "mysql"`,
@@ -424,11 +424,11 @@ var verifyWithCharmsErrorsTests = []struct {
 	about: "all present and correct",
 	data: `
 services:
-    service1: 
+    service1:
         charm: "test"
-    service2: 
+    service2:
         charm: "test"
-    service3: 
+    service3:
         charm: "test"
 relations:
     - ["service1:prova", "service2:reqa"]
@@ -441,10 +441,10 @@ relations:
 }, {
 	about: "undefined relations",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test"
-    service2: 
+    service2:
         charm: "test"
 relations:
     - ["service1:prova", "service2:blah"]
@@ -460,10 +460,10 @@ relations:
 }, {
 	about: "undefined services",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test"
-    service2: 
+    service2:
         charm: "test"
 relations:
     - ["unknown:prova", "service2:blah"]
@@ -479,10 +479,10 @@ relations:
 }, {
 	about: "equal services",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test"
-    service2: 
+    service2:
         charm: "test"
 relations:
     - ["service2:prova", "service2:reqa"]
@@ -496,10 +496,10 @@ relations:
 }, {
 	about: "provider to provider relation",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test"
-    service2: 
+    service2:
         charm: "test"
 relations:
     - ["service1:prova", "service2:prova"]
@@ -513,10 +513,10 @@ relations:
 }, {
 	about: "provider to provider relation",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test"
-    service2: 
+    service2:
         charm: "test"
 relations:
     - ["service1:reqa", "service2:reqa"]
@@ -530,10 +530,10 @@ relations:
 }, {
 	about: "interface mismatch",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test"
-    service2: 
+    service2:
         charm: "test"
 relations:
     - ["service1:reqa", "service2:provb"]
@@ -547,10 +547,10 @@ relations:
 }, {
 	about: "different charms",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test1"
-    service2: 
+    service2:
         charm: "test2"
 relations:
     - ["service1:reqa", "service2:prova"]
@@ -565,10 +565,10 @@ relations:
 }, {
 	about: "ambiguous relation",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test1"
-    service2: 
+    service2:
         charm: "test2"
 relations:
     - [service1, service2]
@@ -583,10 +583,10 @@ relations:
 }, {
 	about: "relation using juju-info",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "provider"
-    service2: 
+    service2:
         charm: "requirer"
 relations:
     - [service1, service2]
@@ -598,10 +598,10 @@ relations:
 }, {
 	about: "ambiguous when implicit relations taken into account",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "provider"
-    service2: 
+    service2:
         charm: "requirer"
 relations:
     - [service1, service2]
@@ -613,10 +613,10 @@ relations:
 }, {
 	about: "half of relation left open",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "provider"
-    service2: 
+    service2:
         charm: "requirer"
 relations:
     - ["service1:prova2", service2]
@@ -628,10 +628,10 @@ relations:
 }, {
 	about: "duplicate relation between open and fully-specified relations",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "provider"
-    service2: 
+    service2:
         charm: "requirer"
 relations:
     - ["service1:prova", "service2:reqa"]
@@ -647,13 +647,13 @@ relations:
 }, {
 	about: "configuration options specified",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test"
         options:
             title: "some title"
             skill-level: 245
-    service2: 
+    service2:
         charm: "test"
         options:
             title: "another title"
@@ -664,13 +664,13 @@ services:
 }, {
 	about: "invalid type for option",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test"
         options:
             title: "some title"
             skill-level: "too much"
-    service2: 
+    service2:
         charm: "test"
         options:
             title: "another title"
@@ -684,8 +684,8 @@ services:
 }, {
 	about: "unknown option",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test"
         options:
             title: "some title"
@@ -700,13 +700,13 @@ services:
 }, {
 	about: "multiple config problems",
 	data: `
-services: 
-    service1: 
+services:
+    service1:
         charm: "test"
         options:
             title: "some title"
             unknown-option: 2345
-    service2: 
+    service2:
         charm: "test"
         options:
             title: 123
