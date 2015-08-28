@@ -53,6 +53,82 @@ var urlTests = []struct {
 	s:   "local:name",
 	ref: &charm.Reference{"local", "", "name", -1, ""},
 }, {
+	s:     "http://jujucharms.com/u/user/name/series/1",
+	ref:   &charm.Reference{"cs", "user", "name", 1, "series"},
+	exact: "cs:~user/series/name-1",
+}, {
+	s:     "http://www.jujucharms.com/u/user/name/series/1",
+	ref:   &charm.Reference{"cs", "user", "name", 1, "series"},
+	exact: "cs:~user/series/name-1",
+}, {
+	s:     "https://www.jujucharms.com/u/user/name/series/1",
+	ref:   &charm.Reference{"cs", "user", "name", 1, "series"},
+	exact: "cs:~user/series/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name/series/1",
+	ref:   &charm.Reference{"cs", "user", "name", 1, "series"},
+	exact: "cs:~user/series/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name/series",
+	ref:   &charm.Reference{"cs", "user", "name", -1, "series"},
+	exact: "cs:~user/series/name",
+}, {
+	s:     "https://jujucharms.com/u/user/name/1",
+	ref:   &charm.Reference{"cs", "user", "name", 1, ""},
+	exact: "cs:~user/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name",
+	ref:   &charm.Reference{"cs", "user", "name", -1, ""},
+	exact: "cs:~user/name",
+}, {
+	s:     "https://jujucharms.com/name",
+	ref:   &charm.Reference{"cs", "", "name", -1, ""},
+	exact: "cs:name",
+}, {
+	s:     "https://jujucharms.com/name/series",
+	ref:   &charm.Reference{"cs", "", "name", -1, "series"},
+	exact: "cs:series/name",
+}, {
+	s:     "https://jujucharms.com/name/1",
+	ref:   &charm.Reference{"cs", "", "name", 1, ""},
+	exact: "cs:name-1",
+}, {
+	s:     "https://jujucharms.com/name/series/1",
+	ref:   &charm.Reference{"cs", "", "name", 1, "series"},
+	exact: "cs:series/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name/series/1/",
+	ref:   &charm.Reference{"cs", "user", "name", 1, "series"},
+	exact: "cs:~user/series/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name/series/",
+	ref:   &charm.Reference{"cs", "user", "name", -1, "series"},
+	exact: "cs:~user/series/name",
+}, {
+	s:     "https://jujucharms.com/u/user/name/1/",
+	ref:   &charm.Reference{"cs", "user", "name", 1, ""},
+	exact: "cs:~user/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name/",
+	ref:   &charm.Reference{"cs", "user", "name", -1, ""},
+	exact: "cs:~user/name",
+}, {
+	s:     "https://jujucharms.com/name/",
+	ref:   &charm.Reference{"cs", "", "name", -1, ""},
+	exact: "cs:name",
+}, {
+	s:     "https://jujucharms.com/name/series/",
+	ref:   &charm.Reference{"cs", "", "name", -1, "series"},
+	exact: "cs:series/name",
+}, {
+	s:     "https://jujucharms.com/name/1/",
+	ref:   &charm.Reference{"cs", "", "name", 1, ""},
+	exact: "cs:name-1",
+}, {
+	s:     "https://jujucharms.com/name/series/1/",
+	ref:   &charm.Reference{"cs", "", "name", 1, "series"},
+	exact: "cs:series/name-1",
+}, {
 	s:   "bs:~user/series/name-1",
 	err: "entity URL has invalid schema: .*",
 }, {
@@ -167,8 +243,13 @@ func (s *URLSuite) TestParseURL(c *gc.C) {
 		c.Assert(uerr, gc.IsNil)
 		c.Check(url.Reference(), gc.DeepEquals, ref)
 
-		// URL parsing should always be reversible.
-		c.Check(url.String(), gc.Equals, t.s) // XXX
+		// URL strings are generated as expected.  Reversability is preserved
+		// with v1 URLs.
+		if t.exact != "" {
+			c.Check(url.String(), gc.Equals, t.exact)
+		} else {
+			c.Check(url.String(), gc.Equals, t.s)
+		}
 	}
 }
 
