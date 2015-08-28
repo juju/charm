@@ -546,10 +546,7 @@ func (s *MetaSuite) TestWorkloadNameRequired(c *gc.C) {
 
 func (s *MetaSuite) TestWorkloads(c *gc.C) {
 	// "type" is the only required attribute for storage.
-	meta, err := charm.ReadMeta(strings.NewReader(`
-name: a
-summary: b
-description: c
+	workloads, err := charm.ReadWorkloads(strings.NewReader(`
 workloads:
   workload0:
     description: a workload
@@ -569,9 +566,9 @@ workloads:
         OTHER_VAR: some value
   workload1:
     type: rkt
-`))
+`), nil, nil)
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(meta.Workloads, gc.DeepEquals, map[string]charm.Workload{
+	c.Assert(workloads, gc.DeepEquals, map[string]charm.Workload{
 		"workload0": {
 			Name:        "workload0",
 			Description: "a workload",
@@ -615,155 +612,185 @@ name: a
 summary: b
 description: c
 `)
-	_, err := charm.ReadMeta(noWorkload)
+	_, err := charm.ReadWorkloads(noWorkload, nil, nil)
 	c.Assert(err, jc.ErrorIsNil)
 }
 
 func (s *MetaSuite) TestWorkloadsTypeRequired(c *gc.C) {
-	badWorkload := strings.NewReader(`
+	badMeta := strings.NewReader(`
 name: a
 summary: b
 description: c
+`)
+	meta, err := charm.ReadMeta(badMeta)
+	c.Assert(err, jc.ErrorIsNil)
+
+	badWorkload := strings.NewReader(`
 workloads:
   badworkload:
+
 `)
-	_, err := charm.ReadMeta(badWorkload)
-	//c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload.type: name is required")
-	c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload: expected map, got nothing")
+	_, err = charm.ReadWorkloads(badWorkload, meta.Provides, meta.Storage)
+	c.Assert(err, gc.ErrorMatches, "workloads: workloads.badworkload: expected map, got nothing")
 }
 
 func (s *MetaSuite) TestWorkloadsTypeNameRequired(c *gc.C) {
 	badWorkload := strings.NewReader(`
-name: a
-summary: b
-description: c
 workloads:
   badworkload:
     foo: bar
 `)
-	_, err := charm.ReadMeta(badWorkload)
-	c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload.type: expected string, got nothing")
+	_, err := charm.ReadWorkloads(badWorkload, nil, nil)
+	c.Assert(err, gc.ErrorMatches, "workloads: workloads.badworkload.type: expected string, got nothing")
 }
 
 func (s *MetaSuite) TestWorkloadsPortEndpointFound(c *gc.C) {
-	storageWorkload := strings.NewReader(`
+	portMeta := strings.NewReader(`
 name: a
 summary: b
 description: c
-workloads:
-  endpointworkload:
-    type: docker
-    ports:
-        - <website>:8080
-        - 443:8081
 provides:
   website:
     interface: http
 `)
-	meta, err := charm.ReadMeta(storageWorkload)
+	meta, err := charm.ReadMeta(portMeta)
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(meta.Workloads["endpointworkload"].Ports[0].External, gc.Equals, 0)
-	c.Check(meta.Workloads["endpointworkload"].Ports[0].Internal, gc.Equals, 8080)
-	c.Check(meta.Workloads["endpointworkload"].Ports[0].Endpoint, gc.Equals, "website")
-	c.Check(meta.Workloads["endpointworkload"].Ports[1].External, gc.Equals, 443)
-	c.Check(meta.Workloads["endpointworkload"].Ports[1].Internal, gc.Equals, 8081)
-	c.Check(meta.Workloads["endpointworkload"].Ports[1].Endpoint, gc.Equals, "")
-}
-
-func (s *MetaSuite) TestWorkloadsPortEndpointNotFound(c *gc.C) {
-	storageWorkload := strings.NewReader(`
-name: a
-summary: b
-description: c
+	portWorkload := strings.NewReader(`
 workloads:
   endpointworkload:
     type: docker
     ports:
         - <website>:8080
         - 443:8081
+`)
+	workloads, err := charm.ReadWorkloads(portWorkload, meta.Provides, meta.Storage)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(workloads["endpointworkload"].Ports[0].External, gc.Equals, 0)
+	c.Check(workloads["endpointworkload"].Ports[0].Internal, gc.Equals, 8080)
+	c.Check(workloads["endpointworkload"].Ports[0].Endpoint, gc.Equals, "website")
+	c.Check(workloads["endpointworkload"].Ports[1].External, gc.Equals, 443)
+	c.Check(workloads["endpointworkload"].Ports[1].Internal, gc.Equals, 8081)
+	c.Check(workloads["endpointworkload"].Ports[1].Endpoint, gc.Equals, "")
+}
+
+func (s *MetaSuite) TestWorkloadsPortEndpointNotFound(c *gc.C) {
+	endpointMeta := strings.NewReader(`
+name: a
+summary: b
+description: c
 provides:
   mysql:
     interface: db
 `)
-	_, err := charm.ReadMeta(storageWorkload)
+	endpointWorkloads := strings.NewReader(`
+workloads:
+  endpointworkload:
+    type: docker
+    ports:
+        - <website>:8080
+        - 443:8081
+`)
+	meta, err := charm.ReadMeta(endpointMeta)
+	c.Assert(err, jc.ErrorIsNil)
 
+	_, err = charm.ReadWorkloads(endpointWorkloads, meta.Provides, meta.Storage)
 	c.Assert(err, gc.ErrorMatches, `.* specified endpoint "website" unknown for .*`)
 }
 
 func (s *MetaSuite) TestWorkloadsStorageFound(c *gc.C) {
-	storageWorkload := strings.NewReader(`
+	storageMeta := strings.NewReader(`
 name: a
 summary: b
 description: c
-workloads:
-  storageworkload:
-    type: docker
-    volumes:
-      - <store0>:/var/www/html:ro
 storage:
     store0:
       type: filesystem
       location: /var/lib/things
 `)
-	meta, err := charm.ReadMeta(storageWorkload)
+	storageWorkload := strings.NewReader(`
+workloads:
+  storageworkload:
+    type: docker
+    volumes:
+      - <store0>:/var/www/html:ro
+`)
+	meta, err := charm.ReadMeta(storageMeta)
+	c.Assert(err, jc.ErrorIsNil)
+	workloads, err := charm.ReadWorkloads(storageWorkload, meta.Provides, meta.Storage)
 	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(meta.Workloads["storageworkload"].Volumes[0].ExternalMount, gc.Equals, "/var/lib/things")
-	c.Check(meta.Workloads["storageworkload"].Volumes[0].Name, gc.Equals, "store0")
+	c.Check(workloads["storageworkload"].Volumes[0].ExternalMount, gc.Equals, "/var/lib/things")
+	c.Check(workloads["storageworkload"].Volumes[0].Name, gc.Equals, "store0")
 }
 
 func (s *MetaSuite) TestWorkloadsStorageNotFound(c *gc.C) {
-	storageWorkload := strings.NewReader(`
+	storageMeta := strings.NewReader(`
 name: a
 summary: b
 description: c
-workloads:
-  badworkload:
-    type: docker
-    volumes:
-      - <store1>:/var/www/html:ro
 storage:
     store0:
         type: filesystem
         location: /var/lib/things
 `)
-	_, err := charm.ReadMeta(storageWorkload)
-	c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload.volumes: specified storage \"store1\" unknown for .*")
-}
-
-func (s *MetaSuite) TestWorkloadsStorageNotFilesystem(c *gc.C) {
-	storageWorkload := strings.NewReader(`
-name: a
-summary: b
-description: c
+	storageWorkloads := strings.NewReader(`
 workloads:
   badworkload:
     type: docker
     volumes:
-      - <store0>:/var/www/html:ro
+      - <store1>:/var/www/html:ro
+`)
+	meta, err := charm.ReadMeta(storageMeta)
+	c.Assert(err, jc.ErrorIsNil)
+
+	_, err = charm.ReadWorkloads(storageWorkloads, meta.Provides, meta.Storage)
+	c.Assert(err, gc.ErrorMatches, "workloads: workloads.badworkload.volumes: specified storage \"store1\" unknown for .*")
+}
+
+func (s *MetaSuite) TestWorkloadsStorageNotFilesystem(c *gc.C) {
+	storageMeta := strings.NewReader(`
+name: a
+summary: b
+description: c
 storage:
     store0:
         type: block
 `)
-	_, err := charm.ReadMeta(storageWorkload)
-	c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload.volumes: linked storage \"store0\" must be filesystem for .*")
-}
-
-func (s *MetaSuite) TestWorkloadsStorageMissingLocation(c *gc.C) {
-	storageWorkload := strings.NewReader(`
-name: a
-summary: b
-description: c
+	storageWorkloads := strings.NewReader(`
 workloads:
   badworkload:
     type: docker
     volumes:
       - <store0>:/var/www/html:ro
+`)
+	meta, err := charm.ReadMeta(storageMeta)
+	c.Assert(err, jc.ErrorIsNil)
+
+	_, err = charm.ReadWorkloads(storageWorkloads, meta.Provides, meta.Storage)
+	c.Assert(err, gc.ErrorMatches, "workloads: workloads.badworkload.volumes: linked storage \"store0\" must be filesystem for .*")
+}
+
+func (s *MetaSuite) TestWorkloadsStorageMissingLocation(c *gc.C) {
+	storageMeta := strings.NewReader(`
+name: a
+summary: b
+description: c
 storage:
     store0:
         type: filesystem
 `)
-	_, err := charm.ReadMeta(storageWorkload)
-	c.Assert(err, gc.ErrorMatches, "metadata: workloads.badworkload.volumes: linked storage \"store0\" missing location for .*")
+	storageWorkloads := strings.NewReader(`
+workloads:
+  badworkload:
+    type: docker
+    volumes:
+      - <store0>:/var/www/html:ro
+`)
+	meta, err := charm.ReadMeta(storageMeta)
+	c.Assert(err, jc.ErrorIsNil)
+
+	_, err = charm.ReadWorkloads(storageWorkloads, meta.Provides, meta.Storage)
+	c.Assert(err, gc.ErrorMatches, "workloads: workloads.badworkload.volumes: linked storage \"store0\" missing location for .*")
 }
