@@ -129,6 +129,21 @@ var urlTests = []struct {
 	ref:   &charm.Reference{"cs", "", "name", 1, "series"},
 	exact: "cs:series/name-1",
 }, {
+	s:   "https://jujucharms.com/",
+	err: "entity URL has invalid entity name: .*",
+}, {
+	s:   "https://jujucharms.com/u/",
+	err: "entity URL malformed, expecting user and name: .*",
+}, {
+	s:   "https://jujucharms.com/u/badwolf",
+	err: "entity URL malformed, expecting user and name: .*",
+}, {
+	s:   "https://jujucharms.com/name/series/badwolf",
+	err: "entity URL has malformed revision: \"badwolf\" .*",
+}, {
+	s:   "https://jujucharms.com/name/series/42/badwolf",
+	err: "entity URL has invalid form: .*",
+}, {
 	s:   "bs:~user/series/name-1",
 	err: "entity URL has invalid schema: .*",
 }, {

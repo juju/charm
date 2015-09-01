@@ -164,12 +164,14 @@ func parseReference(url string) (*Reference, error) {
 	if validStore.MatchString(url) {
 		r.Schema = "cs"
 		url = validStore.ReplaceAllString(url, "")
-		parts := strings.Split(url, "/")
-		// Strip any trailing blank parts.
-		if parts[len(parts)-1] == "" {
-			parts = parts[:len(parts)-1]
+		parts := strings.Split(strings.Trim(url, "/"), "/")
+		if len(parts) == 0 {
+			return nil, fmt.Errorf("entity URL malformed, no parts: %q", url)
 		}
 		if parts[0] == "u" {
+			if len(parts) < 3 {
+				return nil, fmt.Errorf("entity URL malformed, expecting user and name: %q", url)
+			}
 			r.User = parts[1]
 			parts = parts[2:]
 		}
