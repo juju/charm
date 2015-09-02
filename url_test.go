@@ -132,6 +132,9 @@ var urlTests = []struct {
 	s:   "https://jujucharms.com/",
 	err: "entity URL has invalid entity name: .*",
 }, {
+	s:   "https://jujucharms.com/bad.wolf",
+	err: "entity URL has invalid entity name: .*",
+}, {
 	s:   "https://jujucharms.com/u/",
 	err: "entity URL malformed, expecting user and name: .*",
 }, {
@@ -140,6 +143,9 @@ var urlTests = []struct {
 }, {
 	s:   "https://jujucharms.com/name/series/badwolf",
 	err: "entity URL has malformed revision: \"badwolf\" .*",
+}, {
+	s:   "https://jujucharms.com/name/bad.wolf/42",
+	err: "entity URL has invalid series: .*",
 }, {
 	s:   "https://jujucharms.com/name/series/42/badwolf",
 	err: "entity URL has invalid form: .*",

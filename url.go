@@ -184,6 +184,9 @@ func parseReference(url string) (*Reference, error) {
 				r.Revision = revision
 			} else {
 				r.Series = parts[0]
+				if !IsValidSeries(r.Series) {
+					return nil, fmt.Errorf("entity URL has invalid series: %q", url)
+				}
 				parts = parts[1:]
 				if len(parts) == 1 {
 					r.Revision, err = strconv.Atoi(parts[0])
