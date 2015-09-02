@@ -4,11 +4,15 @@
 package charm
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"strconv"
 	"strings"
 
 	"github.com/juju/schema"
+	"gopkg.in/yaml.v1"
 )
 
 // Workload is the static definition of a workload workload in a charm.
@@ -31,6 +35,27 @@ type Workload struct {
 	Volumes []WorkloadVolume
 	// EnvVars is map of environment variables used by the workload.
 	EnvVars map[string]string
+}
+
+// ReadWorkloads
+func ReadWorkloads(r io.Reader, provides map[string]Relation, storage map[string]Storage) (map[string]Workload, error) {
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	raw := make(map[interface{}]interface{})
+	err = yaml.Unmarshal(data, raw)
+	if err != nil {
+		return nil, err
+	}
+	v, err := workloadsSchema.Coerce(raw, nil)
+	if err != nil {
+		return nil, errors.New("workloads: " + err.Error())
+	}
+	m := v.(map[string]interface{})
+
+	workloads := parseWorkloads(m["workloads"], provides, storage)
+	return workloads, checkWorkloads(workloads)
 }
 
 // ParseWorkload parses the provided data and converts it to a Workload.
@@ -266,7 +291,7 @@ func (w Workload) Validate() error {
 		return fmt.Errorf("missing name")
 	}
 	if w.Type == "" {
-		return fmt.Errorf("metadata: workloads.%s.type: name is required", w.Name)
+		return fmt.Errorf("workloads: workloads.%s.type: name is required", w.Name)
 	}
 
 	if err := w.validatePorts(); err != nil {
@@ -283,7 +308,7 @@ func (w Workload) Validate() error {
 func (w Workload) validatePorts() error {
 	for _, port := range w.Ports {
 		if port.External < 0 {
-			return fmt.Errorf("metadata: workloads.%s.ports: specified endpoint %q unknown for %v", w.Name, port.Endpoint, port)
+			return fmt.Errorf("workloads: workloads.%s.ports: specified endpoint %q unknown for %v", w.Name, port.Endpoint, port)
 		}
 	}
 	return nil
@@ -293,13 +318,13 @@ func (w Workload) validateStorage() error {
 	for _, volume := range w.Volumes {
 		if volume.Name != "" && volume.ExternalMount == "" {
 			if volume.storage == nil {
-				return fmt.Errorf("metadata: workloads.%s.volumes: specified storage %q unknown for %v", w.Name, volume.Name, volume)
+				return fmt.Errorf("workloads: workloads.%s.volumes: specified storage %q unknown for %v", w.Name, volume.Name, volume)
 			}
 			if volume.storage.Type != StorageFilesystem {
-				return fmt.Errorf("metadata: workloads.%s.volumes: linked storage %q must be filesystem for %v", w.Name, volume.Name, volume)
+				return fmt.Errorf("workloads: workloads.%s.volumes: linked storage %q must be filesystem for %v", w.Name, volume.Name, volume)
 			}
 			if volume.storage.Location == "" {
-				return fmt.Errorf("metadata: workloads.%s.volumes: linked storage %q missing location for %v", w.Name, volume.Name, volume)
+				return fmt.Errorf("workloads: workloads.%s.volumes: linked storage %q missing location for %v", w.Name, volume.Name, volume)
 			}
 		}
 	}
@@ -519,6 +544,15 @@ func checkWorkloads(workloads map[string]Workload) error {
 	}
 	return nil
 }
+
+var workloadsSchema = schema.FieldMap(
+	schema.Fields{
+		"workloads": schema.StringMap(workloadSchema),
+	},
+	schema.Defaults{
+		"workloads": schema.Omit,
+	},
+)
 
 var workloadSchema = schema.FieldMap(
 	schema.Fields{
