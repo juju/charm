@@ -37,7 +37,7 @@ type Workload struct {
 	EnvVars map[string]string
 }
 
-// ReadWorkloads
+// ReadWorkloads reads the workloads.
 func ReadWorkloads(r io.Reader, provides map[string]Relation, storage map[string]Storage) (map[string]Workload, error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
