@@ -6,6 +6,7 @@ package charm
 import (
 	"encoding/json"
 	"fmt"
+	gourl "net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -156,106 +157,128 @@ func ParseReference(url string) (*Reference, error) {
 }
 
 func parseReference(url string) (*Reference, error) {
-	var r Reference
 	// Check if we're dealing with a v1 or v2 URL.
-	// TODO: this is a naive check that only works on fully-qualified URLs;
-	// further work will be required for future URLs
-	// XXX Get rid of urlVersion, test based on validStore.MatchString
-	if validStore.MatchString(url) {
-		r.Schema = "cs"
-		url = validStore.ReplaceAllString(url, "")
-		parts := strings.Split(strings.Trim(url, "/"), "/")
-		if len(parts) == 0 {
-			return nil, fmt.Errorf("entity URL malformed, no parts: %q", url)
-		}
-		if parts[0] == "u" {
-			if len(parts) < 3 {
-				return nil, fmt.Errorf("entity URL malformed, expecting user and name: %q", url)
-			}
-			r.User = parts[1]
-			parts = parts[2:]
-		}
-		r.Name = parts[0]
-		parts = parts[1:]
-		r.Revision = -1
-		if len(parts) > 0 {
-			revision, err := strconv.Atoi(parts[0])
-			if err == nil {
-				r.Revision = revision
-			} else {
-				r.Series = parts[0]
-				if !IsValidSeries(r.Series) {
-					return nil, fmt.Errorf("entity URL has invalid series: %q", url)
-				}
-				parts = parts[1:]
-				if len(parts) == 1 {
-					r.Revision, err = strconv.Atoi(parts[0])
-					if err != nil {
-						return nil, fmt.Errorf("entity URL has malformed revision: %q in %q", parts[0], url)
-					}
-				} else {
-					if len(parts) != 0 {
-						return nil, fmt.Errorf("entity URL has invalid form: %q", url)
-					}
-				}
-			}
-		}
-	} else {
-		i := strings.Index(url, ":")
-		if i >= 0 {
-			r.Schema = url[:i]
-			if r.Schema != "cs" && r.Schema != "local" {
-				return nil, fmt.Errorf("entity URL has invalid schema: %q", url)
-			}
-			i++
-		} else {
-			i = 0
-		}
-		parts := strings.Split(url[i:], "/")
-		if len(parts) < 1 || len(parts) > 3 {
-			return nil, fmt.Errorf("entity URL has invalid form: %q", url)
-		}
+	u, err := gourl.Parse(url)
+	if err != nil {
+		return nil, fmt.Errorf("entity URL is not a valid url: %s", url)
+	}
+	// Shortcut old-style URLs.
+	if u.Opaque != "" {
+		u.Path = u.Opaque
+		return parseV1Reference(u)
+	}
+	// Shortcut new-style URLs.
+	if u.Scheme == "http" || u.Scheme == "https" {
+		return parseV2Reference(u)
+	}
+	// TODO: for now, fall through to parsing v1 references; this will be
+	// expanded to be more robust in the future.
+	return parseV1Reference(u)
+}
 
-		// ~<username>
-		if strings.HasPrefix(parts[0], "~") {
-			if r.Schema == "local" {
-				return nil, fmt.Errorf("local entity URL with user name: %q", url)
+func parseV1Reference(url *gourl.URL) (*Reference, error) {
+	var r Reference
+	if url.Scheme != "" {
+		r.Schema = url.Scheme
+		if r.Schema != "cs" && r.Schema != "local" {
+			return nil, fmt.Errorf("entity URL has invalid schema: %q", url)
+		}
+	}
+	i := 0
+	parts := strings.Split(url.Path[i:], "/")
+	if len(parts) < 1 || len(parts) > 3 {
+		return nil, fmt.Errorf("entity URL has invalid form: %q", url)
+	}
+
+	// ~<username>
+	if strings.HasPrefix(parts[0], "~") {
+		if r.Schema == "local" {
+			return nil, fmt.Errorf("local entity URL with user name: %q", url)
+		}
+		r.User = parts[0][1:]
+		parts = parts[1:]
+	}
+	if len(parts) > 2 {
+		return nil, fmt.Errorf("entity URL has invalid form: %q", url)
+	}
+	// <series>
+	if len(parts) == 2 {
+		r.Series = parts[0]
+		parts = parts[1:]
+		if !IsValidSeries(r.Series) {
+			return nil, fmt.Errorf("entity URL has invalid series: %q", url)
+		}
+	}
+	if len(parts) < 1 {
+		return nil, fmt.Errorf("entity URL without entity name: %q", url)
+	}
+
+	// <name>[-<revision>]
+	r.Name = parts[0]
+	r.Revision = -1
+	for i := len(r.Name) - 1; i > 0; i-- {
+		c := r.Name[i]
+		if c >= '0' && c <= '9' {
+			continue
+		}
+		if c == '-' && i != len(r.Name)-1 {
+			var err error
+			r.Revision, err = strconv.Atoi(r.Name[i+1:])
+			if err != nil {
+				panic(err) // We just checked it was right.
 			}
-			r.User = parts[0][1:]
-			parts = parts[1:]
+			r.Name = r.Name[:i]
 		}
-		if len(parts) > 2 {
-			return nil, fmt.Errorf("entity URL has invalid form: %q", url)
+		break
+	}
+	if r.User != "" {
+		if !names.IsValidUser(r.User) {
+			return nil, fmt.Errorf("entity URL has invalid user name: %q", url)
 		}
-		// <series>
-		if len(parts) == 2 {
+	}
+	if !IsValidName(r.Name) {
+		return nil, fmt.Errorf("entity URL has invalid entity name: %q", url)
+	}
+	return &r, nil
+}
+
+func parseV2Reference(url *gourl.URL) (*Reference, error) {
+	var r Reference
+	r.Schema = "cs"
+	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
+	if len(parts) == 0 {
+		return nil, fmt.Errorf("entity URL malformed, no parts: %q", url)
+	}
+	if parts[0] == "u" {
+		if len(parts) < 3 {
+			return nil, fmt.Errorf("entity URL malformed, expecting user and name: %q", url)
+		}
+		r.User = parts[1]
+		parts = parts[2:]
+	}
+	r.Name = parts[0]
+	parts = parts[1:]
+	r.Revision = -1
+	if len(parts) > 0 {
+		revision, err := strconv.Atoi(parts[0])
+		if err == nil {
+			r.Revision = revision
+		} else {
 			r.Series = parts[0]
-			parts = parts[1:]
 			if !IsValidSeries(r.Series) {
 				return nil, fmt.Errorf("entity URL has invalid series: %q", url)
 			}
-		}
-		if len(parts) < 1 {
-			return nil, fmt.Errorf("entity URL without entity name: %q", url)
-		}
-
-		// <name>[-<revision>]
-		r.Name = parts[0]
-		r.Revision = -1
-		for i := len(r.Name) - 1; i > 0; i-- {
-			c := r.Name[i]
-			if c >= '0' && c <= '9' {
-				continue
-			}
-			if c == '-' && i != len(r.Name)-1 {
-				var err error
-				r.Revision, err = strconv.Atoi(r.Name[i+1:])
+			parts = parts[1:]
+			if len(parts) == 1 {
+				r.Revision, err = strconv.Atoi(parts[0])
 				if err != nil {
-					panic(err) // We just checked it was right.
+					return nil, fmt.Errorf("entity URL has malformed revision: %q in %q", parts[0], url)
 				}
-				r.Name = r.Name[:i]
+			} else {
+				if len(parts) != 0 {
+					return nil, fmt.Errorf("entity URL has invalid form: %q", url)
+				}
 			}
-			break
 		}
 	}
 	if r.User != "" {

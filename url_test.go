@@ -154,7 +154,7 @@ var urlTests = []struct {
 	err: "entity URL has invalid schema: .*",
 }, {
 	s:   ":foo",
-	err: "entity URL has invalid schema: .*",
+	err: "entity URL is not a valid url: .*",
 }, {
 	s:   "cs:~1/series/name-1",
 	err: "entity URL has invalid user name: .*",
