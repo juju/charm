@@ -15,10 +15,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const (
-	charmstoreURL string = "jujucharms.com"
-)
-
 // Location represents a charm location, which must declare a path component
 // and a string representaion.
 type Location interface {
@@ -54,7 +50,6 @@ var ErrUnresolvedUrl error = fmt.Errorf("entity url series is not resolved")
 var (
 	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
 	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
-	validStore  = regexp.MustCompile(fmt.Sprintf("^https?://(www\\.)?%s/", charmstoreURL))
 )
 
 // IsValidSeries returns whether series is a valid series in charm URLs.
