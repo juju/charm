@@ -130,69 +130,75 @@ var urlTests = []struct {
 	exact: "cs:series/name-1",
 }, {
 	s:   "https://jujucharms.com/",
-	err: "entity URL has invalid entity name: .*",
+	err: "URL has invalid charm or bundle name: .*",
 }, {
 	s:   "https://jujucharms.com/bad.wolf",
-	err: "entity URL has invalid entity name: .*",
+	err: "URL has invalid charm or bundle name: .*",
 }, {
 	s:   "https://jujucharms.com/u/",
-	err: "entity URL malformed, expecting user and name: .*",
+	err: "charm or bundle URL .* malformed, expected \"/u/<user>/<name>\"",
 }, {
 	s:   "https://jujucharms.com/u/badwolf",
-	err: "entity URL malformed, expecting user and name: .*",
+	err: "charm or bundle URL .* malformed, expected \"/u/<user>/<name>\"",
 }, {
 	s:   "https://jujucharms.com/name/series/badwolf",
-	err: "entity URL has malformed revision: \"badwolf\" .*",
+	err: "charm or bundle URL has malformed revision: \"badwolf\" .*",
 }, {
 	s:   "https://jujucharms.com/name/bad.wolf/42",
-	err: "entity URL has invalid series: .*",
+	err: "charm or bundle URL has invalid series: .*",
 }, {
-	s:   "https://jujucharms.com/name/series/42/badwolf",
-	err: "entity URL has invalid form: .*",
+	s:   "https://badwolf@jujucharms.com/name/series/42",
+	err: "charm or bundle URL .* has unrecognised parts",
+}, {
+	s:   "https://jujucharms.com/name/series/42#bad-wolf",
+	err: "charm or bundle URL .* has unrecognised parts",
+}, {
+	s:   "https://jujucharms.com/name/series/42?bad=wolf",
+	err: "charm or bundle URL .* has unrecognised parts",
 }, {
 	s:   "bs:~user/series/name-1",
-	err: "entity URL has invalid schema: .*",
+	err: "charm or bundle URL has invalid schema: .*",
 }, {
 	s:   ":foo",
-	err: "entity URL is not a valid url: .*",
+	err: "cannot parse charm or bundle URL: .*",
 }, {
 	s:   "cs:~1/series/name-1",
-	err: "entity URL has invalid user name: .*",
+	err: "charm or bundle URL has invalid user name: .*",
 }, {
 	s:   "cs:~user",
-	err: "entity URL without entity name: .*",
+	err: "URL without charm or bundle name: .*",
 }, {
 	s:   "cs:~user/1/name-1",
-	err: "entity URL has invalid series: .*",
+	err: "charm or bundle URL has invalid series: .*",
 }, {
 	s:   "cs:~user/series/name-1-2",
-	err: "entity URL has invalid entity name: .*",
+	err: "URL has invalid charm or bundle name: .*",
 }, {
 	s:   "cs:~user/series/name-1-name-2",
-	err: "entity URL has invalid entity name: .*",
+	err: "URL has invalid charm or bundle name: .*",
 }, {
 	s:   "cs:~user/series/name--name-2",
-	err: "entity URL has invalid entity name: .*",
+	err: "URL has invalid charm or bundle name: .*",
 }, {
 	s:   "cs:foo-1-2",
-	err: "entity URL has invalid entity name: .*",
+	err: "URL has invalid charm or bundle name: .*",
 }, {
 	s:   "cs:~user/series/huh/name-1",
-	err: "entity URL has invalid form: .*",
+	err: "charm or bundle URL has invalid form: .*",
 }, {
 	s:   "cs:/name",
-	err: "entity URL has invalid series: .*",
+	err: "charm or bundle URL has invalid series: .*",
 }, {
 	s:   "local:~user/series/name",
-	err: "local entity URL with user name: .*",
+	err: "local charm or bundle URL with user name: .*",
 }, {
 	s:   "local:~user/name",
-	err: "local entity URL with user name: .*",
+	err: "local charm or bundle URL with user name: .*",
 }, {
 	s:     "precise/wordpress",
 	exact: "cs:precise/wordpress",
 	ref:   &charm.Reference{"cs", "", "wordpress", -1, "precise"},
-	err:   `entity URL has no schema: "precise/wordpress"`,
+	err:   `charm or bundle URL has no schema: "precise/wordpress"`,
 }, {
 	s:     "foo",
 	exact: "cs:foo",
@@ -217,13 +223,13 @@ var urlTests = []struct {
 	s:     "series/foo",
 	exact: "cs:series/foo",
 	ref:   &charm.Reference{"cs", "", "foo", -1, "series"},
-	err:   `entity URL has no schema: "series/foo"`,
+	err:   `charm or bundle URL has no schema: "series/foo"`,
 }, {
 	s:   "series/foo/bar",
-	err: `entity URL has invalid form: "series/foo/bar"`,
+	err: `charm or bundle URL has invalid form: "series/foo/bar"`,
 }, {
 	s:   "cs:foo/~blah",
-	err: `entity URL has invalid entity name: "cs:foo/~blah"`,
+	err: `URL has invalid charm or bundle name: "cs:foo/~blah"`,
 }}
 
 func (s *URLSuite) TestParseURL(c *gc.C) {
@@ -314,7 +320,7 @@ func (s *URLSuite) TestInferURL(c *gc.C) {
 	}
 	u, err := charm.InferURL("~blah", "defseries")
 	c.Assert(u, gc.IsNil)
-	c.Assert(err, gc.ErrorMatches, "entity URL without entity name: .*")
+	c.Assert(err, gc.ErrorMatches, "URL without charm or bundle name: .*")
 }
 
 var inferNoDefaultSeriesTests = []struct {
@@ -335,7 +341,7 @@ func (s *URLSuite) TestInferURLNoDefaultSeries(c *gc.C) {
 		c.Logf("%d: %s", i, t.vague)
 		inferred, err := charm.InferURL(t.vague, "")
 		if t.exact == "" {
-			c.Assert(err, gc.ErrorMatches, fmt.Sprintf("cannot infer entity URL for %q: entity url series is not resolved", t.vague))
+			c.Assert(err, gc.ErrorMatches, fmt.Sprintf("cannot infer charm or bundle URL for %q: charm or bundle url series is not resolved", t.vague))
 		} else {
 			parsed, err := charm.ParseURL(t.exact)
 			c.Assert(err, gc.IsNil)
@@ -393,20 +399,20 @@ func (s *URLSuite) TestMustParseReference(c *gc.C) {
 	f := func() {
 		charm.MustParseReference("bad:bad")
 	}
-	c.Assert(f, gc.PanicMatches, `entity URL has invalid schema: "bad:bad"`)
+	c.Assert(f, gc.PanicMatches, `charm or bundle URL has invalid schema: "bad:bad"`)
 }
 
 func (s *URLSuite) TestMustParseURL(c *gc.C) {
 	url := charm.MustParseURL("cs:series/name")
 	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series"})
 	f := func() { charm.MustParseURL("local:@@/name") }
-	c.Assert(f, gc.PanicMatches, "entity URL has invalid series: .*")
+	c.Assert(f, gc.PanicMatches, "charm or bundle URL has invalid series: .*")
 	f = func() { charm.MustParseURL("cs:~user") }
-	c.Assert(f, gc.PanicMatches, "entity URL without entity name: .*")
+	c.Assert(f, gc.PanicMatches, "URL without charm or bundle name: .*")
 	f = func() { charm.MustParseURL("cs:~user") }
-	c.Assert(f, gc.PanicMatches, "entity URL without entity name: .*")
+	c.Assert(f, gc.PanicMatches, "URL without charm or bundle name: .*")
 	f = func() { charm.MustParseURL("cs:name") }
-	c.Assert(f, gc.PanicMatches, "entity url series is not resolved")
+	c.Assert(f, gc.PanicMatches, "charm or bundle url series is not resolved")
 }
 
 func (s *URLSuite) TestWithRevision(c *gc.C) {

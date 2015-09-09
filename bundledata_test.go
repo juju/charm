@@ -216,7 +216,7 @@ relations:
 		`machine "bogus" is not referred to by a placement directive`,
 		`invalid machine id "bogus" found in machines`,
 		`invalid constraints "bad constraints" in machine "0": bad constraint`,
-		`invalid charm URL in service "mediawiki": entity URL has invalid schema: "bogus:precise/mediawiki-10"`,
+		`invalid charm URL in service "mediawiki": charm or bundle URL has invalid schema: "bogus:precise/mediawiki-10"`,
 		`invalid constraints "bad constraints" in service "mysql": bad constraint`,
 		`negative number of units specified on service "mediawiki"`,
 		`too many units specified in unit placement for service "mysql"`,
