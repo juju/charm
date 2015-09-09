@@ -185,7 +185,7 @@ type Meta struct {
 	OldRevision int                 `bson:"oldrevision,omitempty"` // Obsolete
 	Categories  []string            `bson:"categories,omitempty"`
 	Tags        []string            `bson:"tags,omitempty"`
-	Series      string              `bson:"series,omitempty"`
+	Series      []string            `bson:"series,omitempty"`
 	Storage     map[string]Storage  `bson:"storage,omitempty"`
 }
 
@@ -266,9 +266,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 		// Obsolete
 		meta.OldRevision = int(m["revision"].(int64))
 	}
-	if series, ok := m["series"]; ok && series != nil {
-		meta.Series = series.(string)
-	}
+	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
 	if err := meta.Check(); err != nil {
 		return nil, err
@@ -295,7 +293,7 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		Categories  []string                     `yaml:"categories,omitempty"`
 		Tags        []string                     `yaml:"tags,omitempty"`
 		Subordinate bool                         `yaml:"subordinate,omitempty"`
-		Series      string                       `yaml:"series,omitempty"`
+		Series      []string                     `yaml:"series,omitempty"`
 	}{
 		Name:        m.Name,
 		Summary:     m.Summary,
@@ -400,9 +398,9 @@ func (meta Meta) Check() error {
 		}
 	}
 
-	if meta.Series != "" {
-		if !IsValidSeries(meta.Series) {
-			return fmt.Errorf("charm %q declares invalid series: %q", meta.Name, meta.Series)
+	for _, series := range meta.Series {
+		if !IsValidSeries(series) {
+			return fmt.Errorf("charm %q declares invalid series: %q", meta.Name, series)
 		}
 	}
 
@@ -661,7 +659,7 @@ var charmSchema = schema.FieldMap(
 		"subordinate": schema.Bool(),
 		"categories":  schema.List(schema.String()),
 		"tags":        schema.List(schema.String()),
-		"series":      schema.String(),
+		"series":      schema.List(schema.String()),
 		"storage":     schema.StringMap(storageSchema),
 	},
 	schema.Defaults{
