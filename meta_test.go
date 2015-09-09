@@ -250,17 +250,13 @@ const dummyMetadata = "name: a\nsummary: b\ndescription: c"
 // TestSeries ensures that valid series values are parsed correctly when specified
 // in the charm metadata.
 func (s *MetaSuite) TestSeries(c *gc.C) {
-	// series not specified
-	meta, err := charm.ReadMeta(strings.NewReader(dummyMetadata))
-	c.Assert(err, gc.IsNil)
-	c.Check(meta.Series, gc.Equals, "")
-
+	charmMeta := fmt.Sprintf("%s\nseries:", dummyMetadata)
 	for _, seriesName := range []string{"precise", "trusty", "plan9"} {
-		meta, err := charm.ReadMeta(strings.NewReader(
-			fmt.Sprintf("%s\nseries: %s\n", dummyMetadata, seriesName)))
-		c.Assert(err, gc.IsNil)
-		c.Check(meta.Series, gc.Equals, seriesName)
+		charmMeta = fmt.Sprintf("%s\n    - %s", charmMeta, seriesName)
 	}
+	meta, err := charm.ReadMeta(strings.NewReader(charmMeta))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.Series, gc.DeepEquals, []string{"precise", "trusty", "plan9"})
 }
 
 // TestInvalidSeries ensures that invalid series values cause a parse error
@@ -268,7 +264,7 @@ func (s *MetaSuite) TestSeries(c *gc.C) {
 func (s *MetaSuite) TestInvalidSeries(c *gc.C) {
 	for _, seriesName := range []string{"pre-c1se", "pre^cise", "cp/m", "OpenVMS"} {
 		_, err := charm.ReadMeta(strings.NewReader(
-			fmt.Sprintf("%s\nseries: %s\n", dummyMetadata, seriesName)))
+			fmt.Sprintf("%s\nseries:\n    - %s\n", dummyMetadata, seriesName)))
 		c.Assert(err, gc.NotNil)
 		c.Check(err, gc.ErrorMatches, `charm "a" declares invalid series: .*`)
 	}
@@ -551,7 +547,8 @@ peers:
         optional: true
 categories: [c1, c1]
 tags: [t1, t2]
-series: someseries
+series:
+    - someseries
 `,
 }}
 
