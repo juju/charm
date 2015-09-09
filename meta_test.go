@@ -250,11 +250,15 @@ const dummyMetadata = "name: a\nsummary: b\ndescription: c"
 // TestSeries ensures that valid series values are parsed correctly when specified
 // in the charm metadata.
 func (s *MetaSuite) TestSeries(c *gc.C) {
+	// series not specified
+	meta, err := charm.ReadMeta(strings.NewReader(dummyMetadata))
+	c.Assert(err, gc.IsNil)
+	c.Check(meta.Series, gc.HasLen, 0)
 	charmMeta := fmt.Sprintf("%s\nseries:", dummyMetadata)
 	for _, seriesName := range []string{"precise", "trusty", "plan9"} {
 		charmMeta = fmt.Sprintf("%s\n    - %s", charmMeta, seriesName)
 	}
-	meta, err := charm.ReadMeta(strings.NewReader(charmMeta))
+	meta, err = charm.ReadMeta(strings.NewReader(charmMeta))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Series, gc.DeepEquals, []string{"precise", "trusty", "plan9"})
 }
