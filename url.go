@@ -6,6 +6,7 @@ package charm
 import (
 	"encoding/json"
 	"fmt"
+	gourl "net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -44,7 +45,7 @@ type URL struct {
 //     cs:precise/wordpress
 type Reference URL
 
-var ErrUnresolvedUrl error = fmt.Errorf("entity url series is not resolved")
+var ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
 
 var (
 	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
@@ -89,7 +90,7 @@ func ParseURL(urlStr string) (*URL, error) {
 		return nil, ErrUnresolvedUrl
 	}
 	if r.Schema == "" {
-		return nil, fmt.Errorf("entity URL has no schema: %q", urlStr)
+		return nil, fmt.Errorf("charm or bundle URL has no schema: %q", urlStr)
 	}
 	url, err := r.URL("")
 	if err != nil {
@@ -138,6 +139,19 @@ func MustParseReference(url string) *Reference {
 //    schema:~user/name
 //    schema:~user/name-revision
 //
+// Additionally, fully-qualified charmstore URLs are supported; note that this
+// currently assumes that they will map to jujucharms.com (that is,
+// fully-qualified URLs currently map to the 'cs' schema):
+//
+//    https://jujucharms.com/name
+//    https://jujucharms.com/name/series
+//    https://jujucharms.com/name/revision
+//    https://jujucharms.com/name/series/revision
+//    https://jujucharms.com/u/user/name
+//    https://jujucharms.com/u/user/name/series
+//    https://jujucharms.com/u/user/name/revision
+//    https://jujucharms.com/u/user/name/series/revision
+//
 // A missing schema is assumed to be 'cs'.
 func ParseReference(url string) (*Reference, error) {
 	ref, err := parseReference(url)
@@ -151,46 +165,61 @@ func ParseReference(url string) (*Reference, error) {
 }
 
 func parseReference(url string) (*Reference, error) {
-	var r Reference
-	i := strings.Index(url, ":")
-	if i >= 0 {
-		r.Schema = url[:i]
-		if r.Schema != "cs" && r.Schema != "local" {
-			return nil, fmt.Errorf("entity URL has invalid schema: %q", url)
-		}
-		i++
-	} else {
-		i = 0
+	// Check if we're dealing with a v1 or v2 URL.
+	u, err := gourl.Parse(url)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse charm or bundle URL: %s", url)
 	}
-	parts := strings.Split(url[i:], "/")
+	if u.RawQuery != "" || u.Fragment != "" || u.User != nil {
+		return nil, fmt.Errorf("charm or bundle URL %s has unrecognised parts", url)
+	}
+	// Shortcut old-style URLs.
+	if u.Opaque != "" {
+		u.Path = u.Opaque
+		return parseV1Reference(u)
+	}
+	// Shortcut new-style URLs.
+	if u.Scheme == "http" || u.Scheme == "https" {
+		return parseV2Reference(u)
+	}
+	// TODO: for now, fall through to parsing v1 references; this will be
+	// expanded to be more robust in the future.
+	return parseV1Reference(u)
+}
+
+func parseV1Reference(url *gourl.URL) (*Reference, error) {
+	var r Reference
+	if url.Scheme != "" {
+		r.Schema = url.Scheme
+		if r.Schema != "cs" && r.Schema != "local" {
+			return nil, fmt.Errorf("charm or bundle URL has invalid schema: %q", url)
+		}
+	}
+	i := 0
+	parts := strings.Split(url.Path[i:], "/")
 	if len(parts) < 1 || len(parts) > 3 {
-		return nil, fmt.Errorf("entity URL has invalid form: %q", url)
+		return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", url)
 	}
 
 	// ~<username>
 	if strings.HasPrefix(parts[0], "~") {
 		if r.Schema == "local" {
-			return nil, fmt.Errorf("local entity URL with user name: %q", url)
+			return nil, fmt.Errorf("local charm or bundle URL with user name: %q", url)
 		}
-		r.User = parts[0][1:]
-		if !names.IsValidUser(r.User) {
-			return nil, fmt.Errorf("entity URL has invalid user name: %q", url)
-		}
-		parts = parts[1:]
+		r.User, parts = parts[0][1:], parts[1:]
 	}
 	if len(parts) > 2 {
-		return nil, fmt.Errorf("entity URL has invalid form: %q", url)
+		return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", url)
 	}
 	// <series>
 	if len(parts) == 2 {
-		r.Series = parts[0]
+		r.Series, parts = parts[0], parts[1:]
 		if !IsValidSeries(r.Series) {
-			return nil, fmt.Errorf("entity URL has invalid series: %q", url)
+			return nil, fmt.Errorf("charm or bundle URL has invalid series: %q", url)
 		}
-		parts = parts[1:]
 	}
 	if len(parts) < 1 {
-		return nil, fmt.Errorf("entity URL without entity name: %q", url)
+		return nil, fmt.Errorf("URL without charm or bundle name: %q", url)
 	}
 
 	// <name>[-<revision>]
@@ -211,8 +240,58 @@ func parseReference(url string) (*Reference, error) {
 		}
 		break
 	}
+	if r.User != "" {
+		if !names.IsValidUser(r.User) {
+			return nil, fmt.Errorf("charm or bundle URL has invalid user name: %q", url)
+		}
+	}
 	if !IsValidName(r.Name) {
-		return nil, fmt.Errorf("entity URL has invalid entity name: %q", url)
+		return nil, fmt.Errorf("URL has invalid charm or bundle name: %q", url)
+	}
+	return &r, nil
+}
+
+func parseV2Reference(url *gourl.URL) (*Reference, error) {
+	var r Reference
+	r.Schema = "cs"
+	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
+	if parts[0] == "u" {
+		if len(parts) < 3 {
+			return nil, fmt.Errorf(`charm or bundle URL %q malformed, expected "/u/<user>/<name>"`, url)
+		}
+		r.User, parts = parts[1], parts[2:]
+	}
+	r.Name, parts = parts[0], parts[1:]
+	r.Revision = -1
+	if len(parts) > 0 {
+		revision, err := strconv.Atoi(parts[0])
+		if err == nil {
+			r.Revision = revision
+		} else {
+			r.Series = parts[0]
+			if !IsValidSeries(r.Series) {
+				return nil, fmt.Errorf("charm or bundle URL has invalid series: %q", url)
+			}
+			parts = parts[1:]
+			if len(parts) == 1 {
+				r.Revision, err = strconv.Atoi(parts[0])
+				if err != nil {
+					return nil, fmt.Errorf("charm or bundle URL has malformed revision: %q in %q", parts[0], url)
+				}
+			} else {
+				if len(parts) != 0 {
+					return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", url)
+				}
+			}
+		}
+	}
+	if r.User != "" {
+		if !names.IsValidUser(r.User) {
+			return nil, fmt.Errorf("charm or bundle URL has invalid user name: %q", url)
+		}
+	}
+	if !IsValidName(r.Name) {
+		return nil, fmt.Errorf("URL has invalid charm or bundle name: %q", url)
 	}
 	return &r, nil
 }
@@ -249,7 +328,7 @@ func InferURL(src, defaultSeries string) (*URL, error) {
 	}
 	url, err := ref.URL(defaultSeries)
 	if err != nil {
-		return nil, fmt.Errorf("cannot infer entity URL for %q: %v", src, err)
+		return nil, fmt.Errorf("cannot infer charm or bundle URL for %q: %v", src, err)
 	}
 	return url, nil
 }
