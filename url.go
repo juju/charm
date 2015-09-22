@@ -168,15 +168,15 @@ func parseReference(url string) (*Reference, error) {
 	// Check if we're dealing with a v1 or v2 URL.
 	u, err := gourl.Parse(url)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse charm or bundle URL: %s", url)
+		return nil, fmt.Errorf("cannot parse charm or bundle URL: %q", url)
 	}
 	if u.RawQuery != "" || u.Fragment != "" || u.User != nil {
-		return nil, fmt.Errorf("charm or bundle URL %s has unrecognised parts", url)
+		return nil, fmt.Errorf("charm or bundle URL %q has unrecognized parts", url)
 	}
 	// Shortcut old-style URLs.
 	if u.Opaque != "" {
 		u.Path = u.Opaque
-		return parseV1Reference(u)
+		return parseV1Reference(u, url)
 	}
 	// Shortcut new-style URLs.
 	if u.Scheme == "http" || u.Scheme == "https" {
@@ -184,42 +184,42 @@ func parseReference(url string) (*Reference, error) {
 	}
 	// TODO: for now, fall through to parsing v1 references; this will be
 	// expanded to be more robust in the future.
-	return parseV1Reference(u)
+	return parseV1Reference(u, url)
 }
 
-func parseV1Reference(url *gourl.URL) (*Reference, error) {
+func parseV1Reference(url *gourl.URL, originalURL string) (*Reference, error) {
 	var r Reference
 	if url.Scheme != "" {
 		r.Schema = url.Scheme
 		if r.Schema != "cs" && r.Schema != "local" {
-			return nil, fmt.Errorf("charm or bundle URL has invalid schema: %q", url)
+			return nil, fmt.Errorf("charm or bundle URL has invalid schema: %q", originalURL)
 		}
 	}
 	i := 0
 	parts := strings.Split(url.Path[i:], "/")
 	if len(parts) < 1 || len(parts) > 3 {
-		return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", url)
+		return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", originalURL)
 	}
 
 	// ~<username>
 	if strings.HasPrefix(parts[0], "~") {
 		if r.Schema == "local" {
-			return nil, fmt.Errorf("local charm or bundle URL with user name: %q", url)
+			return nil, fmt.Errorf("local charm or bundle URL with user name: %q", originalURL)
 		}
 		r.User, parts = parts[0][1:], parts[1:]
 	}
 	if len(parts) > 2 {
-		return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", url)
+		return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", originalURL)
 	}
 	// <series>
 	if len(parts) == 2 {
 		r.Series, parts = parts[0], parts[1:]
 		if !IsValidSeries(r.Series) {
-			return nil, fmt.Errorf("charm or bundle URL has invalid series: %q", url)
+			return nil, fmt.Errorf("charm or bundle URL has invalid series: %q", originalURL)
 		}
 	}
 	if len(parts) < 1 {
-		return nil, fmt.Errorf("URL without charm or bundle name: %q", url)
+		return nil, fmt.Errorf("URL without charm or bundle name: %q", originalURL)
 	}
 
 	// <name>[-<revision>]
@@ -242,11 +242,11 @@ func parseV1Reference(url *gourl.URL) (*Reference, error) {
 	}
 	if r.User != "" {
 		if !names.IsValidUser(r.User) {
-			return nil, fmt.Errorf("charm or bundle URL has invalid user name: %q", url)
+			return nil, fmt.Errorf("charm or bundle URL has invalid user name: %q", originalURL)
 		}
 	}
 	if !IsValidName(r.Name) {
-		return nil, fmt.Errorf("URL has invalid charm or bundle name: %q", url)
+		return nil, fmt.Errorf("URL has invalid charm or bundle name: %q", originalURL)
 	}
 	return &r, nil
 }
