@@ -6,6 +6,7 @@ package charm_test
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	gc "gopkg.in/check.v1"
@@ -130,70 +131,70 @@ var urlTests = []struct {
 	exact: "cs:series/name-1",
 }, {
 	s:   "https://jujucharms.com/",
-	err: "URL has invalid charm or bundle name: .*",
+	err: `URL has invalid charm or bundle name: $URL`,
 }, {
 	s:   "https://jujucharms.com/bad.wolf",
-	err: "URL has invalid charm or bundle name: .*",
+	err: `URL has invalid charm or bundle name: $URL`,
 }, {
 	s:   "https://jujucharms.com/u/",
-	err: "charm or bundle URL .* malformed, expected \"/u/<user>/<name>\"",
+	err: "charm or bundle URL $URL malformed, expected \"/u/<user>/<name>\"",
 }, {
 	s:   "https://jujucharms.com/u/badwolf",
-	err: "charm or bundle URL .* malformed, expected \"/u/<user>/<name>\"",
+	err: "charm or bundle URL $URL malformed, expected \"/u/<user>/<name>\"",
 }, {
 	s:   "https://jujucharms.com/name/series/badwolf",
-	err: "charm or bundle URL has malformed revision: \"badwolf\" .*",
+	err: "charm or bundle URL has malformed revision: \"badwolf\" in $URL",
 }, {
 	s:   "https://jujucharms.com/name/bad.wolf/42",
-	err: "charm or bundle URL has invalid series: .*",
+	err: `charm or bundle URL has invalid series: $URL`,
 }, {
 	s:   "https://badwolf@jujucharms.com/name/series/42",
-	err: "charm or bundle URL .* has unrecognised parts",
+	err: `charm or bundle URL $URL has unrecognized parts`,
 }, {
 	s:   "https://jujucharms.com/name/series/42#bad-wolf",
-	err: "charm or bundle URL .* has unrecognised parts",
+	err: `charm or bundle URL $URL has unrecognized parts`,
 }, {
 	s:   "https://jujucharms.com/name/series/42?bad=wolf",
-	err: "charm or bundle URL .* has unrecognised parts",
+	err: `charm or bundle URL $URL has unrecognized parts`,
 }, {
 	s:   "bs:~user/series/name-1",
-	err: "charm or bundle URL has invalid schema: .*",
+	err: `charm or bundle URL has invalid schema: $URL`,
 }, {
 	s:   ":foo",
-	err: "cannot parse charm or bundle URL: .*",
+	err: `cannot parse charm or bundle URL: $URL`,
 }, {
 	s:   "cs:~1/series/name-1",
-	err: "charm or bundle URL has invalid user name: .*",
+	err: `charm or bundle URL has invalid user name: $URL`,
 }, {
 	s:   "cs:~user",
-	err: "URL without charm or bundle name: .*",
+	err: `URL without charm or bundle name: $URL`,
 }, {
 	s:   "cs:~user/1/name-1",
-	err: "charm or bundle URL has invalid series: .*",
+	err: `charm or bundle URL has invalid series: $URL`,
 }, {
 	s:   "cs:~user/series/name-1-2",
-	err: "URL has invalid charm or bundle name: .*",
+	err: `URL has invalid charm or bundle name: $URL`,
 }, {
 	s:   "cs:~user/series/name-1-name-2",
-	err: "URL has invalid charm or bundle name: .*",
+	err: `URL has invalid charm or bundle name: $URL`,
 }, {
 	s:   "cs:~user/series/name--name-2",
-	err: "URL has invalid charm or bundle name: .*",
+	err: `URL has invalid charm or bundle name: $URL`,
 }, {
 	s:   "cs:foo-1-2",
-	err: "URL has invalid charm or bundle name: .*",
+	err: `URL has invalid charm or bundle name: $URL`,
 }, {
 	s:   "cs:~user/series/huh/name-1",
-	err: "charm or bundle URL has invalid form: .*",
+	err: `charm or bundle URL has invalid form: $URL`,
 }, {
 	s:   "cs:/name",
-	err: "charm or bundle URL has invalid series: .*",
+	err: `charm or bundle URL has invalid series: $URL`,
 }, {
 	s:   "local:~user/series/name",
-	err: "local charm or bundle URL with user name: .*",
+	err: `local charm or bundle URL with user name: $URL`,
 }, {
 	s:   "local:~user/name",
-	err: "local charm or bundle URL with user name: .*",
+	err: `local charm or bundle URL with user name: $URL`,
 }, {
 	s:     "precise/wordpress",
 	exact: "cs:precise/wordpress",
@@ -249,6 +250,7 @@ func (s *URLSuite) TestParseURL(c *gc.C) {
 			c.Check(ref.String(), gc.Equals, expectStr)
 		}
 		if t.err != "" {
+			t.err = strings.Replace(t.err, "$URL", regexp.QuoteMeta(fmt.Sprintf("%q", t.s)), -1)
 			c.Assert(uerr, gc.ErrorMatches, t.err)
 			c.Assert(url, gc.IsNil)
 			if t.ref == nil {
