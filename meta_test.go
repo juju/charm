@@ -5,6 +5,7 @@ package charm_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -603,6 +604,35 @@ peers:
 		"peers": map[interface{}]interface{}{
 			"me": "http",
 		},
+	})
+}
+
+func (s *MetaSuite) TestJSONUnmarshalNoSeries(c *gc.C) {
+	var obtained charm.Meta
+	err := json.Unmarshal([]byte(`{"Name": "foo", "Series": ""}`), &obtained)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(obtained, jc.DeepEquals, charm.Meta{
+		Name: "foo",
+	})
+}
+
+func (s *MetaSuite) TestJSONUnmarshalLegacySeries(c *gc.C) {
+	var obtained charm.Meta
+	err := json.Unmarshal([]byte(`{"Name": "foo", "Series": "precise"}`), &obtained)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(obtained, jc.DeepEquals, charm.Meta{
+		Name:   "foo",
+		Series: []string{"precise"},
+	})
+}
+
+func (s *MetaSuite) TestJSONUnmarshal(c *gc.C) {
+	var obtained charm.Meta
+	err := json.Unmarshal([]byte(`{"Name": "foo", "Series": ["precise", "trusty"]}`), &obtained)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(obtained, jc.DeepEquals, charm.Meta{
+		Name:   "foo",
+		Series: []string{"precise", "trusty"},
 	})
 }
 
