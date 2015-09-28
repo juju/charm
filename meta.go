@@ -4,6 +4,7 @@
 package charm
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -185,8 +186,41 @@ type Meta struct {
 	OldRevision int                 `bson:"oldrevision,omitempty"` // Obsolete
 	Categories  []string            `bson:"categories,omitempty"`
 	Tags        []string            `bson:"tags,omitempty"`
-	Series      []string            `bson:"series,omitempty"`
+	Series      []string            `bson:"series,omitempty" json:"-"`
 	Storage     map[string]Storage  `bson:"storage,omitempty"`
+}
+
+// These next 2 types are set up to allow json
+// unmarshaling to handle legacy charms with
+// Series as a string literal.
+
+type jsonMeta Meta
+
+type _meta struct {
+	jsonMeta
+	Series interface{} `json:"series"`
+}
+
+// UnmarshalJSON unmarshals a Meta struct, taking into
+// account that the Series attribute may be a string
+// literal for old charms.
+func (m *Meta) UnmarshalJSON(b []byte) error {
+	var raw _meta
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	*m = Meta(raw.jsonMeta)
+	seriesC := series()
+	if series, err := seriesC.Coerce(raw.Series, nil); err != nil {
+		return err
+	} else if series != nil {
+		seriesList := series.([]interface{})
+		m.Series = make([]string, len(seriesList))
+		for i, s := range seriesList {
+			m.Series[i] = s.(string)
+		}
+	}
+	return nil
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -646,6 +680,30 @@ func (c propertiesC) Coerce(v interface{}, path []string) (newv interface{}, err
 	return schema.OneOf(schema.Const("transient")).Coerce(v, path)
 }
 
+func series() schema.Checker {
+	return seriesC{schema.List(schema.String())}
+}
+
+type seriesC struct {
+	schema.Checker
+}
+
+// Coerce is defined on schema.Checker
+func (c seriesC) Coerce(v interface{}, path []string) (interface{}, error) {
+	if v == nil {
+		return []interface{}{}, nil
+	}
+	// If we have a string literal,
+	// turn it into a list.
+	if v, ok := v.(string); ok {
+		if v != "" {
+			return []interface{}{v}, nil
+		}
+		return []interface{}{}, nil
+	}
+	return c.Checker.Coerce(v, path)
+}
+
 var charmSchema = schema.FieldMap(
 	schema.Fields{
 		"name":        schema.String(),
@@ -659,7 +717,7 @@ var charmSchema = schema.FieldMap(
 		"subordinate": schema.Bool(),
 		"categories":  schema.List(schema.String()),
 		"tags":        schema.List(schema.String()),
-		"series":      schema.List(schema.String()),
+		"series":      series(),
 		"storage":     schema.StringMap(storageSchema),
 	},
 	schema.Defaults{
