@@ -173,6 +173,12 @@ func (r Relation) IsImplicit() bool {
 
 // Meta represents all the known content that may be defined
 // within a charm's metadata.yaml file.
+// Note: Series is serialised for backward compatibility
+// as "supported-series" because a previous
+// charm version had an incompatible Series field that
+// was unused in practice but still serialized. This
+// only applies to JSON because Meta has a custom
+// YAML marshaller.
 type Meta struct {
 	Name        string              `bson:"name" json:"name"`
 	Summary     string              `bson:"summary" json:"summary"`
