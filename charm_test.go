@@ -53,6 +53,42 @@ func (s *CharmSuite) TestReadCharmArchiveError(c *gc.C) {
 	c.Assert(ch, gc.Equals, nil)
 }
 
+func (s *CharmSuite) TestSeriesToUse(c *gc.C) {
+	tests := []struct {
+		series          string
+		supportedSeries []string
+		seriesToUse     string
+		err             string
+	}{{
+		series:      "",
+		seriesToUse: "",
+	}, {
+		series:      "trusty",
+		seriesToUse: "trusty",
+	}, {
+		series:          "trusty",
+		supportedSeries: []string{"precise", "trusty"},
+		seriesToUse:     "trusty",
+	}, {
+		series:          "",
+		supportedSeries: []string{"precise", "trusty"},
+		seriesToUse:     "precise",
+	}, {
+		series:          "wily",
+		supportedSeries: []string{"precise", "trusty"},
+		err:             `series "wily" not supported by charm.*`,
+	}}
+	for _, test := range tests {
+		series, err := charm.SeriesToUse(test.series, test.supportedSeries)
+		if test.err != "" {
+			c.Assert(err, gc.ErrorMatches, test.err)
+			continue
+		}
+		c.Assert(err, jc.ErrorIsNil)
+		c.Assert(series, jc.DeepEquals, test.seriesToUse)
+	}
+}
+
 func checkDummy(c *gc.C, f charm.Charm, path string) {
 	c.Assert(f.Revision(), gc.Equals, 1)
 	c.Assert(f.Meta().Name, gc.Equals, "dummy")
