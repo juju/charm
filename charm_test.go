@@ -79,7 +79,7 @@ func (s *CharmSuite) TestSeriesToUse(c *gc.C) {
 		err:             `series "wily" not supported by charm.*`,
 	}}
 	for _, test := range tests {
-		series, err := charm.SeriesToUse(test.series, test.supportedSeries)
+		series, err := charm.SeriesForCharm(test.series, test.supportedSeries)
 		if test.err != "" {
 			c.Assert(err, gc.ErrorMatches, test.err)
 			continue
