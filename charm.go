@@ -4,7 +4,9 @@
 package charm
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/juju/loggo"
 )
@@ -37,4 +39,28 @@ func ReadCharm(path string) (charm Charm, err error) {
 		return nil, err
 	}
 	return charm, nil
+}
+
+// SeriesForCharm takes a requested series and a list of series supported by a
+// charm and returns the series which is relevant.
+// If the requested series is empty, then the first supported series is used,
+// otherwise the requested series is validated against the supported series.
+func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, error) {
+	// Old charm with no supported series.
+	if len(supportedSeries) == 0 {
+		return requestedSeries, nil
+	}
+	// Use the charm default.
+	if requestedSeries == "" {
+		return supportedSeries[0], nil
+	}
+	for _, s := range supportedSeries {
+		if s == requestedSeries {
+			return requestedSeries, nil
+		}
+	}
+	return "", fmt.Errorf(
+		"series %q not supported by charm, supported series are: %s",
+		requestedSeries, strings.Join(supportedSeries, ","),
+	)
 }
