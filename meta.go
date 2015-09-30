@@ -173,20 +173,26 @@ func (r Relation) IsImplicit() bool {
 
 // Meta represents all the known content that may be defined
 // within a charm's metadata.yaml file.
+// Note: Series is serialised for backward compatibility
+// as "supported-series" because a previous
+// charm version had an incompatible Series field that
+// was unused in practice but still serialized. This
+// only applies to JSON because Meta has a custom
+// YAML marshaller.
 type Meta struct {
-	Name            string              `bson:"name"`
-	Summary         string              `bson:"summary"`
-	Description     string              `bson:"description"`
-	Subordinate     bool                `bson:"subordinate"`
-	Provides        map[string]Relation `bson:"provides,omitempty"`
-	Requires        map[string]Relation `bson:"requires,omitempty"`
-	Peers           map[string]Relation `bson:"peers,omitempty"`
-	Format          int                 `bson:"format,omitempty"`
-	OldRevision     int                 `bson:"oldrevision,omitempty"` // Obsolete
-	Categories      []string            `bson:"categories,omitempty"`
-	Tags            []string            `bson:"tags,omitempty"`
-	SupportedSeries []string            `bson:"supported-series,omitempty"`
-	Storage         map[string]Storage  `bson:"storage,omitempty"`
+	Name        string              `bson:"name" json:"name"`
+	Summary     string              `bson:"summary" json:"summary"`
+	Description string              `bson:"description" json:"description"`
+	Subordinate bool                `bson:"subordinate" json:"subordinate"`
+	Provides    map[string]Relation `bson:"provides,omitempty" json:"provides,omitempty"`
+	Requires    map[string]Relation `bson:"requires,omitempty" json:"requires,omitempty"`
+	Peers       map[string]Relation `bson:"peers,omitempty" json:"peers,omitempty"`
+	Format      int                 `bson:"format,omitempty" json:"format,omitempty"`
+	OldRevision int                 `bson:"oldrevision,omitempty"` // Obsolete
+	Categories  []string            `bson:"categories,omitempty" json:"categories,omitempty"`
+	Tags        []string            `bson:"tags,omitempty" json:"tag,omitempty"`
+	Series      []string            `bson:"series,omitempty" json:"supported-series,omitempty"`
+	Storage     map[string]Storage  `bson:"storage,omitempty" json:"storage,omitempty"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -266,7 +272,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 		// Obsolete
 		meta.OldRevision = int(m["revision"].(int64))
 	}
-	meta.SupportedSeries = parseStringList(m["supported-series"])
+	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
 	if err := meta.Check(); err != nil {
 		return nil, err
@@ -304,7 +310,7 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		Categories:  m.Categories,
 		Tags:        m.Tags,
 		Subordinate: m.Subordinate,
-		Series:      m.SupportedSeries,
+		Series:      m.Series,
 	}
 }
 
@@ -398,7 +404,7 @@ func (meta Meta) Check() error {
 		}
 	}
 
-	for _, series := range meta.SupportedSeries {
+	for _, series := range meta.Series {
 		if !IsValidSeries(series) {
 			return fmt.Errorf("charm %q declares invalid series: %q", meta.Name, series)
 		}
@@ -648,30 +654,30 @@ func (c propertiesC) Coerce(v interface{}, path []string) (newv interface{}, err
 
 var charmSchema = schema.FieldMap(
 	schema.Fields{
-		"name":             schema.String(),
-		"summary":          schema.String(),
-		"description":      schema.String(),
-		"peers":            schema.StringMap(ifaceExpander(int64(1))),
-		"provides":         schema.StringMap(ifaceExpander(nil)),
-		"requires":         schema.StringMap(ifaceExpander(int64(1))),
-		"revision":         schema.Int(), // Obsolete
-		"format":           schema.Int(),
-		"subordinate":      schema.Bool(),
-		"categories":       schema.List(schema.String()),
-		"tags":             schema.List(schema.String()),
-		"supported-series": schema.List(schema.String()),
-		"storage":          schema.StringMap(storageSchema),
+		"name":        schema.String(),
+		"summary":     schema.String(),
+		"description": schema.String(),
+		"peers":       schema.StringMap(ifaceExpander(int64(1))),
+		"provides":    schema.StringMap(ifaceExpander(nil)),
+		"requires":    schema.StringMap(ifaceExpander(int64(1))),
+		"revision":    schema.Int(), // Obsolete
+		"format":      schema.Int(),
+		"subordinate": schema.Bool(),
+		"categories":  schema.List(schema.String()),
+		"tags":        schema.List(schema.String()),
+		"series":      schema.List(schema.String()),
+		"storage":     schema.StringMap(storageSchema),
 	},
 	schema.Defaults{
-		"provides":         schema.Omit,
-		"requires":         schema.Omit,
-		"peers":            schema.Omit,
-		"revision":         schema.Omit,
-		"format":           1,
-		"subordinate":      schema.Omit,
-		"categories":       schema.Omit,
-		"tags":             schema.Omit,
-		"supported-series": schema.Omit,
-		"storage":          schema.Omit,
+		"provides":    schema.Omit,
+		"requires":    schema.Omit,
+		"peers":       schema.Omit,
+		"revision":    schema.Omit,
+		"format":      1,
+		"subordinate": schema.Omit,
+		"categories":  schema.Omit,
+		"tags":        schema.Omit,
+		"series":      schema.Omit,
+		"storage":     schema.Omit,
 	},
 )
