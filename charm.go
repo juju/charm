@@ -41,6 +41,10 @@ func ReadCharm(path string) (charm Charm, err error) {
 	return charm, nil
 }
 
+// MissingSeriesError is used to denote that SeriesForCharm could not determine
+// a series because a legacy charm did not declare any.
+var MissingSeriesError = fmt.Errorf("series not specified and charm does not define any")
+
 // SeriesForCharm takes a requested series and a list of series supported by a
 // charm and returns the series which is relevant.
 // If the requested series is empty, then the first supported series is used,
@@ -48,6 +52,9 @@ func ReadCharm(path string) (charm Charm, err error) {
 func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, error) {
 	// Old charm with no supported series.
 	if len(supportedSeries) == 0 {
+		if requestedSeries == "" {
+			return "", MissingSeriesError
+		}
 		return requestedSeries, nil
 	}
 	// Use the charm default.

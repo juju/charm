@@ -60,8 +60,8 @@ func (s *CharmSuite) TestSeriesToUse(c *gc.C) {
 		seriesToUse     string
 		err             string
 	}{{
-		series:      "",
-		seriesToUse: "",
+		series: "",
+		err:    charm.MissingSeriesError.Error(),
 	}, {
 		series:      "trusty",
 		seriesToUse: "trusty",
