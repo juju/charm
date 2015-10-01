@@ -5,6 +5,7 @@ package charm_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -61,7 +62,7 @@ func (s *CharmSuite) TestSeriesToUse(c *gc.C) {
 		err             string
 	}{{
 		series: "",
-		err:    charm.MissingSeriesError.Error(),
+		err:    "series not specified and charm does not define any",
 	}, {
 		series:      "trusty",
 		seriesToUse: "trusty",
@@ -87,6 +88,18 @@ func (s *CharmSuite) TestSeriesToUse(c *gc.C) {
 		c.Assert(err, jc.ErrorIsNil)
 		c.Assert(series, jc.DeepEquals, test.seriesToUse)
 	}
+}
+
+func (s *CharmSuite) IsUnsupportedSeriesError(c *gc.C) {
+	err := charm.UnsupportedSeriesError()
+	c.Assert(charm.IsUnsupportedSeriesError(err), jc.IsTrue)
+	c.Assert(charm.IsUnsupportedSeriesError(fmt.Errorf("foo")), jc.IsFalse)
+}
+
+func (s *CharmSuite) IsMissingSeriesError(c *gc.C) {
+	err := charm.MissingSeriesError()
+	c.Assert(charm.IsMissingSeriesError(err), jc.IsTrue)
+	c.Assert(charm.IsMissingSeriesError(fmt.Errorf("foo")), jc.IsFalse)
 }
 
 func checkDummy(c *gc.C, f charm.Charm, path string) {

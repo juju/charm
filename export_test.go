@@ -6,3 +6,11 @@ package charm
 // Export meaningful bits for tests only.
 
 var IfaceExpander = ifaceExpander
+
+func UnsupportedSeriesError() error {
+	return &unsupportedSeriesError{}
+}
+
+func MissingSeriesError() error {
+	return missingSeriesError
+}
