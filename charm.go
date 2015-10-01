@@ -48,6 +48,9 @@ func ReadCharm(path string) (charm Charm, err error) {
 func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, error) {
 	// Old charm with no supported series.
 	if len(supportedSeries) == 0 {
+		if requestedSeries == "" {
+			return "", missingSeriesError
+		}
 		return requestedSeries, nil
 	}
 	// Use the charm default.
@@ -59,8 +62,34 @@ func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, e
 			return requestedSeries, nil
 		}
 	}
-	return "", fmt.Errorf(
+	return "", &unsupportedSeriesError{requestedSeries, supportedSeries}
+}
+
+// missingSeriesError is used to denote that SeriesForCharm could not determine
+// a series because a legacy charm did not declare any.
+var missingSeriesError = fmt.Errorf("series not specified and charm does not define any")
+
+// IsMissingSeriesError returns true if err is an missingSeriesError.
+func IsMissingSeriesError(err error) bool {
+	return err == missingSeriesError
+}
+
+// UnsupportedSeriesError represents an error indicating that the requested series
+// is not supported by the charm.
+type unsupportedSeriesError struct {
+	requestedSeries string
+	supportedSeries []string
+}
+
+func (e *unsupportedSeriesError) Error() string {
+	return fmt.Sprintf(
 		"series %q not supported by charm, supported series are: %s",
-		requestedSeries, strings.Join(supportedSeries, ","),
+		e.requestedSeries, strings.Join(e.supportedSeries, ","),
 	)
+}
+
+// IsUnsupportedSeriesError returns true if err is an UnsupportedSeriesError.
+func IsUnsupportedSeriesError(err error) bool {
+	_, ok := err.(*unsupportedSeriesError)
+	return ok
 }
