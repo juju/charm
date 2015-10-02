@@ -45,7 +45,7 @@ func checkWordpressBundle(c *gc.C, b charm.Bundle, path string) {
 		"wordpress": wordpressCharm,
 		"mysql":     mysqlCharm,
 	}
-	err := bd.VerifyWithCharms(verifyOk, charms)
+	err := bd.VerifyWithCharms(verifyOk, nil, charms)
 	c.Assert(err, gc.IsNil)
 
 	c.Assert(bd.Services, jc.DeepEquals, map[string]*charm.ServiceSpec{

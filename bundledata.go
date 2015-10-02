@@ -137,6 +137,10 @@ type ServiceSpec struct {
 	// when creating new machines for units of the service.
 	// This is ignored for units with explicit placement directives.
 	Constraints string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+
+	// Storage holds the constraints for storage to assign
+	// to units of the service.
+	Storage map[string]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 }
 
 // ReadBundleData reads bundle data from the given reader.
@@ -181,6 +185,7 @@ type bundleDataVerifier struct {
 
 	errors            []error
 	verifyConstraints func(c string) error
+	verifyStorage     func(s string) error
 }
 
 func (verifier *bundleDataVerifier) addErrorf(f string, a ...interface{}) {
@@ -213,21 +218,24 @@ func (bd *BundleData) RequiredCharms() []string {
 // with a nil charms map.
 func (bd *BundleData) Verify(
 	verifyConstraints func(c string) error,
+	verifyStorage func(s string) error,
 ) error {
-	return bd.VerifyWithCharms(verifyConstraints, nil)
+	return bd.VerifyWithCharms(verifyConstraints, verifyStorage, nil)
 }
 
 // VerifyWithCharms verifies that the bundle is consistent.
 // The verifyConstraints function is called to verify any constraints
 // that are found. If verifyConstraints is nil, no checking
-// of constraints will be done.
+// of constraints will be done. Similarly, a non-nil verifyStorage
+// function is called to verify any storage constraints.
 //
 // It verifies the following:
 //
 // - All defined machines are referred to by placement directives.
 // - All services referred to by placement directives are specified in the bundle.
 // - All services referred to by relations are specified in the bundle.
-// - All constraints are valid.
+// - All basic constraints are valid.
+// - All storage constraints are valid.
 //
 // If charms is not nil, it should hold a map with an entry for each
 // charm url returned by bd.RequiredCharms. The verification will then
@@ -238,6 +246,7 @@ func (bd *BundleData) Verify(
 // all the problems found.
 func (bd *BundleData) VerifyWithCharms(
 	verifyConstraints func(c string) error,
+	verifyStorage func(s string) error,
 	charms map[string]Charm,
 ) error {
 	if verifyConstraints == nil {
@@ -245,8 +254,14 @@ func (bd *BundleData) VerifyWithCharms(
 			return nil
 		}
 	}
+	if verifyStorage == nil {
+		verifyStorage = func(string) error {
+			return nil
+		}
+	}
 	verifier := &bundleDataVerifier{
 		verifyConstraints: verifyConstraints,
+		verifyStorage:     verifyStorage,
 		bd:                bd,
 		machineRefCounts:  make(map[string]int),
 		charms:            charms,
@@ -302,6 +317,11 @@ func (verifier *bundleDataVerifier) verifyServices() {
 		}
 		if err := verifier.verifyConstraints(svc.Constraints); err != nil {
 			verifier.addErrorf("invalid constraints %q in service %q: %v", svc.Constraints, name, err)
+		}
+		for storageName, storageConstraints := range svc.Storage {
+			if err := verifier.verifyStorage(storageConstraints); err != nil {
+				verifier.addErrorf("invalid storage %q in service %q: %v", storageName, name, err)
+			}
 		}
 		if verifier.charms != nil {
 			if ch, ok := verifier.charms[svc.Charm]; ok {
