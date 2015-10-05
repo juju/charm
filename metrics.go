@@ -29,24 +29,31 @@ func IsBuiltinMetric(key string) bool {
 	return strings.HasPrefix(key, builtinMetricPrefix)
 }
 
+func validateValue(value string) error {
+	// The largest number of digits that can be returned by strconv.FormatFloat is 24, so
+	// choose an arbitrary limit somewhat higher than that.
+	if len(value) > 30 {
+		return fmt.Errorf("metric value is too large")
+	}
+	fValue, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return fmt.Errorf("invalid value type: expected float, got %q", value)
+	}
+	if fValue < 0 {
+		return fmt.Errorf("invalid value: value must be greater or equal to zero, got %v", value)
+	}
+	return nil
+}
+
 // validateValue checks if the supplied metric value fits the requirements
 // of its expected type.
 func (m MetricType) validateValue(value string) error {
 	switch m {
 	case MetricTypeGauge, MetricTypeAbsolute:
-		// The largest number of digits that can be returned by strconv.FormatFloat is 24, so
-		// choose an arbitrary limit somewhat higher than that.
-		if len(value) > 30 {
-			return fmt.Errorf("metric value is too large")
-		}
-		_, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return fmt.Errorf("invalid value type: expected float, got %q", value)
-		}
+		return validateValue(value)
 	default:
 		return fmt.Errorf("unknown metric type %q", m)
 	}
-	return nil
 }
 
 // Metric represents a single metric definition
@@ -99,6 +106,9 @@ func (m Metrics) ValidateMetric(name, value string) error {
 	metric, exists := m.Metrics[name]
 	if !exists {
 		return fmt.Errorf("metric %q not defined", name)
+	}
+	if IsBuiltinMetric(name) {
+		return validateValue(value)
 	}
 	return metric.Type.validateValue(value)
 }
