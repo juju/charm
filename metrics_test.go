@@ -195,3 +195,33 @@ metrics:
 		c.Assert(err, gc.ErrorMatches, `metric "juju-unit-time" is using a prefix reserved for built-in metrics: it should not have type or description specification`)
 	}
 }
+
+func (s *MetricsSuite) TestValidateValue(c *gc.C) {
+	tests := []struct {
+		value         string
+		expectedError string
+	}{{
+		value: "1234567890",
+	}, {
+		value: "0",
+	}, {
+		value:         "abcd",
+		expectedError: `invalid value type: expected float, got "abcd"`,
+	}, {
+		value:         "1234567890123456789012345678901234567890",
+		expectedError: "metric value is too large",
+	}, {
+		value:         "-42",
+		expectedError: "invalid value: value must be greater or equal to zero, got -42",
+	},
+	}
+
+	for _, test := range tests {
+		err := charm.ValidateValue(test.value)
+		if test.expectedError != "" {
+			c.Assert(err, gc.ErrorMatches, test.expectedError)
+		} else {
+			c.Assert(err, gc.IsNil)
+		}
+	}
+}
