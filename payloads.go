@@ -5,6 +5,15 @@ package charm
 
 import (
 	"fmt"
+
+	"github.com/juju/schema"
+)
+
+var payloadClassSchema = schema.FieldMap(
+	schema.Fields{
+		"type": schema.String(),
+	},
+	schema.Defaults{},
 )
 
 // PayloadClass holds the information about a payload class, as stored
