@@ -775,6 +775,31 @@ storage:
 	c.Assert(store.Properties, jc.SameContents, []string{"transient"})
 }
 
+func (s *MetaSuite) TestPayloadClasses(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+payloads:
+    monitor:
+        type: docker
+    kvm-guest:
+        type: kvm
+`))
+	c.Assert(err, gc.IsNil)
+
+	c.Check(meta.PayloadClasses, jc.DeepEquals, map[string]charm.PayloadClass{
+		"monitor": charm.PayloadClass{
+			Name: "monitor",
+			Type: "docker",
+		},
+		"kvm-guest": charm.PayloadClass{
+			Name: "kvm-guest",
+			Type: "kvm",
+		},
+	})
+}
+
 type dummyCharm struct{}
 
 func (c *dummyCharm) Config() *charm.Config {

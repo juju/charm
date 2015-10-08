@@ -5,4 +5,8 @@ package charm
 
 // Export meaningful bits for tests only.
 
-var IfaceExpander = ifaceExpander
+var (
+	IfaceExpander = ifaceExpander
+
+	ParsePayloadClass = parsePayloadClass
+)
