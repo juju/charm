@@ -180,19 +180,20 @@ func (r Relation) IsImplicit() bool {
 // only applies to JSON because Meta has a custom
 // YAML marshaller.
 type Meta struct {
-	Name        string              `bson:"name" json:"name"`
-	Summary     string              `bson:"summary" json:"summary"`
-	Description string              `bson:"description" json:"description"`
-	Subordinate bool                `bson:"subordinate" json:"subordinate"`
-	Provides    map[string]Relation `bson:"provides,omitempty" json:"provides,omitempty"`
-	Requires    map[string]Relation `bson:"requires,omitempty" json:"requires,omitempty"`
-	Peers       map[string]Relation `bson:"peers,omitempty" json:"peers,omitempty"`
-	Format      int                 `bson:"format,omitempty" json:"format,omitempty"`
-	OldRevision int                 `bson:"oldrevision,omitempty"` // Obsolete
-	Categories  []string            `bson:"categories,omitempty" json:"categories,omitempty"`
-	Tags        []string            `bson:"tags,omitempty" json:"tag,omitempty"`
-	Series      []string            `bson:"series,omitempty" json:"supported-series,omitempty"`
-	Storage     map[string]Storage  `bson:"storage,omitempty" json:"storage,omitempty"`
+	Name           string                  `bson:"name" json:"name"`
+	Summary        string                  `bson:"summary" json:"summary"`
+	Description    string                  `bson:"description" json:"description"`
+	Subordinate    bool                    `bson:"subordinate" json:"subordinate"`
+	Provides       map[string]Relation     `bson:"provides,omitempty" json:"provides,omitempty"`
+	Requires       map[string]Relation     `bson:"requires,omitempty" json:"requires,omitempty"`
+	Peers          map[string]Relation     `bson:"peers,omitempty" json:"peers,omitempty"`
+	Format         int                     `bson:"format,omitempty" json:"format,omitempty"`
+	OldRevision    int                     `bson:"oldrevision,omitempty"` // Obsolete
+	Categories     []string                `bson:"categories,omitempty" json:"categories,omitempty"`
+	Tags           []string                `bson:"tags,omitempty" json:"tag,omitempty"`
+	Series         []string                `bson:"series,omitempty" json:"supported-series,omitempty"`
+	Storage        map[string]Storage      `bson:"storage,omitempty" json:"storage,omitempty"`
+	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"payloadclasses,omitempty"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -274,6 +275,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	}
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
+	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
 	if err := meta.Check(); err != nil {
 		return nil, err
 	}
@@ -428,6 +430,15 @@ func (meta Meta) Check() error {
 			return fmt.Errorf("charm %q storage %q: duplicated storage name", meta.Name, name)
 		}
 		names[name] = true
+	}
+
+	for name, payloadClass := range meta.PayloadClasses {
+		if payloadClass.Name != name {
+			return fmt.Errorf("mismatch on payload class name (%q != %q)", payloadClass.Name, name)
+		}
+		if err := payloadClass.Validate(); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -667,6 +678,7 @@ var charmSchema = schema.FieldMap(
 		"tags":        schema.List(schema.String()),
 		"series":      schema.List(schema.String()),
 		"storage":     schema.StringMap(storageSchema),
+		"payloads":    schema.StringMap(payloadClassSchema),
 	},
 	schema.Defaults{
 		"provides":    schema.Omit,
@@ -679,5 +691,6 @@ var charmSchema = schema.FieldMap(
 		"tags":        schema.Omit,
 		"series":      schema.Omit,
 		"storage":     schema.Omit,
+		"payloads":    schema.Omit,
 	},
 )

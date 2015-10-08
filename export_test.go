@@ -8,6 +8,8 @@ package charm
 var (
 	IfaceExpander = ifaceExpander
 	ValidateValue = validateValue
+
+	ParsePayloadClass = parsePayloadClass
 )
 
 func UnsupportedSeriesError() error {
