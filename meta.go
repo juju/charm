@@ -14,7 +14,7 @@ import (
 
 	"github.com/juju/schema"
 	"github.com/juju/utils"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 
 	"gopkg.in/juju/charm.v6-unstable/hooks"
 )
@@ -282,43 +282,8 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	return meta, nil
 }
 
-// GetYAML implements yaml.Getter.GetYAML.
-func (m Meta) GetYAML() (tag string, value interface{}) {
-	marshaledRelations := func(rs map[string]Relation) map[string]marshaledRelation {
-		mrs := make(map[string]marshaledRelation)
-		for name, r := range rs {
-			mrs[name] = marshaledRelation(r)
-		}
-		return mrs
-	}
-	return "", struct {
-		Name        string                       `yaml:"name"`
-		Summary     string                       `yaml:"summary"`
-		Description string                       `yaml:"description"`
-		Provides    map[string]marshaledRelation `yaml:"provides,omitempty"`
-		Requires    map[string]marshaledRelation `yaml:"requires,omitempty"`
-		Peers       map[string]marshaledRelation `yaml:"peers,omitempty"`
-		Categories  []string                     `yaml:"categories,omitempty"`
-		Tags        []string                     `yaml:"tags,omitempty"`
-		Subordinate bool                         `yaml:"subordinate,omitempty"`
-		Series      []string                     `yaml:"series,omitempty"`
-	}{
-		Name:        m.Name,
-		Summary:     m.Summary,
-		Description: m.Description,
-		Provides:    marshaledRelations(m.Provides),
-		Requires:    marshaledRelations(m.Requires),
-		Peers:       marshaledRelations(m.Peers),
-		Categories:  m.Categories,
-		Tags:        m.Tags,
-		Subordinate: m.Subordinate,
-		Series:      m.Series,
-	}
-}
-
-type marshaledRelation Relation
-
-func (r marshaledRelation) GetYAML() (tag string, value interface{}) {
+// MarshalYAML implements yaml.Marshaler.MarshalYAML()
+func (r Relation) MarshalYAML() (interface{}, error) {
 	// See calls to ifaceExpander in charmSchema.
 	noLimit := 1
 	if r.Role == RoleProvider {
@@ -327,7 +292,7 @@ func (r marshaledRelation) GetYAML() (tag string, value interface{}) {
 
 	if !r.Optional && r.Limit == noLimit && r.Scope == ScopeGlobal {
 		// All attributes are default, so use the simple string form of the relation.
-		return "", r.Interface
+		return r.Interface, nil
 	}
 	mr := struct {
 		Interface string        `yaml:"interface"`
@@ -344,7 +309,7 @@ func (r marshaledRelation) GetYAML() (tag string, value interface{}) {
 	if r.Scope != ScopeGlobal {
 		mr.Scope = r.Scope
 	}
-	return "", mr
+	return mr, nil
 }
 
 // Check checks that the metadata is well-formed.
