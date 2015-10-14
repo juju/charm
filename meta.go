@@ -180,20 +180,20 @@ func (r Relation) IsImplicit() bool {
 // only applies to JSON because Meta has a custom
 // YAML marshaller.
 type Meta struct {
-	Name           string                  `bson:"name" json:"name"`
-	Summary        string                  `bson:"summary" json:"summary"`
-	Description    string                  `bson:"description" json:"description"`
-	Subordinate    bool                    `bson:"subordinate" json:"subordinate"`
-	Provides       map[string]Relation     `bson:"provides,omitempty" json:"provides,omitempty"`
-	Requires       map[string]Relation     `bson:"requires,omitempty" json:"requires,omitempty"`
-	Peers          map[string]Relation     `bson:"peers,omitempty" json:"peers,omitempty"`
-	Format         int                     `bson:"format,omitempty" json:"format,omitempty"`
-	OldRevision    int                     `bson:"oldrevision,omitempty"` // Obsolete
-	Categories     []string                `bson:"categories,omitempty" json:"categories,omitempty"`
-	Tags           []string                `bson:"tags,omitempty" json:"tag,omitempty"`
-	Series         []string                `bson:"series,omitempty" json:"supported-series,omitempty"`
-	Storage        map[string]Storage      `bson:"storage,omitempty" json:"storage,omitempty"`
-	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"payloadclasses,omitempty"`
+	Name           string                  `bson:"name" json:"name" yaml:"name"`
+	Summary        string                  `bson:"summary" json:"summary" yaml:"summary"`
+	Description    string                  `bson:"description" json:"description" yaml:"description"`
+	Subordinate    bool                    `bson:"subordinate" json:"subordinate" yaml:"subordinate,omitempty"`
+	Provides       map[string]Relation     `bson:"provides,omitempty" json:"provides,omitempty" yaml:"provides,omitempty"`
+	Requires       map[string]Relation     `bson:"requires,omitempty" json:"requires,omitempty" yaml:"requires,omitempty"`
+	Peers          map[string]Relation     `bson:"peers,omitempty" json:"peers,omitempty" yaml:"peers,omitempty"`
+	Format         int                     `bson:"format,omitempty" json:"format,omitempty" yaml:"-"`
+	OldRevision    int                     `bson:"oldrevision,omitempty" yaml:"-"` // Obsolete
+	Categories     []string                `bson:"categories,omitempty" json:"categories,omitempty" yaml:"categories,omitempty"`
+	Tags           []string                `bson:"tags,omitempty" json:"tag,omitempty" yaml:"tags,omitempty"`
+	Series         []string                `bson:"series,omitempty" json:"supported-series,omitempty" yaml:"series,omitempty"`
+	Storage        map[string]Storage      `bson:"storage,omitempty" json:"storage,omitempty" yaml:"-"`
+	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"payloadclasses,omitempty" yaml:"-"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
