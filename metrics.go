@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	goyaml "gopkg.in/yaml.v1"
+	goyaml "gopkg.in/yaml.v2"
 )
 
 // MetricType is used to identify metric types supported by juju.

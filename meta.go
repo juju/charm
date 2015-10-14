@@ -14,7 +14,7 @@ import (
 
 	"github.com/juju/schema"
 	"github.com/juju/utils"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 
 	"gopkg.in/juju/charm.v6-unstable/hooks"
 )
@@ -180,20 +180,20 @@ func (r Relation) IsImplicit() bool {
 // only applies to JSON because Meta has a custom
 // YAML marshaller.
 type Meta struct {
-	Name           string                  `bson:"name" json:"name"`
-	Summary        string                  `bson:"summary" json:"summary"`
-	Description    string                  `bson:"description" json:"description"`
-	Subordinate    bool                    `bson:"subordinate" json:"subordinate"`
-	Provides       map[string]Relation     `bson:"provides,omitempty" json:"provides,omitempty"`
-	Requires       map[string]Relation     `bson:"requires,omitempty" json:"requires,omitempty"`
-	Peers          map[string]Relation     `bson:"peers,omitempty" json:"peers,omitempty"`
-	Format         int                     `bson:"format,omitempty" json:"format,omitempty"`
-	OldRevision    int                     `bson:"oldrevision,omitempty"` // Obsolete
-	Categories     []string                `bson:"categories,omitempty" json:"categories,omitempty"`
-	Tags           []string                `bson:"tags,omitempty" json:"tag,omitempty"`
-	Series         []string                `bson:"series,omitempty" json:"supported-series,omitempty"`
-	Storage        map[string]Storage      `bson:"storage,omitempty" json:"storage,omitempty"`
-	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"payloadclasses,omitempty"`
+	Name           string                  `bson:"name" json:"name" yaml:"name"`
+	Summary        string                  `bson:"summary" json:"summary" yaml:"summary"`
+	Description    string                  `bson:"description" json:"description" yaml:"description"`
+	Subordinate    bool                    `bson:"subordinate" json:"subordinate" yaml:"subordinate,omitempty"`
+	Provides       map[string]Relation     `bson:"provides,omitempty" json:"provides,omitempty" yaml:"provides,omitempty"`
+	Requires       map[string]Relation     `bson:"requires,omitempty" json:"requires,omitempty" yaml:"requires,omitempty"`
+	Peers          map[string]Relation     `bson:"peers,omitempty" json:"peers,omitempty" yaml:"peers,omitempty"`
+	Format         int                     `bson:"format,omitempty" json:"format,omitempty" yaml:"-"`
+	OldRevision    int                     `bson:"oldrevision,omitempty" yaml:"-"` // Obsolete
+	Categories     []string                `bson:"categories,omitempty" json:"categories,omitempty" yaml:"categories,omitempty"`
+	Tags           []string                `bson:"tags,omitempty" json:"tag,omitempty" yaml:"tags,omitempty"`
+	Series         []string                `bson:"series,omitempty" json:"supported-series,omitempty" yaml:"series,omitempty"`
+	Storage        map[string]Storage      `bson:"storage,omitempty" json:"storage,omitempty" yaml:"-"`
+	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"payloadclasses,omitempty" yaml:"-"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -282,43 +282,8 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	return meta, nil
 }
 
-// GetYAML implements yaml.Getter.GetYAML.
-func (m Meta) GetYAML() (tag string, value interface{}) {
-	marshaledRelations := func(rs map[string]Relation) map[string]marshaledRelation {
-		mrs := make(map[string]marshaledRelation)
-		for name, r := range rs {
-			mrs[name] = marshaledRelation(r)
-		}
-		return mrs
-	}
-	return "", struct {
-		Name        string                       `yaml:"name"`
-		Summary     string                       `yaml:"summary"`
-		Description string                       `yaml:"description"`
-		Provides    map[string]marshaledRelation `yaml:"provides,omitempty"`
-		Requires    map[string]marshaledRelation `yaml:"requires,omitempty"`
-		Peers       map[string]marshaledRelation `yaml:"peers,omitempty"`
-		Categories  []string                     `yaml:"categories,omitempty"`
-		Tags        []string                     `yaml:"tags,omitempty"`
-		Subordinate bool                         `yaml:"subordinate,omitempty"`
-		Series      []string                     `yaml:"series,omitempty"`
-	}{
-		Name:        m.Name,
-		Summary:     m.Summary,
-		Description: m.Description,
-		Provides:    marshaledRelations(m.Provides),
-		Requires:    marshaledRelations(m.Requires),
-		Peers:       marshaledRelations(m.Peers),
-		Categories:  m.Categories,
-		Tags:        m.Tags,
-		Subordinate: m.Subordinate,
-		Series:      m.Series,
-	}
-}
-
-type marshaledRelation Relation
-
-func (r marshaledRelation) GetYAML() (tag string, value interface{}) {
+// MarshalYAML implements yaml.Marshaler.MarshalYAML()
+func (r Relation) MarshalYAML() (interface{}, error) {
 	// See calls to ifaceExpander in charmSchema.
 	noLimit := 1
 	if r.Role == RoleProvider {
@@ -327,7 +292,7 @@ func (r marshaledRelation) GetYAML() (tag string, value interface{}) {
 
 	if !r.Optional && r.Limit == noLimit && r.Scope == ScopeGlobal {
 		// All attributes are default, so use the simple string form of the relation.
-		return "", r.Interface
+		return r.Interface, nil
 	}
 	mr := struct {
 		Interface string        `yaml:"interface"`
@@ -344,7 +309,7 @@ func (r marshaledRelation) GetYAML() (tag string, value interface{}) {
 	if r.Scope != ScopeGlobal {
 		mr.Scope = r.Scope
 	}
-	return "", mr
+	return mr, nil
 }
 
 // Check checks that the metadata is well-formed.

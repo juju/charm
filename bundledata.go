@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/juju/names"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 )
 
 // BundleData holds the contents of the bundle.

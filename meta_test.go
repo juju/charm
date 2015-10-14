@@ -14,7 +14,7 @@ import (
 
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 
 	"gopkg.in/juju/charm.v6-unstable"
 )
@@ -587,10 +587,7 @@ peers:
 	gotYAML, err := yaml.Marshal(ch)
 	c.Assert(err, gc.IsNil)
 
-	var x interface{}
-	err = yaml.Unmarshal(gotYAML, &x)
-	c.Assert(err, gc.IsNil)
-	c.Assert(x, jc.DeepEquals, map[interface{}]interface{}{
+	c.Assert(string(gotYAML), jc.YAMLEquals, map[interface{}]interface{}{
 		"name":        "minimal",
 		"description": "d",
 		"summary":     "s",
