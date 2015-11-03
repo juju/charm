@@ -51,12 +51,19 @@ func (s *MetaSuite) TestReadMetaVersion2(c *gc.C) {
 	c.Assert(meta.Name, gc.Equals, "format2")
 	c.Assert(meta.Format, gc.Equals, 2)
 	c.Assert(meta.Categories, gc.HasLen, 0)
+	c.Assert(meta.Terms, gc.HasLen, 0)
 }
 
 func (s *MetaSuite) TestReadCategory(c *gc.C) {
 	meta, err := charm.ReadMeta(repoMeta(c, "category"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Categories, jc.DeepEquals, []string{"database"})
+}
+
+func (s *MetaSuite) TestReadTerms(c *gc.C) {
+	meta, err := charm.ReadMeta(repoMeta(c, "terms"))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.Terms, jc.DeepEquals, []string{"term1", "term2"})
 }
 
 func (s *MetaSuite) TestReadTags(c *gc.C) {
@@ -448,6 +455,7 @@ func (s *MetaSuite) TestCodecRoundTrip(c *gc.C) {
 		Tags:        []string{"openstack", "storage"},
 		Format:      10,
 		OldRevision: 11,
+		Terms:       []string{"test term 1", "test term 2"},
 	}
 	for i, codec := range codecs {
 		c.Logf("codec %d", i)
