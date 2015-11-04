@@ -121,7 +121,7 @@ type ServiceSpec struct {
 	//     wordpress wordpress lxc:0 kvm:new
 	To []string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
-	// Expose reports whether the service must be exposed.
+	// Expose holds whether the service must be exposed.
 	Expose bool `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Options holds the configuration values
