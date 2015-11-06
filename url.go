@@ -22,28 +22,22 @@ type Location interface {
 	String() string
 }
 
-// URL represents a fully resolved charm location with a specific series, such
-// as:
+// URL represents a charm location:
 //
 //     cs:~joe/oneiric/wordpress
 //     cs:oneiric/wordpress-42
 //     local:oneiric/wordpress
+//     cs:~joe/wordpress
+//     cs:wordpress
+//     cs:precise/wordpress-20
 //
 type URL struct {
 	Schema   string // "cs" or "local"
 	User     string // "joe"
 	Name     string // "wordpress"
 	Revision int    // -1 if unset, N otherwise
-	Series   string
+	Series   string // "precise" or "" if unset
 }
-
-// Reference represents a charm location with a series
-// that may be unresolved.
-//
-//     cs:~joe/wordpress
-//     cs:wordpress-42
-//     cs:precise/wordpress
-type Reference URL
 
 var ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
 
@@ -81,63 +75,6 @@ func MustParseURL(url string) *URL {
 
 // ParseURL parses the provided charm URL string into its respective
 // structure.
-func ParseURL(urlStr string) (*URL, error) {
-	r, err := parseReference(urlStr)
-	if err != nil {
-		return nil, err
-	}
-	if r.Series == "" {
-		return nil, ErrUnresolvedUrl
-	}
-	if r.Schema == "" {
-		return nil, fmt.Errorf("charm or bundle URL has no schema: %q", urlStr)
-	}
-	url, err := r.URL("")
-	if err != nil {
-		return nil, err // should never happen, because series is set.
-	}
-	return url, nil
-}
-
-// URL returns a full URL from the reference, creating
-// a new URL value if necessary with the given default
-// series. It returns an error if ref does not specify
-// a series and defaultSeries is empty.
-func (ref *Reference) URL(defaultSeries string) (*URL, error) {
-	if ref.Series != "" {
-		return (*URL)(ref), nil
-	}
-	if defaultSeries == "" {
-		return nil, ErrUnresolvedUrl
-	}
-	if !IsValidSeries(defaultSeries) {
-		return nil, fmt.Errorf("default series %q is invalid", defaultSeries)
-	}
-	url := *(*URL)(ref)
-	url.Series = defaultSeries
-	return &url, nil
-}
-
-// MustParseReference works like ParseReference, but panics in case of errors.
-func MustParseReference(url string) *Reference {
-	u, err := ParseReference(url)
-	if err != nil {
-		panic(err)
-	}
-	return u
-}
-
-// ParseReference returns a charm reference inferred from src. The provided
-// src may be a valid URL or it may be an alias in one of the following formats:
-//
-//    name
-//    name-revision
-//    series/name
-//    series/name-revision
-//    schema:name
-//    schema:name-revision
-//    schema:~user/name
-//    schema:~user/name-revision
 //
 // Additionally, fully-qualified charmstore URLs are supported; note that this
 // currently assumes that they will map to jujucharms.com (that is,
@@ -153,18 +90,7 @@ func MustParseReference(url string) *Reference {
 //    https://jujucharms.com/u/user/name/series/revision
 //
 // A missing schema is assumed to be 'cs'.
-func ParseReference(url string) (*Reference, error) {
-	ref, err := parseReference(url)
-	if err != nil {
-		return nil, err
-	}
-	if ref.Schema == "" {
-		ref.Schema = "cs"
-	}
-	return ref, nil
-}
-
-func parseReference(url string) (*Reference, error) {
+func ParseURL(url string) (*URL, error) {
 	// Check if we're dealing with a v1 or v2 URL.
 	u, err := gourl.Parse(url)
 	if err != nil {
@@ -173,22 +99,31 @@ func parseReference(url string) (*Reference, error) {
 	if u.RawQuery != "" || u.Fragment != "" || u.User != nil {
 		return nil, fmt.Errorf("charm or bundle URL %q has unrecognized parts", url)
 	}
-	// Shortcut old-style URLs.
-	if u.Opaque != "" {
+	var curl *URL
+	switch {
+	case u.Opaque != "":
+		// Shortcut old-style URLs.
 		u.Path = u.Opaque
-		return parseV1Reference(u, url)
+		curl, err = parseV1URL(u, url)
+	case u.Scheme == "http" || u.Scheme == "https":
+		// Shortcut new-style URLs.
+		curl, err = parseV2URL(u)
+	default:
+		// TODO: for now, fall through to parsing v1 references; this will be
+		// expanded to be more robust in the future.
+		curl, err = parseV1URL(u, url)
 	}
-	// Shortcut new-style URLs.
-	if u.Scheme == "http" || u.Scheme == "https" {
-		return parseV2Reference(u)
+	if err != nil {
+		return nil, err
 	}
-	// TODO: for now, fall through to parsing v1 references; this will be
-	// expanded to be more robust in the future.
-	return parseV1Reference(u, url)
+	if curl.Schema == "" {
+		curl.Schema = "cs"
+	}
+	return curl, nil
 }
 
-func parseV1Reference(url *gourl.URL, originalURL string) (*Reference, error) {
-	var r Reference
+func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
+	var r URL
 	if url.Scheme != "" {
 		r.Schema = url.Scheme
 		if r.Schema != "cs" && r.Schema != "local" {
@@ -251,8 +186,8 @@ func parseV1Reference(url *gourl.URL, originalURL string) (*Reference, error) {
 	return &r, nil
 }
 
-func parseV2Reference(url *gourl.URL) (*Reference, error) {
-	var r Reference
+func parseV2URL(url *gourl.URL) (*URL, error) {
+	var r URL
 	r.Schema = "cs"
 	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
 	if parts[0] == "u" {
@@ -296,7 +231,7 @@ func parseV2Reference(url *gourl.URL) (*Reference, error) {
 	return &r, nil
 }
 
-func (r *Reference) path() string {
+func (r *URL) path() string {
 	var parts []string
 	if r.User != "" {
 		parts = append(parts, fmt.Sprintf("~%s", r.User))
@@ -312,43 +247,30 @@ func (r *Reference) path() string {
 	return strings.Join(parts, "/")
 }
 
-func (r Reference) Path() string {
+func (r URL) Path() string {
 	return r.path()
 }
 
 // InferURL parses src as a reference, fills out the series in the
 // returned URL using defaultSeries if necessary.
 //
-// This function is deprecated. New code should use ParseReference
-// and/or Reference.URL instead.
+// This function is deprecated. New code should use ParseURL instead.
 func InferURL(src, defaultSeries string) (*URL, error) {
-	ref, err := ParseReference(src)
+	u, err := ParseURL(src)
 	if err != nil {
 		return nil, err
 	}
-	url, err := ref.URL(defaultSeries)
-	if err != nil {
-		return nil, fmt.Errorf("cannot infer charm or bundle URL for %q: %v", src, err)
+	if u.Series == "" {
+		if defaultSeries == "" {
+			return nil, fmt.Errorf("cannot infer charm or bundle URL for %q: charm or bundle url series is not resolved", src)
+		}
+		u.Series = defaultSeries
 	}
-	return url, nil
+	return u, nil
 }
 
-// Reference returns a reference aliased to u. Note that
-// all URLs are valid references.
-func (u *URL) Reference() *Reference {
-	return (*Reference)(u)
-}
-
-func (u *URL) Path() string {
-	return (*Reference)(u).path()
-}
-
-func (u *URL) String() string {
+func (u URL) String() string {
 	return fmt.Sprintf("%s:%s", u.Schema, u.Path())
-}
-
-func (r Reference) String() string {
-	return fmt.Sprintf("%s:%s", r.Schema, r.Path())
 }
 
 // GetBSON turns u into a bson.Getter so it can be saved directly
@@ -396,51 +318,6 @@ func (u *URL) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*u = *url
-	return nil
-}
-
-// GetBSON turns r into a bson.Getter so it can be saved directly
-// on a MongoDB database with mgo.
-func (r *Reference) GetBSON() (interface{}, error) {
-	if r == nil {
-		return nil, nil
-	}
-	return r.String(), nil
-}
-
-// SetBSON turns u into a bson.Setter so it can be loaded directly
-// from a MongoDB database with mgo.
-func (r *Reference) SetBSON(raw bson.Raw) error {
-	if raw.Kind == 10 {
-		return bson.SetZero
-	}
-	var s string
-	err := raw.Unmarshal(&s)
-	if err != nil {
-		return err
-	}
-	ref, err := ParseReference(s)
-	if err != nil {
-		return err
-	}
-	*r = *ref
-	return nil
-}
-
-func (r *Reference) MarshalJSON() ([]byte, error) {
-	return json.Marshal(r.String())
-}
-
-func (r *Reference) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-	ref, err := ParseReference(s)
-	if err != nil {
-		return err
-	}
-	*r = *ref
 	return nil
 }
 

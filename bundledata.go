@@ -297,7 +297,7 @@ func (verifier *bundleDataVerifier) verifyServices() {
 		return
 	}
 	for name, svc := range verifier.bd.Services {
-		if _, err := ParseReference(svc.Charm); err != nil {
+		if _, err := ParseURL(svc.Charm); err != nil {
 			verifier.addErrorf("invalid charm URL in service %q: %v", name, err)
 		}
 		if err := verifier.verifyConstraints(svc.Constraints); err != nil {

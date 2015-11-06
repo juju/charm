@@ -22,112 +22,112 @@ var _ = gc.Suite(&URLSuite{})
 var urlTests = []struct {
 	s, err string
 	exact  string
-	ref    *charm.Reference
+	url    *charm.URL
 }{{
 	s:   "cs:~user/series/name",
-	ref: &charm.Reference{"cs", "user", "name", -1, "series"},
+	url: &charm.URL{"cs", "user", "name", -1, "series"},
 }, {
 	s:   "cs:~user/series/name-0",
-	ref: &charm.Reference{"cs", "user", "name", 0, "series"},
+	url: &charm.URL{"cs", "user", "name", 0, "series"},
 }, {
 	s:   "cs:series/name",
-	ref: &charm.Reference{"cs", "", "name", -1, "series"},
+	url: &charm.URL{"cs", "", "name", -1, "series"},
 }, {
 	s:   "cs:series/name-42",
-	ref: &charm.Reference{"cs", "", "name", 42, "series"},
+	url: &charm.URL{"cs", "", "name", 42, "series"},
 }, {
 	s:   "local:series/name-1",
-	ref: &charm.Reference{"local", "", "name", 1, "series"},
+	url: &charm.URL{"local", "", "name", 1, "series"},
 }, {
 	s:   "local:series/name",
-	ref: &charm.Reference{"local", "", "name", -1, "series"},
+	url: &charm.URL{"local", "", "name", -1, "series"},
 }, {
 	s:   "local:series/n0-0n-n0",
-	ref: &charm.Reference{"local", "", "n0-0n-n0", -1, "series"},
+	url: &charm.URL{"local", "", "n0-0n-n0", -1, "series"},
 }, {
 	s:   "cs:~user/name",
-	ref: &charm.Reference{"cs", "user", "name", -1, ""},
+	url: &charm.URL{"cs", "user", "name", -1, ""},
 }, {
 	s:   "cs:name",
-	ref: &charm.Reference{"cs", "", "name", -1, ""},
+	url: &charm.URL{"cs", "", "name", -1, ""},
 }, {
 	s:   "local:name",
-	ref: &charm.Reference{"local", "", "name", -1, ""},
+	url: &charm.URL{"local", "", "name", -1, ""},
 }, {
 	s:     "http://jujucharms.com/u/user/name/series/1",
-	ref:   &charm.Reference{"cs", "user", "name", 1, "series"},
+	url:   &charm.URL{"cs", "user", "name", 1, "series"},
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "http://www.jujucharms.com/u/user/name/series/1",
-	ref:   &charm.Reference{"cs", "user", "name", 1, "series"},
+	url:   &charm.URL{"cs", "user", "name", 1, "series"},
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://www.jujucharms.com/u/user/name/series/1",
-	ref:   &charm.Reference{"cs", "user", "name", 1, "series"},
+	url:   &charm.URL{"cs", "user", "name", 1, "series"},
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series/1",
-	ref:   &charm.Reference{"cs", "user", "name", 1, "series"},
+	url:   &charm.URL{"cs", "user", "name", 1, "series"},
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series",
-	ref:   &charm.Reference{"cs", "user", "name", -1, "series"},
+	url:   &charm.URL{"cs", "user", "name", -1, "series"},
 	exact: "cs:~user/series/name",
 }, {
 	s:     "https://jujucharms.com/u/user/name/1",
-	ref:   &charm.Reference{"cs", "user", "name", 1, ""},
+	url:   &charm.URL{"cs", "user", "name", 1, ""},
 	exact: "cs:~user/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name",
-	ref:   &charm.Reference{"cs", "user", "name", -1, ""},
+	url:   &charm.URL{"cs", "user", "name", -1, ""},
 	exact: "cs:~user/name",
 }, {
 	s:     "https://jujucharms.com/name",
-	ref:   &charm.Reference{"cs", "", "name", -1, ""},
+	url:   &charm.URL{"cs", "", "name", -1, ""},
 	exact: "cs:name",
 }, {
 	s:     "https://jujucharms.com/name/series",
-	ref:   &charm.Reference{"cs", "", "name", -1, "series"},
+	url:   &charm.URL{"cs", "", "name", -1, "series"},
 	exact: "cs:series/name",
 }, {
 	s:     "https://jujucharms.com/name/1",
-	ref:   &charm.Reference{"cs", "", "name", 1, ""},
+	url:   &charm.URL{"cs", "", "name", 1, ""},
 	exact: "cs:name-1",
 }, {
 	s:     "https://jujucharms.com/name/series/1",
-	ref:   &charm.Reference{"cs", "", "name", 1, "series"},
+	url:   &charm.URL{"cs", "", "name", 1, "series"},
 	exact: "cs:series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series/1/",
-	ref:   &charm.Reference{"cs", "user", "name", 1, "series"},
+	url:   &charm.URL{"cs", "user", "name", 1, "series"},
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series/",
-	ref:   &charm.Reference{"cs", "user", "name", -1, "series"},
+	url:   &charm.URL{"cs", "user", "name", -1, "series"},
 	exact: "cs:~user/series/name",
 }, {
 	s:     "https://jujucharms.com/u/user/name/1/",
-	ref:   &charm.Reference{"cs", "user", "name", 1, ""},
+	url:   &charm.URL{"cs", "user", "name", 1, ""},
 	exact: "cs:~user/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/",
-	ref:   &charm.Reference{"cs", "user", "name", -1, ""},
+	url:   &charm.URL{"cs", "user", "name", -1, ""},
 	exact: "cs:~user/name",
 }, {
 	s:     "https://jujucharms.com/name/",
-	ref:   &charm.Reference{"cs", "", "name", -1, ""},
+	url:   &charm.URL{"cs", "", "name", -1, ""},
 	exact: "cs:name",
 }, {
 	s:     "https://jujucharms.com/name/series/",
-	ref:   &charm.Reference{"cs", "", "name", -1, "series"},
+	url:   &charm.URL{"cs", "", "name", -1, "series"},
 	exact: "cs:series/name",
 }, {
 	s:     "https://jujucharms.com/name/1/",
-	ref:   &charm.Reference{"cs", "", "name", 1, ""},
+	url:   &charm.URL{"cs", "", "name", 1, ""},
 	exact: "cs:name-1",
 }, {
 	s:     "https://jujucharms.com/name/series/1/",
-	ref:   &charm.Reference{"cs", "", "name", 1, "series"},
+	url:   &charm.URL{"cs", "", "name", 1, "series"},
 	exact: "cs:series/name-1",
 }, {
 	s:   "https://jujucharms.com/",
@@ -198,33 +198,31 @@ var urlTests = []struct {
 }, {
 	s:     "precise/wordpress",
 	exact: "cs:precise/wordpress",
-	ref:   &charm.Reference{"cs", "", "wordpress", -1, "precise"},
-	err:   `charm or bundle URL has no schema: "precise/wordpress"`,
+	url:   &charm.URL{"cs", "", "wordpress", -1, "precise"},
 }, {
 	s:     "foo",
 	exact: "cs:foo",
-	ref:   &charm.Reference{"cs", "", "foo", -1, ""},
+	url:   &charm.URL{"cs", "", "foo", -1, ""},
 }, {
 	s:     "foo-1",
 	exact: "cs:foo-1",
-	ref:   &charm.Reference{"cs", "", "foo", 1, ""},
+	url:   &charm.URL{"cs", "", "foo", 1, ""},
 }, {
 	s:     "n0-n0-n0",
 	exact: "cs:n0-n0-n0",
-	ref:   &charm.Reference{"cs", "", "n0-n0-n0", -1, ""},
+	url:   &charm.URL{"cs", "", "n0-n0-n0", -1, ""},
 }, {
 	s:     "cs:foo",
 	exact: "cs:foo",
-	ref:   &charm.Reference{"cs", "", "foo", -1, ""},
+	url:   &charm.URL{"cs", "", "foo", -1, ""},
 }, {
 	s:     "local:foo",
 	exact: "local:foo",
-	ref:   &charm.Reference{"local", "", "foo", -1, ""},
+	url:   &charm.URL{"local", "", "foo", -1, ""},
 }, {
 	s:     "series/foo",
 	exact: "cs:series/foo",
-	ref:   &charm.Reference{"cs", "", "foo", -1, "series"},
-	err:   `charm or bundle URL has no schema: "series/foo"`,
+	url:   &charm.URL{"cs", "", "foo", -1, "series"},
 }, {
 	s:   "series/foo/bar",
 	err: `charm or bundle URL has invalid form: "series/foo/bar"`,
@@ -236,41 +234,20 @@ var urlTests = []struct {
 func (s *URLSuite) TestParseURL(c *gc.C) {
 	for i, t := range urlTests {
 		c.Logf("test %d: %q", i, t.s)
-		url, uerr := charm.ParseURL(t.s)
-		ref, rerr := charm.ParseReference(t.s)
 
 		expectStr := t.s
 		if t.exact != "" {
 			expectStr = t.exact
 		}
-		if t.ref != nil {
-			// ParseReference, at least, should have succeeded.
-			c.Assert(rerr, gc.IsNil)
-			c.Assert(ref, gc.DeepEquals, t.ref)
-			c.Check(ref.String(), gc.Equals, expectStr)
-		}
+		url, uerr := charm.ParseURL(t.s)
 		if t.err != "" {
 			t.err = strings.Replace(t.err, "$URL", regexp.QuoteMeta(fmt.Sprintf("%q", t.s)), -1)
 			c.Assert(uerr, gc.ErrorMatches, t.err)
 			c.Assert(url, gc.IsNil)
-			if t.ref == nil {
-				c.Assert(rerr, gc.NotNil)
-				// Errors from both ParseURL and ParseReference should match.
-				c.Check(uerr.Error(), gc.Equals, rerr.Error())
-				c.Check(ref, gc.IsNil)
-			}
 			continue
 		}
-		if t.ref.Series == "" {
-			// ParseURL with an empty series should report an unresolved error.
-			c.Assert(url, gc.IsNil)
-			c.Assert(uerr, gc.Equals, charm.ErrUnresolvedUrl)
-			continue
-		}
-		// When ParseURL succeeds, it should return the same thing
-		// as ParseReference.
-		c.Assert(uerr, gc.IsNil)
-		c.Check(url.Reference(), gc.DeepEquals, ref)
+		c.Assert(url, gc.DeepEquals, t.url)
+		c.Assert(url.String(), gc.Equals, expectStr)
 
 		// URL strings are generated as expected.  Reversability is preserved
 		// with v1 URLs.
@@ -391,19 +368,6 @@ func (s *URLSuite) TestValidCheckers(c *gc.C) {
 	}
 }
 
-func (s *URLSuite) TestMustParseReference(c *gc.C) {
-	ref := charm.MustParseReference("wordpress")
-	c.Assert(ref, gc.DeepEquals, &charm.Reference{
-		Schema:   "cs",
-		Name:     "wordpress",
-		Revision: -1,
-	})
-	f := func() {
-		charm.MustParseReference("bad:bad")
-	}
-	c.Assert(f, gc.PanicMatches, `charm or bundle URL has invalid schema: "bad:bad"`)
-}
-
 func (s *URLSuite) TestMustParseURL(c *gc.C) {
 	url := charm.MustParseURL("cs:series/name")
 	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series"})
@@ -413,8 +377,6 @@ func (s *URLSuite) TestMustParseURL(c *gc.C) {
 	c.Assert(f, gc.PanicMatches, "URL without charm or bundle name: .*")
 	f = func() { charm.MustParseURL("cs:~user") }
 	c.Assert(f, gc.PanicMatches, "URL without charm or bundle name: .*")
-	f = func() { charm.MustParseURL("cs:name") }
-	c.Assert(f, gc.PanicMatches, "charm or bundle url series is not resolved")
 }
 
 func (s *URLSuite) TestWithRevision(c *gc.C) {
@@ -444,10 +406,9 @@ func (s *URLSuite) TestURLCodecs(c *gc.C) {
 		c.Logf("codec %d", i)
 		type doc struct {
 			URL *charm.URL
-			Ref *charm.Reference
 		}
 		url := charm.MustParseURL("cs:series/name")
-		v0 := doc{url, url.Reference()}
+		v0 := doc{url}
 		data, err := codec.Marshal(v0)
 		c.Assert(err, gc.IsNil)
 		var v doc
@@ -458,20 +419,17 @@ func (s *URLSuite) TestURLCodecs(c *gc.C) {
 		// is a string.
 		type strDoc struct {
 			URL string
-			Ref string
 		}
 		var vs strDoc
 		err = codec.Unmarshal(data, &vs)
 		c.Assert(err, gc.IsNil)
 		c.Assert(vs.URL, gc.Equals, "cs:series/name")
-		c.Assert(vs.Ref, gc.Equals, "cs:series/name")
 
 		data, err = codec.Marshal(doc{})
 		c.Assert(err, gc.IsNil)
 		err = codec.Unmarshal(data, &v)
 		c.Assert(err, gc.IsNil)
 		c.Assert(v.URL, gc.IsNil)
-		c.Assert(v.Ref, gc.IsNil)
 	}
 }
 
@@ -479,8 +437,6 @@ func (s *URLSuite) TestJSONGarbage(c *gc.C) {
 	// unmarshalling json gibberish
 	for _, value := range []string{":{", `"cs:{}+<"`, `"cs:~_~/f00^^&^/baaaar$%-?"`} {
 		err := json.Unmarshal([]byte(value), new(struct{ URL *charm.URL }))
-		c.Check(err, gc.NotNil)
-		err = json.Unmarshal([]byte(value), new(struct{ Ref *charm.Reference }))
 		c.Check(err, gc.NotNil)
 	}
 }
