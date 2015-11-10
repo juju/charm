@@ -121,6 +121,9 @@ type ServiceSpec struct {
 	//     wordpress wordpress lxc:0 kvm:new
 	To []string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
+	// Expose holds whether the service must be exposed.
+	Expose bool `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+
 	// Options holds the configuration values
 	// to apply to the new service. They should
 	// be compatible with the charm configuration.
