@@ -194,6 +194,7 @@ type Meta struct {
 	Series         []string                `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
 	Storage        map[string]Storage      `bson:"storage,omitempty" json:"Storage,omitempty"`
 	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
+	Terms          []string                `bson:"terms,omitempty" json:"Terms,omitempty`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -279,6 +280,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	if err := meta.Check(); err != nil {
 		return nil, err
 	}
+	meta.Terms = parseStringList(m["terms"])
 	return meta, nil
 }
 
@@ -302,6 +304,7 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		Tags        []string                     `yaml:"tags,omitempty"`
 		Subordinate bool                         `yaml:"subordinate,omitempty"`
 		Series      []string                     `yaml:"series,omitempty"`
+		Terms       []string                     `yaml:"terms,omitempty"`
 	}{
 		Name:        m.Name,
 		Summary:     m.Summary,
@@ -313,6 +316,7 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		Tags:        m.Tags,
 		Subordinate: m.Subordinate,
 		Series:      m.Series,
+		Terms:       m.Terms,
 	}
 }
 
@@ -679,6 +683,7 @@ var charmSchema = schema.FieldMap(
 		"series":      schema.List(schema.String()),
 		"storage":     schema.StringMap(storageSchema),
 		"payloads":    schema.StringMap(payloadClassSchema),
+		"terms":       schema.List(schema.String()),
 	},
 	schema.Defaults{
 		"provides":    schema.Omit,
@@ -692,5 +697,6 @@ var charmSchema = schema.FieldMap(
 		"series":      schema.Omit,
 		"storage":     schema.Omit,
 		"payloads":    schema.Omit,
+		"terms":       schema.Omit,
 	},
 )
