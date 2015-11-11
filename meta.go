@@ -194,7 +194,7 @@ type Meta struct {
 	Series         []string                `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
 	Storage        map[string]Storage      `bson:"storage,omitempty" json:"Storage,omitempty"`
 	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
-	Terms          []string                `bson:"terms,omitempty" json:"terms,omitempty`
+	Terms          []string                `bson:"terms,omitempty" json:"Terms,omitempty`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
