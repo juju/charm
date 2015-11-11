@@ -27,6 +27,7 @@ services:
     mediawiki:
         charm: "cs:precise/mediawiki-10"
         num_units: 1
+        expose: true
         options:
             debug: false
             name: Please set name of wiki
@@ -79,6 +80,7 @@ var parseTests = []struct {
 			"mediawiki": {
 				Charm:    "cs:precise/mediawiki-10",
 				NumUnits: 1,
+				Expose:   true,
 				Options: map[string]interface{}{
 					"debug": false,
 					"name":  "Please set name of wiki",

@@ -180,20 +180,20 @@ func (r Relation) IsImplicit() bool {
 // only applies to JSON because Meta has a custom
 // YAML marshaller.
 type Meta struct {
-	Name           string                  `bson:"name" json:"name"`
-	Summary        string                  `bson:"summary" json:"summary"`
-	Description    string                  `bson:"description" json:"description"`
-	Subordinate    bool                    `bson:"subordinate" json:"subordinate"`
-	Provides       map[string]Relation     `bson:"provides,omitempty" json:"provides,omitempty"`
-	Requires       map[string]Relation     `bson:"requires,omitempty" json:"requires,omitempty"`
-	Peers          map[string]Relation     `bson:"peers,omitempty" json:"peers,omitempty"`
-	Format         int                     `bson:"format,omitempty" json:"format,omitempty"`
-	OldRevision    int                     `bson:"oldrevision,omitempty"` // Obsolete
-	Categories     []string                `bson:"categories,omitempty" json:"categories,omitempty"`
-	Tags           []string                `bson:"tags,omitempty" json:"tag,omitempty"`
-	Series         []string                `bson:"series,omitempty" json:"supported-series,omitempty"`
-	Storage        map[string]Storage      `bson:"storage,omitempty" json:"storage,omitempty"`
-	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"payloadclasses,omitempty"`
+	Name           string                  `bson:"name" json:"Name"`
+	Summary        string                  `bson:"summary" json:"Summary"`
+	Description    string                  `bson:"description" json:"Description"`
+	Subordinate    bool                    `bson:"subordinate" json:"Subordinate"`
+	Provides       map[string]Relation     `bson:"provides,omitempty" json:"Provides,omitempty"`
+	Requires       map[string]Relation     `bson:"requires,omitempty" json:"Requires,omitempty"`
+	Peers          map[string]Relation     `bson:"peers,omitempty" json:"Peers,omitempty"`
+	Format         int                     `bson:"format,omitempty" json:"Format,omitempty"`
+	OldRevision    int                     `bson:"oldrevision,omitempty" json:"OldRevision"` // Obsolete
+	Categories     []string                `bson:"categories,omitempty" json:"Categories,omitempty"`
+	Tags           []string                `bson:"tags,omitempty" json:"Tags,omitempty"`
+	Series         []string                `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
+	Storage        map[string]Storage      `bson:"storage,omitempty" json:"Storage,omitempty"`
+	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
 	Terms          []string                `bson:"terms,omitempty" json:"terms,omitempty`
 }
 
