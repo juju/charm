@@ -22,7 +22,7 @@ type Location interface {
 	String() string
 }
 
-// URL represents a charm location:
+// URL represents a charm or bundle location:
 //
 //     cs:~joe/oneiric/wordpress
 //     cs:oneiric/wordpress-42
@@ -30,28 +30,47 @@ type Location interface {
 //     cs:~joe/wordpress
 //     cs:wordpress
 //     cs:precise/wordpress-20
+//     cs:development/precise/wordpress-20
+//     cs:~joe/development/wordpress
 //
 type URL struct {
-	Schema   string // "cs" or "local"
-	User     string // "joe"
-	Name     string // "wordpress"
-	Revision int    // -1 if unset, N otherwise
-	Series   string // "precise" or "" if unset
+	Schema   string  // "cs" or "local".
+	User     string  // "joe".
+	Name     string  // "wordpress".
+	Revision int     // -1 if unset, N otherwise.
+	Series   string  // "precise" or "" if unset; "bundle" if it's a bundle.
+	Channel  Channel // "development" or "" if no channel.
 }
 
 var ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
+
+// Channel represents different stages in the development of a charm or bundle.
+type Channel string
+
+const (
+	// DevelopmentChannel is the channel used for charms or bundles under
+	// development.
+	DevelopmentChannel Channel = "development"
+)
 
 var (
 	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
 	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
 
-// IsValidSeries returns whether series is a valid series in charm URLs.
+// IsValidSeries reports whether series is a valid series in charm or bundle
+// URLs.
 func IsValidSeries(series string) bool {
 	return validSeries.MatchString(series)
 }
 
-// IsValidName returns whether name is a valid charm name.
+// IsValidChannel reports whether channel is a valid channel in charm or bundle
+// URLs.
+func IsValidChannel(channel Channel) bool {
+	return channel == DevelopmentChannel
+}
+
+// IsValidName reports whether name is a valid charm or bundle name.
 func IsValidName(name string) bool {
 	return validName.MatchString(name)
 }
@@ -61,6 +80,13 @@ func IsValidName(name string) bool {
 func (url *URL) WithRevision(revision int) *URL {
 	urlCopy := *url
 	urlCopy.Revision = revision
+	return &urlCopy
+}
+
+// WithChannel returns a URL equivalent to url but with the given channel.
+func (url *URL) WithChannel(channel Channel) *URL {
+	urlCopy := *url
+	urlCopy.Channel = channel
 	return &urlCopy
 }
 
@@ -88,6 +114,14 @@ func MustParseURL(url string) *URL {
 //    https://jujucharms.com/u/user/name/series
 //    https://jujucharms.com/u/user/name/revision
 //    https://jujucharms.com/u/user/name/series/revision
+//    https://jujucharms.com/channel/name
+//    https://jujucharms.com/channel/name/series
+//    https://jujucharms.com/channel/name/revision
+//    https://jujucharms.com/channel/name/series/revision
+//    https://jujucharms.com/u/user/channel/name
+//    https://jujucharms.com/u/user/channel/name/series
+//    https://jujucharms.com/u/user/channel/name/revision
+//    https://jujucharms.com/u/user/channel/name/series/revision
 //
 // A missing schema is assumed to be 'cs'.
 func ParseURL(url string) (*URL, error) {
@@ -132,7 +166,7 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 	}
 	i := 0
 	parts := strings.Split(url.Path[i:], "/")
-	if len(parts) < 1 || len(parts) > 3 {
+	if len(parts) < 1 || len(parts) > 4 {
 		return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", originalURL)
 	}
 
@@ -143,9 +177,21 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 		}
 		r.User, parts = parts[0][1:], parts[1:]
 	}
+
+	// <channel>
+	if len(parts) > 1 {
+		if IsValidChannel(Channel(parts[0])) {
+			if r.Schema == "local" {
+				return nil, fmt.Errorf("local charm or bundle URL with channel: %q", originalURL)
+			}
+			r.Channel, parts = Channel(parts[0]), parts[1:]
+		}
+	}
+
 	if len(parts) > 2 {
 		return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", originalURL)
 	}
+
 	// <series>
 	if len(parts) == 2 {
 		r.Series, parts = parts[0], parts[1:]
@@ -196,6 +242,9 @@ func parseV2URL(url *gourl.URL) (*URL, error) {
 		}
 		r.User, parts = parts[1], parts[2:]
 	}
+	if len(parts) > 1 && IsValidChannel(Channel(parts[0])) {
+		r.Channel, parts = Channel(parts[0]), parts[1:]
+	}
 	r.Name, parts = parts[0], parts[1:]
 	r.Revision = -1
 	if len(parts) > 0 {
@@ -235,6 +284,9 @@ func (r *URL) path() string {
 	var parts []string
 	if r.User != "" {
 		parts = append(parts, fmt.Sprintf("~%s", r.User))
+	}
+	if r.Channel != "" {
+		parts = append(parts, string(r.Channel))
 	}
 	if r.Series != "" {
 		parts = append(parts, r.Series)
