@@ -464,24 +464,33 @@ var validTests = []struct {
 	{charm.IsValidSeries, "precise-1", false},
 	{charm.IsValidSeries, "precise1", true},
 	{charm.IsValidSeries, "pre-c1se", false},
-
-	{charm.IsValidChannel, charm.DevelopmentChannel, true},
-	{charm.IsValidChannel, "", false},
-	{charm.IsValidChannel, "Dev", false},
-	{charm.IsValidChannel, "pro duction", false},
-	{charm.IsValidChannel, "staging-channel", false},
-	{charm.IsValidChannel, "sta^ging", false},
-	{charm.IsValidChannel, "pr0duct1on", false},
-	{charm.IsValidChannel, "-development", false},
-	{charm.IsValidChannel, "development-", false},
-	{charm.IsValidChannel, "development-1", false},
-	{charm.IsValidChannel, "development42", false},
 }
 
 func (s *URLSuite) TestValidCheckers(c *gc.C) {
 	for i, t := range validTests {
 		c.Logf("test %d: %s", i, t.string)
 		c.Assert(t.valid(t.string), gc.Equals, t.expect, gc.Commentf("%s", t.string))
+	}
+}
+
+var isValidChannelTests = []struct {
+	channel charm.Channel
+	expect  bool
+}{{
+	channel: charm.DevelopmentChannel,
+	expect:  true,
+}, {
+	channel: "",
+}, {
+	channel: "-development",
+}, {
+	channel: "bad wolf",
+}}
+
+func (s *URLSuite) TestIsValidChannel(c *gc.C) {
+	for i, t := range isValidChannelTests {
+		c.Logf("test %d: %s", i, t.channel)
+		c.Assert(charm.IsValidChannel(t.channel), gc.Equals, t.expect, gc.Commentf("%s", t.channel))
 	}
 }
 

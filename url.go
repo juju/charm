@@ -30,21 +30,27 @@ type Location interface {
 //     cs:~joe/wordpress
 //     cs:wordpress
 //     cs:precise/wordpress-20
+//     cs:development/precise/wordpress-20
+//     cs:~joe/development/wordpress
 //
 type URL struct {
-	Schema   string // "cs" or "local".
-	User     string // "joe".
-	Name     string // "wordpress".
-	Revision int    // -1 if unset, N otherwise.
-	Series   string // "precise" or "" if unset; "bundle" if it's a bundle.
-	Channel  string // "development" or "" if no channel.
+	Schema   string  // "cs" or "local".
+	User     string  // "joe".
+	Name     string  // "wordpress".
+	Revision int     // -1 if unset, N otherwise.
+	Series   string  // "precise" or "" if unset; "bundle" if it's a bundle.
+	Channel  Channel // "development" or "" if no channel.
 }
 
 var ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
 
-// Channels represent different stages in the development of a charm or bundle.
+// Channel represents different stages in the development of a charm or bundle.
+type Channel string
+
 const (
-	DevelopmentChannel = "development"
+	// DevelopmentChannel is the channel used for charms or bundles under
+	// development.
+	DevelopmentChannel Channel = "development"
 )
 
 var (
@@ -60,7 +66,7 @@ func IsValidSeries(series string) bool {
 
 // IsValidChannel reports whether channel is a valid channel in charm or bundle
 // URLs.
-func IsValidChannel(channel string) bool {
+func IsValidChannel(channel Channel) bool {
 	return channel == DevelopmentChannel
 }
 
@@ -78,7 +84,7 @@ func (url *URL) WithRevision(revision int) *URL {
 }
 
 // WithChannel returns a URL equivalent to url but with the given channel.
-func (url *URL) WithChannel(channel string) *URL {
+func (url *URL) WithChannel(channel Channel) *URL {
 	urlCopy := *url
 	urlCopy.Channel = channel
 	return &urlCopy
@@ -174,11 +180,11 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 
 	// <channel>
 	if len(parts) > 1 {
-		if IsValidChannel(parts[0]) {
+		if IsValidChannel(Channel(parts[0])) {
 			if r.Schema == "local" {
 				return nil, fmt.Errorf("local charm or bundle URL with channel: %q", originalURL)
 			}
-			r.Channel, parts = parts[0], parts[1:]
+			r.Channel, parts = Channel(parts[0]), parts[1:]
 		}
 	}
 
@@ -236,8 +242,8 @@ func parseV2URL(url *gourl.URL) (*URL, error) {
 		}
 		r.User, parts = parts[1], parts[2:]
 	}
-	if len(parts) > 1 && IsValidChannel(parts[0]) {
-		r.Channel, parts = parts[0], parts[1:]
+	if len(parts) > 1 && IsValidChannel(Channel(parts[0])) {
+		r.Channel, parts = Channel(parts[0]), parts[1:]
 	}
 	r.Name, parts = parts[0], parts[1:]
 	r.Revision = -1
@@ -280,7 +286,7 @@ func (r *URL) path() string {
 		parts = append(parts, fmt.Sprintf("~%s", r.User))
 	}
 	if r.Channel != "" {
-		parts = append(parts, r.Channel)
+		parts = append(parts, string(r.Channel))
 	}
 	if r.Series != "" {
 		parts = append(parts, r.Series)
