@@ -32,12 +32,12 @@ type Location interface {
 //     cs:precise/wordpress-20
 //
 type URL struct {
-	Schema   string // "cs" or "local"
-	User     string // "joe"
-	Name     string // "wordpress"
-	Revision int    // -1 if unset, N otherwise
-	Series   string // "precise" or "" if unset
-	Channel  string // "development"
+	Schema   string // "cs" or "local".
+	User     string // "joe".
+	Name     string // "wordpress".
+	Revision int    // -1 if unset, N otherwise.
+	Series   string // "precise" or "" if unset; "bundle" if it's a bundle.
+	Channel  string // "development" or "" if no channel.
 }
 
 var ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
@@ -48,11 +48,8 @@ const (
 )
 
 var (
-	validSeries   = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
-	validName     = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
-	validChannels = map[string]bool{
-		DevelopmentChannel: true,
-	}
+	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
+	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
 
 // IsValidSeries reports whether series is a valid series in charm or bundle
@@ -64,7 +61,7 @@ func IsValidSeries(series string) bool {
 // IsValidChannel reports whether channel is a valid channel in charm or bundle
 // URLs.
 func IsValidChannel(channel string) bool {
-	return validChannels[channel]
+	return channel == DevelopmentChannel
 }
 
 // IsValidName reports whether name is a valid charm or bundle name.
