@@ -196,7 +196,6 @@ type Meta struct {
 	Storage        map[string]Storage      `bson:"storage,omitempty" json:"Storage,omitempty"`
 	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
 	Terms          []string                `bson:"terms,omitempty" json:"Terms,omitempty`
-
 	MinJujuVersion *version.Number         `bson:"minjujuversion,omitempty" json:"minjujuversion,omitempty"`
 }
 
@@ -281,8 +280,6 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	meta.Storage = parseStorage(m["storage"])
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
 
-	logger.Infof("Min juju version of charm: %#v", m["minjujuversion"])
-
 	if v, ok := m["minjujuversion"].(string); ok {
 		minver, err := version.Parse(v)
 		if err != nil {
@@ -295,7 +292,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	if err := meta.Check(); err != nil {
 		return nil, err
 	}
-	
+
 	meta.Terms = parseStringList(m["terms"])
 	return meta, nil
 }
@@ -701,7 +698,7 @@ var charmSchema = schema.FieldMap(
 		"series":         schema.List(schema.String()),
 		"storage":        schema.StringMap(storageSchema),
 		"payloads":       schema.StringMap(payloadClassSchema),
-		"terms":       schema.List(schema.String()),
+		"terms":          schema.List(schema.String()),
 		"minjujuversion": schema.String(),
 	},
 	schema.Defaults{
