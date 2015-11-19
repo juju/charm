@@ -14,6 +14,7 @@ import (
 
 	"github.com/juju/schema"
 	"github.com/juju/utils"
+	"github.com/juju/version"
 	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v6-unstable/hooks"
@@ -195,6 +196,7 @@ type Meta struct {
 	Storage        map[string]Storage      `bson:"storage,omitempty" json:"Storage,omitempty"`
 	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
 	Terms          []string                `bson:"terms,omitempty" json:"Terms,omitempty`
+	MinJujuVersion *version.Number         `bson:"minjujuversion,omitempty" json:"minjujuversion,omitempty"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -277,9 +279,20 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
+
+	if v, ok := m["minjujuversion"].(string); ok {
+		minver, err := version.Parse(v)
+		if err != nil {
+			return meta, err
+		}
+		meta.MinJujuVersion = &minver
+
+	}
+
 	if err := meta.Check(); err != nil {
 		return nil, err
 	}
+
 	meta.Terms = parseStringList(m["terms"])
 	return meta, nil
 }
@@ -294,29 +307,31 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		return mrs
 	}
 	return "", struct {
-		Name        string                       `yaml:"name"`
-		Summary     string                       `yaml:"summary"`
-		Description string                       `yaml:"description"`
-		Provides    map[string]marshaledRelation `yaml:"provides,omitempty"`
-		Requires    map[string]marshaledRelation `yaml:"requires,omitempty"`
-		Peers       map[string]marshaledRelation `yaml:"peers,omitempty"`
-		Categories  []string                     `yaml:"categories,omitempty"`
-		Tags        []string                     `yaml:"tags,omitempty"`
-		Subordinate bool                         `yaml:"subordinate,omitempty"`
-		Series      []string                     `yaml:"series,omitempty"`
-		Terms       []string                     `yaml:"terms,omitempty"`
+		Name           string                       `yaml:"name"`
+		Summary        string                       `yaml:"summary"`
+		Description    string                       `yaml:"description"`
+		Provides       map[string]marshaledRelation `yaml:"provides,omitempty"`
+		Requires       map[string]marshaledRelation `yaml:"requires,omitempty"`
+		Peers          map[string]marshaledRelation `yaml:"peers,omitempty"`
+		Categories     []string                     `yaml:"categories,omitempty"`
+		Tags           []string                     `yaml:"tags,omitempty"`
+		Subordinate    bool                         `yaml:"subordinate,omitempty"`
+		Series         []string                     `yaml:"series,omitempty"`
+		Terms          []string                     `yaml:"terms,omitempty"`
+		MinJujuVersion *version.Number              `yaml:"minjujuversion,omitempty"`
 	}{
-		Name:        m.Name,
-		Summary:     m.Summary,
-		Description: m.Description,
-		Provides:    marshaledRelations(m.Provides),
-		Requires:    marshaledRelations(m.Requires),
-		Peers:       marshaledRelations(m.Peers),
-		Categories:  m.Categories,
-		Tags:        m.Tags,
-		Subordinate: m.Subordinate,
-		Series:      m.Series,
-		Terms:       m.Terms,
+		Name:           m.Name,
+		Summary:        m.Summary,
+		Description:    m.Description,
+		Provides:       marshaledRelations(m.Provides),
+		Requires:       marshaledRelations(m.Requires),
+		Peers:          marshaledRelations(m.Peers),
+		Categories:     m.Categories,
+		Tags:           m.Tags,
+		Subordinate:    m.Subordinate,
+		Series:         m.Series,
+		Terms:          m.Terms,
+		MinJujuVersion: m.MinJujuVersion,
 	}
 }
 
@@ -669,34 +684,36 @@ func (c propertiesC) Coerce(v interface{}, path []string) (newv interface{}, err
 
 var charmSchema = schema.FieldMap(
 	schema.Fields{
-		"name":        schema.String(),
-		"summary":     schema.String(),
-		"description": schema.String(),
-		"peers":       schema.StringMap(ifaceExpander(int64(1))),
-		"provides":    schema.StringMap(ifaceExpander(nil)),
-		"requires":    schema.StringMap(ifaceExpander(int64(1))),
-		"revision":    schema.Int(), // Obsolete
-		"format":      schema.Int(),
-		"subordinate": schema.Bool(),
-		"categories":  schema.List(schema.String()),
-		"tags":        schema.List(schema.String()),
-		"series":      schema.List(schema.String()),
-		"storage":     schema.StringMap(storageSchema),
-		"payloads":    schema.StringMap(payloadClassSchema),
-		"terms":       schema.List(schema.String()),
+		"name":           schema.String(),
+		"summary":        schema.String(),
+		"description":    schema.String(),
+		"peers":          schema.StringMap(ifaceExpander(int64(1))),
+		"provides":       schema.StringMap(ifaceExpander(nil)),
+		"requires":       schema.StringMap(ifaceExpander(int64(1))),
+		"revision":       schema.Int(), // Obsolete
+		"format":         schema.Int(),
+		"subordinate":    schema.Bool(),
+		"categories":     schema.List(schema.String()),
+		"tags":           schema.List(schema.String()),
+		"series":         schema.List(schema.String()),
+		"storage":        schema.StringMap(storageSchema),
+		"payloads":       schema.StringMap(payloadClassSchema),
+		"terms":          schema.List(schema.String()),
+		"minjujuversion": schema.String(),
 	},
 	schema.Defaults{
-		"provides":    schema.Omit,
-		"requires":    schema.Omit,
-		"peers":       schema.Omit,
-		"revision":    schema.Omit,
-		"format":      1,
-		"subordinate": schema.Omit,
-		"categories":  schema.Omit,
-		"tags":        schema.Omit,
-		"series":      schema.Omit,
-		"storage":     schema.Omit,
-		"payloads":    schema.Omit,
-		"terms":       schema.Omit,
+		"provides":       schema.Omit,
+		"requires":       schema.Omit,
+		"peers":          schema.Omit,
+		"revision":       schema.Omit,
+		"format":         1,
+		"subordinate":    schema.Omit,
+		"categories":     schema.Omit,
+		"tags":           schema.Omit,
+		"series":         schema.Omit,
+		"storage":        schema.Omit,
+		"payloads":       schema.Omit,
+		"terms":          schema.Omit,
+		"minjujuversion": schema.Omit,
 	},
 )
