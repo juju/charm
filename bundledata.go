@@ -285,7 +285,10 @@ func (bd *BundleData) VerifyWithCharms(
 	return verifier.err()
 }
 
-var validMachineId = regexp.MustCompile("^" + names.NumberSnippet + "$")
+var (
+	validMachineId   = regexp.MustCompile("^" + names.NumberSnippet + "$")
+	validStorageName = regexp.MustCompile("^" + names.StorageNameSnippet + "$")
+)
 
 func (verifier *bundleDataVerifier) verifyMachines() {
 	for id, m := range verifier.bd.Machines {
@@ -319,6 +322,9 @@ func (verifier *bundleDataVerifier) verifyServices() {
 			verifier.addErrorf("invalid constraints %q in service %q: %v", svc.Constraints, name, err)
 		}
 		for storageName, storageConstraints := range svc.Storage {
+			if !validStorageName.MatchString(storageName) {
+				verifier.addErrorf("invalid storage name %q in service %q", storageName, name)
+			}
 			if err := verifier.verifyStorage(storageConstraints); err != nil {
 				verifier.addErrorf("invalid storage %q in service %q: %v", storageName, name, err)
 			}

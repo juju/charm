@@ -211,6 +211,7 @@ services:
           charm: ceph
           storage:
               valid-storage: 3,10G
+              no_underscores: 123
     ceph-osd:
           charm: ceph-osd
           storage:
@@ -227,6 +228,7 @@ relations:
 `,
 	errors: []string{
 		`bundle declares an invalid series "9wrong"`,
+		`invalid storage name "no_underscores" in service "ceph"`,
 		`invalid storage "invalid-storage" in service "ceph-osd": bad storage constraint`,
 		`machine "3" is not referred to by a placement directive`,
 		`machine "bogus" is not referred to by a placement directive`,
