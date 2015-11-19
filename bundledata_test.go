@@ -35,6 +35,8 @@ services:
         annotations:
             "gui-x": 609
             "gui-y": -15
+        storage:
+            valid-store: 10G
     mysql:
         charm: "cs:precise/mysql-28"
         num_units: 2
@@ -89,6 +91,9 @@ var parseTests = []struct {
 				Annotations: map[string]string{
 					"gui-x": "609",
 					"gui-y": "-15",
+				},
+				Storage: map[string]string{
+					"valid-store": "10G",
 				},
 			},
 			"mysql": {
@@ -202,6 +207,15 @@ services:
         constraints: "bad constraints"
     wordpress:
           charm: wordpress
+    ceph:
+          charm: ceph
+          storage:
+              valid-storage: 3,10G
+              no_underscores: 123
+    ceph-osd:
+          charm: ceph-osd
+          storage:
+              invalid-storage: "bad storage constraints"
 relations:
     - ["mediawiki:db", "mysql:db"]
     - ["mysql:foo", "mediawiki:bar"]
@@ -214,6 +228,8 @@ relations:
 `,
 	errors: []string{
 		`bundle declares an invalid series "9wrong"`,
+		`invalid storage name "no_underscores" in service "ceph"`,
+		`invalid storage "invalid-storage" in service "ceph-osd": bad storage constraint`,
 		`machine "3" is not referred to by a placement directive`,
 		`machine "bogus" is not referred to by a placement directive`,
 		`invalid machine id "bogus" found in machines`,
@@ -249,12 +265,20 @@ func assertVerifyWithCharmsErrors(c *gc.C, bundleData string, charms map[string]
 	bd, err := charm.ReadBundleData(strings.NewReader(bundleData))
 	c.Assert(err, gc.IsNil)
 
-	err = bd.VerifyWithCharms(func(c string) error {
+	validateConstraints := func(c string) error {
 		if c == "bad constraints" {
 			return fmt.Errorf("bad constraint")
 		}
 		return nil
-	}, charms)
+	}
+	validateStorage := func(c string) error {
+		if c == "bad storage constraints" {
+			return fmt.Errorf("bad storage constraint")
+		}
+		return nil
+	}
+
+	err = bd.VerifyWithCharms(validateConstraints, validateStorage, charms)
 	if len(expectErrors) == 0 {
 		if err == nil {
 			return
@@ -288,7 +312,7 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 	} {
 		c.Logf("test %d: %s", i, u)
 		bd.Services["mediawiki"].Charm = u
-		err := bd.Verify(nil)
+		err := bd.Verify(nil, nil)
 		c.Assert(err, gc.IsNil, gc.Commentf("charm url %q", u))
 	}
 }
@@ -302,7 +326,7 @@ func (*bundleDataSuite) TestVerifyBundleUsingJujuInfoRelation(c *gc.C) {
 		"mysql":     readCharmDir(c, "mysql"),
 		"logging":   readCharmDir(c, "logging"),
 	}
-	err := bd.VerifyWithCharms(nil, charms)
+	err := bd.VerifyWithCharms(nil, nil, charms)
 	c.Assert(err, gc.IsNil)
 }
 
