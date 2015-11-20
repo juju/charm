@@ -8,7 +8,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/juju/errors"
 	"github.com/juju/loggo"
+	"github.com/juju/version"
 )
 
 var logger = loggo.GetLogger("juju.charm")
@@ -98,4 +100,32 @@ func NewUnsupportedSeriesError(requestedSeries string, supportedSeries []string)
 func IsUnsupportedSeriesError(err error) bool {
 	_, ok := err.(*unsupportedSeriesError)
 	return ok
+}
+
+// isMinVersionErr reports whether the given error indicates a minmum version
+// too high for this version of juju.
+func IsMinVersionErr(err error) bool {
+	_, ok := err.(minJujuVersionErr)
+	return ok
+}
+
+// CheckMinVersion reports an error that reports true from IsMinVersionErr if
+// the given charm has a minimum juju version specified that is higher than the
+// given juju version number.
+func CheckMinVersion(ch Charm, jujuVersion version.Number) error {
+	minver := ch.Meta().MinJujuVersion
+	if minver != nil && minver.Compare(jujuVersion) > 0 {
+		err := errors.NewErr("charm's min version (%s) is higher than this juju environment's version (%s)",
+			minver, jujuVersion)
+		return minJujuVersionErr{&err}
+	}
+	return nil
+}
+
+type minJujuVersionErr struct {
+	*errors.Err
+}
+
+func minVersionError(minver, jujuver version.Number) error {
+
 }
