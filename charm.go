@@ -125,7 +125,3 @@ func CheckMinVersion(ch Charm, jujuVersion version.Number) error {
 type minJujuVersionErr struct {
 	*errors.Err
 }
-
-func minVersionError(minver, jujuver version.Number) error {
-
-}
