@@ -102,9 +102,9 @@ func IsUnsupportedSeriesError(err error) bool {
 	return ok
 }
 
-// isMinVersionErr reports whether the given error indicates a minmum version
+// isMinVersionError reports whether the given error indicates a minmum version
 // too high for this version of juju.
-func IsMinVersionErr(err error) bool {
+func IsMinVersionError(err error) bool {
 	_, ok := err.(minJujuVersionErr)
 	return ok
 }

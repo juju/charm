@@ -14,6 +14,7 @@ import (
 
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils/fs"
+	"github.com/juju/version"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v1"
 
@@ -100,6 +101,30 @@ func (s *CharmSuite) IsMissingSeriesError(c *gc.C) {
 	err := charm.MissingSeriesError()
 	c.Assert(charm.IsMissingSeriesError(err), jc.IsTrue)
 	c.Assert(charm.IsMissingSeriesError(fmt.Errorf("foo")), jc.IsFalse)
+}
+
+type fakeCharm struct {
+	charm.Charm
+	meta *charm.Meta
+}
+
+func (f fakeCharm) Meta() *charm.Meta {
+	return f.meta
+}
+
+func (s *CharmSuite) TestIsMinVersionError(c *gc.C) {
+	err := charm.MinVersionError()
+	c.Assert(charm.IsMinVersionError(err), jc.IsTrue)
+	c.Assert(charm.IsMinVersionError(nil), jc.IsFalse)
+	c.Assert(charm.IsMinVersionError(fmt.Errorf("foo")), jc.IsFalse)
+}
+
+func (s *CharmSuite) TestCheckMinVersion(c *gc.C) {
+	f := fakeCharm{meta: &charm.Meta{MinJujuVersion: &version.Number{Major: 2}}}
+	err := charm.CheckMinVersion(f, version.Number{Major: 1})
+	c.Assert(charm.IsMinVersionError(err), jc.IsTrue)
+	err = charm.CheckMinVersion(f, version.Number{Major: 3})
+	c.Assert(charm.IsMinVersionError(err), jc.IsFalse)
 }
 
 func checkDummy(c *gc.C, f charm.Charm, path string) {
