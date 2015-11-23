@@ -238,6 +238,16 @@ func parseStringList(list interface{}) []string {
 	return result
 }
 
+var termNameRE = regexp.MustCompile("^[a-z]+([a-z0-9-]+)/[0-9]+?$")
+
+func checkTerm(s string) error {
+	match := termNameRE.FindStringSubmatch(s)
+	if match == nil {
+		return fmt.Errorf("invalid term name %q: must match %s", s, termNameRE.String())
+	}
+	return nil
+}
+
 // ReadMeta reads the content of a metadata.yaml file and returns
 // its representation.
 func ReadMeta(r io.Reader) (meta *Meta, err error) {
@@ -442,6 +452,12 @@ func (meta Meta) Check() error {
 		}
 		if err := payloadClass.Validate(); err != nil {
 			return err
+		}
+	}
+
+	for _, term := range meta.Terms {
+		if terr := checkTerm(term); terr != nil {
+			return terr
 		}
 	}
 

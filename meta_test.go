@@ -54,6 +54,52 @@ func (s *MetaSuite) TestReadMetaVersion2(c *gc.C) {
 	c.Assert(meta.Terms, gc.HasLen, 0)
 }
 
+func (s *MetaSuite) TestCheckTerms(c *gc.C) {
+	tests := []struct {
+		about       string
+		terms       []string
+		expectError string
+	}{{
+		about: "valid terms",
+		terms: []string{"term/1", "term/2"},
+	}, {
+		about:       "missing revision number",
+		terms:       []string{"term/1", "term"},
+		expectError: "invalid term name \"term\": must match.*",
+	}, {
+		about:       "revision not a number",
+		terms:       []string{"term/1", "term/a"},
+		expectError: "invalid term name \"term/a\": must match.*",
+	}, {
+		about:       "wrong format",
+		terms:       []string{"term/1", "term/a/1"},
+		expectError: "invalid term name \"term/a/1\": must match.*",
+	}, {
+		about:       "term may not contain spaces",
+		terms:       []string{"term/1", "term about a term"},
+		expectError: "invalid term name \"term about a term\": must match.*",
+	}, {
+		about:       "term name must start with lowercase letter",
+		terms:       []string{"Term/1"},
+		expectError: `invalid term name "Term/1": must match.*`,
+	}, {
+		about:       "term name match the regexp",
+		terms:       []string{"term_123-23aAf/1"},
+		expectError: "invalid term name \"term_123-23aAf/1\": must match.*",
+	},
+	}
+	for i, test := range tests {
+		c.Logf("running test %v: %v", i, test.about)
+		meta := charm.Meta{Terms: test.terms}
+		err := meta.Check()
+		if test.expectError == "" {
+			c.Assert(err, jc.ErrorIsNil)
+		} else {
+			c.Assert(err, gc.ErrorMatches, test.expectError)
+		}
+	}
+}
+
 func (s *MetaSuite) TestReadCategory(c *gc.C) {
 	meta, err := charm.ReadMeta(repoMeta(c, "category"))
 	c.Assert(err, gc.IsNil)
