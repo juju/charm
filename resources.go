@@ -22,6 +22,17 @@ func isValidResourceType(value string) bool {
 	return resourceTypes.Contains(value)
 }
 
+var resourceSchema = schema.FieldMap(
+	schema.Fields{
+		"type":     schema.String(),
+		"filename": schema.String(), // TODO(ericsnow) Change to "path"...
+		"comment":  schema.String(),
+	},
+	schema.Defaults{
+		"comment": "",
+	},
+)
+
 // Resource holds the information about a resource, as stored
 // in a charm's metadata.
 type Resource struct {

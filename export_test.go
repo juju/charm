@@ -11,6 +11,7 @@ var (
 
 	ParsePayloadClass = parsePayloadClass
 	ParseResource     = parseResource
+	ResourceSchema    = resourceSchema
 )
 
 func MissingSeriesError() error {

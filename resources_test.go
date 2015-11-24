@@ -14,6 +14,73 @@ var _ = gc.Suite(&resourceSuite{})
 
 type resourceSuite struct{}
 
+func (s *resourceSuite) TestSchemaOkay(c *gc.C) {
+	raw := map[interface{}]interface{}{
+		"type":     "file",
+		"filename": "filename.tgz",
+		"comment":  "One line that is useful when operators need to push it.",
+	}
+	v, err := charm.ResourceSchema.Coerce(raw, nil)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(v, jc.DeepEquals, map[string]interface{}{
+		"type":     "file",
+		"filename": "filename.tgz",
+		"comment":  "One line that is useful when operators need to push it.",
+	})
+}
+
+func (s *resourceSuite) TestSchemaMissingType(c *gc.C) {
+	raw := map[interface{}]interface{}{
+		"filename": "filename.tgz",
+		"comment":  "One line that is useful when operators need to push it.",
+	}
+	_, err := charm.ResourceSchema.Coerce(raw, nil)
+
+	c.Check(err, gc.NotNil)
+}
+
+func (s *resourceSuite) TestSchemaUnknownType(c *gc.C) {
+	raw := map[interface{}]interface{}{
+		"type":     "repo",
+		"filename": "git@github.com:juju/juju.git",
+		"comment":  "One line that is useful when operators need to push it.",
+	}
+	v, err := charm.ResourceSchema.Coerce(raw, nil)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(v, jc.DeepEquals, map[string]interface{}{
+		"type":     "repo",
+		"filename": "git@github.com:juju/juju.git",
+		"comment":  "One line that is useful when operators need to push it.",
+	})
+}
+
+func (s *resourceSuite) TestSchemaMissingFilename(c *gc.C) {
+	raw := map[interface{}]interface{}{
+		"type":    "file",
+		"comment": "One line that is useful when operators need to push it.",
+	}
+	_, err := charm.ResourceSchema.Coerce(raw, nil)
+
+	c.Check(err, gc.NotNil)
+}
+
+func (s *resourceSuite) TestSchemaMissingComment(c *gc.C) {
+	raw := map[interface{}]interface{}{
+		"type":     "file",
+		"filename": "filename.tgz",
+	}
+	v, err := charm.ResourceSchema.Coerce(raw, nil)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(v, jc.DeepEquals, map[string]interface{}{
+		"type":     "file",
+		"filename": "filename.tgz",
+		"comment":  "",
+	})
+}
+
 func (s *resourceSuite) TestParseResourceOkay(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
