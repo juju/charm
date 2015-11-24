@@ -91,7 +91,7 @@ func (s *CharmSuite) TestSeriesToUse(c *gc.C) {
 }
 
 func (s *CharmSuite) IsUnsupportedSeriesError(c *gc.C) {
-	err := charm.UnsupportedSeriesError()
+	err := charm.NewUnsupportedSeriesError("series", []string{"supported"})
 	c.Assert(charm.IsUnsupportedSeriesError(err), jc.IsTrue)
 	c.Assert(charm.IsUnsupportedSeriesError(fmt.Errorf("foo")), jc.IsFalse)
 }

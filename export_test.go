@@ -12,10 +12,6 @@ var (
 	ParsePayloadClass = parsePayloadClass
 )
 
-func UnsupportedSeriesError() error {
-	return &unsupportedSeriesError{}
-}
-
 func MissingSeriesError() error {
 	return missingSeriesError
 }

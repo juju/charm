@@ -88,6 +88,12 @@ func (e *unsupportedSeriesError) Error() string {
 	)
 }
 
+// NewUnsupportedSeriesError returns an error indicating that the requested series
+// is not supported by a charm.
+func NewUnsupportedSeriesError(requestedSeries string, supportedSeries []string) error {
+	return &unsupportedSeriesError{requestedSeries, supportedSeries}
+}
+
 // IsUnsupportedSeriesError returns true if err is an UnsupportedSeriesError.
 func IsUnsupportedSeriesError(err error) bool {
 	_, ok := err.(*unsupportedSeriesError)
