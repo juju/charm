@@ -851,6 +851,37 @@ payloads:
 	})
 }
 
+func (s *MetaSuite) TestResources(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+resources:
+    resource-name:
+        type: file
+        filename: filename.tgz
+        comment: "One line that is useful when operators need to push it."
+    other-resource:
+        type: file
+        filename: other.zip
+`))
+	c.Assert(err, gc.IsNil)
+
+	c.Check(meta.Resources, jc.DeepEquals, map[string]charm.Resource{
+		"resource-name": charm.Resource{
+			Name:     "resource-name",
+			Type:     "file",
+			Filename: "filename.tgz",
+			Comment:  "One line that is useful when operators need to push it.",
+		},
+		"other-resource": charm.Resource{
+			Name:     "other-resource",
+			Type:     "file",
+			Filename: "other.zip",
+		},
+	})
+}
+
 type dummyCharm struct{}
 
 func (c *dummyCharm) Config() *charm.Config {

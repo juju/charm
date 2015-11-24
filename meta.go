@@ -194,6 +194,7 @@ type Meta struct {
 	Series         []string                `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
 	Storage        map[string]Storage      `bson:"storage,omitempty" json:"Storage,omitempty"`
 	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
+	Resources      map[string]Resource     `bson:"resources,omitempty" json:"Resources,omitempty"`
 	Terms          []string                `bson:"terms,omitempty" json:"Terms,omitempty`
 }
 
@@ -287,6 +288,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
+	meta.Resources = parseResources(m["resources"])
 	if err := meta.Check(); err != nil {
 		return nil, err
 	}
@@ -451,6 +453,15 @@ func (meta Meta) Check() error {
 			return fmt.Errorf("mismatch on payload class name (%q != %q)", payloadClass.Name, name)
 		}
 		if err := payloadClass.Validate(); err != nil {
+			return err
+		}
+	}
+
+	for name, resource := range meta.Resources {
+		if resource.Name != name {
+			return fmt.Errorf("mismatch on resource name (%q != %q)", resource.Name, name)
+		}
+		if err := resource.Validate(); err != nil {
 			return err
 		}
 	}
@@ -699,6 +710,7 @@ var charmSchema = schema.FieldMap(
 		"series":      schema.List(schema.String()),
 		"storage":     schema.StringMap(storageSchema),
 		"payloads":    schema.StringMap(payloadClassSchema),
+		"resources":   schema.StringMap(resourceSchema),
 		"terms":       schema.List(schema.String()),
 	},
 	schema.Defaults{
@@ -713,6 +725,7 @@ var charmSchema = schema.FieldMap(
 		"series":      schema.Omit,
 		"storage":     schema.Omit,
 		"payloads":    schema.Omit,
+		"resources":   schema.Omit,
 		"terms":       schema.Omit,
 	},
 )
