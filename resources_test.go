@@ -35,9 +35,14 @@ func (s *resourceSuite) TestSchemaMissingType(c *gc.C) {
 		"filename": "filename.tgz",
 		"comment":  "One line that is useful when operators need to push it.",
 	}
-	_, err := charm.ResourceSchema.Coerce(raw, nil)
+	v, err := charm.ResourceSchema.Coerce(raw, nil)
+	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(err, gc.NotNil)
+	c.Check(v, jc.DeepEquals, map[string]interface{}{
+		"type":     "file",
+		"filename": "filename.tgz",
+		"comment":  "One line that is useful when operators need to push it.",
+	})
 }
 
 func (s *resourceSuite) TestSchemaUnknownType(c *gc.C) {

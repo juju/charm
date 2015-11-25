@@ -30,6 +30,7 @@ var resourceSchema = schema.FieldMap(
 		"comment":  schema.String(),
 	},
 	schema.Defaults{
+		"type":    ResourceTypeFile,
 		"comment": "",
 	},
 )
