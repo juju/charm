@@ -47,6 +47,12 @@ type Resource struct {
 
 	// Comment holds optional user-facing info for the resource.
 	Comment string
+
+	// TODO(ericsnow) Add (e.g. "upload", "store"):
+	//Origin string
+
+	// TODO(ericsnow) Add for charm store:
+	//Revision int
 }
 
 func parseResources(data interface{}) map[string]Resource {
