@@ -33,9 +33,9 @@ var resourceSchema = schema.FieldMap(
 	},
 )
 
-// Resource holds the information about a resource, as stored
+// ResourceInfo holds the information about a resource, as stored
 // in a charm's metadata.
-type Resource struct {
+type ResourceInfo struct {
 	// Name identifies the resource.
 	Name string
 
@@ -47,6 +47,56 @@ type Resource struct {
 
 	// Comment holds optional user-facing info for the resource.
 	Comment string
+}
+
+func parseResourceInfo(name string, data interface{}) ResourceInfo {
+	var info ResourceInfo
+	info.Name = name
+
+	if data == nil {
+		return info
+	}
+	rMap := data.(map[string]interface{})
+
+	if val := rMap["type"]; val != nil {
+		info.Type = val.(string)
+	}
+
+	if val := rMap["filename"]; val != nil {
+		info.Path = val.(string)
+	}
+
+	if val := rMap["comment"]; val != nil {
+		info.Comment = val.(string)
+	}
+
+	return info
+}
+
+// Validate checks the payload class to ensure its data is valid.
+func (r ResourceInfo) Validate() error {
+	if r.Name == "" {
+		return fmt.Errorf("resource missing name")
+	}
+
+	if r.Type == "" {
+		return fmt.Errorf("resource missing type")
+	}
+	if !isValidResourceType(r.Type) {
+		return fmt.Errorf("unrecognized resource type %q", r.Type)
+	}
+
+	if r.Path == "" {
+		// TODO(ericsnow) change "filename" to "path"
+		return fmt.Errorf("resource missing filename")
+	}
+
+	return nil
+}
+
+// Resource is the definition for a resource that a charm uses.
+type Resource struct {
+	ResourceInfo
 
 	// TODO(ericsnow) Add (e.g. "upload", "store"):
 	//Origin string
@@ -70,23 +120,7 @@ func parseResources(data interface{}) map[string]Resource {
 
 func parseResource(name string, data interface{}) Resource {
 	resource := Resource{
-		Name: name,
-	}
-	if data == nil {
-		return resource
-	}
-	rMap := data.(map[string]interface{})
-
-	if val := rMap["type"]; val != nil {
-		resource.Type = val.(string)
-	}
-
-	if val := rMap["filename"]; val != nil {
-		resource.Path = val.(string)
-	}
-
-	if val := rMap["comment"]; val != nil {
-		resource.Comment = val.(string)
+		ResourceInfo: parseResourceInfo(name, data),
 	}
 
 	return resource
@@ -94,20 +128,8 @@ func parseResource(name string, data interface{}) Resource {
 
 // Validate checks the payload class to ensure its data is valid.
 func (r Resource) Validate() error {
-	if r.Name == "" {
-		return fmt.Errorf("resource missing name")
-	}
-
-	if r.Type == "" {
-		return fmt.Errorf("resource missing type")
-	}
-	if !isValidResourceType(r.Type) {
-		return fmt.Errorf("unrecognized resource type %q", r.Type)
-	}
-
-	if r.Path == "" {
-		// TODO(ericsnow) change "filename" to "path"
-		return fmt.Errorf("resource missing filename")
+	if err := r.ResourceInfo.Validate(); err != nil {
+		return err
 	}
 
 	return nil

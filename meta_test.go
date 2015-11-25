@@ -869,15 +869,19 @@ resources:
 
 	c.Check(meta.Resources, jc.DeepEquals, map[string]charm.Resource{
 		"resource-name": charm.Resource{
-			Name:    "resource-name",
-			Type:    "file",
-			Path:    "filename.tgz",
-			Comment: "One line that is useful when operators need to push it.",
+			ResourceInfo: charm.ResourceInfo{
+				Name:    "resource-name",
+				Type:    "file",
+				Path:    "filename.tgz",
+				Comment: "One line that is useful when operators need to push it.",
+			},
 		},
 		"other-resource": charm.Resource{
-			Name: "other-resource",
-			Type: "file",
-			Path: "other.zip",
+			ResourceInfo: charm.ResourceInfo{
+				Name: "other-resource",
+				Type: "file",
+				Path: "other.zip",
+			},
 		},
 	})
 }

@@ -91,10 +91,12 @@ func (s *resourceSuite) TestParseResourceOkay(c *gc.C) {
 	resource := charm.ParseResource(name, data)
 
 	c.Check(resource, jc.DeepEquals, charm.Resource{
-		Name:    "my-resource",
-		Type:    "file",
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		ResourceInfo: charm.ResourceInfo{
+			Name:    "my-resource",
+			Type:    "file",
+			Path:    "filename.tgz",
+			Comment: "One line that is useful when operators need to push it.",
+		},
 	})
 }
 
@@ -108,10 +110,12 @@ func (s *resourceSuite) TestParseResourceMissingName(c *gc.C) {
 	resource := charm.ParseResource(name, data)
 
 	c.Check(resource, jc.DeepEquals, charm.Resource{
-		Name:    "",
-		Type:    "file",
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		ResourceInfo: charm.ResourceInfo{
+			Name:    "",
+			Type:    "file",
+			Path:    "filename.tgz",
+			Comment: "One line that is useful when operators need to push it.",
+		},
 	})
 }
 
@@ -124,10 +128,12 @@ func (s *resourceSuite) TestParseResourceMissingType(c *gc.C) {
 	resource := charm.ParseResource(name, data)
 
 	c.Check(resource, jc.DeepEquals, charm.Resource{
-		Name:    "my-resource",
-		Type:    "",
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		ResourceInfo: charm.ResourceInfo{
+			Name:    "my-resource",
+			Type:    "",
+			Path:    "filename.tgz",
+			Comment: "One line that is useful when operators need to push it.",
+		},
 	})
 }
 
@@ -140,10 +146,12 @@ func (s *resourceSuite) TestParseResourceMissingPath(c *gc.C) {
 	resource := charm.ParseResource(name, data)
 
 	c.Check(resource, jc.DeepEquals, charm.Resource{
-		Name:    "my-resource",
-		Type:    "file",
-		Path:    "",
-		Comment: "One line that is useful when operators need to push it.",
+		ResourceInfo: charm.ResourceInfo{
+			Name:    "my-resource",
+			Type:    "file",
+			Path:    "",
+			Comment: "One line that is useful when operators need to push it.",
+		},
 	})
 }
 
@@ -156,10 +164,12 @@ func (s *resourceSuite) TestParseResourceMissingComment(c *gc.C) {
 	resource := charm.ParseResource(name, data)
 
 	c.Check(resource, jc.DeepEquals, charm.Resource{
-		Name:    "my-resource",
-		Type:    "file",
-		Path:    "filename.tgz",
-		Comment: "",
+		ResourceInfo: charm.ResourceInfo{
+			Name:    "my-resource",
+			Type:    "file",
+			Path:    "filename.tgz",
+			Comment: "",
+		},
 	})
 }
 
@@ -169,7 +179,9 @@ func (s *resourceSuite) TestParseResourceEmpty(c *gc.C) {
 	resource := charm.ParseResource(name, data)
 
 	c.Check(resource, jc.DeepEquals, charm.Resource{
-		Name: "my-resource",
+		ResourceInfo: charm.ResourceInfo{
+			Name: "my-resource",
+		},
 	})
 }
 
@@ -179,16 +191,20 @@ func (s *resourceSuite) TestParseResourceNil(c *gc.C) {
 	resource := charm.ParseResource(name, data)
 
 	c.Check(resource, jc.DeepEquals, charm.Resource{
-		Name: "my-resource",
+		ResourceInfo: charm.ResourceInfo{
+			Name: "my-resource",
+		},
 	})
 }
 
 func (s *resourceSuite) TestValidateFull(c *gc.C) {
 	resource := charm.Resource{
-		Name:    "my-resource",
-		Type:    "file",
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		ResourceInfo: charm.ResourceInfo{
+			Name:    "my-resource",
+			Type:    "file",
+			Path:    "filename.tgz",
+			Comment: "One line that is useful when operators need to push it.",
+		},
 	}
 	err := resource.Validate()
 
@@ -204,9 +220,11 @@ func (s *resourceSuite) TestValidateZeroValue(c *gc.C) {
 
 func (s *resourceSuite) TestValidateMissingName(c *gc.C) {
 	resource := charm.Resource{
-		Type:    "file",
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		ResourceInfo: charm.ResourceInfo{
+			Type:    "file",
+			Path:    "filename.tgz",
+			Comment: "One line that is useful when operators need to push it.",
+		},
 	}
 	err := resource.Validate()
 
@@ -215,9 +233,11 @@ func (s *resourceSuite) TestValidateMissingName(c *gc.C) {
 
 func (s *resourceSuite) TestValidateMissingType(c *gc.C) {
 	resource := charm.Resource{
-		Name:    "my-resource",
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		ResourceInfo: charm.ResourceInfo{
+			Name:    "my-resource",
+			Path:    "filename.tgz",
+			Comment: "One line that is useful when operators need to push it.",
+		},
 	}
 	err := resource.Validate()
 
@@ -226,10 +246,12 @@ func (s *resourceSuite) TestValidateMissingType(c *gc.C) {
 
 func (s *resourceSuite) TestValidateUnknownType(c *gc.C) {
 	resource := charm.Resource{
-		Name:    "my-resource",
-		Type:    "repo",
-		Path:    "repo-root",
-		Comment: "One line that is useful when operators need to push it.",
+		ResourceInfo: charm.ResourceInfo{
+			Name:    "my-resource",
+			Type:    "repo",
+			Path:    "repo-root",
+			Comment: "One line that is useful when operators need to push it.",
+		},
 	}
 	err := resource.Validate()
 
@@ -238,9 +260,11 @@ func (s *resourceSuite) TestValidateUnknownType(c *gc.C) {
 
 func (s *resourceSuite) TestValidateMissingPath(c *gc.C) {
 	resource := charm.Resource{
-		Name:    "my-resource",
-		Type:    "file",
-		Comment: "One line that is useful when operators need to push it.",
+		ResourceInfo: charm.ResourceInfo{
+			Name:    "my-resource",
+			Type:    "file",
+			Comment: "One line that is useful when operators need to push it.",
+		},
 	}
 	err := resource.Validate()
 
@@ -249,9 +273,11 @@ func (s *resourceSuite) TestValidateMissingPath(c *gc.C) {
 
 func (s *resourceSuite) TestValidateMissingComment(c *gc.C) {
 	resource := charm.Resource{
-		Name: "my-resource",
-		Type: "file",
-		Path: "filename.tgz",
+		ResourceInfo: charm.ResourceInfo{
+			Name: "my-resource",
+			Type: "file",
+			Path: "filename.tgz",
+		},
 	}
 	err := resource.Validate()
 
