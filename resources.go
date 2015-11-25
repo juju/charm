@@ -39,13 +39,11 @@ type Resource struct {
 	// Name identifies the resource.
 	Name string
 
-	// Type identifies the type of resouce.
+	// Type identifies the type of resource (e.g. "file").
 	Type string
 
-	// TODO(ericsnow) "Filename" should be "Path"...
-
-	// Filename is the path under which the resource will be stored.
-	Filename string
+	// Path is where the resource will be stored.
+	Path string
 
 	// Comment holds optional user-facing info for the resource.
 	Comment string
@@ -78,7 +76,7 @@ func parseResource(name string, data interface{}) Resource {
 	}
 
 	if val := rMap["filename"]; val != nil {
-		resource.Filename = val.(string)
+		resource.Path = val.(string)
 	}
 
 	if val := rMap["comment"]; val != nil {
@@ -101,7 +99,8 @@ func (r Resource) Validate() error {
 		return fmt.Errorf("unrecognized resource type %q", r.Type)
 	}
 
-	if r.Filename == "" {
+	if r.Path == "" {
+		// TODO(ericsnow) change "filename" to "path"
 		return fmt.Errorf("resource missing filename")
 	}
 
