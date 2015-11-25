@@ -10,12 +10,13 @@ import (
 	"github.com/juju/utils/set"
 )
 
+// These are the valid resource types.
 const (
-	resourceTypeFile = "file"
+	ResourceTypeFile = "file"
 )
 
 var resourceTypes = set.NewStrings(
-	resourceTypeFile,
+	ResourceTypeFile,
 )
 
 func isValidResourceType(value string) bool {
