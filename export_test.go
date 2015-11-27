@@ -15,7 +15,3 @@ var (
 func MissingSeriesError() error {
 	return missingSeriesError
 }
-
-func MinVersionError() error {
-	return minJujuVersionErr{}
-}

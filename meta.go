@@ -196,7 +196,7 @@ type Meta struct {
 	Storage        map[string]Storage      `bson:"storage,omitempty" json:"Storage,omitempty"`
 	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
 	Terms          []string                `bson:"terms,omitempty" json:"Terms,omitempty`
-	MinJujuVersion *version.Number         `bson:"min-juju-version,omitempty" json:"min-juju-version,omitempty"`
+	MinJujuVersion version.Number          `bson:"min-juju-version,omitempty" json:"min-juju-version,omitempty"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -290,13 +290,12 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	meta.Storage = parseStorage(m["storage"])
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
 
-	if v, ok := m["min-juju-version"].(string); ok {
-		minver, err := version.Parse(v)
+	if ver := m["min-juju-version"]; ver != nil {
+		minver, err := version.Parse(ver.(string))
 		if err != nil {
 			return meta, err
 		}
-		meta.MinJujuVersion = &minver
-
+		meta.MinJujuVersion = minver
 	}
 
 	if err := meta.Check(); err != nil {
@@ -316,6 +315,12 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		}
 		return mrs
 	}
+
+	var minver string
+	if m.MinJujuVersion != version.Zero {
+		minver = m.MinJujuVersion.String()
+	}
+
 	return "", struct {
 		Name           string                       `yaml:"name"`
 		Summary        string                       `yaml:"summary"`
@@ -328,7 +333,7 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		Subordinate    bool                         `yaml:"subordinate,omitempty"`
 		Series         []string                     `yaml:"series,omitempty"`
 		Terms          []string                     `yaml:"terms,omitempty"`
-		MinJujuVersion *version.Number              `yaml:"min-juju-version,omitempty"`
+		MinJujuVersion string                       `yaml:"min-juju-version,omitempty"`
 	}{
 		Name:           m.Name,
 		Summary:        m.Summary,
@@ -341,7 +346,7 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		Subordinate:    m.Subordinate,
 		Series:         m.Series,
 		Terms:          m.Terms,
-		MinJujuVersion: m.MinJujuVersion,
+		MinJujuVersion: minver,
 	}
 }
 
