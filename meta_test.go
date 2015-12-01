@@ -17,6 +17,7 @@ import (
 	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v6-unstable"
+	"gopkg.in/juju/charm.v6-unstable/resource"
 )
 
 func repoMeta(c *gc.C, name string) io.Reader {
@@ -867,19 +868,19 @@ resources:
 `))
 	c.Assert(err, gc.IsNil)
 
-	c.Check(meta.Resources, jc.DeepEquals, map[string]charm.Resource{
-		"resource-name": charm.Resource{
-			ResourceInfo: charm.ResourceInfo{
+	c.Check(meta.Resources, jc.DeepEquals, map[string]resource.Resource{
+		"resource-name": resource.Resource{
+			ResourceInfo: resource.ResourceInfo{
 				Name:    "resource-name",
-				Type:    charm.ResourceTypeFile,
+				Type:    resource.ResourceTypeFile,
 				Path:    "filename.tgz",
 				Comment: "One line that is useful when operators need to push it.",
 			},
 		},
-		"other-resource": charm.Resource{
-			ResourceInfo: charm.ResourceInfo{
+		"other-resource": resource.Resource{
+			ResourceInfo: resource.ResourceInfo{
 				Name: "other-resource",
-				Type: charm.ResourceTypeFile,
+				Type: resource.ResourceTypeFile,
 				Path: "other.zip",
 			},
 		},

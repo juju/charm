@@ -10,7 +10,6 @@ var (
 	ValidateValue = validateValue
 
 	ParsePayloadClass = parsePayloadClass
-	ParseResource     = parseResource
 	ResourceSchema    = resourceSchema
 )
 
