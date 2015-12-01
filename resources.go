@@ -10,17 +10,48 @@ import (
 	"github.com/juju/schema"
 )
 
-// These are the valid resource types.
+// These are the valid resource types (except for invalid and unknown).
 const (
-	ResourceTypeFile = "file"
+	ResourceTypeUnknown ResourceType = iota
+	ResourceTypeFile
+
+	ResourceTypeInvalid ResourceType = -1
 )
 
-var resourceTypes = map[string]bool{
-	ResourceTypeFile: true,
+var resourceTypes = map[ResourceType]string{
+	ResourceTypeFile: "file",
 }
 
-func isValidResourceType(value string) bool {
-	return resourceTypes[value]
+// ResourceType enumerates the recognized resource types.
+type ResourceType int
+
+// ParseResourceType converts a string to a ResourceType. If the given
+// value does not match a recognized type then ResourceTypeUnknown and
+// false are returned.
+func ParseResourceType(value string) (ResourceType, bool) {
+	for rt, str := range resourceTypes {
+		if value == str {
+			return rt, true
+		}
+	}
+	return ResourceTypeInvalid, false
+}
+
+// String returns the printable representation of the type.
+func (rt ResourceType) String() string {
+	str, ok := resourceTypes[rt]
+	if !ok {
+		return "<unknown>"
+	}
+	return str
+}
+
+// Validate ensures that the type is valid.
+func (rt ResourceType) Validate() error {
+	if _, ok := resourceTypes[rt]; !ok {
+		return fmt.Errorf("unrecognized resource type %v", rt)
+	}
+	return nil
 }
 
 var resourceSchema = schema.FieldMap(
@@ -30,7 +61,7 @@ var resourceSchema = schema.FieldMap(
 		"comment":  schema.String(),
 	},
 	schema.Defaults{
-		"type":    ResourceTypeFile,
+		"type":    ResourceTypeFile.String(),
 		"comment": "",
 	},
 )
@@ -42,7 +73,7 @@ type ResourceInfo struct {
 	Name string
 
 	// Type identifies the type of resource (e.g. "file").
-	Type string
+	Type ResourceType
 
 	// TODO(ericsnow) Rename Path to Filename?
 
@@ -69,7 +100,7 @@ func parseResourceInfo(name string, data interface{}) ResourceInfo {
 	rMap := data.(map[string]interface{})
 
 	if val := rMap["type"]; val != nil {
-		info.Type = val.(string)
+		info.Type, _ = ParseResourceType(val.(string))
 	}
 
 	if val := rMap["filename"]; val != nil {
@@ -89,11 +120,11 @@ func (r ResourceInfo) Validate() error {
 		return fmt.Errorf("resource missing name")
 	}
 
-	if r.Type == "" {
+	if r.Type == ResourceTypeUnknown {
 		return fmt.Errorf("resource missing type")
 	}
-	if !isValidResourceType(r.Type) {
-		return fmt.Errorf("unrecognized resource type %q", r.Type)
+	if err := r.Type.Validate(); err != nil {
+		return fmt.Errorf("invalid resource type %v: %v", r.Type, err)
 	}
 
 	if r.Path == "" {

@@ -871,7 +871,7 @@ resources:
 		"resource-name": charm.Resource{
 			ResourceInfo: charm.ResourceInfo{
 				Name:    "resource-name",
-				Type:    "file",
+				Type:    charm.ResourceTypeFile,
 				Path:    "filename.tgz",
 				Comment: "One line that is useful when operators need to push it.",
 			},
@@ -879,7 +879,7 @@ resources:
 		"other-resource": charm.Resource{
 			ResourceInfo: charm.ResourceInfo{
 				Name: "other-resource",
-				Type: "file",
+				Type: charm.ResourceTypeFile,
 				Path: "other.zip",
 			},
 		},
