@@ -43,7 +43,13 @@ type ResourceInfo struct {
 	// Type identifies the type of resource (e.g. "file").
 	Type string
 
-	// Path is where the resource will be stored.
+	// Path is the relative path of the file or directory where the
+	// resource will be stored under the unit's data directory. The path
+	// is resolved against a subdirectory assigned to the resource. For
+	// example, given a service named "spam", a resource "eggs", and a
+	// path "eggs.tgz", the fully resolved storage path for the resource
+	// would be:
+	//   /var/lib/juju/agent/spam-0/resources/eggs/eggs.tgz
 	Path string
 
 	// Comment holds optional user-facing info for the resource.
