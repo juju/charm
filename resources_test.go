@@ -276,6 +276,46 @@ func (s *resourceSuite) TestValidateMissingPath(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `resource missing filename`)
 }
 
+func (s *resourceSuite) TestValidateNestedPath(c *gc.C) {
+	resource := charm.Resource{
+		ResourceInfo: charm.ResourceInfo{
+			Name: "my-resource",
+			Type: "file",
+			Path: "spam/eggs",
+		},
+	}
+	err := resource.Validate()
+
+	c.Check(err, jc.ErrorIsNil)
+}
+
+func (s *resourceSuite) TestValidateAbsolutePath(c *gc.C) {
+	resource := charm.Resource{
+		ResourceInfo: charm.ResourceInfo{
+			Name: "my-resource",
+			Type: "file",
+			Path: "/spam/eggs",
+		},
+	}
+	err := resource.Validate()
+
+	c.Check(err, jc.ErrorIsNil)
+}
+
+func (s *resourceSuite) TestValidateSuspectPath(c *gc.C) {
+	resource := charm.Resource{
+		ResourceInfo: charm.ResourceInfo{
+			Name: "my-resource",
+			Type: "file",
+			// Though misleading, this value is still a valid path.
+			Path: "git@github.com:juju/juju.git",
+		},
+	}
+	err := resource.Validate()
+
+	c.Check(err, jc.ErrorIsNil)
+}
+
 func (s *resourceSuite) TestValidateMissingComment(c *gc.C) {
 	resource := charm.Resource{
 		ResourceInfo: charm.ResourceInfo{
