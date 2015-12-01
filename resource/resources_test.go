@@ -14,42 +14,42 @@ var _ = gc.Suite(&resourceSuite{})
 
 type resourceSuite struct{}
 
-func (s *resourceSuite) TestParseResourceTypeOkay(c *gc.C) {
-	rt, ok := resource.ParseResourceType("file")
+func (s *resourceSuite) TestParseTypeOkay(c *gc.C) {
+	rt, ok := resource.ParseType("file")
 
 	c.Check(ok, jc.IsTrue)
-	c.Check(rt, gc.Equals, resource.ResourceTypeFile)
+	c.Check(rt, gc.Equals, resource.TypeFile)
 }
 
-func (s *resourceSuite) TestParseResourceTypeRecognized(c *gc.C) {
-	supported := []resource.ResourceType{
-		resource.ResourceTypeFile,
+func (s *resourceSuite) TestParseTypeRecognized(c *gc.C) {
+	supported := []resource.Type{
+		resource.TypeFile,
 	}
 	for _, expected := range supported {
-		rt, ok := resource.ParseResourceType(expected.String())
+		rt, ok := resource.ParseType(expected.String())
 
 		c.Check(ok, jc.IsTrue)
 		c.Check(rt, gc.Equals, expected)
 	}
 }
 
-func (s *resourceSuite) TestParseResourceTypeEmpty(c *gc.C) {
-	rt, ok := resource.ParseResourceType("")
+func (s *resourceSuite) TestParseTypeEmpty(c *gc.C) {
+	rt, ok := resource.ParseType("")
 
 	c.Check(ok, jc.IsFalse)
-	c.Check(rt, gc.Equals, resource.ResourceTypeUnknown)
+	c.Check(rt, gc.Equals, resource.TypeUnknown)
 }
 
-func (s *resourceSuite) TestParseResourceTypeUnsupported(c *gc.C) {
-	rt, ok := resource.ParseResourceType("spam")
+func (s *resourceSuite) TestParseTypeUnsupported(c *gc.C) {
+	rt, ok := resource.ParseType("spam")
 
 	c.Check(ok, jc.IsFalse)
-	c.Check(rt, gc.Equals, resource.ResourceType("spam"))
+	c.Check(rt, gc.Equals, resource.Type("spam"))
 }
 
-func (s *resourceSuite) TestResourceTypeStringSupported(c *gc.C) {
-	supported := map[resource.ResourceType]string{
-		resource.ResourceTypeFile: "file",
+func (s *resourceSuite) TestTypeStringSupported(c *gc.C) {
+	supported := map[resource.Type]string{
+		resource.TypeFile: "file",
 	}
 	for rt, expected := range supported {
 		str := rt.String()
@@ -58,21 +58,21 @@ func (s *resourceSuite) TestResourceTypeStringSupported(c *gc.C) {
 	}
 }
 
-func (s *resourceSuite) TestResourceTypeStringUnknown(c *gc.C) {
-	str := resource.ResourceTypeUnknown.String()
+func (s *resourceSuite) TestTypeStringUnknown(c *gc.C) {
+	str := resource.TypeUnknown.String()
 
 	c.Check(str, gc.Equals, "<unknown>")
 }
 
-func (s *resourceSuite) TestResourceTypeStringUnsupported(c *gc.C) {
-	str := resource.ResourceType("spam").String()
+func (s *resourceSuite) TestTypeStringUnsupported(c *gc.C) {
+	str := resource.Type("spam").String()
 
 	c.Check(str, gc.Equals, "spam")
 }
 
-func (s *resourceSuite) TestResourceTypeValidateSupported(c *gc.C) {
-	supported := []resource.ResourceType{
-		resource.ResourceTypeFile,
+func (s *resourceSuite) TestTypeValidateSupported(c *gc.C) {
+	supported := []resource.Type{
+		resource.TypeFile,
 	}
 	for _, rt := range supported {
 		err := rt.Validate()
@@ -81,129 +81,129 @@ func (s *resourceSuite) TestResourceTypeValidateSupported(c *gc.C) {
 	}
 }
 
-func (s *resourceSuite) TestResourceTypeValidateUnknown(c *gc.C) {
-	err := resource.ResourceTypeUnknown.Validate()
+func (s *resourceSuite) TestTypeValidateUnknown(c *gc.C) {
+	err := resource.TypeUnknown.Validate()
 
 	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
 }
 
-func (s *resourceSuite) TestResourceTypeValidateUnsupported(c *gc.C) {
-	err := resource.ResourceType("spam").Validate()
+func (s *resourceSuite) TestTypeValidateUnsupported(c *gc.C) {
+	err := resource.Type("spam").Validate()
 
 	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
 }
 
-func (s *resourceSuite) TestParseResourceOkay(c *gc.C) {
+func (s *resourceSuite) TestParseOkay(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
 		"type":     "file",
 		"filename": "filename.tgz",
 		"comment":  "One line that is useful when operators need to push it.",
 	}
-	res := resource.ParseResource(name, data)
+	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name:    "my-resource",
-			Type:    resource.ResourceTypeFile,
+			Type:    resource.TypeFile,
 			Path:    "filename.tgz",
 			Comment: "One line that is useful when operators need to push it.",
 		},
 	})
 }
 
-func (s *resourceSuite) TestParseResourceMissingName(c *gc.C) {
+func (s *resourceSuite) TestParseMissingName(c *gc.C) {
 	name := ""
 	data := map[string]interface{}{
 		"type":     "file",
 		"filename": "filename.tgz",
 		"comment":  "One line that is useful when operators need to push it.",
 	}
-	res := resource.ParseResource(name, data)
+	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name:    "",
-			Type:    resource.ResourceTypeFile,
+			Type:    resource.TypeFile,
 			Path:    "filename.tgz",
 			Comment: "One line that is useful when operators need to push it.",
 		},
 	})
 }
 
-func (s *resourceSuite) TestParseResourceMissingType(c *gc.C) {
+func (s *resourceSuite) TestParseMissingType(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
 		"filename": "filename.tgz",
 		"comment":  "One line that is useful when operators need to push it.",
 	}
-	res := resource.ParseResource(name, data)
+	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name:    "my-resource",
-			Type:    resource.ResourceTypeUnknown,
+			Type:    resource.TypeUnknown,
 			Path:    "filename.tgz",
 			Comment: "One line that is useful when operators need to push it.",
 		},
 	})
 }
 
-func (s *resourceSuite) TestParseResourceMissingPath(c *gc.C) {
+func (s *resourceSuite) TestParseMissingPath(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
 		"type":    "file",
 		"comment": "One line that is useful when operators need to push it.",
 	}
-	res := resource.ParseResource(name, data)
+	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name:    "my-resource",
-			Type:    resource.ResourceTypeFile,
+			Type:    resource.TypeFile,
 			Path:    "",
 			Comment: "One line that is useful when operators need to push it.",
 		},
 	})
 }
 
-func (s *resourceSuite) TestParseResourceMissingComment(c *gc.C) {
+func (s *resourceSuite) TestParseMissingComment(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
 		"type":     "file",
 		"filename": "filename.tgz",
 	}
-	res := resource.ParseResource(name, data)
+	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name:    "my-resource",
-			Type:    resource.ResourceTypeFile,
+			Type:    resource.TypeFile,
 			Path:    "filename.tgz",
 			Comment: "",
 		},
 	})
 }
 
-func (s *resourceSuite) TestParseResourceEmpty(c *gc.C) {
+func (s *resourceSuite) TestParseEmpty(c *gc.C) {
 	name := "my-resource"
 	data := make(map[string]interface{})
-	res := resource.ParseResource(name, data)
+	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name: "my-resource",
 		},
 	})
 }
 
-func (s *resourceSuite) TestParseResourceNil(c *gc.C) {
+func (s *resourceSuite) TestParseNil(c *gc.C) {
 	name := "my-resource"
 	var data map[string]interface{}
-	res := resource.ParseResource(name, data)
+	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name: "my-resource",
 		},
 	})
@@ -211,9 +211,9 @@ func (s *resourceSuite) TestParseResourceNil(c *gc.C) {
 
 func (s *resourceSuite) TestValidateFull(c *gc.C) {
 	res := resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name:    "my-resource",
-			Type:    resource.ResourceTypeFile,
+			Type:    resource.TypeFile,
 			Path:    "filename.tgz",
 			Comment: "One line that is useful when operators need to push it.",
 		},
@@ -232,8 +232,8 @@ func (s *resourceSuite) TestValidateZeroValue(c *gc.C) {
 
 func (s *resourceSuite) TestValidateMissingName(c *gc.C) {
 	res := resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
-			Type:    resource.ResourceTypeFile,
+		Info: resource.Info{
+			Type:    resource.TypeFile,
 			Path:    "filename.tgz",
 			Comment: "One line that is useful when operators need to push it.",
 		},
@@ -245,7 +245,7 @@ func (s *resourceSuite) TestValidateMissingName(c *gc.C) {
 
 func (s *resourceSuite) TestValidateMissingType(c *gc.C) {
 	res := resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name:    "my-resource",
 			Path:    "filename.tgz",
 			Comment: "One line that is useful when operators need to push it.",
@@ -258,7 +258,7 @@ func (s *resourceSuite) TestValidateMissingType(c *gc.C) {
 
 func (s *resourceSuite) TestValidateUnknownType(c *gc.C) {
 	res := resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name:    "my-resource",
 			Type:    "repo",
 			Path:    "repo-root",
@@ -272,9 +272,9 @@ func (s *resourceSuite) TestValidateUnknownType(c *gc.C) {
 
 func (s *resourceSuite) TestValidateMissingPath(c *gc.C) {
 	res := resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name:    "my-resource",
-			Type:    resource.ResourceTypeFile,
+			Type:    resource.TypeFile,
 			Comment: "One line that is useful when operators need to push it.",
 		},
 	}
@@ -285,9 +285,9 @@ func (s *resourceSuite) TestValidateMissingPath(c *gc.C) {
 
 func (s *resourceSuite) TestValidateNestedPath(c *gc.C) {
 	res := resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name: "my-resource",
-			Type: resource.ResourceTypeFile,
+			Type: resource.TypeFile,
 			Path: "spam/eggs",
 		},
 	}
@@ -298,9 +298,9 @@ func (s *resourceSuite) TestValidateNestedPath(c *gc.C) {
 
 func (s *resourceSuite) TestValidateAbsolutePath(c *gc.C) {
 	res := resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name: "my-resource",
-			Type: resource.ResourceTypeFile,
+			Type: resource.TypeFile,
 			Path: "/spam/eggs",
 		},
 	}
@@ -311,9 +311,9 @@ func (s *resourceSuite) TestValidateAbsolutePath(c *gc.C) {
 
 func (s *resourceSuite) TestValidateSuspectPath(c *gc.C) {
 	res := resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name: "my-resource",
-			Type: resource.ResourceTypeFile,
+			Type: resource.TypeFile,
 			Path: "git@github.com:juju/juju.git",
 		},
 	}
@@ -324,9 +324,9 @@ func (s *resourceSuite) TestValidateSuspectPath(c *gc.C) {
 
 func (s *resourceSuite) TestValidateMissingComment(c *gc.C) {
 	res := resource.Resource{
-		ResourceInfo: resource.ResourceInfo{
+		Info: resource.Info{
 			Name: "my-resource",
-			Type: resource.ResourceTypeFile,
+			Type: resource.TypeFile,
 			Path: "filename.tgz",
 		},
 	}

@@ -10,27 +10,27 @@ import (
 
 // These are the valid resource types (except for unknown).
 const (
-	ResourceTypeUnknown ResourceType = ""
-	ResourceTypeFile    ResourceType = "file"
+	TypeUnknown Type = ""
+	TypeFile    Type = "file"
 )
 
-var resourceTypes = map[ResourceType]bool{
-	ResourceTypeFile: true,
+var types = map[Type]bool{
+	TypeFile: true,
 }
 
-// ResourceType enumerates the recognized resource types.
-type ResourceType string
+// Type enumerates the recognized resource types.
+type Type string
 
-// ParseResourceType converts a string to a ResourceType. If the given
-// value does not match a recognized type then ResourceTypeUnknown and
+// ParseType converts a string to a Type. If the given
+// value does not match a recognized type then TypeUnknown and
 // false are returned.
-func ParseResourceType(value string) (ResourceType, bool) {
-	rt := ResourceType(value)
-	return rt, resourceTypes[rt]
+func ParseType(value string) (Type, bool) {
+	rt := Type(value)
+	return rt, types[rt]
 }
 
 // String returns the printable representation of the type.
-func (rt ResourceType) String() string {
+func (rt Type) String() string {
 	if rt == "" {
 		return "<unknown>"
 	}
@@ -38,21 +38,21 @@ func (rt ResourceType) String() string {
 }
 
 // Validate ensures that the type is valid.
-func (rt ResourceType) Validate() error {
-	if _, ok := resourceTypes[rt]; !ok {
+func (rt Type) Validate() error {
+	if _, ok := types[rt]; !ok {
 		return fmt.Errorf("unsupported resource type %v", rt)
 	}
 	return nil
 }
 
-// ResourceInfo holds the information about a resource, as stored
+// Info holds the information about a resource, as stored
 // in a charm's metadata.
-type ResourceInfo struct {
+type Info struct {
 	// Name identifies the resource.
 	Name string
 
 	// Type identifies the type of resource (e.g. "file").
-	Type ResourceType
+	Type Type
 
 	// TODO(ericsnow) Rename Path to Filename?
 
@@ -69,8 +69,8 @@ type ResourceInfo struct {
 	Comment string
 }
 
-func parseResourceInfo(name string, data interface{}) ResourceInfo {
-	var info ResourceInfo
+func parseInfo(name string, data interface{}) Info {
+	var info Info
 	info.Name = name
 
 	if data == nil {
@@ -79,7 +79,7 @@ func parseResourceInfo(name string, data interface{}) ResourceInfo {
 	rMap := data.(map[string]interface{})
 
 	if val := rMap["type"]; val != nil {
-		info.Type, _ = ParseResourceType(val.(string))
+		info.Type, _ = ParseType(val.(string))
 	}
 
 	if val := rMap["filename"]; val != nil {
@@ -94,12 +94,12 @@ func parseResourceInfo(name string, data interface{}) ResourceInfo {
 }
 
 // Validate checks the resource info to ensure the data is valid.
-func (r ResourceInfo) Validate() error {
+func (r Info) Validate() error {
 	if r.Name == "" {
 		return fmt.Errorf("resource missing name")
 	}
 
-	if r.Type == ResourceTypeUnknown {
+	if r.Type == TypeUnknown {
 		return fmt.Errorf("resource missing type")
 	}
 	if err := r.Type.Validate(); err != nil {
@@ -110,7 +110,7 @@ func (r ResourceInfo) Validate() error {
 		// TODO(ericsnow) change "filename" to "path"
 		return fmt.Errorf("resource missing filename")
 	}
-	if r.Type == ResourceTypeFile {
+	if r.Type == TypeFile {
 		if strings.Contains(r.Path, "/") {
 			return fmt.Errorf(`filename cannot contain "/" (got %q)`, r.Path)
 		}
@@ -122,7 +122,7 @@ func (r ResourceInfo) Validate() error {
 
 // Resource is the definition for a resource that a charm uses.
 type Resource struct {
-	ResourceInfo
+	Info
 
 	// TODO(ericsnow) Add (e.g. "upload", "store"):
 	//Origin string
@@ -131,10 +131,10 @@ type Resource struct {
 	//Revision int
 }
 
-// ParseResource converts the provided data into a Resource.
-func ParseResource(name string, data interface{}) Resource {
+// Parse converts the provided data into a Resource.
+func Parse(name string, data interface{}) Resource {
 	resource := Resource{
-		ResourceInfo: parseResourceInfo(name, data),
+		Info: parseInfo(name, data),
 	}
 
 	return resource
@@ -142,7 +142,7 @@ func ParseResource(name string, data interface{}) Resource {
 
 // Validate checks the payload class to ensure its data is valid.
 func (r Resource) Validate() error {
-	if err := r.ResourceInfo.Validate(); err != nil {
+	if err := r.Info.Validate(); err != nil {
 		return err
 	}
 

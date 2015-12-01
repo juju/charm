@@ -870,17 +870,17 @@ resources:
 
 	c.Check(meta.Resources, jc.DeepEquals, map[string]resource.Resource{
 		"resource-name": resource.Resource{
-			ResourceInfo: resource.ResourceInfo{
+			Info: resource.Info{
 				Name:    "resource-name",
-				Type:    resource.ResourceTypeFile,
+				Type:    resource.TypeFile,
 				Path:    "filename.tgz",
 				Comment: "One line that is useful when operators need to push it.",
 			},
 		},
 		"other-resource": resource.Resource{
-			ResourceInfo: resource.ResourceInfo{
+			Info: resource.Info{
 				Name: "other-resource",
-				Type: resource.ResourceTypeFile,
+				Type: resource.TypeFile,
 				Path: "other.zip",
 			},
 		},

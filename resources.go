@@ -18,7 +18,7 @@ var resourceSchema = schema.FieldMap(
 		"comment":  schema.String(),
 	},
 	schema.Defaults{
-		"type":    resource.ResourceTypeFile.String(),
+		"type":    resource.TypeFile.String(),
 		"comment": "",
 	},
 )
@@ -30,18 +30,18 @@ func parseResources(data interface{}) map[string]resource.Resource {
 
 	result := make(map[string]resource.Resource)
 	for name, val := range data.(map[string]interface{}) {
-		result[name] = resource.ParseResource(name, val)
+		result[name] = resource.Parse(name, val)
 	}
 
 	return result
 }
 
 func validateResources(resources map[string]resource.Resource) error {
-	for name, resource := range resources {
-		if resource.Name != name {
-			return fmt.Errorf("mismatch on resource name (%q != %q)", resource.Name, name)
+	for name, res := range resources {
+		if res.Name != name {
+			return fmt.Errorf("mismatch on resource name (%q != %q)", res.Name, name)
 		}
-		if err := resource.Validate(); err != nil {
+		if err := res.Validate(); err != nil {
 			return err
 		}
 	}
