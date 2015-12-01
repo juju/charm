@@ -10,6 +10,18 @@ import (
 	"github.com/juju/schema"
 )
 
+var resourceSchema = schema.FieldMap(
+	schema.Fields{
+		"type":     schema.String(),
+		"filename": schema.String(), // TODO(ericsnow) Change to "path"...
+		"comment":  schema.String(),
+	},
+	schema.Defaults{
+		"type":    ResourceTypeFile.String(),
+		"comment": "",
+	},
+)
+
 // These are the valid resource types (except for unknown).
 const (
 	ResourceTypeUnknown ResourceType = ""
@@ -46,18 +58,6 @@ func (rt ResourceType) Validate() error {
 	}
 	return nil
 }
-
-var resourceSchema = schema.FieldMap(
-	schema.Fields{
-		"type":     schema.String(),
-		"filename": schema.String(), // TODO(ericsnow) Change to "path"...
-		"comment":  schema.String(),
-	},
-	schema.Defaults{
-		"type":    ResourceTypeFile.String(),
-		"comment": "",
-	},
-)
 
 // ResourceInfo holds the information about a resource, as stored
 // in a charm's metadata.
