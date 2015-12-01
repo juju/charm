@@ -86,6 +86,85 @@ func (s *resourceSuite) TestSchemaMissingComment(c *gc.C) {
 	})
 }
 
+func (s *resourceSuite) TestParseResourceTypeOkay(c *gc.C) {
+	rt, ok := charm.ParseResourceType("file")
+
+	c.Check(ok, jc.IsTrue)
+	c.Check(rt, gc.Equals, charm.ResourceTypeFile)
+}
+
+func (s *resourceSuite) TestParseResourceTypeRecognized(c *gc.C) {
+	supported := []charm.ResourceType{
+		charm.ResourceTypeFile,
+	}
+	for _, expected := range supported {
+		rt, ok := charm.ParseResourceType(expected.String())
+
+		c.Check(ok, jc.IsTrue)
+		c.Check(rt, gc.Equals, expected)
+	}
+}
+
+func (s *resourceSuite) TestParseResourceTypeEmpty(c *gc.C) {
+	rt, ok := charm.ParseResourceType("")
+
+	c.Check(ok, jc.IsFalse)
+	c.Check(rt, gc.Equals, charm.ResourceTypeUnknown)
+}
+
+func (s *resourceSuite) TestParseResourceTypeUnsupported(c *gc.C) {
+	rt, ok := charm.ParseResourceType("spam")
+
+	c.Check(ok, jc.IsFalse)
+	c.Check(rt, gc.Equals, charm.ResourceType("spam"))
+}
+
+func (s *resourceSuite) TestResourceTypeStringSupported(c *gc.C) {
+	supported := map[charm.ResourceType]string{
+		charm.ResourceTypeFile: "file",
+	}
+	for rt, expected := range supported {
+		str := rt.String()
+
+		c.Check(str, gc.Equals, expected)
+	}
+}
+
+func (s *resourceSuite) TestResourceTypeStringUnknown(c *gc.C) {
+	str := charm.ResourceTypeUnknown.String()
+
+	c.Check(str, gc.Equals, "<unknown>")
+}
+
+func (s *resourceSuite) TestResourceTypeStringUnsupported(c *gc.C) {
+	str := charm.ResourceType("spam").String()
+
+	c.Check(str, gc.Equals, "spam")
+}
+
+func (s *resourceSuite) TestResourceTypeValidateSupported(c *gc.C) {
+	supported := []charm.ResourceType{
+		charm.ResourceTypeFile,
+	}
+	for _, rt := range supported {
+		err := rt.Validate()
+
+		c.Check(err, jc.ErrorIsNil)
+	}
+}
+
+func (s *resourceSuite) TestResourceTypeValidateUnknown(c *gc.C) {
+	err := charm.ResourceTypeUnknown.Validate()
+
+	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
+}
+
+func (s *resourceSuite) TestResourceTypeValidateUnsupported(c *gc.C) {
+	err := charm.ResourceType("spam").Validate()
+
+	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
+}
+
 func (s *resourceSuite) TestParseResourceOkay(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
