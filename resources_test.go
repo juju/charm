@@ -286,7 +286,7 @@ func (s *resourceSuite) TestValidateNestedPath(c *gc.C) {
 	}
 	err := resource.Validate()
 
-	c.Check(err, jc.ErrorIsNil)
+	c.Check(err, gc.ErrorMatches, `.*filename cannot contain "/" .*`)
 }
 
 func (s *resourceSuite) TestValidateAbsolutePath(c *gc.C) {
@@ -299,7 +299,7 @@ func (s *resourceSuite) TestValidateAbsolutePath(c *gc.C) {
 	}
 	err := resource.Validate()
 
-	c.Check(err, jc.ErrorIsNil)
+	c.Check(err, gc.ErrorMatches, `.*filename cannot contain "/" .*`)
 }
 
 func (s *resourceSuite) TestValidateSuspectPath(c *gc.C) {
@@ -307,13 +307,12 @@ func (s *resourceSuite) TestValidateSuspectPath(c *gc.C) {
 		ResourceInfo: charm.ResourceInfo{
 			Name: "my-resource",
 			Type: "file",
-			// Though misleading, this value is still a valid path.
 			Path: "git@github.com:juju/juju.git",
 		},
 	}
 	err := resource.Validate()
 
-	c.Check(err, jc.ErrorIsNil)
+	c.Check(err, gc.ErrorMatches, `.*filename cannot contain "/" .*`)
 }
 
 func (s *resourceSuite) TestValidateMissingComment(c *gc.C) {

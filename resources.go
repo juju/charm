@@ -5,6 +5,7 @@ package charm
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/juju/schema"
 )
@@ -42,6 +43,8 @@ type ResourceInfo struct {
 
 	// Type identifies the type of resource (e.g. "file").
 	Type string
+
+	// TODO(ericsnow) Rename Path to Filename?
 
 	// Path is the relative path of the file or directory where the
 	// resource will be stored under the unit's data directory. The path
@@ -97,7 +100,12 @@ func (r ResourceInfo) Validate() error {
 		// TODO(ericsnow) change "filename" to "path"
 		return fmt.Errorf("resource missing filename")
 	}
-	// TODO(ericsnow) Disallow slashes in Path? Constrain to alphanumeric?
+	if r.Type == ResourceTypeFile {
+		if strings.Contains(r.Path, "/") {
+			return fmt.Errorf(`filename cannot contain "/" (got %q)`, r.Path)
+		}
+		// TODO(ericsnow) Constrain Path to alphanumeric?
+	}
 
 	return nil
 }
