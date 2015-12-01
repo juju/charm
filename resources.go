@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/juju/schema"
-	"github.com/juju/utils/set"
 )
 
 // These are the valid resource types.
@@ -15,12 +14,12 @@ const (
 	ResourceTypeFile = "file"
 )
 
-var resourceTypes = set.NewStrings(
-	ResourceTypeFile,
-)
+var resourceTypes = map[string]bool{
+	ResourceTypeFile: true,
+}
 
 func isValidResourceType(value string) bool {
-	return resourceTypes.Contains(value)
+	return resourceTypes[value]
 }
 
 var resourceSchema = schema.FieldMap(
