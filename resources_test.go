@@ -48,7 +48,7 @@ func (s *resourceSuite) TestSchemaMissingType(c *gc.C) {
 func (s *resourceSuite) TestSchemaUnknownType(c *gc.C) {
 	raw := map[interface{}]interface{}{
 		"type":     "repo",
-		"filename": "git@github.com:juju/juju.git",
+		"filename": "juju",
 		"comment":  "One line that is useful when operators need to push it.",
 	}
 	v, err := charm.ResourceSchema.Coerce(raw, nil)
@@ -56,7 +56,7 @@ func (s *resourceSuite) TestSchemaUnknownType(c *gc.C) {
 
 	c.Check(v, jc.DeepEquals, map[string]interface{}{
 		"type":     "repo",
-		"filename": "git@github.com:juju/juju.git",
+		"filename": "juju",
 		"comment":  "One line that is useful when operators need to push it.",
 	})
 }

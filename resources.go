@@ -97,6 +97,7 @@ func (r ResourceInfo) Validate() error {
 		// TODO(ericsnow) change "filename" to "path"
 		return fmt.Errorf("resource missing filename")
 	}
+	// TODO(ericsnow) Disallow slashes in Path? Constrain to alphanumeric?
 
 	return nil
 }
