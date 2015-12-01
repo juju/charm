@@ -10,11 +10,11 @@ import (
 	"gopkg.in/juju/charm.v6-unstable/resource"
 )
 
-var _ = gc.Suite(&resourceSuite{})
+var _ = gc.Suite(&ResourceSuite{})
 
-type resourceSuite struct{}
+type ResourceSuite struct{}
 
-func (s *resourceSuite) TestParseOkay(c *gc.C) {
+func (s *ResourceSuite) TestParseOkay(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
 		"type":     "file",
@@ -33,7 +33,7 @@ func (s *resourceSuite) TestParseOkay(c *gc.C) {
 	})
 }
 
-func (s *resourceSuite) TestParseMissingName(c *gc.C) {
+func (s *ResourceSuite) TestParseMissingName(c *gc.C) {
 	name := ""
 	data := map[string]interface{}{
 		"type":     "file",
@@ -52,7 +52,7 @@ func (s *resourceSuite) TestParseMissingName(c *gc.C) {
 	})
 }
 
-func (s *resourceSuite) TestParseMissingType(c *gc.C) {
+func (s *ResourceSuite) TestParseMissingType(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
 		"filename": "filename.tgz",
@@ -70,7 +70,7 @@ func (s *resourceSuite) TestParseMissingType(c *gc.C) {
 	})
 }
 
-func (s *resourceSuite) TestParseMissingPath(c *gc.C) {
+func (s *ResourceSuite) TestParseMissingPath(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
 		"type":    "file",
@@ -88,7 +88,7 @@ func (s *resourceSuite) TestParseMissingPath(c *gc.C) {
 	})
 }
 
-func (s *resourceSuite) TestParseMissingComment(c *gc.C) {
+func (s *ResourceSuite) TestParseMissingComment(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
 		"type":     "file",
@@ -106,7 +106,7 @@ func (s *resourceSuite) TestParseMissingComment(c *gc.C) {
 	})
 }
 
-func (s *resourceSuite) TestParseEmpty(c *gc.C) {
+func (s *ResourceSuite) TestParseEmpty(c *gc.C) {
 	name := "my-resource"
 	data := make(map[string]interface{})
 	res := resource.Parse(name, data)
@@ -118,7 +118,7 @@ func (s *resourceSuite) TestParseEmpty(c *gc.C) {
 	})
 }
 
-func (s *resourceSuite) TestParseNil(c *gc.C) {
+func (s *ResourceSuite) TestParseNil(c *gc.C) {
 	name := "my-resource"
 	var data map[string]interface{}
 	res := resource.Parse(name, data)
@@ -130,7 +130,7 @@ func (s *resourceSuite) TestParseNil(c *gc.C) {
 	})
 }
 
-func (s *resourceSuite) TestValidateFull(c *gc.C) {
+func (s *ResourceSuite) TestValidateFull(c *gc.C) {
 	res := resource.Resource{
 		Info: resource.Info{
 			Name:    "my-resource",
@@ -144,14 +144,14 @@ func (s *resourceSuite) TestValidateFull(c *gc.C) {
 	c.Check(err, jc.ErrorIsNil)
 }
 
-func (s *resourceSuite) TestValidateZeroValue(c *gc.C) {
+func (s *ResourceSuite) TestValidateZeroValue(c *gc.C) {
 	var res resource.Resource
 	err := res.Validate()
 
 	c.Check(err, gc.NotNil)
 }
 
-func (s *resourceSuite) TestValidateMissingName(c *gc.C) {
+func (s *ResourceSuite) TestValidateMissingName(c *gc.C) {
 	res := resource.Resource{
 		Info: resource.Info{
 			Type:    resource.TypeFile,
@@ -164,7 +164,7 @@ func (s *resourceSuite) TestValidateMissingName(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `resource missing name`)
 }
 
-func (s *resourceSuite) TestValidateMissingType(c *gc.C) {
+func (s *ResourceSuite) TestValidateMissingType(c *gc.C) {
 	res := resource.Resource{
 		Info: resource.Info{
 			Name:    "my-resource",
@@ -177,7 +177,7 @@ func (s *resourceSuite) TestValidateMissingType(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `resource missing type`)
 }
 
-func (s *resourceSuite) TestValidateUnknownType(c *gc.C) {
+func (s *ResourceSuite) TestValidateUnknownType(c *gc.C) {
 	res := resource.Resource{
 		Info: resource.Info{
 			Name:    "my-resource",
@@ -191,7 +191,7 @@ func (s *resourceSuite) TestValidateUnknownType(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `.*unsupported resource type .*`)
 }
 
-func (s *resourceSuite) TestValidateMissingPath(c *gc.C) {
+func (s *ResourceSuite) TestValidateMissingPath(c *gc.C) {
 	res := resource.Resource{
 		Info: resource.Info{
 			Name:    "my-resource",
@@ -204,7 +204,7 @@ func (s *resourceSuite) TestValidateMissingPath(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `resource missing filename`)
 }
 
-func (s *resourceSuite) TestValidateNestedPath(c *gc.C) {
+func (s *ResourceSuite) TestValidateNestedPath(c *gc.C) {
 	res := resource.Resource{
 		Info: resource.Info{
 			Name: "my-resource",
@@ -217,7 +217,7 @@ func (s *resourceSuite) TestValidateNestedPath(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `.*filename cannot contain "/" .*`)
 }
 
-func (s *resourceSuite) TestValidateAbsolutePath(c *gc.C) {
+func (s *ResourceSuite) TestValidateAbsolutePath(c *gc.C) {
 	res := resource.Resource{
 		Info: resource.Info{
 			Name: "my-resource",
@@ -230,7 +230,7 @@ func (s *resourceSuite) TestValidateAbsolutePath(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `.*filename cannot contain "/" .*`)
 }
 
-func (s *resourceSuite) TestValidateSuspectPath(c *gc.C) {
+func (s *ResourceSuite) TestValidateSuspectPath(c *gc.C) {
 	res := resource.Resource{
 		Info: resource.Info{
 			Name: "my-resource",
@@ -243,7 +243,7 @@ func (s *resourceSuite) TestValidateSuspectPath(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `.*filename cannot contain "/" .*`)
 }
 
-func (s *resourceSuite) TestValidateMissingComment(c *gc.C) {
+func (s *ResourceSuite) TestValidateMissingComment(c *gc.C) {
 	res := resource.Resource{
 		Info: resource.Info{
 			Name: "my-resource",
