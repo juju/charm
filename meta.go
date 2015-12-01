@@ -457,13 +457,8 @@ func (meta Meta) Check() error {
 		}
 	}
 
-	for name, resource := range meta.Resources {
-		if resource.Name != name {
-			return fmt.Errorf("mismatch on resource name (%q != %q)", resource.Name, name)
-		}
-		if err := resource.Validate(); err != nil {
-			return err
-		}
+	if err := ValidateNamedResources(meta.Resources); err != nil {
+		return err
 	}
 
 	for _, term := range meta.Terms {

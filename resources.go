@@ -174,3 +174,17 @@ func (r Resource) Validate() error {
 
 	return nil
 }
+
+// ValidateNamedResources ensures that the resources are valid and that
+// their names match the provided names.
+func ValidateNamedResources(resources map[string]Resource) error {
+	for name, resource := range resources {
+		if resource.Name != name {
+			return fmt.Errorf("mismatch on resource name (%q != %q)", resource.Name, name)
+		}
+		if err := resource.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
