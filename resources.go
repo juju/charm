@@ -10,46 +10,39 @@ import (
 	"github.com/juju/schema"
 )
 
-// These are the valid resource types (except for invalid and unknown).
+// These are the valid resource types (except for unknown).
 const (
-	ResourceTypeUnknown ResourceType = iota
-	ResourceTypeFile
-
-	ResourceTypeInvalid ResourceType = -1
+	ResourceTypeUnknown ResourceType = ""
+	ResourceTypeFile    ResourceType = "file"
 )
 
-var resourceTypes = map[ResourceType]string{
-	ResourceTypeFile: "file",
+var resourceTypes = map[ResourceType]bool{
+	ResourceTypeFile: true,
 }
 
 // ResourceType enumerates the recognized resource types.
-type ResourceType int
+type ResourceType string
 
 // ParseResourceType converts a string to a ResourceType. If the given
 // value does not match a recognized type then ResourceTypeUnknown and
 // false are returned.
 func ParseResourceType(value string) (ResourceType, bool) {
-	for rt, str := range resourceTypes {
-		if value == str {
-			return rt, true
-		}
-	}
-	return ResourceTypeInvalid, false
+	rt := ResourceType(value)
+	return rt, resourceTypes[rt]
 }
 
 // String returns the printable representation of the type.
 func (rt ResourceType) String() string {
-	str, ok := resourceTypes[rt]
-	if !ok {
+	if rt == "" {
 		return "<unknown>"
 	}
-	return str
+	return string(rt)
 }
 
 // Validate ensures that the type is valid.
 func (rt ResourceType) Validate() error {
 	if _, ok := resourceTypes[rt]; !ok {
-		return fmt.Errorf("unrecognized resource type %v", rt)
+		return fmt.Errorf("unsupported resource type %v", rt)
 	}
 	return nil
 }

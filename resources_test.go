@@ -253,14 +253,14 @@ func (s *resourceSuite) TestValidateUnknownType(c *gc.C) {
 	resource := charm.Resource{
 		ResourceInfo: charm.ResourceInfo{
 			Name:    "my-resource",
-			Type:    charm.ResourceTypeInvalid,
+			Type:    "repo",
 			Path:    "repo-root",
 			Comment: "One line that is useful when operators need to push it.",
 		},
 	}
 	err := resource.Validate()
 
-	c.Check(err, gc.ErrorMatches, `.*unrecognized resource type .*`)
+	c.Check(err, gc.ErrorMatches, `.*unsupported resource type .*`)
 }
 
 func (s *resourceSuite) TestValidateMissingPath(c *gc.C) {
