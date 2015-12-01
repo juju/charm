@@ -17,6 +17,7 @@ import (
 	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v6-unstable/hooks"
+	"gopkg.in/juju/charm.v6-unstable/resource"
 )
 
 // RelationScope describes the scope of a relation.
@@ -180,21 +181,22 @@ func (r Relation) IsImplicit() bool {
 // only applies to JSON because Meta has a custom
 // YAML marshaller.
 type Meta struct {
-	Name           string                  `bson:"name" json:"Name"`
-	Summary        string                  `bson:"summary" json:"Summary"`
-	Description    string                  `bson:"description" json:"Description"`
-	Subordinate    bool                    `bson:"subordinate" json:"Subordinate"`
-	Provides       map[string]Relation     `bson:"provides,omitempty" json:"Provides,omitempty"`
-	Requires       map[string]Relation     `bson:"requires,omitempty" json:"Requires,omitempty"`
-	Peers          map[string]Relation     `bson:"peers,omitempty" json:"Peers,omitempty"`
-	Format         int                     `bson:"format,omitempty" json:"Format,omitempty"`
-	OldRevision    int                     `bson:"oldrevision,omitempty" json:"OldRevision"` // Obsolete
-	Categories     []string                `bson:"categories,omitempty" json:"Categories,omitempty"`
-	Tags           []string                `bson:"tags,omitempty" json:"Tags,omitempty"`
-	Series         []string                `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
-	Storage        map[string]Storage      `bson:"storage,omitempty" json:"Storage,omitempty"`
-	PayloadClasses map[string]PayloadClass `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
-	Terms          []string                `bson:"terms,omitempty" json:"Terms,omitempty`
+	Name           string                       `bson:"name" json:"Name"`
+	Summary        string                       `bson:"summary" json:"Summary"`
+	Description    string                       `bson:"description" json:"Description"`
+	Subordinate    bool                         `bson:"subordinate" json:"Subordinate"`
+	Provides       map[string]Relation          `bson:"provides,omitempty" json:"Provides,omitempty"`
+	Requires       map[string]Relation          `bson:"requires,omitempty" json:"Requires,omitempty"`
+	Peers          map[string]Relation          `bson:"peers,omitempty" json:"Peers,omitempty"`
+	Format         int                          `bson:"format,omitempty" json:"Format,omitempty"`
+	OldRevision    int                          `bson:"oldrevision,omitempty" json:"OldRevision"` // Obsolete
+	Categories     []string                     `bson:"categories,omitempty" json:"Categories,omitempty"`
+	Tags           []string                     `bson:"tags,omitempty" json:"Tags,omitempty"`
+	Series         []string                     `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
+	Storage        map[string]Storage           `bson:"storage,omitempty" json:"Storage,omitempty"`
+	PayloadClasses map[string]PayloadClass      `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
+	Resources      map[string]resource.Resource `bson:"resources,omitempty" json:"Resources,omitempty"`
+	Terms          []string                     `bson:"terms,omitempty" json:"Terms,omitempty`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -287,6 +289,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
+	meta.Resources = parseResources(m["resources"])
 	if err := meta.Check(); err != nil {
 		return nil, err
 	}
@@ -453,6 +456,10 @@ func (meta Meta) Check() error {
 		if err := payloadClass.Validate(); err != nil {
 			return err
 		}
+	}
+
+	if err := validateResources(meta.Resources); err != nil {
+		return err
 	}
 
 	for _, term := range meta.Terms {
@@ -699,6 +706,7 @@ var charmSchema = schema.FieldMap(
 		"series":      schema.List(schema.String()),
 		"storage":     schema.StringMap(storageSchema),
 		"payloads":    schema.StringMap(payloadClassSchema),
+		"resources":   schema.StringMap(resourceSchema),
 		"terms":       schema.List(schema.String()),
 	},
 	schema.Defaults{
@@ -713,6 +721,7 @@ var charmSchema = schema.FieldMap(
 		"series":      schema.Omit,
 		"storage":     schema.Omit,
 		"payloads":    schema.Omit,
+		"resources":   schema.Omit,
 		"terms":       schema.Omit,
 	},
 )

@@ -17,6 +17,7 @@ import (
 	"gopkg.in/yaml.v1"
 
 	"gopkg.in/juju/charm.v6-unstable"
+	"gopkg.in/juju/charm.v6-unstable/resource"
 )
 
 func repoMeta(c *gc.C, name string) io.Reader {
@@ -847,6 +848,41 @@ payloads:
 		"kvm-guest": charm.PayloadClass{
 			Name: "kvm-guest",
 			Type: "kvm",
+		},
+	})
+}
+
+func (s *MetaSuite) TestResources(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+resources:
+    resource-name:
+        type: file
+        filename: filename.tgz
+        comment: "One line that is useful when operators need to push it."
+    other-resource:
+        type: file
+        filename: other.zip
+`))
+	c.Assert(err, gc.IsNil)
+
+	c.Check(meta.Resources, jc.DeepEquals, map[string]resource.Resource{
+		"resource-name": resource.Resource{
+			Info: resource.Info{
+				Name:    "resource-name",
+				Type:    resource.TypeFile,
+				Path:    "filename.tgz",
+				Comment: "One line that is useful when operators need to push it.",
+			},
+		},
+		"other-resource": resource.Resource{
+			Info: resource.Info{
+				Name: "other-resource",
+				Type: resource.TypeFile,
+				Path: "other.zip",
+			},
 		},
 	})
 }

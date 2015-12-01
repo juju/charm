@@ -10,6 +10,7 @@ var (
 	ValidateValue = validateValue
 
 	ParsePayloadClass = parsePayloadClass
+	ResourceSchema    = resourceSchema
 )
 
 func MissingSeriesError() error {
