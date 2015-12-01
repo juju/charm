@@ -107,7 +107,7 @@ func parseResourceInfo(name string, data interface{}) ResourceInfo {
 	return info
 }
 
-// Validate checks the payload class to ensure its data is valid.
+// Validate checks the resource info to ensure the data is valid.
 func (r ResourceInfo) Validate() error {
 	if r.Name == "" {
 		return fmt.Errorf("resource missing name")
