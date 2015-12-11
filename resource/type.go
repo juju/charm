@@ -5,6 +5,8 @@ package resource
 
 import (
 	"fmt"
+
+	"github.com/juju/errors"
 )
 
 // These are the valid resource types (except for unknown).
@@ -39,7 +41,8 @@ func (rt Type) String() string {
 // Validate ensures that the type is valid.
 func (rt Type) Validate() error {
 	if _, ok := types[rt]; !ok {
-		return fmt.Errorf("unsupported resource type %v", rt)
+		msg := fmt.Sprintf("unsupported resource type %v", rt)
+		return errors.NewNotValid(nil, msg)
 	}
 	return nil
 }

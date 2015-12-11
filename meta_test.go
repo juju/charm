@@ -868,21 +868,17 @@ resources:
 `))
 	c.Assert(err, gc.IsNil)
 
-	c.Check(meta.Resources, jc.DeepEquals, map[string]resource.Resource{
-		"resource-name": resource.Resource{
-			Info: resource.Info{
-				Name:    "resource-name",
-				Type:    resource.TypeFile,
-				Path:    "filename.tgz",
-				Comment: "One line that is useful when operators need to push it.",
-			},
+	c.Check(meta.Resources, jc.DeepEquals, map[string]resource.Meta{
+		"resource-name": resource.Meta{
+			Name:    "resource-name",
+			Type:    resource.TypeFile,
+			Path:    "filename.tgz",
+			Comment: "One line that is useful when operators need to push it.",
 		},
-		"other-resource": resource.Resource{
-			Info: resource.Info{
-				Name: "other-resource",
-				Type: resource.TypeFile,
-				Path: "other.zip",
-			},
+		"other-resource": resource.Meta{
+			Name: "other-resource",
+			Type: resource.TypeFile,
+			Path: "other.zip",
 		},
 	})
 }

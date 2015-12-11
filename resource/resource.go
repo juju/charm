@@ -3,30 +3,34 @@
 
 package resource
 
-// Resource is the definition for a resource that a charm uses.
+import (
+	"github.com/juju/errors"
+)
+
+// Resource describes a charm's resource in the charm store.
 type Resource struct {
-	Info
+	Meta
 
-	// TODO(ericsnow) Add (e.g. "upload", "store"):
-	//Origin string
+	// Revision is the charm store revision of the resource.
+	Revision int
 
-	// TODO(ericsnow) Add for charm store:
-	//Revision int
-}
-
-// Parse converts the provided data into a Resource.
-func Parse(name string, data interface{}) Resource {
-	resource := Resource{
-		Info: parseInfo(name, data),
-	}
-
-	return resource
+	// Fingerprint is the SHA-384 checksum for the resource blob.
+	Fingerprint string
 }
 
 // Validate checks the payload class to ensure its data is valid.
-func (r Resource) Validate() error {
-	if err := r.Info.Validate(); err != nil {
-		return err
+func (res Resource) Validate() error {
+	if err := res.Meta.Validate(); err != nil {
+		return errors.Annotate(err, "invalid resource (bad metadata)")
+	}
+
+	if res.Revision < 0 {
+		return errors.NewNotValid(nil, "invalid resource (revision must be non-negative)")
+	}
+
+	// TODO(ericsnow) Ensure Fingerprint is a valid SHA-384 hash?
+	if len(res.Fingerprint) == 0 {
+		return errors.NewNotValid(nil, "invalid resource (missing fingerprint)")
 	}
 
 	return nil

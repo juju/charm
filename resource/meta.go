@@ -6,11 +6,13 @@ package resource
 import (
 	"fmt"
 	"strings"
+
+	"github.com/juju/errors"
 )
 
-// Info holds the information about a resource, as stored
+// Meta holds the information about a resource, as stored
 // in a charm's metadata.
-type Info struct {
+type Meta struct {
 	// Name identifies the resource.
 	Name string
 
@@ -32,50 +34,53 @@ type Info struct {
 	Comment string
 }
 
-func parseInfo(name string, data interface{}) Info {
-	var info Info
-	info.Name = name
+// ParseMeta parses the provided data into a Meta.
+func ParseMeta(name string, data interface{}) Meta {
+	var meta Meta
+	meta.Name = name
 
 	if data == nil {
-		return info
+		return meta
 	}
 	rMap := data.(map[string]interface{})
 
 	if val := rMap["type"]; val != nil {
-		info.Type, _ = ParseType(val.(string))
+		meta.Type, _ = ParseType(val.(string))
 	}
 
 	if val := rMap["filename"]; val != nil {
-		info.Path = val.(string)
+		meta.Path = val.(string)
 	}
 
 	if val := rMap["comment"]; val != nil {
-		info.Comment = val.(string)
+		meta.Comment = val.(string)
 	}
 
-	return info
+	return meta
 }
 
-// Validate checks the resource info to ensure the data is valid.
-func (r Info) Validate() error {
-	if r.Name == "" {
-		return fmt.Errorf("resource missing name")
+// Validate checks the resource metadata to ensure the data is valid.
+func (meta Meta) Validate() error {
+	if meta.Name == "" {
+		return errors.NewNotValid(nil, "resource missing name")
 	}
 
-	if r.Type == TypeUnknown {
-		return fmt.Errorf("resource missing type")
+	if meta.Type == TypeUnknown {
+		return errors.NewNotValid(nil, "resource missing type")
 	}
-	if err := r.Type.Validate(); err != nil {
-		return fmt.Errorf("invalid resource type %v: %v", r.Type, err)
+	if err := meta.Type.Validate(); err != nil {
+		msg := fmt.Sprintf("invalid resource type %v: %v", meta.Type, err)
+		return errors.NewNotValid(nil, msg)
 	}
 
-	if r.Path == "" {
+	if meta.Path == "" {
 		// TODO(ericsnow) change "filename" to "path"
-		return fmt.Errorf("resource missing filename")
+		return errors.NewNotValid(nil, "resource missing filename")
 	}
-	if r.Type == TypeFile {
-		if strings.Contains(r.Path, "/") {
-			return fmt.Errorf(`filename cannot contain "/" (got %q)`, r.Path)
+	if meta.Type == TypeFile {
+		if strings.Contains(meta.Path, "/") {
+			msg := fmt.Sprintf(`filename cannot contain "/" (got %q)`, meta.Path)
+			return errors.NewNotValid(nil, msg)
 		}
 		// TODO(ericsnow) Constrain Path to alphanumeric?
 	}
