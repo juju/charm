@@ -11,6 +11,8 @@ import (
 	"gopkg.in/juju/charm.v6-unstable/resource"
 )
 
+var fingerprint = []byte("123456789012345678901234567890123456789012345678")
+
 var _ = gc.Suite(&ResourceSuite{})
 
 type ResourceSuite struct{}
@@ -24,7 +26,7 @@ func (s *ResourceSuite) TestValidateFull(c *gc.C) {
 			Comment: "One line that is useful when operators need to push it.",
 		},
 		Revision:    1,
-		Fingerprint: "deadbeef",
+		Fingerprint: resource.NewFingerprint(fingerprint),
 	}
 	err := res.Validate()
 
@@ -45,7 +47,7 @@ func (s *ResourceSuite) TestValidateBadMetadata(c *gc.C) {
 	res := resource.Resource{
 		Meta:        meta,
 		Revision:    1,
-		Fingerprint: "deadbeef",
+		Fingerprint: resource.NewFingerprint(fingerprint),
 	}
 	err := res.Validate()
 
@@ -62,7 +64,7 @@ func (s *ResourceSuite) TestValidateBadRevision(c *gc.C) {
 			Comment: "One line that is useful when operators need to push it.",
 		},
 		Revision:    -1,
-		Fingerprint: "deadbeef",
+		Fingerprint: resource.NewFingerprint(fingerprint),
 	}
 	err := res.Validate()
 
@@ -71,6 +73,9 @@ func (s *ResourceSuite) TestValidateBadRevision(c *gc.C) {
 }
 
 func (s *ResourceSuite) TestValidateBadFingerprint(c *gc.C) {
+	var fp resource.Fingerprint
+	c.Assert(fp.Validate, gc.NotNil)
+
 	res := resource.Resource{
 		Meta: resource.Meta{
 			Name:    "my-resource",
@@ -79,10 +84,10 @@ func (s *ResourceSuite) TestValidateBadFingerprint(c *gc.C) {
 			Comment: "One line that is useful when operators need to push it.",
 		},
 		Revision:    1,
-		Fingerprint: "",
+		Fingerprint: fp,
 	}
 	err := res.Validate()
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `.*missing fingerprint.*`)
+	c.Check(err, gc.ErrorMatches, `.*bad fingerprint.*`)
 }
