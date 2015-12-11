@@ -3,30 +3,26 @@
 
 package resource
 
-// Resource is the definition for a resource that a charm uses.
+import (
+	"github.com/juju/errors"
+)
+
+// Resource describes a charm's resource in the charm store.
 type Resource struct {
 	Meta
 
-	// TODO(ericsnow) Add (e.g. "upload", "store"):
-	//Origin string
-
-	// TODO(ericsnow) Add for charm store:
-	//Revision int
-}
-
-// Parse converts the provided data into a Resource.
-func Parse(name string, data interface{}) Resource {
-	resource := Resource{
-		Meta: ParseMeta(name, data),
-	}
-
-	return resource
+	// Revision is the charm store revision of the resource.
+	Revision int
 }
 
 // Validate checks the payload class to ensure its data is valid.
-func (res Resource) Validate() error {
-	if err := res.Meta.Validate(); err != nil {
-		return err
+func (r Resource) Validate() error {
+	if err := r.Meta.Validate(); err != nil {
+		return errors.Annotate(err, "bad metadata")
+	}
+
+	if r.Revision < 0 {
+		return errors.NewNotValid(nil, "invalid resource (revision must be non-negative)")
 	}
 
 	return nil
