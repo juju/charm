@@ -23,20 +23,20 @@ var resourceSchema = schema.FieldMap(
 	},
 )
 
-func parseResources(data interface{}) map[string]resource.Resource {
+func parseMetaResources(data interface{}) map[string]resource.Meta {
 	if data == nil {
 		return nil
 	}
 
-	result := make(map[string]resource.Resource)
+	result := make(map[string]resource.Meta)
 	for name, val := range data.(map[string]interface{}) {
-		result[name] = resource.Parse(name, val)
+		result[name] = resource.ParseMeta(name, val)
 	}
 
 	return result
 }
 
-func validateResources(resources map[string]resource.Resource) error {
+func validateMetaResources(resources map[string]resource.Meta) error {
 	for name, res := range resources {
 		if res.Name != name {
 			return fmt.Errorf("mismatch on resource name (%q != %q)", res.Name, name)

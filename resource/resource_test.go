@@ -24,7 +24,7 @@ func (s *ResourceSuite) TestParseOkay(c *gc.C) {
 	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name:    "my-resource",
 			Type:    resource.TypeFile,
 			Path:    "filename.tgz",
@@ -43,7 +43,7 @@ func (s *ResourceSuite) TestParseMissingName(c *gc.C) {
 	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name:    "",
 			Type:    resource.TypeFile,
 			Path:    "filename.tgz",
@@ -61,7 +61,7 @@ func (s *ResourceSuite) TestParseMissingType(c *gc.C) {
 	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name:    "my-resource",
 			Type:    resource.TypeUnknown,
 			Path:    "filename.tgz",
@@ -79,7 +79,7 @@ func (s *ResourceSuite) TestParseMissingPath(c *gc.C) {
 	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name:    "my-resource",
 			Type:    resource.TypeFile,
 			Path:    "",
@@ -97,7 +97,7 @@ func (s *ResourceSuite) TestParseMissingComment(c *gc.C) {
 	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name:    "my-resource",
 			Type:    resource.TypeFile,
 			Path:    "filename.tgz",
@@ -112,7 +112,7 @@ func (s *ResourceSuite) TestParseEmpty(c *gc.C) {
 	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name: "my-resource",
 		},
 	})
@@ -124,7 +124,7 @@ func (s *ResourceSuite) TestParseNil(c *gc.C) {
 	res := resource.Parse(name, data)
 
 	c.Check(res, jc.DeepEquals, resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name: "my-resource",
 		},
 	})
@@ -132,7 +132,7 @@ func (s *ResourceSuite) TestParseNil(c *gc.C) {
 
 func (s *ResourceSuite) TestValidateFull(c *gc.C) {
 	res := resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name:    "my-resource",
 			Type:    resource.TypeFile,
 			Path:    "filename.tgz",
@@ -153,7 +153,7 @@ func (s *ResourceSuite) TestValidateZeroValue(c *gc.C) {
 
 func (s *ResourceSuite) TestValidateMissingName(c *gc.C) {
 	res := resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Type:    resource.TypeFile,
 			Path:    "filename.tgz",
 			Comment: "One line that is useful when operators need to push it.",
@@ -166,7 +166,7 @@ func (s *ResourceSuite) TestValidateMissingName(c *gc.C) {
 
 func (s *ResourceSuite) TestValidateMissingType(c *gc.C) {
 	res := resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name:    "my-resource",
 			Path:    "filename.tgz",
 			Comment: "One line that is useful when operators need to push it.",
@@ -179,7 +179,7 @@ func (s *ResourceSuite) TestValidateMissingType(c *gc.C) {
 
 func (s *ResourceSuite) TestValidateUnknownType(c *gc.C) {
 	res := resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name:    "my-resource",
 			Type:    "repo",
 			Path:    "repo-root",
@@ -193,7 +193,7 @@ func (s *ResourceSuite) TestValidateUnknownType(c *gc.C) {
 
 func (s *ResourceSuite) TestValidateMissingPath(c *gc.C) {
 	res := resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name:    "my-resource",
 			Type:    resource.TypeFile,
 			Comment: "One line that is useful when operators need to push it.",
@@ -206,7 +206,7 @@ func (s *ResourceSuite) TestValidateMissingPath(c *gc.C) {
 
 func (s *ResourceSuite) TestValidateNestedPath(c *gc.C) {
 	res := resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name: "my-resource",
 			Type: resource.TypeFile,
 			Path: "spam/eggs",
@@ -219,7 +219,7 @@ func (s *ResourceSuite) TestValidateNestedPath(c *gc.C) {
 
 func (s *ResourceSuite) TestValidateAbsolutePath(c *gc.C) {
 	res := resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name: "my-resource",
 			Type: resource.TypeFile,
 			Path: "/spam/eggs",
@@ -232,7 +232,7 @@ func (s *ResourceSuite) TestValidateAbsolutePath(c *gc.C) {
 
 func (s *ResourceSuite) TestValidateSuspectPath(c *gc.C) {
 	res := resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name: "my-resource",
 			Type: resource.TypeFile,
 			Path: "git@github.com:juju/juju.git",
@@ -245,7 +245,7 @@ func (s *ResourceSuite) TestValidateSuspectPath(c *gc.C) {
 
 func (s *ResourceSuite) TestValidateMissingComment(c *gc.C) {
 	res := resource.Resource{
-		Info: resource.Info{
+		Meta: resource.Meta{
 			Name: "my-resource",
 			Type: resource.TypeFile,
 			Path: "filename.tgz",

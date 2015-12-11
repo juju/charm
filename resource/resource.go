@@ -5,7 +5,7 @@ package resource
 
 // Resource is the definition for a resource that a charm uses.
 type Resource struct {
-	Info
+	Meta
 
 	// TODO(ericsnow) Add (e.g. "upload", "store"):
 	//Origin string
@@ -17,15 +17,15 @@ type Resource struct {
 // Parse converts the provided data into a Resource.
 func Parse(name string, data interface{}) Resource {
 	resource := Resource{
-		Info: parseInfo(name, data),
+		Meta: ParseMeta(name, data),
 	}
 
 	return resource
 }
 
 // Validate checks the payload class to ensure its data is valid.
-func (r Resource) Validate() error {
-	if err := r.Info.Validate(); err != nil {
+func (res Resource) Validate() error {
+	if err := res.Meta.Validate(); err != nil {
 		return err
 	}
 
