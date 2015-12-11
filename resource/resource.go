@@ -13,16 +13,24 @@ type Resource struct {
 
 	// Revision is the charm store revision of the resource.
 	Revision int
+
+	// Fingerprint is the SHA-384 checksum for the resource blob.
+	Fingerprint string
 }
 
 // Validate checks the payload class to ensure its data is valid.
-func (r Resource) Validate() error {
-	if err := r.Meta.Validate(); err != nil {
-		return errors.Annotate(err, "bad metadata")
+func (res Resource) Validate() error {
+	if err := res.Meta.Validate(); err != nil {
+		return errors.Annotate(err, "invalid resource (bad metadata)")
 	}
 
-	if r.Revision < 0 {
+	if res.Revision < 0 {
 		return errors.NewNotValid(nil, "invalid resource (revision must be non-negative)")
+	}
+
+	// TODO(ericsnow) Ensure Fingerprint is a valid SHA-384 hash?
+	if len(res.Fingerprint) == 0 {
+		return errors.NewNotValid(nil, "invalid resource (missing fingerprint)")
 	}
 
 	return nil

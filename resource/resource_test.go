@@ -23,7 +23,8 @@ func (s *ResourceSuite) TestValidateFull(c *gc.C) {
 			Path:    "filename.tgz",
 			Comment: "One line that is useful when operators need to push it.",
 		},
-		Revision: 1,
+		Revision:    1,
+		Fingerprint: "deadbeef",
 	}
 	err := res.Validate()
 
@@ -42,8 +43,9 @@ func (s *ResourceSuite) TestValidateBadMetadata(c *gc.C) {
 	c.Assert(meta.Validate(), gc.NotNil)
 
 	res := resource.Resource{
-		Meta:     meta,
-		Revision: 1,
+		Meta:        meta,
+		Revision:    1,
+		Fingerprint: "deadbeef",
 	}
 	err := res.Validate()
 
@@ -59,10 +61,28 @@ func (s *ResourceSuite) TestValidateBadRevision(c *gc.C) {
 			Path:    "filename.tgz",
 			Comment: "One line that is useful when operators need to push it.",
 		},
-		Revision: -1,
+		Revision:    -1,
+		Fingerprint: "deadbeef",
 	}
 	err := res.Validate()
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
 	c.Check(err, gc.ErrorMatches, `.*revision must be non-negative.*`)
+}
+
+func (s *ResourceSuite) TestValidateBadFingerprint(c *gc.C) {
+	res := resource.Resource{
+		Meta: resource.Meta{
+			Name:    "my-resource",
+			Type:    resource.TypeFile,
+			Path:    "filename.tgz",
+			Comment: "One line that is useful when operators need to push it.",
+		},
+		Revision:    1,
+		Fingerprint: "",
+	}
+	err := res.Validate()
+
+	c.Check(err, jc.Satisfies, errors.IsNotValid)
+	c.Check(err, gc.ErrorMatches, `.*missing fingerprint.*`)
 }
