@@ -18,6 +18,8 @@ var _ = gc.Suite(&ResourceSuite{})
 type ResourceSuite struct{}
 
 func (s *ResourceSuite) TestValidateFull(c *gc.C) {
+	fp, err := resource.NewFingerprint(fingerprint)
+	c.Assert(err, jc.ErrorIsNil)
 	res := resource.Resource{
 		Meta: resource.Meta{
 			Name:    "my-resource",
@@ -26,9 +28,9 @@ func (s *ResourceSuite) TestValidateFull(c *gc.C) {
 			Comment: "One line that is useful when operators need to push it.",
 		},
 		Revision:    1,
-		Fingerprint: resource.NewFingerprint(fingerprint),
+		Fingerprint: fp,
 	}
-	err := res.Validate()
+	err = res.Validate()
 
 	c.Check(err, jc.ErrorIsNil)
 }
@@ -44,18 +46,22 @@ func (s *ResourceSuite) TestValidateBadMetadata(c *gc.C) {
 	var meta resource.Meta
 	c.Assert(meta.Validate(), gc.NotNil)
 
+	fp, err := resource.NewFingerprint(fingerprint)
+	c.Assert(err, jc.ErrorIsNil)
 	res := resource.Resource{
 		Meta:        meta,
 		Revision:    1,
-		Fingerprint: resource.NewFingerprint(fingerprint),
+		Fingerprint: fp,
 	}
-	err := res.Validate()
+	err = res.Validate()
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
 	c.Check(err, gc.ErrorMatches, `.*bad metadata.*`)
 }
 
 func (s *ResourceSuite) TestValidateBadRevision(c *gc.C) {
+	fp, err := resource.NewFingerprint(fingerprint)
+	c.Assert(err, jc.ErrorIsNil)
 	res := resource.Resource{
 		Meta: resource.Meta{
 			Name:    "my-resource",
@@ -64,9 +70,9 @@ func (s *ResourceSuite) TestValidateBadRevision(c *gc.C) {
 			Comment: "One line that is useful when operators need to push it.",
 		},
 		Revision:    -1,
-		Fingerprint: resource.NewFingerprint(fingerprint),
+		Fingerprint: fp,
 	}
-	err := res.Validate()
+	err = res.Validate()
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
 	c.Check(err, gc.ErrorMatches, `.*revision must be non-negative.*`)

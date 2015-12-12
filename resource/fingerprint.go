@@ -5,7 +5,7 @@ package resource
 
 import (
 	"crypto/sha512"
-	"fmt"
+	"encoding/hex"
 
 	"github.com/juju/errors"
 )
@@ -14,46 +14,52 @@ const fingerprintSize = 48 // 384 / 8
 
 // Fingerprint represents the unique fingerprint value of a resource's data.
 type Fingerprint struct {
-	raw []byte
+	raw string
 }
 
-// NewFingerprint returns a resource fingerprint using the provded hash.
-// The data is not checked for correctness.
-func NewFingerprint(raw []byte) Fingerprint {
+// NewFingerprint returns wraps the provided raw fingerprint.
+func NewFingerprint(raw []byte) (Fingerprint, error) {
 	fp := Fingerprint{
-		raw: raw,
+		raw: string(raw),
 	}
-
-	return fp
+	if err := fp.validate(); err != nil {
+		return fp, errors.Trace(err)
+	}
+	return fp, nil
 }
 
-// BuildFingerprint returns the resource fingerprint for the provded data.
-func BuildFingerprint(data []byte) (Fingerprint, error) {
+// GenerateFingerprint returns the fingerprint for the provided data.
+func GenerateFingerprint(data []byte) (Fingerprint, error) {
 	var fp Fingerprint
 
 	hash := sha512.New384()
 	if _, err := hash.Write([]byte(data)); err != nil {
 		return fp, errors.Trace(err)
 	}
-	fp.raw = hash.Sum(nil)
+	fp.raw = string(hash.Sum(nil))
 
 	return fp, nil
 }
 
-// Raw returns the underlying hash for the fingerprint.
-func (fp Fingerprint) Raw() []byte {
-	raw := make([]byte, len(fp.raw))
-	copy(raw, fp.raw)
-	return raw
+// String returns the hex string representation of the fingerprint.
+func (fp Fingerprint) String() string {
+	return hex.EncodeToString([]byte(fp.raw))
 }
 
-// Hex returns the hex string representing the fingerprint.
-func (fp Fingerprint) Hex() string {
-	return fmt.Sprintf("%x", fp.raw)
+// Bytes returns the raw bytes of the fingerprint.
+func (fp Fingerprint) Bytes() []byte {
+	return []byte(fp.raw)
 }
 
 // Validate returns an error if the fingerprint is invalid.
 func (fp Fingerprint) Validate() error {
+	if fp.raw == "" {
+		return errors.NotValidf("zero-value fingerprint")
+	}
+	return nil
+}
+
+func (fp Fingerprint) validate() error {
 	if len(fp.raw) < fingerprintSize {
 		return errors.NewNotValid(nil, "invalid fingerprint (too small)")
 	}
