@@ -23,7 +23,7 @@ func NewFingerprint(raw []byte) (Fingerprint, error) {
 		raw: string(raw),
 	}
 	if err := fp.validate(); err != nil {
-		return fp, errors.Trace(err)
+		return Fingerprint{}, errors.Trace(err)
 	}
 	return fp, nil
 }
