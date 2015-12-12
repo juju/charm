@@ -15,7 +15,7 @@ type Resource struct {
 	Revision int
 
 	// Fingerprint is the SHA-384 checksum for the resource blob.
-	Fingerprint string
+	Fingerprint Fingerprint
 }
 
 // Validate checks the payload class to ensure its data is valid.
@@ -28,9 +28,8 @@ func (res Resource) Validate() error {
 		return errors.NewNotValid(nil, "invalid resource (revision must be non-negative)")
 	}
 
-	// TODO(ericsnow) Ensure Fingerprint is a valid SHA-384 hash?
-	if len(res.Fingerprint) == 0 {
-		return errors.NewNotValid(nil, "invalid resource (missing fingerprint)")
+	if err := res.Fingerprint.Validate(); err != nil {
+		return errors.Annotate(err, "bad fingerprint")
 	}
 
 	return nil
