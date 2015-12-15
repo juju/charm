@@ -266,8 +266,27 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	if err != nil {
 		return nil, errors.New("metadata: " + err.Error())
 	}
+
 	m := v.(map[string]interface{})
-	meta = &Meta{}
+	meta, err = parseMeta(m)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := meta.Check(); err != nil {
+		return nil, err
+	}
+
+	// TODO(ericsnow) This line should be moved into parseMeta as soon
+	// as the terms code gets fixed.
+	meta.Terms = parseStringList(m["terms"])
+
+	return meta, nil
+}
+
+func parseMeta(m map[string]interface{}) (*Meta, error) {
+	var meta Meta
+
 	meta.Name = m["name"].(string)
 	// Schema decodes as int64, but the int range should be good
 	// enough for revisions.
@@ -289,12 +308,14 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
-	meta.Resources = parseMetaResources(m["resources"])
-	if err := meta.Check(); err != nil {
+
+	resources, err := parseMetaResources(m["resources"])
+	if err != nil {
 		return nil, err
 	}
-	meta.Terms = parseStringList(m["terms"])
-	return meta, nil
+	meta.Resources = resources
+
+	return &meta, nil
 }
 
 // GetYAML implements yaml.Getter.GetYAML.

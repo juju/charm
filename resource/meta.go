@@ -35,17 +35,21 @@ type Meta struct {
 }
 
 // ParseMeta parses the provided data into a Meta.
-func ParseMeta(name string, data interface{}) Meta {
+func ParseMeta(name string, data interface{}) (Meta, error) {
 	var meta Meta
 	meta.Name = name
 
 	if data == nil {
-		return meta
+		return meta, nil
 	}
 	rMap := data.(map[string]interface{})
 
 	if val := rMap["type"]; val != nil {
-		meta.Type, _ = ParseType(val.(string))
+		var err error
+		meta.Type, err = ParseType(val.(string))
+		if err != nil {
+			return meta, errors.Trace(err)
+		}
 	}
 
 	if val := rMap["filename"]; val != nil {
@@ -56,7 +60,7 @@ func ParseMeta(name string, data interface{}) Meta {
 		meta.Comment = val.(string)
 	}
 
-	return meta
+	return meta, nil
 }
 
 // Validate checks the resource metadata to ensure the data is valid.
@@ -65,7 +69,8 @@ func (meta Meta) Validate() error {
 		return errors.NewNotValid(nil, "resource missing name")
 	}
 
-	if meta.Type == TypeUnknown {
+	var typeUnknown Type
+	if meta.Type == typeUnknown {
 		return errors.NewNotValid(nil, "resource missing type")
 	}
 	if err := meta.Type.Validate(); err != nil {

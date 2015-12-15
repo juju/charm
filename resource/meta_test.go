@@ -22,7 +22,8 @@ func (s *MetaSuite) TestParseMetaOkay(c *gc.C) {
 		"filename": "filename.tgz",
 		"comment":  "One line that is useful when operators need to push it.",
 	}
-	res := resource.ParseMeta(name, data)
+	res, err := resource.ParseMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
 		Name:    "my-resource",
@@ -39,7 +40,8 @@ func (s *MetaSuite) TestParseMetaMissingName(c *gc.C) {
 		"filename": "filename.tgz",
 		"comment":  "One line that is useful when operators need to push it.",
 	}
-	res := resource.ParseMeta(name, data)
+	res, err := resource.ParseMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
 		Name:    "",
@@ -55,14 +57,39 @@ func (s *MetaSuite) TestParseMetaMissingType(c *gc.C) {
 		"filename": "filename.tgz",
 		"comment":  "One line that is useful when operators need to push it.",
 	}
-	res := resource.ParseMeta(name, data)
+	res, err := resource.ParseMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
-		Name:    "my-resource",
-		Type:    resource.TypeUnknown,
+		Name: "my-resource",
+		// Type is the zero value.
 		Path:    "filename.tgz",
 		Comment: "One line that is useful when operators need to push it.",
 	})
+}
+
+func (s *MetaSuite) TestParseMetaEmptyType(c *gc.C) {
+	name := "my-resource"
+	data := map[string]interface{}{
+		"type":     "",
+		"filename": "filename.tgz",
+		"comment":  "One line that is useful when operators need to push it.",
+	}
+	_, err := resource.ParseMeta(name, data)
+
+	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
+}
+
+func (s *MetaSuite) TestParseMetaUnknownType(c *gc.C) {
+	name := "my-resource"
+	data := map[string]interface{}{
+		"type":     "spam",
+		"filename": "filename.tgz",
+		"comment":  "One line that is useful when operators need to push it.",
+	}
+	_, err := resource.ParseMeta(name, data)
+
+	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
 }
 
 func (s *MetaSuite) TestParseMetaMissingPath(c *gc.C) {
@@ -71,7 +98,8 @@ func (s *MetaSuite) TestParseMetaMissingPath(c *gc.C) {
 		"type":    "file",
 		"comment": "One line that is useful when operators need to push it.",
 	}
-	res := resource.ParseMeta(name, data)
+	res, err := resource.ParseMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
 		Name:    "my-resource",
@@ -87,7 +115,8 @@ func (s *MetaSuite) TestParseMetaMissingComment(c *gc.C) {
 		"type":     "file",
 		"filename": "filename.tgz",
 	}
-	res := resource.ParseMeta(name, data)
+	res, err := resource.ParseMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
 		Name:    "my-resource",
@@ -100,7 +129,8 @@ func (s *MetaSuite) TestParseMetaMissingComment(c *gc.C) {
 func (s *MetaSuite) TestParseMetaEmpty(c *gc.C) {
 	name := "my-resource"
 	data := make(map[string]interface{})
-	res := resource.ParseMeta(name, data)
+	res, err := resource.ParseMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
 		Name: "my-resource",
@@ -110,7 +140,8 @@ func (s *MetaSuite) TestParseMetaEmpty(c *gc.C) {
 func (s *MetaSuite) TestParseMetaNil(c *gc.C) {
 	name := "my-resource"
 	var data map[string]interface{}
-	res := resource.ParseMeta(name, data)
+	res, err := resource.ParseMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
 		Name: "my-resource",
@@ -158,19 +189,6 @@ func (s *MetaSuite) TestValidateMissingType(c *gc.C) {
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
 	c.Check(err, gc.ErrorMatches, `resource missing type`)
-}
-
-func (s *MetaSuite) TestValidateUnknownType(c *gc.C) {
-	res := resource.Meta{
-		Name:    "my-resource",
-		Type:    "repo",
-		Path:    "repo-root",
-		Comment: "One line that is useful when operators need to push it.",
-	}
-	err := res.Validate()
-
-	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `.*unsupported resource type .*`)
 }
 
 func (s *MetaSuite) TestValidateMissingPath(c *gc.C) {

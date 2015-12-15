@@ -4,6 +4,7 @@
 package resource_test
 
 import (
+	"github.com/juju/errors"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
@@ -15,9 +16,9 @@ var _ = gc.Suite(&TypeSuite{})
 type TypeSuite struct{}
 
 func (s *TypeSuite) TestParseTypeOkay(c *gc.C) {
-	rt, ok := resource.ParseType("file")
+	rt, err := resource.ParseType("file")
+	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(ok, jc.IsTrue)
 	c.Check(rt, gc.Equals, resource.TypeFile)
 }
 
@@ -26,25 +27,27 @@ func (s *TypeSuite) TestParseTypeRecognized(c *gc.C) {
 		resource.TypeFile,
 	}
 	for _, expected := range supported {
-		rt, ok := resource.ParseType(expected.String())
+		rt, err := resource.ParseType(expected.String())
+		c.Assert(err, jc.ErrorIsNil)
 
-		c.Check(ok, jc.IsTrue)
 		c.Check(rt, gc.Equals, expected)
 	}
 }
 
 func (s *TypeSuite) TestParseTypeEmpty(c *gc.C) {
-	rt, ok := resource.ParseType("")
+	rt, err := resource.ParseType("")
 
-	c.Check(ok, jc.IsFalse)
-	c.Check(rt, gc.Equals, resource.TypeUnknown)
+	c.Check(err, gc.ErrorMatches, `unsupported resource type ""`)
+	var unknown resource.Type
+	c.Check(rt, gc.Equals, unknown)
 }
 
 func (s *TypeSuite) TestParseTypeUnsupported(c *gc.C) {
-	rt, ok := resource.ParseType("spam")
+	rt, err := resource.ParseType("spam")
 
-	c.Check(ok, jc.IsFalse)
-	c.Check(rt, gc.Equals, resource.Type("spam"))
+	c.Check(err, gc.ErrorMatches, `unsupported resource type "spam"`)
+	var unknown resource.Type
+	c.Check(rt, gc.Equals, unknown)
 }
 
 func (s *TypeSuite) TestTypeStringSupported(c *gc.C) {
@@ -59,15 +62,10 @@ func (s *TypeSuite) TestTypeStringSupported(c *gc.C) {
 }
 
 func (s *TypeSuite) TestTypeStringUnknown(c *gc.C) {
-	str := resource.TypeUnknown.String()
+	var unknown resource.Type
+	str := unknown.String()
 
-	c.Check(str, gc.Equals, "<unknown>")
-}
-
-func (s *TypeSuite) TestTypeStringUnsupported(c *gc.C) {
-	str := resource.Type("spam").String()
-
-	c.Check(str, gc.Equals, "spam")
+	c.Check(str, gc.Equals, "")
 }
 
 func (s *TypeSuite) TestTypeValidateSupported(c *gc.C) {
@@ -82,13 +80,9 @@ func (s *TypeSuite) TestTypeValidateSupported(c *gc.C) {
 }
 
 func (s *TypeSuite) TestTypeValidateUnknown(c *gc.C) {
-	err := resource.TypeUnknown.Validate()
+	var unknown resource.Type
+	err := unknown.Validate()
 
-	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
-}
-
-func (s *TypeSuite) TestTypeValidateUnsupported(c *gc.C) {
-	err := resource.Type("spam").Validate()
-
-	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
+	c.Check(err, jc.Satisfies, errors.IsNotValid)
+	c.Check(err, gc.ErrorMatches, `unknown resource type`)
 }
