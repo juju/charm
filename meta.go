@@ -308,7 +308,12 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
-	meta.Resources = parseMetaResources(m["resources"])
+
+	resources, err := parseMetaResources(m["resources"])
+	if err != nil {
+		return nil, err
+	}
+	meta.Resources = resources
 
 	return &meta, nil
 }
