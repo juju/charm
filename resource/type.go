@@ -22,12 +22,11 @@ var types = map[Type]bool{
 // Type enumerates the recognized resource types.
 type Type string
 
-// ParseType converts a string to a Type. If the given
-// value does not match a recognized type then TypeUnknown and
-// false are returned.
-func ParseType(value string) (Type, bool) {
+// ParseType converts a string to a Type. If the given value does not
+// match a recognized type then an error is returned.
+func ParseType(value string) (Type, error) {
 	rt := Type(value)
-	return rt, types[rt]
+	return rt, rt.Validate()
 }
 
 // String returns the printable representation of the type.

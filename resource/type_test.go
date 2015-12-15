@@ -4,6 +4,7 @@
 package resource_test
 
 import (
+	"github.com/juju/errors"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
@@ -15,9 +16,9 @@ var _ = gc.Suite(&TypeSuite{})
 type TypeSuite struct{}
 
 func (s *TypeSuite) TestParseTypeOkay(c *gc.C) {
-	rt, ok := resource.ParseType("file")
+	rt, err := resource.ParseType("file")
+	c.Assert(err, jc.ErrorIsNil)
 
-	c.Check(ok, jc.IsTrue)
 	c.Check(rt, gc.Equals, resource.TypeFile)
 }
 
@@ -26,24 +27,26 @@ func (s *TypeSuite) TestParseTypeRecognized(c *gc.C) {
 		resource.TypeFile,
 	}
 	for _, expected := range supported {
-		rt, ok := resource.ParseType(expected.String())
+		rt, err := resource.ParseType(expected.String())
+		c.Assert(err, jc.ErrorIsNil)
 
-		c.Check(ok, jc.IsTrue)
 		c.Check(rt, gc.Equals, expected)
 	}
 }
 
 func (s *TypeSuite) TestParseTypeEmpty(c *gc.C) {
-	rt, ok := resource.ParseType("")
+	rt, err := resource.ParseType("")
 
-	c.Check(ok, jc.IsFalse)
+	c.Check(err, jc.Satisfies, errors.IsNotValid)
+	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
 	c.Check(rt, gc.Equals, resource.TypeUnknown)
 }
 
 func (s *TypeSuite) TestParseTypeUnsupported(c *gc.C) {
-	rt, ok := resource.ParseType("spam")
+	rt, err := resource.ParseType("spam")
 
-	c.Check(ok, jc.IsFalse)
+	c.Check(err, jc.Satisfies, errors.IsNotValid)
+	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
 	c.Check(rt, gc.Equals, resource.Type("spam"))
 }
 
