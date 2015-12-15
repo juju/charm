@@ -4,15 +4,12 @@
 package resource
 
 import (
-	"fmt"
-
 	"github.com/juju/errors"
 )
 
 // These are the valid resource types (except for unknown).
-const (
-	TypeUnknown Type = ""
-	TypeFile    Type = "file"
+var (
+	TypeFile = Type{"file"}
 )
 
 var types = map[Type]bool{
@@ -20,28 +17,32 @@ var types = map[Type]bool{
 }
 
 // Type enumerates the recognized resource types.
-type Type string
+type Type struct {
+	str string
+}
 
 // ParseType converts a string to a Type. If the given value does not
 // match a recognized type then an error is returned.
 func ParseType(value string) (Type, error) {
-	rt := Type(value)
-	if _, ok := types[rt]; !ok {
-		return TypeUnknown, errors.Errorf("unsupported resource type %q", value)
+	for rt := range types {
+		if value == rt.str {
+			return rt, nil
+		}
 	}
-	return rt, rt.Validate()
+	return Type{}, errors.Errorf("unsupported resource type %q", value)
 }
 
 // String returns the printable representation of the type.
 func (rt Type) String() string {
-	return string(rt)
+	return rt.str
 }
 
 // Validate ensures that the type is valid.
 func (rt Type) Validate() error {
-	if _, ok := types[rt]; !ok {
-		msg := fmt.Sprintf("unsupported resource type %v", rt)
-		return errors.NewNotValid(nil, msg)
+	// Only the zero value is invalid.
+	var zero Type
+	if rt == zero {
+		return errors.NotValidf("zero value")
 	}
 	return nil
 }

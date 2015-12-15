@@ -69,7 +69,8 @@ func (meta Meta) Validate() error {
 		return errors.NewNotValid(nil, "resource missing name")
 	}
 
-	if meta.Type == TypeUnknown {
+	var typeUnknown Type
+	if meta.Type == typeUnknown {
 		return errors.NewNotValid(nil, "resource missing type")
 	}
 	if err := meta.Type.Validate(); err != nil {

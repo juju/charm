@@ -62,7 +62,7 @@ func (s *MetaSuite) TestParseMetaMissingType(c *gc.C) {
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
 		Name:    "my-resource",
-		Type:    resource.TypeUnknown,
+		Type:    resource.Type{},
 		Path:    "filename.tgz",
 		Comment: "One line that is useful when operators need to push it.",
 	})
@@ -189,19 +189,6 @@ func (s *MetaSuite) TestValidateMissingType(c *gc.C) {
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
 	c.Check(err, gc.ErrorMatches, `resource missing type`)
-}
-
-func (s *MetaSuite) TestValidateUnknownType(c *gc.C) {
-	res := resource.Meta{
-		Name:    "my-resource",
-		Type:    "repo",
-		Path:    "repo-root",
-		Comment: "One line that is useful when operators need to push it.",
-	}
-	err := res.Validate()
-
-	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `.*unsupported resource type .*`)
 }
 
 func (s *MetaSuite) TestValidateMissingPath(c *gc.C) {
