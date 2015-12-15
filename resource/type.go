@@ -26,6 +26,9 @@ type Type string
 // match a recognized type then an error is returned.
 func ParseType(value string) (Type, error) {
 	rt := Type(value)
+	if _, ok := types[rt]; !ok {
+		return rt, errors.Errorf("unsupported resource type %q", value)
+	}
 	return rt, rt.Validate()
 }
 

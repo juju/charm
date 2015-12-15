@@ -37,16 +37,14 @@ func (s *TypeSuite) TestParseTypeRecognized(c *gc.C) {
 func (s *TypeSuite) TestParseTypeEmpty(c *gc.C) {
 	rt, err := resource.ParseType("")
 
-	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
+	c.Check(err, gc.ErrorMatches, `unsupported resource type ""`)
 	c.Check(rt, gc.Equals, resource.TypeUnknown)
 }
 
 func (s *TypeSuite) TestParseTypeUnsupported(c *gc.C) {
 	rt, err := resource.ParseType("spam")
 
-	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
+	c.Check(err, gc.ErrorMatches, `unsupported resource type "spam"`)
 	c.Check(rt, gc.Equals, resource.Type("spam"))
 }
 
@@ -87,11 +85,13 @@ func (s *TypeSuite) TestTypeValidateSupported(c *gc.C) {
 func (s *TypeSuite) TestTypeValidateUnknown(c *gc.C) {
 	err := resource.TypeUnknown.Validate()
 
+	c.Check(err, jc.Satisfies, errors.IsNotValid)
 	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
 }
 
 func (s *TypeSuite) TestTypeValidateUnsupported(c *gc.C) {
 	err := resource.Type("spam").Validate()
 
+	c.Check(err, jc.Satisfies, errors.IsNotValid)
 	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
 }

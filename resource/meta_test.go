@@ -77,7 +77,6 @@ func (s *MetaSuite) TestParseMetaEmptyType(c *gc.C) {
 	}
 	_, err := resource.ParseMeta(name, data)
 
-	c.Check(err, jc.Satisfies, errors.IsNotValid)
 	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
 }
 
@@ -90,7 +89,6 @@ func (s *MetaSuite) TestParseMetaUnknownType(c *gc.C) {
 	}
 	_, err := resource.ParseMeta(name, data)
 
-	c.Check(err, jc.Satisfies, errors.IsNotValid)
 	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
 }
 
