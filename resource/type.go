@@ -38,8 +38,10 @@ func (rt Type) String() string {
 
 // Validate ensures that the type is valid.
 func (rt Type) Validate() error {
-	// Only the zero value is invalid.
-	if rt == typeUnknown {
+	// Ideally, only the (unavoidable) zero value would be invalid.
+	// However, typedef'ing int means that the use of int literals
+	// could result in invalid Type values other than the zero value.
+	if _, ok := types[rt]; !ok {
 		return errors.NewNotValid(nil, "unknown resource type")
 	}
 	return nil
