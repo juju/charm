@@ -30,7 +30,11 @@ func parseMetaResources(data interface{}) (map[string]resource.Meta, error) {
 
 	result := make(map[string]resource.Meta)
 	for name, val := range data.(map[string]interface{}) {
-		result[name] = resource.ParseMeta(name, val)
+		meta, err := resource.ParseMeta(name, val)
+		if err != nil {
+			return nil, err
+		}
+		result[name] = meta
 	}
 
 	return result, nil
