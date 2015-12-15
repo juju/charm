@@ -34,9 +34,6 @@ func ParseType(value string) (Type, error) {
 
 // String returns the printable representation of the type.
 func (rt Type) String() string {
-	if rt == "" {
-		return "<unknown>"
-	}
 	return string(rt)
 }
 

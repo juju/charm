@@ -62,7 +62,7 @@ func (s *TypeSuite) TestTypeStringSupported(c *gc.C) {
 func (s *TypeSuite) TestTypeStringUnknown(c *gc.C) {
 	str := resource.TypeUnknown.String()
 
-	c.Check(str, gc.Equals, "<unknown>")
+	c.Check(str, gc.Equals, "")
 }
 
 func (s *TypeSuite) TestTypeStringUnsupported(c *gc.C) {
