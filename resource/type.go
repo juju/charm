@@ -8,40 +8,38 @@ import (
 )
 
 // These are the valid resource types (except for unknown).
-var (
-	TypeFile = Type{"file"}
+const (
+	typeUnknown Type = iota
+	TypeFile
 )
 
-var types = map[Type]bool{
-	TypeFile: true,
+var types = map[Type]string{
+	TypeFile: "file",
 }
 
 // Type enumerates the recognized resource types.
-type Type struct {
-	str string
-}
+type Type int
 
 // ParseType converts a string to a Type. If the given value does not
 // match a recognized type then an error is returned.
 func ParseType(value string) (Type, error) {
-	for rt := range types {
-		if value == rt.str {
+	for rt, str := range types {
+		if value == str {
 			return rt, nil
 		}
 	}
-	return Type{}, errors.Errorf("unsupported resource type %q", value)
+	return typeUnknown, errors.Errorf("unsupported resource type %q", value)
 }
 
 // String returns the printable representation of the type.
 func (rt Type) String() string {
-	return rt.str
+	return types[rt]
 }
 
 // Validate ensures that the type is valid.
 func (rt Type) Validate() error {
 	// Only the zero value is invalid.
-	var zero Type
-	if rt == zero {
+	if rt == typeUnknown {
 		return errors.NewNotValid(nil, "unknown resource type")
 	}
 	return nil

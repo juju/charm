@@ -61,8 +61,8 @@ func (s *MetaSuite) TestParseMetaMissingType(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
-		Name:    "my-resource",
-		Type:    resource.Type{},
+		Name: "my-resource",
+		// Type is the zero value.
 		Path:    "filename.tgz",
 		Comment: "One line that is useful when operators need to push it.",
 	})
