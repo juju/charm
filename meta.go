@@ -268,7 +268,10 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	}
 
 	m := v.(map[string]interface{})
-	meta = parseMeta(m)
+	meta, err = parseMeta(m)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := meta.Check(); err != nil {
 		return nil, err
@@ -281,7 +284,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	return meta, nil
 }
 
-func parseMeta(m map[string]interface{}) *Meta {
+func parseMeta(m map[string]interface{}) (*Meta, error) {
 	var meta Meta
 
 	meta.Name = m["name"].(string)
@@ -307,7 +310,7 @@ func parseMeta(m map[string]interface{}) *Meta {
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
 	meta.Resources = parseMetaResources(m["resources"])
 
-	return &meta
+	return &meta, nil
 }
 
 // GetYAML implements yaml.Getter.GetYAML.
