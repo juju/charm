@@ -45,7 +45,7 @@ func (s *TypeSuite) TestParseTypeUnsupported(c *gc.C) {
 	rt, err := resource.ParseType("spam")
 
 	c.Check(err, gc.ErrorMatches, `unsupported resource type "spam"`)
-	c.Check(rt, gc.Equals, resource.Type("spam"))
+	c.Check(rt, gc.Equals, resource.TypeUnknown)
 }
 
 func (s *TypeSuite) TestTypeStringSupported(c *gc.C) {
