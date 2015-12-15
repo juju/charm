@@ -80,5 +80,5 @@ func (s *TypeSuite) TestTypeValidateUnknown(c *gc.C) {
 	err := resource.Type{}.Validate()
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `zero value not valid`)
+	c.Check(err, gc.ErrorMatches, `unknown resource type`)
 }

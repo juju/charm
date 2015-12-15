@@ -42,7 +42,7 @@ func (rt Type) Validate() error {
 	// Only the zero value is invalid.
 	var zero Type
 	if rt == zero {
-		return errors.NotValidf("zero value")
+		return errors.NewNotValid(nil, "unknown resource type")
 	}
 	return nil
 }
