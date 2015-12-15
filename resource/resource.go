@@ -11,6 +11,9 @@ import (
 type Resource struct {
 	Meta
 
+	// Origin identifies where the resource will come from.
+	Origin Origin
+
 	// Revision is the charm store revision of the resource.
 	Revision int
 
@@ -22,6 +25,10 @@ type Resource struct {
 func (res Resource) Validate() error {
 	if err := res.Meta.Validate(); err != nil {
 		return errors.Annotate(err, "invalid resource (bad metadata)")
+	}
+
+	if err := res.Origin.Validate(); err != nil {
+		return errors.Annotate(err, "invalid resource (bad origin)")
 	}
 
 	if res.Revision < 0 {
