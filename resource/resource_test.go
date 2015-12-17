@@ -30,6 +30,7 @@ func (s *ResourceSuite) TestValidateFull(c *gc.C) {
 		Origin:      resource.OriginStore,
 		Revision:    1,
 		Fingerprint: fp,
+		Size:        1,
 	}
 	err = res.Validate()
 
@@ -105,7 +106,7 @@ func (s *ResourceSuite) TestValidateBadRevision(c *gc.C) {
 
 func (s *ResourceSuite) TestValidateBadFingerprint(c *gc.C) {
 	var fp resource.Fingerprint
-	c.Assert(fp.Validate, gc.NotNil)
+	c.Assert(fp.Validate(), gc.NotNil)
 
 	res := resource.Resource{
 		Meta: resource.Meta{
@@ -122,4 +123,25 @@ func (s *ResourceSuite) TestValidateBadFingerprint(c *gc.C) {
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
 	c.Check(err, gc.ErrorMatches, `.*bad fingerprint.*`)
+}
+
+func (s *ResourceSuite) TestValidateBadSize(c *gc.C) {
+	fp, err := resource.NewFingerprint(fingerprint)
+	c.Assert(err, jc.ErrorIsNil)
+	res := resource.Resource{
+		Meta: resource.Meta{
+			Name:    "my-resource",
+			Type:    resource.TypeFile,
+			Path:    "filename.tgz",
+			Comment: "One line that is useful when operators need to push it.",
+		},
+		Origin:      resource.OriginStore,
+		Revision:    1,
+		Fingerprint: fp,
+		Size:        -1,
+	}
+	err = res.Validate()
+
+	c.Check(err, jc.Satisfies, errors.IsNotValid)
+	c.Check(err, gc.ErrorMatches, `negative size not valid`)
 }
