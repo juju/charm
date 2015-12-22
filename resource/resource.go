@@ -19,6 +19,9 @@ type Resource struct {
 
 	// Fingerprint is the SHA-384 checksum for the resource blob.
 	Fingerprint Fingerprint
+
+	// Size is the size of the resource, in bytes.
+	Size int64
 }
 
 // Validate checks the payload class to ensure its data is valid.
@@ -34,9 +37,14 @@ func (res Resource) Validate() error {
 	if res.Revision < 0 {
 		return errors.NewNotValid(nil, "invalid resource (revision must be non-negative)")
 	}
+	// TODO(ericsnow) Ensure Revision is 0 for OriginUpload?
 
 	if err := res.Fingerprint.Validate(); err != nil {
 		return errors.Annotate(err, "bad fingerprint")
+	}
+
+	if res.Size < 0 {
+		return errors.NotValidf("negative size")
 	}
 
 	return nil
