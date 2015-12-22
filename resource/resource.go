@@ -20,7 +20,7 @@ type Resource struct {
 	// Fingerprint is the SHA-384 checksum for the resource blob.
 	Fingerprint Fingerprint
 
-	// Size is the size of the resource, in megabytes.
+	// Size is the size of the resource, in bytes.
 	Size int64
 }
 
