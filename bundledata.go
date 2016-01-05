@@ -141,6 +141,9 @@ type ServiceSpec struct {
 	// Storage holds the constraints for storage to assign
 	// to units of the service.
 	Storage map[string]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+
+	// EndpointBindings maps how endpoints are bound to spaces
+	EndpointBindings map[string]string `bson:"bindings,omitempty" json:"bindings,omitempty" yaml:"bindings,omitempty"`
 }
 
 // ReadBundleData reads bundle data from the given reader.
@@ -276,6 +279,7 @@ func (bd *BundleData) VerifyWithCharms(
 	verifier.verifyServices()
 	verifier.verifyRelations()
 	verifier.verifyOptions()
+	verifier.verifyEndpointBindings()
 
 	for id, count := range verifier.machineRefCounts {
 		if count == 0 {
@@ -452,6 +456,41 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 			verifier.verifyRelation(epPair[0], epPair[1])
 		}
 		seen[epPair] = true
+	}
+}
+
+func (verifier *bundleDataVerifier) verifyEndpointBindings() {
+	for name, svc := range verifier.bd.Services {
+		charm, ok := verifier.charms[name]
+		// Only thest the ok path here because the !ok path is tested in verifyServices
+		if ok {
+			for BoundInterface := range svc.EndpointBindings {
+				var ok bool
+
+				for _, relation := range charm.Meta().Provides {
+					if relation.Interface == BoundInterface {
+						ok = true
+						break
+					}
+				}
+
+				if !ok {
+					for _, relation := range charm.Meta().Requires {
+						if relation.Interface == BoundInterface {
+							ok = true
+							break
+						}
+					}
+				}
+
+				if !ok {
+					verifier.addErrorf(
+						"service %s wants to bind to interface %s, "+
+							"which isn't provided or required by charm",
+						name, BoundInterface)
+				}
+			}
+		}
 	}
 }
 
