@@ -3,13 +3,13 @@ services:
         charm: wordpress
         num_units: 1
         bindings:
-            mysql: db
-            http: public
+            db: db
+            url: public
     mysql:
         charm: mysql
         num_units: 1
         bindings:
-            mysql: db
+            server: db
     logging:
         charm: logging
 relations:

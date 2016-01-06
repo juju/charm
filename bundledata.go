@@ -463,34 +463,22 @@ func (verifier *bundleDataVerifier) verifyEndpointBindings() {
 	for name, svc := range verifier.bd.Services {
 		charm, ok := verifier.charms[name]
 		// Only thest the ok path here because the !ok path is tested in verifyServices
-		if ok {
-			for BoundInterface := range svc.EndpointBindings {
-				var ok bool
+		if !ok {
+			continue
+		}
+		for endpoint, space := range svc.EndpointBindings {
+			_, matchedProvides := charm.Meta().Provides[endpoint]
+			_, matchedRequires := charm.Meta().Requires[endpoint]
+			_, matchedPeers := charm.Meta().Peers[endpoint]
 
-				for _, relation := range charm.Meta().Provides {
-					if relation.Interface == BoundInterface {
-						ok = true
-						break
-					}
-				}
-
-				if !ok {
-					for _, relation := range charm.Meta().Requires {
-						if relation.Interface == BoundInterface {
-							ok = true
-							break
-						}
-					}
-				}
-
-				if !ok {
-					verifier.addErrorf(
-						"service %s wants to bind to interface %s, "+
-							"which isn't provided or required by charm",
-						name, BoundInterface)
-				}
+			if !(matchedProvides || matchedRequires || matchedPeers) {
+				verifier.addErrorf(
+					"service %s wants to bind to endpoint %s to space %s, "+
+						"which isn't provided or required by charm",
+					name, endpoint, space)
 			}
 		}
+
 	}
 }
 
