@@ -473,7 +473,7 @@ func (verifier *bundleDataVerifier) verifyEndpointBindings() {
 
 			if !(matchedProvides || matchedRequires || matchedPeers) {
 				verifier.addErrorf(
-					"service %s wants to bind endpoint %s to space %s, "+
+					"service %q wants to bind endpoint %q to space %q, "+
 						"but the endpoint is not defined by the charm",
 					name, endpoint, space)
 			}
