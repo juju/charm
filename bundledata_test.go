@@ -355,8 +355,8 @@ func (*bundleDataSuite) TestVerifyBundleUsingJujuInfoRelationBindingFail(c *gc.C
 	err := bd.VerifyWithCharms(nil, nil, charms)
 
 	c.Assert(err, gc.ErrorMatches,
-		"service wordpress wants to bind to endpoint foo to space bar, "+
-			"which isn't defined by the charm")
+		"service wordpress wants to bind endpoint foo to space bar, "+
+			"but the endpoint is not defined by the charm")
 }
 
 func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
