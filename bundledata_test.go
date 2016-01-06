@@ -37,6 +37,9 @@ services:
             "gui-y": -15
         storage:
             valid-store: 10G
+        bindings:
+            db: db
+            website: public
     mysql:
         charm: "cs:precise/mysql-28"
         num_units: 2
@@ -52,6 +55,8 @@ services:
             "gui-x": 610
             "gui-y": 255
         constraints: "mem=8g"
+        bindings:
+            db: db
 relations:
     - ["mediawiki:db", "mysql:db"]
     - ["mysql:foo", "mediawiki:bar"]
@@ -95,6 +100,10 @@ var parseTests = []struct {
 				Storage: map[string]string{
 					"valid-store": "10G",
 				},
+				EndpointBindings: map[string]string{
+					"db":      "db",
+					"website": "public",
+				},
 			},
 			"mysql": {
 				Charm:    "cs:precise/mysql-28",
@@ -113,6 +122,9 @@ var parseTests = []struct {
 					"gui-y": "255",
 				},
 				Constraints: "mem=8g",
+				EndpointBindings: map[string]string{
+					"db": "db",
+				},
 			},
 		},
 		Machines: map[string]*charm.MachineSpec{
@@ -328,6 +340,23 @@ func (*bundleDataSuite) TestVerifyBundleUsingJujuInfoRelation(c *gc.C) {
 	}
 	err := bd.VerifyWithCharms(nil, nil, charms)
 	c.Assert(err, gc.IsNil)
+}
+
+func (*bundleDataSuite) TestVerifyBundleUsingJujuInfoRelationBindingFail(c *gc.C) {
+	b := readBundleDir(c, "wordpress-with-logging")
+	bd := b.Data()
+
+	charms := map[string]charm.Charm{
+		"wordpress": readCharmDir(c, "wordpress"),
+		"mysql":     readCharmDir(c, "mysql"),
+		"logging":   readCharmDir(c, "logging"),
+	}
+	bd.Services["wordpress"].EndpointBindings["foo"] = "bar"
+	err := bd.VerifyWithCharms(nil, nil, charms)
+
+	c.Assert(err, gc.ErrorMatches,
+		"service wordpress wants to bind to endpoint foo to space bar, "+
+			"which isn't defined by the charm")
 }
 
 func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
