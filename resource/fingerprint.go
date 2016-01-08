@@ -6,6 +6,7 @@ package resource
 import (
 	"crypto/sha512"
 	"encoding/hex"
+	"io"
 
 	"github.com/juju/errors"
 )
@@ -17,7 +18,8 @@ type Fingerprint struct {
 	raw []byte
 }
 
-// NewFingerprint returns wraps the provided raw fingerprint.
+// NewFingerprint returns wraps the provided raw fingerprint bytes.
+// This function roundtrips with Fingerprint.Bytes().
 func NewFingerprint(raw []byte) (Fingerprint, error) {
 	fp := Fingerprint{
 		raw: append([]byte{}, raw...),
@@ -28,12 +30,28 @@ func NewFingerprint(raw []byte) (Fingerprint, error) {
 	return fp, nil
 }
 
+// ParseFingerprint returns wraps the provided raw fingerprint string.
+// This function roundtrips with Fingerprint.String().
+func ParseFingerprint(raw string) (Fingerprint, error) {
+	var fp Fingerprint
+
+	rawBytes, err := hex.DecodeString(raw)
+	if err != nil {
+		return fp, errors.Trace(err)
+	}
+	fp, err = NewFingerprint(rawBytes)
+	if err != nil {
+		return fp, errors.Trace(err)
+	}
+	return fp, nil
+}
+
 // GenerateFingerprint returns the fingerprint for the provided data.
-func GenerateFingerprint(data []byte) (Fingerprint, error) {
+func GenerateFingerprint(data io.Reader) (Fingerprint, error) {
 	var fp Fingerprint
 
 	hash := sha512.New384()
-	if _, err := hash.Write([]byte(data)); err != nil {
+	if _, err := io.Copy(hash, data); err != nil {
 		return fp, errors.Trace(err)
 	}
 	fp.raw = hash.Sum(nil)
