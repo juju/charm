@@ -4,9 +4,9 @@
 package resource_test
 
 import (
-	"bytes"
 	"crypto/sha512"
 	"encoding/hex"
+	"strings"
 
 	"github.com/juju/errors"
 	jc "github.com/juju/testing/checkers"
@@ -75,7 +75,7 @@ func (s *FingerprintSuite) TestParseFingerprintNonHex(c *gc.C) {
 
 func (s *FingerprintSuite) TestGenerateFingerprint(c *gc.C) {
 	expected, _ := newFingerprint(c, "spamspamspam")
-	data := bytes.NewBufferString("spamspamspam")
+	data := strings.NewReader("spamspamspam")
 
 	fp, err := resource.GenerateFingerprint(data)
 	c.Assert(err, jc.ErrorIsNil)
