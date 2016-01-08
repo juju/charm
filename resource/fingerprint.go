@@ -6,6 +6,7 @@ package resource
 import (
 	"crypto/sha512"
 	"encoding/hex"
+	"io"
 
 	"github.com/juju/errors"
 )
@@ -29,11 +30,11 @@ func NewFingerprint(raw []byte) (Fingerprint, error) {
 }
 
 // GenerateFingerprint returns the fingerprint for the provided data.
-func GenerateFingerprint(data []byte) (Fingerprint, error) {
+func GenerateFingerprint(data io.Reader) (Fingerprint, error) {
 	var fp Fingerprint
 
 	hash := sha512.New384()
-	if _, err := hash.Write([]byte(data)); err != nil {
+	if _, err := io.Copy(hash, data); err != nil {
 		return fp, errors.Trace(err)
 	}
 	fp.raw = hash.Sum(nil)

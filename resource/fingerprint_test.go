@@ -4,6 +4,7 @@
 package resource_test
 
 import (
+	"bytes"
 	"crypto/sha512"
 	"encoding/hex"
 
@@ -58,8 +59,9 @@ func (s *FingerprintSuite) TestNewFingerprintTooBig(c *gc.C) {
 
 func (s *FingerprintSuite) TestGenerateFingerprint(c *gc.C) {
 	expected, _ := newFingerprint(c, "spamspamspam")
+	data := bytes.NewBufferString("spamspamspam")
 
-	fp, err := resource.GenerateFingerprint([]byte("spamspamspam"))
+	fp, err := resource.GenerateFingerprint(data)
 	c.Assert(err, jc.ErrorIsNil)
 	raw := fp.Bytes()
 
