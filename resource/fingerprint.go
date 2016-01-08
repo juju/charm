@@ -18,13 +18,30 @@ type Fingerprint struct {
 	raw []byte
 }
 
-// NewFingerprint returns wraps the provided raw fingerprint.
+// NewFingerprint returns wraps the provided raw fingerprint bytes.
+// This function roundtrips with Fingerprint.Bytes().
 func NewFingerprint(raw []byte) (Fingerprint, error) {
 	fp := Fingerprint{
 		raw: append([]byte{}, raw...),
 	}
 	if err := fp.validate(); err != nil {
 		return Fingerprint{}, errors.Trace(err)
+	}
+	return fp, nil
+}
+
+// ParseFingerprint returns wraps the provided raw fingerprint string.
+// This function roundtrips with Fingerprint.String().
+func ParseFingerprint(raw string) (Fingerprint, error) {
+	var fp Fingerprint
+
+	rawBytes, err := hex.DecodeString(raw)
+	if err != nil {
+		return fp, errors.Trace(err)
+	}
+	fp, err = NewFingerprint(rawBytes)
+	if err != nil {
+		return fp, errors.Trace(err)
 	}
 	return fp, nil
 }

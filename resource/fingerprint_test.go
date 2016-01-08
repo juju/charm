@@ -57,6 +57,22 @@ func (s *FingerprintSuite) TestNewFingerprintTooBig(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `.*too big.*`)
 }
 
+func (s *FingerprintSuite) TestParseFingerprintOkay(c *gc.C) {
+	_, expected := newFingerprint(c, "spamspamspam")
+
+	fp, err := resource.ParseFingerprint(expected)
+	c.Assert(err, jc.ErrorIsNil)
+	hex := fp.String()
+
+	c.Check(hex, jc.DeepEquals, expected)
+}
+
+func (s *FingerprintSuite) TestParseFingerprintNonHex(c *gc.C) {
+	_, err := resource.ParseFingerprint("XYZ") // not hex
+
+	c.Check(err, gc.ErrorMatches, `.*odd length hex string.*`)
+}
+
 func (s *FingerprintSuite) TestGenerateFingerprint(c *gc.C) {
 	expected, _ := newFingerprint(c, "spamspamspam")
 	data := bytes.NewBufferString("spamspamspam")
@@ -78,11 +94,31 @@ func (s *FingerprintSuite) TestString(c *gc.C) {
 	c.Check(hex, gc.Equals, expected)
 }
 
+func (s *FingerprintSuite) TestRoundtripString(c *gc.C) {
+	_, expected := newFingerprint(c, "spamspamspam")
+
+	fp, err := resource.ParseFingerprint(expected)
+	c.Assert(err, jc.ErrorIsNil)
+	hex := fp.String()
+
+	c.Check(hex, gc.Equals, expected)
+}
+
 func (s *FingerprintSuite) TestBytes(c *gc.C) {
 	expected, _ := newFingerprint(c, "spamspamspam")
 	fp, err := resource.NewFingerprint(expected)
 	c.Assert(err, jc.ErrorIsNil)
 
+	raw := fp.Bytes()
+
+	c.Check(raw, jc.DeepEquals, expected)
+}
+
+func (s *FingerprintSuite) TestRoundtripBytes(c *gc.C) {
+	expected, _ := newFingerprint(c, "spamspamspam")
+
+	fp, err := resource.NewFingerprint(expected)
+	c.Assert(err, jc.ErrorIsNil)
 	raw := fp.Bytes()
 
 	c.Check(raw, jc.DeepEquals, expected)
