@@ -39,8 +39,14 @@ func (res Resource) Validate() error {
 	}
 	// TODO(ericsnow) Ensure Revision is 0 for OriginUpload?
 
-	if err := res.Fingerprint.Validate(); err != nil {
-		return errors.Annotate(err, "bad fingerprint")
+	if res.Fingerprint.IsZero() {
+		if res.Size > 0 {
+			return errors.NewNotValid(nil, "missing fingerprint; sized resources must have one")
+		}
+	} else {
+		if err := res.Fingerprint.Validate(); err != nil {
+			return errors.Annotate(err, "bad fingerprint")
+		}
 	}
 
 	if res.Size < 0 {
