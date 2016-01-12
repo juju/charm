@@ -47,11 +47,11 @@ func ParseFingerprint(raw string) (Fingerprint, error) {
 }
 
 // GenerateFingerprint returns the fingerprint for the provided data.
-func GenerateFingerprint(data io.Reader) (Fingerprint, error) {
+func GenerateFingerprint(reader io.Reader) (Fingerprint, error) {
 	var fp Fingerprint
 
 	hash := sha512.New384()
-	if _, err := io.Copy(hash, data); err != nil {
+	if _, err := io.Copy(hash, reader); err != nil {
 		return fp, errors.Trace(err)
 	}
 	fp.raw = hash.Sum(nil)
