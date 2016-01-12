@@ -4,91 +4,63 @@
 package resource
 
 import (
-	"crypto/sha512"
-	"encoding/hex"
+	stdhash "hash"
 	"io"
 
 	"github.com/juju/errors"
+	"github.com/juju/utils/hash"
 )
 
-const fingerprintSize = 48 // 384 / 8
+var newHash, validateSum = hash.SHA384()
 
 // Fingerprint represents the unique fingerprint value of a resource's data.
 type Fingerprint struct {
-	raw []byte
+	hash.Fingerprint
 }
 
 // NewFingerprint returns wraps the provided raw fingerprint bytes.
 // This function roundtrips with Fingerprint.Bytes().
 func NewFingerprint(raw []byte) (Fingerprint, error) {
-	fp := Fingerprint{
-		raw: append([]byte{}, raw...),
-	}
-	if err := fp.validate(); err != nil {
+	fp, err := hash.NewFingerprint(raw, validateSum)
+	if err != nil {
 		return Fingerprint{}, errors.Trace(err)
 	}
-	return fp, nil
+	return Fingerprint{fp}, nil
 }
 
 // ParseFingerprint returns wraps the provided raw fingerprint string.
 // This function roundtrips with Fingerprint.String().
 func ParseFingerprint(raw string) (Fingerprint, error) {
-	var fp Fingerprint
-
-	rawBytes, err := hex.DecodeString(raw)
+	fp, err := hash.ParseHexFingerprint(raw, validateSum)
 	if err != nil {
-		return fp, errors.Trace(err)
+		return Fingerprint{}, errors.Trace(err)
 	}
-	fp, err = NewFingerprint(rawBytes)
-	if err != nil {
-		return fp, errors.Trace(err)
-	}
-	return fp, nil
+	return Fingerprint{fp}, nil
 }
 
 // GenerateFingerprint returns the fingerprint for the provided data.
 func GenerateFingerprint(reader io.Reader) (Fingerprint, error) {
-	var fp Fingerprint
-
-	hash := sha512.New384()
-	if _, err := io.Copy(hash, reader); err != nil {
-		return fp, errors.Trace(err)
+	fp, err := hash.GenerateFingerprint(reader, newHash)
+	if err != nil {
+		return Fingerprint{}, errors.Trace(err)
 	}
-	fp.raw = hash.Sum(nil)
-
-	return fp, nil
+	return Fingerprint{fp}, nil
 }
 
-// String returns the hex string representation of the fingerprint.
-func (fp Fingerprint) String() string {
-	return hex.EncodeToString(fp.raw)
+// Fingerprint is a hash that may be used to generate fingerprints.
+type FingerprintHash struct {
+	stdhash.Hash
 }
 
-// Bytes returns the raw bytes of the fingerprint.
-func (fp Fingerprint) Bytes() []byte {
-	return append([]byte{}, fp.raw...)
-}
-
-// IsZero returns whether or not the fingerprint is the zero value.
-func (fp Fingerprint) IsZero() bool {
-	return len(fp.raw) == 0
-}
-
-// Validate returns an error if the fingerprint is invalid.
-func (fp Fingerprint) Validate() error {
-	if len(fp.raw) == 0 {
-		return errors.NotValidf("zero-value fingerprint")
+// NewFingerprintHash returns a hash that may be used to create fingerprints.
+func NewFingerprintHash() *FingerprintHash {
+	return &FingerprintHash{
+		Hash: newHash(),
 	}
-	return nil
 }
 
-func (fp Fingerprint) validate() error {
-	if len(fp.raw) < fingerprintSize {
-		return errors.NewNotValid(nil, "invalid fingerprint (too small)")
-	}
-	if len(fp.raw) > fingerprintSize {
-		return errors.NewNotValid(nil, "invalid fingerprint (too big)")
-	}
-
-	return nil
+// Fingerprint returns the current fingerprint of the hash.
+func (fph FingerprintHash) Fingerprint() Fingerprint {
+	fp := hash.NewValidFingerprint(fph)
+	return Fingerprint{fp}
 }
