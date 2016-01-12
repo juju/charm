@@ -69,6 +69,11 @@ func (fp Fingerprint) Bytes() []byte {
 	return append([]byte{}, fp.raw...)
 }
 
+// IsZero returns whether or not the fingerprint is the zero value.
+func (fp Fingerprint) IsZero() bool {
+	return len(fp.raw) == 0
+}
+
 // Validate returns an error if the fingerprint is invalid.
 func (fp Fingerprint) Validate() error {
 	if len(fp.raw) == 0 {
