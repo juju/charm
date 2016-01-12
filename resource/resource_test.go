@@ -104,7 +104,7 @@ func (s *ResourceSuite) TestValidateBadRevision(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `.*revision must be non-negative.*`)
 }
 
-func (s *ResourceSuite) TestValidateBadFingerprint(c *gc.C) {
+func (s *ResourceSuite) TestValidateZeroValueFingerprint(c *gc.C) {
 	var fp resource.Fingerprint
 	c.Assert(fp.Validate(), gc.NotNil)
 
@@ -121,8 +121,29 @@ func (s *ResourceSuite) TestValidateBadFingerprint(c *gc.C) {
 	}
 	err := res.Validate()
 
+	c.Check(err, jc.ErrorIsNil)
+}
+
+func (s *ResourceSuite) TestValidateMissingFingerprint(c *gc.C) {
+	var fp resource.Fingerprint
+	c.Assert(fp.Validate(), gc.NotNil)
+
+	res := resource.Resource{
+		Meta: resource.Meta{
+			Name:    "my-resource",
+			Type:    resource.TypeFile,
+			Path:    "filename.tgz",
+			Comment: "One line that is useful when operators need to push it.",
+		},
+		Origin:      resource.OriginStore,
+		Revision:    1,
+		Fingerprint: fp,
+		Size:        10,
+	}
+	err := res.Validate()
+
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `.*bad fingerprint.*`)
+	c.Check(err, gc.ErrorMatches, `.*missing fingerprint.*`)
 }
 
 func (s *ResourceSuite) TestValidateBadSize(c *gc.C) {
