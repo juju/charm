@@ -61,7 +61,7 @@ func GenerateFingerprint(reader io.Reader) (Fingerprint, error) {
 
 // String returns the hex string representation of the fingerprint.
 func (fp Fingerprint) String() string {
-	return hex.EncodeToString([]byte(fp.raw))
+	return hex.EncodeToString(fp.raw)
 }
 
 // Bytes returns the raw bytes of the fingerprint.
