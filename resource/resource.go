@@ -41,7 +41,7 @@ func (res Resource) Validate() error {
 
 	if res.Fingerprint.IsZero() {
 		if res.Size > 0 {
-			return errors.NewNotValid(nil, "missing fingerprint; sized resources must have one")
+			return errors.NewNotValid(nil, "missing fingerprint")
 		}
 	} else {
 		if err := res.Fingerprint.Validate(); err != nil {
