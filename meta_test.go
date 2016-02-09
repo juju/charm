@@ -861,7 +861,7 @@ resources:
     resource-name:
         type: file
         filename: filename.tgz
-        comment: "One line that is useful when operators need to push it."
+        description: "One line that is useful when operators need to push it."
     other-resource:
         type: file
         filename: other.zip
@@ -870,10 +870,10 @@ resources:
 
 	c.Check(meta.Resources, jc.DeepEquals, map[string]resource.Meta{
 		"resource-name": resource.Meta{
-			Name:    "resource-name",
-			Type:    resource.TypeFile,
-			Path:    "filename.tgz",
-			Comment: "One line that is useful when operators need to push it.",
+			Name:        "resource-name",
+			Type:        resource.TypeFile,
+			Path:        "filename.tgz",
+			Description: "One line that is useful when operators need to push it.",
 		},
 		"other-resource": resource.Meta{
 			Name: "other-resource",
