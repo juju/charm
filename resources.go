@@ -13,13 +13,13 @@ import (
 
 var resourceSchema = schema.FieldMap(
 	schema.Fields{
-		"type":     schema.String(),
-		"filename": schema.String(), // TODO(ericsnow) Change to "path"?
-		"comment":  schema.String(),
+		"type":        schema.String(),
+		"filename":    schema.String(), // TODO(ericsnow) Change to "path"?
+		"description": schema.String(),
 	},
 	schema.Defaults{
-		"type":    resource.TypeFile.String(),
-		"comment": "",
+		"type":        resource.TypeFile.String(),
+		"description": "",
 	},
 )
 

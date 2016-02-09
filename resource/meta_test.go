@@ -18,44 +18,44 @@ type MetaSuite struct{}
 func (s *MetaSuite) TestParseMetaOkay(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
-		"type":     "file",
-		"filename": "filename.tgz",
-		"comment":  "One line that is useful when operators need to push it.",
+		"type":        "file",
+		"filename":    "filename.tgz",
+		"description": "One line that is useful when operators need to push it.",
 	}
 	res, err := resource.ParseMeta(name, data)
 	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
-		Name:    "my-resource",
-		Type:    resource.TypeFile,
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		Name:        "my-resource",
+		Type:        resource.TypeFile,
+		Path:        "filename.tgz",
+		Description: "One line that is useful when operators need to push it.",
 	})
 }
 
 func (s *MetaSuite) TestParseMetaMissingName(c *gc.C) {
 	name := ""
 	data := map[string]interface{}{
-		"type":     "file",
-		"filename": "filename.tgz",
-		"comment":  "One line that is useful when operators need to push it.",
+		"type":        "file",
+		"filename":    "filename.tgz",
+		"description": "One line that is useful when operators need to push it.",
 	}
 	res, err := resource.ParseMeta(name, data)
 	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
-		Name:    "",
-		Type:    resource.TypeFile,
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		Name:        "",
+		Type:        resource.TypeFile,
+		Path:        "filename.tgz",
+		Description: "One line that is useful when operators need to push it.",
 	})
 }
 
 func (s *MetaSuite) TestParseMetaMissingType(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
-		"filename": "filename.tgz",
-		"comment":  "One line that is useful when operators need to push it.",
+		"filename":    "filename.tgz",
+		"description": "One line that is useful when operators need to push it.",
 	}
 	res, err := resource.ParseMeta(name, data)
 	c.Assert(err, jc.ErrorIsNil)
@@ -63,17 +63,17 @@ func (s *MetaSuite) TestParseMetaMissingType(c *gc.C) {
 	c.Check(res, jc.DeepEquals, resource.Meta{
 		Name: "my-resource",
 		// Type is the zero value.
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		Path:        "filename.tgz",
+		Description: "One line that is useful when operators need to push it.",
 	})
 }
 
 func (s *MetaSuite) TestParseMetaEmptyType(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
-		"type":     "",
-		"filename": "filename.tgz",
-		"comment":  "One line that is useful when operators need to push it.",
+		"type":        "",
+		"filename":    "filename.tgz",
+		"description": "One line that is useful when operators need to push it.",
 	}
 	_, err := resource.ParseMeta(name, data)
 
@@ -83,9 +83,9 @@ func (s *MetaSuite) TestParseMetaEmptyType(c *gc.C) {
 func (s *MetaSuite) TestParseMetaUnknownType(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
-		"type":     "spam",
-		"filename": "filename.tgz",
-		"comment":  "One line that is useful when operators need to push it.",
+		"type":        "spam",
+		"filename":    "filename.tgz",
+		"description": "One line that is useful when operators need to push it.",
 	}
 	_, err := resource.ParseMeta(name, data)
 
@@ -95,17 +95,17 @@ func (s *MetaSuite) TestParseMetaUnknownType(c *gc.C) {
 func (s *MetaSuite) TestParseMetaMissingPath(c *gc.C) {
 	name := "my-resource"
 	data := map[string]interface{}{
-		"type":    "file",
-		"comment": "One line that is useful when operators need to push it.",
+		"type":        "file",
+		"description": "One line that is useful when operators need to push it.",
 	}
 	res, err := resource.ParseMeta(name, data)
 	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
-		Name:    "my-resource",
-		Type:    resource.TypeFile,
-		Path:    "",
-		Comment: "One line that is useful when operators need to push it.",
+		Name:        "my-resource",
+		Type:        resource.TypeFile,
+		Path:        "",
+		Description: "One line that is useful when operators need to push it.",
 	})
 }
 
@@ -119,10 +119,10 @@ func (s *MetaSuite) TestParseMetaMissingComment(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 
 	c.Check(res, jc.DeepEquals, resource.Meta{
-		Name:    "my-resource",
-		Type:    resource.TypeFile,
-		Path:    "filename.tgz",
-		Comment: "",
+		Name:        "my-resource",
+		Type:        resource.TypeFile,
+		Path:        "filename.tgz",
+		Description: "",
 	})
 }
 
@@ -150,10 +150,10 @@ func (s *MetaSuite) TestParseMetaNil(c *gc.C) {
 
 func (s *MetaSuite) TestValidateFull(c *gc.C) {
 	res := resource.Meta{
-		Name:    "my-resource",
-		Type:    resource.TypeFile,
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		Name:        "my-resource",
+		Type:        resource.TypeFile,
+		Path:        "filename.tgz",
+		Description: "One line that is useful when operators need to push it.",
 	}
 	err := res.Validate()
 
@@ -169,9 +169,9 @@ func (s *MetaSuite) TestValidateZeroValue(c *gc.C) {
 
 func (s *MetaSuite) TestValidateMissingName(c *gc.C) {
 	res := resource.Meta{
-		Type:    resource.TypeFile,
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		Type:        resource.TypeFile,
+		Path:        "filename.tgz",
+		Description: "One line that is useful when operators need to push it.",
 	}
 	err := res.Validate()
 
@@ -181,9 +181,9 @@ func (s *MetaSuite) TestValidateMissingName(c *gc.C) {
 
 func (s *MetaSuite) TestValidateMissingType(c *gc.C) {
 	res := resource.Meta{
-		Name:    "my-resource",
-		Path:    "filename.tgz",
-		Comment: "One line that is useful when operators need to push it.",
+		Name:        "my-resource",
+		Path:        "filename.tgz",
+		Description: "One line that is useful when operators need to push it.",
 	}
 	err := res.Validate()
 
@@ -193,9 +193,9 @@ func (s *MetaSuite) TestValidateMissingType(c *gc.C) {
 
 func (s *MetaSuite) TestValidateMissingPath(c *gc.C) {
 	res := resource.Meta{
-		Name:    "my-resource",
-		Type:    resource.TypeFile,
-		Comment: "One line that is useful when operators need to push it.",
+		Name:        "my-resource",
+		Type:        resource.TypeFile,
+		Description: "One line that is useful when operators need to push it.",
 	}
 	err := res.Validate()
 

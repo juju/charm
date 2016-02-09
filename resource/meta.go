@@ -30,8 +30,8 @@ type Meta struct {
 	//   /var/lib/juju/agent/spam-0/resources/eggs/eggs.tgz
 	Path string
 
-	// Comment holds optional user-facing info for the resource.
-	Comment string
+	// Description holds optional user-facing info for the resource.
+	Description string
 }
 
 // ParseMeta parses the provided data into a Meta.
@@ -56,8 +56,8 @@ func ParseMeta(name string, data interface{}) (Meta, error) {
 		meta.Path = val.(string)
 	}
 
-	if val := rMap["comment"]; val != nil {
-		meta.Comment = val.(string)
+	if val := rMap["description"]; val != nil {
+		meta.Description = val.(string)
 	}
 
 	return meta, nil
