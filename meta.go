@@ -287,6 +287,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 
 func parseMeta(m map[string]interface{}) (*Meta, error) {
 	var meta Meta
+	var err error
 
 	meta.Name = m["name"].(string)
 	// Schema decodes as int64, but the int range should be good
@@ -296,11 +297,10 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	meta.Provides = parseRelations(m["provides"], RoleProvider)
 	meta.Requires = parseRelations(m["requires"], RoleRequirer)
 	meta.Peers = parseRelations(m["peers"], RolePeer)
-	extraBindings, err := parseMetaExtraBindings(m["extra-bindings"])
+	meta.ExtraBindings, err = parseMetaExtraBindings(m["extra-bindings"])
 	if err != nil {
 		return nil, err
 	}
-	meta.ExtraBindings = extraBindings
 	meta.Format = int(m["format"].(int64))
 	meta.Categories = parseStringList(m["categories"])
 	meta.Tags = parseStringList(m["tags"])

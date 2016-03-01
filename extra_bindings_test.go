@@ -4,8 +4,6 @@
 package charm_test
 
 import (
-	"fmt"
-
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
@@ -38,22 +36,6 @@ func (s *extraBindingsSuite) TestSchemaOkay(c *gc.C) {
 	})
 }
 
-func (s *extraBindingsSuite) TestSchemaValuesMustBeEmpty(c *gc.C) {
-	badValues := []interface{}{
-		42, true, 3.14, "bad", []string{"a"}, map[string]string{"x": "y"},
-	}
-	for _, testValue := range badValues {
-		raw := map[interface{}]interface{}{
-			"some-endpoint": testValue,
-		}
-		v, err := charm.ExtraBindingsSchema.Coerce(raw, nil)
-		expectedError := fmt.Sprintf("some-endpoint: expected empty value, got %T(%#v)", testValue, testValue)
-		c.Check(err, gc.NotNil)
-		c.Check(err.Error(), gc.Equals, expectedError)
-		c.Check(v, gc.IsNil)
-	}
-}
-
 func (s *extraBindingsSuite) TestValidateWithEmptyNonNilMap(c *gc.C) {
 	s.riakMeta.ExtraBindings = map[string]charm.ExtraBinding{}
 	err := charm.ValidateMetaExtraBindings(s.riakMeta)
@@ -65,7 +47,7 @@ func (s *extraBindingsSuite) TestValidateWithEmptyName(c *gc.C) {
 		"": charm.ExtraBinding{Name: ""},
 	}
 	err := charm.ValidateMetaExtraBindings(s.riakMeta)
-	c.Assert(err, gc.ErrorMatches, "missing extra binding name")
+	c.Assert(err, gc.ErrorMatches, "missing binding name")
 }
 
 func (s *extraBindingsSuite) TestValidateWithMismatchedName(c *gc.C) {
@@ -79,7 +61,9 @@ func (s *extraBindingsSuite) TestValidateWithMismatchedName(c *gc.C) {
 func (s *extraBindingsSuite) TestValidateWithRelationNamesMatchingExtraBindings(c *gc.C) {
 	s.riakMeta.ExtraBindings = map[string]charm.ExtraBinding{
 		"admin": charm.ExtraBinding{Name: "admin"},
+		"ring":  charm.ExtraBinding{Name: "ring"},
+		"foo":   charm.ExtraBinding{Name: "foo"},
 	}
 	err := charm.ValidateMetaExtraBindings(s.riakMeta)
-	c.Assert(err, gc.ErrorMatches, `relation "admin" cannot be used in extra bindings`)
+	c.Assert(err, gc.ErrorMatches, `relation names \(admin, ring\) cannot be used in extra bindings`)
 }

@@ -411,7 +411,7 @@ func (s *MetaSuite) TestCheckEmptyNameKeyOrEmptyExtraBindingName(c *gc.C) {
 		ExtraBindings: map[string]charm.ExtraBinding{"": {Name: "bar"}},
 	}
 	err := meta.Check()
-	expectedError := `charm "foo" has invalid extra bindings: missing extra binding name`
+	expectedError := `charm "foo" has invalid extra bindings: missing binding name`
 	c.Assert(err, gc.ErrorMatches, expectedError)
 
 	meta.ExtraBindings = map[string]charm.ExtraBinding{"bar": {Name: ""}}
