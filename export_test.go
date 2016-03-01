@@ -1,4 +1,4 @@
-// Copyright 2011, 2012, 2013 Canonical Ltd.
+// Copyright 2011-2016 Canonical Ltd.
 // Licensed under the LGPLv3, see LICENCE file for details.
 
 package charm
@@ -9,8 +9,10 @@ var (
 	IfaceExpander = ifaceExpander
 	ValidateValue = validateValue
 
-	ParsePayloadClass = parsePayloadClass
-	ResourceSchema    = resourceSchema
+	ParsePayloadClass         = parsePayloadClass
+	ResourceSchema            = resourceSchema
+	ExtraBindingsSchema       = extraBindingsSchema
+	ValidateMetaExtraBindings = validateMetaExtraBindings
 )
 
 func MissingSeriesError() error {
