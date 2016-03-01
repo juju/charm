@@ -467,11 +467,12 @@ func (verifier *bundleDataVerifier) verifyEndpointBindings() {
 			continue
 		}
 		for endpoint, space := range svc.EndpointBindings {
-			_, matchedProvides := charm.Meta().Provides[endpoint]
-			_, matchedRequires := charm.Meta().Requires[endpoint]
-			_, matchedPeers := charm.Meta().Peers[endpoint]
+			_, isInProvides := charm.Meta().Provides[endpoint]
+			_, isInRequires := charm.Meta().Requires[endpoint]
+			_, isInPeers := charm.Meta().Peers[endpoint]
+			_, isInExtraBindings := charm.Meta().ExtraBindings[endpoint]
 
-			if !(matchedProvides || matchedRequires || matchedPeers) {
+			if !(isInProvides || isInRequires || isInPeers || isInExtraBindings) {
 				verifier.addErrorf(
 					"service %q wants to bind endpoint %q to space %q, "+
 						"but the endpoint is not defined by the charm",

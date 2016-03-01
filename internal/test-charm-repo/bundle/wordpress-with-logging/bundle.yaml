@@ -5,6 +5,8 @@ services:
         bindings:
             db: db
             url: public
+            db-client: db
+            admin-api: public
     mysql:
         charm: mysql
         num_units: 1
