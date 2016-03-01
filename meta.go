@@ -188,6 +188,7 @@ type Meta struct {
 	Provides       map[string]Relation      `bson:"provides,omitempty" json:"Provides,omitempty"`
 	Requires       map[string]Relation      `bson:"requires,omitempty" json:"Requires,omitempty"`
 	Peers          map[string]Relation      `bson:"peers,omitempty" json:"Peers,omitempty"`
+	ExtraBindings  map[string]ExtraBinding  `bson:"extra-bindings,omitempty" json:"ExtraBindings,omitempty"`
 	Format         int                      `bson:"format,omitempty" json:"Format,omitempty"`
 	OldRevision    int                      `bson:"oldrevision,omitempty" json:"OldRevision"` // Obsolete
 	Categories     []string                 `bson:"categories,omitempty" json:"Categories,omitempty"`
@@ -196,7 +197,7 @@ type Meta struct {
 	Storage        map[string]Storage       `bson:"storage,omitempty" json:"Storage,omitempty"`
 	PayloadClasses map[string]PayloadClass  `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
 	Resources      map[string]resource.Meta `bson:"resources,omitempty" json:"Resources,omitempty"`
-	Terms          []string                 `bson:"terms,omitempty" json:"Terms,omitempty`
+	Terms          []string                 `bson:"terms,omitempty" json:"Terms,omitempty"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -286,6 +287,7 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 
 func parseMeta(m map[string]interface{}) (*Meta, error) {
 	var meta Meta
+	var err error
 
 	meta.Name = m["name"].(string)
 	// Schema decodes as int64, but the int range should be good
@@ -295,6 +297,10 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	meta.Provides = parseRelations(m["provides"], RoleProvider)
 	meta.Requires = parseRelations(m["requires"], RoleRequirer)
 	meta.Peers = parseRelations(m["peers"], RolePeer)
+	meta.ExtraBindings, err = parseMetaExtraBindings(m["extra-bindings"])
+	if err != nil {
+		return nil, err
+	}
 	meta.Format = int(m["format"].(int64))
 	meta.Categories = parseStringList(m["categories"])
 	meta.Tags = parseStringList(m["tags"])
@@ -320,38 +326,41 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 
 // GetYAML implements yaml.Getter.GetYAML.
 func (m Meta) GetYAML() (tag string, value interface{}) {
-	marshaledRelations := func(rs map[string]Relation) map[string]marshaledRelation {
-		mrs := make(map[string]marshaledRelation)
-		for name, r := range rs {
-			mrs[name] = marshaledRelation(r)
-		}
-		return mrs
-	}
 	return "", struct {
-		Name        string                       `yaml:"name"`
-		Summary     string                       `yaml:"summary"`
-		Description string                       `yaml:"description"`
-		Provides    map[string]marshaledRelation `yaml:"provides,omitempty"`
-		Requires    map[string]marshaledRelation `yaml:"requires,omitempty"`
-		Peers       map[string]marshaledRelation `yaml:"peers,omitempty"`
-		Categories  []string                     `yaml:"categories,omitempty"`
-		Tags        []string                     `yaml:"tags,omitempty"`
-		Subordinate bool                         `yaml:"subordinate,omitempty"`
-		Series      []string                     `yaml:"series,omitempty"`
-		Terms       []string                     `yaml:"terms,omitempty"`
+		Name          string                       `yaml:"name"`
+		Summary       string                       `yaml:"summary"`
+		Description   string                       `yaml:"description"`
+		Provides      map[string]marshaledRelation `yaml:"provides,omitempty"`
+		Requires      map[string]marshaledRelation `yaml:"requires,omitempty"`
+		Peers         map[string]marshaledRelation `yaml:"peers,omitempty"`
+		ExtraBindings map[string]interface{}       `yaml:"extra-bindings,omitempty"`
+		Categories    []string                     `yaml:"categories,omitempty"`
+		Tags          []string                     `yaml:"tags,omitempty"`
+		Subordinate   bool                         `yaml:"subordinate,omitempty"`
+		Series        []string                     `yaml:"series,omitempty"`
+		Terms         []string                     `yaml:"terms,omitempty"`
 	}{
-		Name:        m.Name,
-		Summary:     m.Summary,
-		Description: m.Description,
-		Provides:    marshaledRelations(m.Provides),
-		Requires:    marshaledRelations(m.Requires),
-		Peers:       marshaledRelations(m.Peers),
-		Categories:  m.Categories,
-		Tags:        m.Tags,
-		Subordinate: m.Subordinate,
-		Series:      m.Series,
-		Terms:       m.Terms,
+		Name:          m.Name,
+		Summary:       m.Summary,
+		Description:   m.Description,
+		Provides:      marshaledRelations(m.Provides),
+		Requires:      marshaledRelations(m.Requires),
+		Peers:         marshaledRelations(m.Peers),
+		ExtraBindings: marshaledExtraBindings(m.ExtraBindings),
+		Categories:    m.Categories,
+		Tags:          m.Tags,
+		Subordinate:   m.Subordinate,
+		Series:        m.Series,
+		Terms:         m.Terms,
 	}
+}
+
+func marshaledRelations(relations map[string]Relation) map[string]marshaledRelation {
+	marshaled := make(map[string]marshaledRelation)
+	for name, relation := range relations {
+		marshaled[name] = marshaledRelation(relation)
+	}
+	return marshaled
 }
 
 type marshaledRelation Relation
@@ -383,6 +392,14 @@ func (r marshaledRelation) GetYAML() (tag string, value interface{}) {
 		mr.Scope = r.Scope
 	}
 	return "", mr
+}
+
+func marshaledExtraBindings(bindings map[string]ExtraBinding) map[string]interface{} {
+	marshaled := make(map[string]interface{})
+	for _, binding := range bindings {
+		marshaled[binding.Name] = nil
+	}
+	return marshaled
 }
 
 // Check checks that the metadata is well-formed.
@@ -424,6 +441,10 @@ func (meta Meta) Check() error {
 	}
 	if err := checkRelations(meta.Peers, RolePeer); err != nil {
 		return err
+	}
+
+	if err := validateMetaExtraBindings(meta); err != nil {
+		return fmt.Errorf("charm %q has invalid extra bindings: %v", meta.Name, err)
 	}
 
 	// Subordinate charms must have at least one relation that
@@ -520,6 +541,22 @@ func parseRelations(relations interface{}, role RelationRole) map[string]Relatio
 		result[name] = relation
 	}
 	return result
+}
+
+// CombinedRelations returns all defined relations, regardless of their type in
+// a single map.
+func (m Meta) CombinedRelations() map[string]Relation {
+	combined := make(map[string]Relation)
+	for name, relation := range m.Provides {
+		combined[name] = relation
+	}
+	for name, relation := range m.Requires {
+		combined[name] = relation
+	}
+	for name, relation := range m.Peers {
+		combined[name] = relation
+	}
+	return combined
 }
 
 // Schema coercer that expands the interface shorthand notation.
@@ -713,36 +750,38 @@ func (c propertiesC) Coerce(v interface{}, path []string) (newv interface{}, err
 
 var charmSchema = schema.FieldMap(
 	schema.Fields{
-		"name":        schema.String(),
-		"summary":     schema.String(),
-		"description": schema.String(),
-		"peers":       schema.StringMap(ifaceExpander(int64(1))),
-		"provides":    schema.StringMap(ifaceExpander(nil)),
-		"requires":    schema.StringMap(ifaceExpander(int64(1))),
-		"revision":    schema.Int(), // Obsolete
-		"format":      schema.Int(),
-		"subordinate": schema.Bool(),
-		"categories":  schema.List(schema.String()),
-		"tags":        schema.List(schema.String()),
-		"series":      schema.List(schema.String()),
-		"storage":     schema.StringMap(storageSchema),
-		"payloads":    schema.StringMap(payloadClassSchema),
-		"resources":   schema.StringMap(resourceSchema),
-		"terms":       schema.List(schema.String()),
+		"name":           schema.String(),
+		"summary":        schema.String(),
+		"description":    schema.String(),
+		"peers":          schema.StringMap(ifaceExpander(int64(1))),
+		"provides":       schema.StringMap(ifaceExpander(nil)),
+		"requires":       schema.StringMap(ifaceExpander(int64(1))),
+		"extra-bindings": extraBindingsSchema,
+		"revision":       schema.Int(), // Obsolete
+		"format":         schema.Int(),
+		"subordinate":    schema.Bool(),
+		"categories":     schema.List(schema.String()),
+		"tags":           schema.List(schema.String()),
+		"series":         schema.List(schema.String()),
+		"storage":        schema.StringMap(storageSchema),
+		"payloads":       schema.StringMap(payloadClassSchema),
+		"resources":      schema.StringMap(resourceSchema),
+		"terms":          schema.List(schema.String()),
 	},
 	schema.Defaults{
-		"provides":    schema.Omit,
-		"requires":    schema.Omit,
-		"peers":       schema.Omit,
-		"revision":    schema.Omit,
-		"format":      1,
-		"subordinate": schema.Omit,
-		"categories":  schema.Omit,
-		"tags":        schema.Omit,
-		"series":      schema.Omit,
-		"storage":     schema.Omit,
-		"payloads":    schema.Omit,
-		"resources":   schema.Omit,
-		"terms":       schema.Omit,
+		"provides":       schema.Omit,
+		"requires":       schema.Omit,
+		"peers":          schema.Omit,
+		"extra-bindings": schema.Omit,
+		"revision":       schema.Omit,
+		"format":         1,
+		"subordinate":    schema.Omit,
+		"categories":     schema.Omit,
+		"tags":           schema.Omit,
+		"series":         schema.Omit,
+		"storage":        schema.Omit,
+		"payloads":       schema.Omit,
+		"resources":      schema.Omit,
+		"terms":          schema.Omit,
 	},
 )

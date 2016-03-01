@@ -220,6 +220,35 @@ func (s *MetaSuite) TestParseMetaRelations(c *gc.C) {
 	c.Assert(meta.Peers, gc.IsNil)
 }
 
+func (s *MetaSuite) TestCombinedRelations(c *gc.C) {
+	meta, err := charm.ReadMeta(repoMeta(c, "riak"))
+	c.Assert(err, gc.IsNil)
+	combinedRelations := meta.CombinedRelations()
+	expectedLength := len(meta.Provides) + len(meta.Requires) + len(meta.Peers)
+	c.Assert(combinedRelations, gc.HasLen, expectedLength)
+	c.Assert(combinedRelations, jc.DeepEquals, map[string]charm.Relation{
+		"endpoint": {
+			Name:      "endpoint",
+			Role:      charm.RoleProvider,
+			Interface: "http",
+			Scope:     charm.ScopeGlobal,
+		},
+		"admin": {
+			Name:      "admin",
+			Role:      charm.RoleProvider,
+			Interface: "http",
+			Scope:     charm.ScopeGlobal,
+		},
+		"ring": {
+			Name:      "ring",
+			Role:      charm.RolePeer,
+			Interface: "riak",
+			Limit:     1,
+			Scope:     charm.ScopeGlobal,
+		},
+	})
+}
+
 var relationsConstraintsTests = []struct {
 	rels string
 	err  string
@@ -365,6 +394,31 @@ func (s *MetaSuite) TestCheckMismatchedRole(c *gc.C) {
 	c.Assert(err, gc.ErrorMatches, `charm "foo" has mismatched relation name ""; expected "foo"`)
 }
 
+func (s *MetaSuite) TestCheckMismatchedExtraBindingName(c *gc.C) {
+	meta := charm.Meta{
+		Name: "foo",
+		ExtraBindings: map[string]charm.ExtraBinding{
+			"foo": {Name: "bar"},
+		},
+	}
+	err := meta.Check()
+	c.Assert(err, gc.ErrorMatches, `charm "foo" has invalid extra bindings: mismatched extra binding name: got "bar", expected "foo"`)
+}
+
+func (s *MetaSuite) TestCheckEmptyNameKeyOrEmptyExtraBindingName(c *gc.C) {
+	meta := charm.Meta{
+		Name:          "foo",
+		ExtraBindings: map[string]charm.ExtraBinding{"": {Name: "bar"}},
+	}
+	err := meta.Check()
+	expectedError := `charm "foo" has invalid extra bindings: missing binding name`
+	c.Assert(err, gc.ErrorMatches, expectedError)
+
+	meta.ExtraBindings = map[string]charm.ExtraBinding{"bar": {Name: ""}}
+	err = meta.Check()
+	c.Assert(err, gc.ErrorMatches, expectedError)
+}
+
 // Test rewriting of a given interface specification into long form.
 //
 // InterfaceExpander uses `coerce` to do one of two things:
@@ -498,6 +552,10 @@ func (s *MetaSuite) TestCodecRoundTrip(c *gc.C) {
 				Scope:     "quxxx",
 			},
 		},
+		ExtraBindings: map[string]charm.ExtraBinding{
+			"foo": {Name: "foo"},
+			"qux": {Name: "qux"},
+		},
 		Categories:  []string{"quxxxx", "quxxxxx"},
 		Tags:        []string{"openstack", "storage"},
 		Format:      10,
@@ -604,6 +662,9 @@ peers:
     peerLessSimple:
         interface: peery
         optional: true
+extra-bindings:
+    extraBar:
+    extraFoo1:
 categories: [c1, c1]
 tags: [t1, t2]
 series:
@@ -624,8 +685,8 @@ func (s *MetaSuite) TestYAMLMarshal(c *gc.C) {
 	}
 }
 
-func (s *MetaSuite) TestYAMLMarshalSimpleRelation(c *gc.C) {
-	// Check that a simple relation gets marshaled as a string.
+func (s *MetaSuite) TestYAMLMarshalSimpleRelationOrExtraBinding(c *gc.C) {
+	// Check that a simple relation / extra-binding gets marshaled as a string.
 	chYAML := `
 name: minimal
 description: d
@@ -636,6 +697,8 @@ requires:
     client: http
 peers:
      me: http
+extra-bindings:
+     foo:
 `
 	ch, err := charm.ReadMeta(strings.NewReader(chYAML))
 	c.Assert(err, gc.IsNil)
@@ -657,6 +720,9 @@ peers:
 		},
 		"peers": map[interface{}]interface{}{
 			"me": "http",
+		},
+		"extra-bindings": map[interface{}]interface{}{
+			"foo": nil,
 		},
 	})
 }
@@ -825,6 +891,65 @@ storage:
 	store := meta.Storage["store0"]
 	c.Assert(store, gc.NotNil)
 	c.Assert(store.Properties, jc.SameContents, []string{"transient"})
+}
+
+func (s *MetaSuite) TestExtraBindings(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+extra-bindings:
+    endpoint-1:
+    foo:
+    bar-42:
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.ExtraBindings, gc.DeepEquals, map[string]charm.ExtraBinding{
+		"endpoint-1": {
+			Name: "endpoint-1",
+		},
+		"foo": {
+			Name: "foo",
+		},
+		"bar-42": {
+			Name: "bar-42",
+		},
+	})
+}
+
+func (s *MetaSuite) TestExtraBindingsEmptyMapError(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+extra-bindings:
+`))
+	c.Assert(err, gc.ErrorMatches, "metadata: extra-bindings: expected map, got nothing")
+	c.Assert(meta, gc.IsNil)
+}
+
+func (s *MetaSuite) TestExtraBindingsNonEmptyValueError(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+extra-bindings:
+    foo: 42
+`))
+	c.Assert(err, gc.ErrorMatches, `metadata: extra-bindings.foo: expected empty value, got int\(42\)`)
+	c.Assert(meta, gc.IsNil)
+}
+
+func (s *MetaSuite) TestExtraBindingsEmptyNameError(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+extra-bindings:
+    "":
+`))
+	c.Assert(err, gc.ErrorMatches, `metadata: extra-bindings: expected non-empty binding name, got string\(""\)`)
+	c.Assert(meta, gc.IsNil)
 }
 
 func (s *MetaSuite) TestPayloadClasses(c *gc.C) {
