@@ -908,7 +908,7 @@ description: c
 extra-bindings:
     foo: 42
 `))
-	c.Assert(err, gc.ErrorMatches, `metadata: extra-bindings.foo: expected no value, got int\(42\)`)
+	c.Assert(err, gc.ErrorMatches, `metadata: extra-bindings.foo: expected empty value, got int\(42\)`)
 	c.Assert(meta, gc.IsNil)
 }
 
@@ -920,7 +920,7 @@ description: c
 extra-bindings:
     "":
 `))
-	c.Assert(err, gc.ErrorMatches, `metadata: extra-bindings: expected non-empty binding name, got ""`)
+	c.Assert(err, gc.ErrorMatches, `metadata: extra-bindings: expected non-empty binding name, got string\(""\)`)
 	c.Assert(meta, gc.IsNil)
 }
 

@@ -39,7 +39,7 @@ func (s *extraBindingsSuite) TestSchemaValuesMustBeEmpty(c *gc.C) {
 			"some-endpoint": testValue,
 		}
 		v, err := charm.ExtraBindingsSchema.Coerce(raw, nil)
-		expectedError := fmt.Sprintf("some-endpoint: expected no value, got %T(%#v)", testValue, testValue)
+		expectedError := fmt.Sprintf("some-endpoint: expected empty value, got %T(%#v)", testValue, testValue)
 		c.Check(err, gc.NotNil)
 		c.Check(err.Error(), gc.Equals, expectedError)
 		c.Check(v, gc.IsNil)
