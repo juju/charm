@@ -443,7 +443,7 @@ func (meta Meta) Check() error {
 		return err
 	}
 
-	if err := validateMetaExtraBindings(meta.ExtraBindings); err != nil {
+	if err := validateMetaExtraBindings(meta); err != nil {
 		return fmt.Errorf("charm %q has invalid extra bindings: %v", meta.Name, err)
 	}
 

@@ -663,9 +663,8 @@ peers:
         interface: peery
         optional: true
 extra-bindings:
-    provideSimple:
+    extraBar:
     extraFoo1:
-    peerSimple:
 categories: [c1, c1]
 tags: [t1, t2]
 series:

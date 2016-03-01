@@ -14,7 +14,15 @@ import (
 
 var _ = gc.Suite(&extraBindingsSuite{})
 
-type extraBindingsSuite struct{}
+type extraBindingsSuite struct {
+	riakMeta charm.Meta
+}
+
+func (s *extraBindingsSuite) SetUpTest(c *gc.C) {
+	riakMeta, err := charm.ReadMeta(repoMeta(c, "riak"))
+	c.Assert(err, jc.ErrorIsNil)
+	s.riakMeta = *riakMeta
+}
 
 func (s *extraBindingsSuite) TestSchemaOkay(c *gc.C) {
 	raw := map[interface{}]interface{}{
@@ -47,22 +55,31 @@ func (s *extraBindingsSuite) TestSchemaValuesMustBeEmpty(c *gc.C) {
 }
 
 func (s *extraBindingsSuite) TestValidateWithEmptyNonNilMap(c *gc.C) {
-	err := charm.ValidateMetaExtraBindings(map[string]charm.ExtraBinding{})
+	s.riakMeta.ExtraBindings = map[string]charm.ExtraBinding{}
+	err := charm.ValidateMetaExtraBindings(s.riakMeta)
 	c.Assert(err, gc.ErrorMatches, "extra bindings cannot be empty when specified")
 }
 
 func (s *extraBindingsSuite) TestValidateWithEmptyName(c *gc.C) {
-	invalidBindings := map[string]charm.ExtraBinding{
+	s.riakMeta.ExtraBindings = map[string]charm.ExtraBinding{
 		"": charm.ExtraBinding{Name: ""},
 	}
-	err := charm.ValidateMetaExtraBindings(invalidBindings)
+	err := charm.ValidateMetaExtraBindings(s.riakMeta)
 	c.Assert(err, gc.ErrorMatches, "missing extra binding name")
 }
 
 func (s *extraBindingsSuite) TestValidateWithMismatchedName(c *gc.C) {
-	invalidBindings := map[string]charm.ExtraBinding{
+	s.riakMeta.ExtraBindings = map[string]charm.ExtraBinding{
 		"bar": charm.ExtraBinding{Name: "foo"},
 	}
-	err := charm.ValidateMetaExtraBindings(invalidBindings)
+	err := charm.ValidateMetaExtraBindings(s.riakMeta)
 	c.Assert(err, gc.ErrorMatches, `mismatched extra binding name: got "foo", expected "bar"`)
+}
+
+func (s *extraBindingsSuite) TestValidateWithRelationNamesMatchingExtraBindings(c *gc.C) {
+	s.riakMeta.ExtraBindings = map[string]charm.ExtraBinding{
+		"admin": charm.ExtraBinding{Name: "admin"},
+	}
+	err := charm.ValidateMetaExtraBindings(s.riakMeta)
+	c.Assert(err, gc.ErrorMatches, `relation "admin" cannot be used in extra bindings`)
 }
