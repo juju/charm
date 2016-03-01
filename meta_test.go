@@ -220,6 +220,35 @@ func (s *MetaSuite) TestParseMetaRelations(c *gc.C) {
 	c.Assert(meta.Peers, gc.IsNil)
 }
 
+func (s *MetaSuite) TestCombinedRelations(c *gc.C) {
+	meta, err := charm.ReadMeta(repoMeta(c, "riak"))
+	c.Assert(err, gc.IsNil)
+	combinedRelations := meta.CombinedRelations()
+	expectedLength := len(meta.Provides) + len(meta.Requires) + len(meta.Peers)
+	c.Assert(combinedRelations, gc.HasLen, expectedLength)
+	c.Assert(combinedRelations, jc.DeepEquals, map[string]charm.Relation{
+		"endpoint": {
+			Name:      "endpoint",
+			Role:      charm.RoleProvider,
+			Interface: "http",
+			Scope:     charm.ScopeGlobal,
+		},
+		"admin": {
+			Name:      "admin",
+			Role:      charm.RoleProvider,
+			Interface: "http",
+			Scope:     charm.ScopeGlobal,
+		},
+		"ring": {
+			Name:      "ring",
+			Role:      charm.RolePeer,
+			Interface: "riak",
+			Limit:     1,
+			Scope:     charm.ScopeGlobal,
+		},
+	})
+}
+
 var relationsConstraintsTests = []struct {
 	rels string
 	err  string

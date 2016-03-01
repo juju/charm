@@ -543,6 +543,22 @@ func parseRelations(relations interface{}, role RelationRole) map[string]Relatio
 	return result
 }
 
+// CombinedRelations returns all defined relations, regardless of their type in
+// a single map.
+func (m Meta) CombinedRelations() map[string]Relation {
+	combined := make(map[string]Relation)
+	for name, relation := range m.Provides {
+		combined[name] = relation
+	}
+	for name, relation := range m.Requires {
+		combined[name] = relation
+	}
+	for name, relation := range m.Peers {
+		combined[name] = relation
+	}
+	return combined
+}
+
 // Schema coercer that expands the interface shorthand notation.
 // A consistent format is easier to work with than considering the
 // potential difference everywhere.
