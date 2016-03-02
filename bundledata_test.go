@@ -329,20 +329,12 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 	}
 }
 
-func (*bundleDataSuite) TestVerifyBundleUsingJujuInfoRelation(c *gc.C) {
-	b := readBundleDir(c, "wordpress-with-logging")
-	bd := b.Data()
-
-	charms := map[string]charm.Charm{
-		"wordpress": readCharmDir(c, "wordpress"),
-		"mysql":     readCharmDir(c, "mysql"),
-		"logging":   readCharmDir(c, "logging"),
-	}
-	err := bd.VerifyWithCharms(nil, nil, charms)
+func (s *bundleDataSuite) TestVerifyBundleUsingJujuInfoRelation(c *gc.C) {
+	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, nil)
 	c.Assert(err, gc.IsNil)
 }
 
-func (*bundleDataSuite) TestVerifyBundleUsingJujuInfoRelationBindingFail(c *gc.C) {
+func (s *bundleDataSuite) testPrepareAndMutateBeforeVerifyWithCharms(c *gc.C, mutator func(bd *charm.BundleData)) error {
 	b := readBundleDir(c, "wordpress-with-logging")
 	bd := b.Data()
 
@@ -351,12 +343,40 @@ func (*bundleDataSuite) TestVerifyBundleUsingJujuInfoRelationBindingFail(c *gc.C
 		"mysql":     readCharmDir(c, "mysql"),
 		"logging":   readCharmDir(c, "logging"),
 	}
-	bd.Services["wordpress"].EndpointBindings["foo"] = "bar"
-	err := bd.VerifyWithCharms(nil, nil, charms)
 
+	if mutator != nil {
+		mutator(bd)
+	}
+
+	return bd.VerifyWithCharms(nil, nil, charms)
+}
+
+func (s *bundleDataSuite) TestVerifyBundleWithUnknownEndpointBindingGiven(c *gc.C) {
+	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
+		bd.Services["wordpress"].EndpointBindings["foo"] = "bar"
+	})
 	c.Assert(err, gc.ErrorMatches,
-		"service \"wordpress\" wants to bind endpoint \"foo\" to space \"bar\", "+
-			"but the endpoint is not defined by the charm")
+		`service "wordpress" wants to bind endpoint "foo" to space "bar", `+
+			`but the endpoint is not defined by the charm`,
+	)
+}
+
+func (s *bundleDataSuite) TestVerifyBundleWithExtraBindingsSuccess(c *gc.C) {
+	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
+		// Both of these are specified in extra-bindings.
+		bd.Services["wordpress"].EndpointBindings["admin-api"] = "internal"
+		bd.Services["wordpress"].EndpointBindings["foo-bar"] = "test"
+	})
+	c.Assert(err, gc.IsNil)
+}
+
+func (s *bundleDataSuite) TestVerifyBundleWithRelationNameBindingSuccess(c *gc.C) {
+	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
+		// Both of these are specified in as relations.
+		bd.Services["wordpress"].EndpointBindings["cache"] = "foo"
+		bd.Services["wordpress"].EndpointBindings["monitoring-port"] = "bar"
+	})
+	c.Assert(err, gc.IsNil)
 }
 
 func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
