@@ -16,6 +16,7 @@ import (
 	"github.com/juju/version"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v1"
+	yamlv2 "gopkg.in/yaml.v2"
 
 	"gopkg.in/juju/charm.v6-unstable"
 	"gopkg.in/juju/charm.v6-unstable/resource"
@@ -706,6 +707,19 @@ func (s *MetaSuite) TestYAMLMarshal(c *gc.C) {
 		ch, err := charm.ReadMeta(strings.NewReader(test.yaml))
 		c.Assert(err, gc.IsNil)
 		gotYAML, err := yaml.Marshal(ch)
+		c.Assert(err, gc.IsNil)
+		gotCh, err := charm.ReadMeta(bytes.NewReader(gotYAML))
+		c.Assert(err, gc.IsNil)
+		c.Assert(gotCh, jc.DeepEquals, ch)
+	}
+}
+
+func (s *MetaSuite) TestYAMLMarshalV2(c *gc.C) {
+	for i, test := range metaYAMLMarshalTests {
+		c.Logf("test %d: %s", i, test.about)
+		ch, err := charm.ReadMeta(strings.NewReader(test.yaml))
+		c.Assert(err, gc.IsNil)
+		gotYAML, err := yamlv2.Marshal(ch)
 		c.Assert(err, gc.IsNil)
 		gotCh, err := charm.ReadMeta(bytes.NewReader(gotYAML))
 		c.Assert(err, gc.IsNil)

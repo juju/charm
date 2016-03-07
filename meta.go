@@ -334,14 +334,14 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	return &meta, nil
 }
 
-// GetYAML implements yaml.Getter.GetYAML.
-func (m Meta) GetYAML() (tag string, value interface{}) {
+// MarshalYAML implements yaml.Marshaler (yaml.v2).
+func (m Meta) MarshalYAML() (interface{}, error) {
 	var minver string
 	if m.MinJujuVersion != version.Zero {
 		minver = m.MinJujuVersion.String()
 	}
 
-	return "", struct {
+	return struct {
 		Name           string                       `yaml:"name"`
 		Summary        string                       `yaml:"summary"`
 		Description    string                       `yaml:"description"`
@@ -369,7 +369,14 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		Series:         m.Series,
 		Terms:          m.Terms,
 		MinJujuVersion: minver,
-	}
+	}, nil
+}
+	
+
+// GetYAML implements yaml.Getter.GetYAML (yaml.v1).
+func (m Meta) GetYAML() (tag string, value interface{}) {
+	v, _ := m.MarshalYAML()
+	return "", v
 }
 
 func marshaledRelations(relations map[string]Relation) map[string]marshaledRelation {
