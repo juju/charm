@@ -13,30 +13,34 @@ import (
 
 var resourceSchema = schema.FieldMap(
 	schema.Fields{
-		"type":     schema.String(),
-		"filename": schema.String(), // TODO(ericsnow) Change to "path"?
-		"comment":  schema.String(),
+		"type":        schema.String(),
+		"filename":    schema.String(), // TODO(ericsnow) Change to "path"?
+		"description": schema.String(),
 	},
 	schema.Defaults{
-		"type":    resource.TypeFile.String(),
-		"comment": "",
+		"type":        resource.TypeFile.String(),
+		"description": "",
 	},
 )
 
-func parseResources(data interface{}) map[string]resource.Resource {
+func parseMetaResources(data interface{}) (map[string]resource.Meta, error) {
 	if data == nil {
-		return nil
+		return nil, nil
 	}
 
-	result := make(map[string]resource.Resource)
+	result := make(map[string]resource.Meta)
 	for name, val := range data.(map[string]interface{}) {
-		result[name] = resource.Parse(name, val)
+		meta, err := resource.ParseMeta(name, val)
+		if err != nil {
+			return nil, err
+		}
+		result[name] = meta
 	}
 
-	return result
+	return result, nil
 }
 
-func validateResources(resources map[string]resource.Resource) error {
+func validateMetaResources(resources map[string]resource.Meta) error {
 	for name, res := range resources {
 		if res.Name != name {
 			return fmt.Errorf("mismatch on resource name (%q != %q)", res.Name, name)

@@ -141,6 +141,9 @@ type ServiceSpec struct {
 	// Storage holds the constraints for storage to assign
 	// to units of the service.
 	Storage map[string]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+
+	// EndpointBindings maps how endpoints are bound to spaces
+	EndpointBindings map[string]string `bson:"bindings,omitempty" json:"bindings,omitempty" yaml:"bindings,omitempty"`
 }
 
 // ReadBundleData reads bundle data from the given reader.
@@ -276,6 +279,7 @@ func (bd *BundleData) VerifyWithCharms(
 	verifier.verifyServices()
 	verifier.verifyRelations()
 	verifier.verifyOptions()
+	verifier.verifyEndpointBindings()
 
 	for id, count := range verifier.machineRefCounts {
 		if count == 0 {
@@ -452,6 +456,30 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 			verifier.verifyRelation(epPair[0], epPair[1])
 		}
 		seen[epPair] = true
+	}
+}
+
+func (verifier *bundleDataVerifier) verifyEndpointBindings() {
+	for name, svc := range verifier.bd.Services {
+		charm, ok := verifier.charms[name]
+		// Only thest the ok path here because the !ok path is tested in verifyServices
+		if !ok {
+			continue
+		}
+		for endpoint, space := range svc.EndpointBindings {
+			_, isInProvides := charm.Meta().Provides[endpoint]
+			_, isInRequires := charm.Meta().Requires[endpoint]
+			_, isInPeers := charm.Meta().Peers[endpoint]
+			_, isInExtraBindings := charm.Meta().ExtraBindings[endpoint]
+
+			if !(isInProvides || isInRequires || isInPeers || isInExtraBindings) {
+				verifier.addErrorf(
+					"service %q wants to bind endpoint %q to space %q, "+
+						"but the endpoint is not defined by the charm",
+					name, endpoint, space)
+			}
+		}
+
 	}
 }
 

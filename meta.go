@@ -182,23 +182,24 @@ func (r Relation) IsImplicit() bool {
 // only applies to JSON because Meta has a custom
 // YAML marshaller.
 type Meta struct {
-	Name           string                       `bson:"name" json:"Name"`
-	Summary        string                       `bson:"summary" json:"Summary"`
-	Description    string                       `bson:"description" json:"Description"`
-	Subordinate    bool                         `bson:"subordinate" json:"Subordinate"`
-	Provides       map[string]Relation          `bson:"provides,omitempty" json:"Provides,omitempty"`
-	Requires       map[string]Relation          `bson:"requires,omitempty" json:"Requires,omitempty"`
-	Peers          map[string]Relation          `bson:"peers,omitempty" json:"Peers,omitempty"`
-	Format         int                          `bson:"format,omitempty" json:"Format,omitempty"`
-	OldRevision    int                          `bson:"oldrevision,omitempty" json:"OldRevision"` // Obsolete
-	Categories     []string                     `bson:"categories,omitempty" json:"Categories,omitempty"`
-	Tags           []string                     `bson:"tags,omitempty" json:"Tags,omitempty"`
-	Series         []string                     `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
-	Storage        map[string]Storage           `bson:"storage,omitempty" json:"Storage,omitempty"`
-	PayloadClasses map[string]PayloadClass      `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
-	Resources      map[string]resource.Resource `bson:"resources,omitempty" json:"Resources,omitempty"`
-	Terms          []string                     `bson:"terms,omitempty" json:"Terms,omitempty`
-	MinJujuVersion version.Number               `bson:"min-juju-version,omitempty" json:"min-juju-version,omitempty"`
+	Name           string                   `bson:"name" json:"Name"`
+	Summary        string                   `bson:"summary" json:"Summary"`
+	Description    string                   `bson:"description" json:"Description"`
+	Subordinate    bool                     `bson:"subordinate" json:"Subordinate"`
+	Provides       map[string]Relation      `bson:"provides,omitempty" json:"Provides,omitempty"`
+	Requires       map[string]Relation      `bson:"requires,omitempty" json:"Requires,omitempty"`
+	Peers          map[string]Relation      `bson:"peers,omitempty" json:"Peers,omitempty"`
+	ExtraBindings  map[string]ExtraBinding  `bson:"extra-bindings,omitempty" json:"ExtraBindings,omitempty"`
+	Format         int                      `bson:"format,omitempty" json:"Format,omitempty"`
+	OldRevision    int                      `bson:"oldrevision,omitempty" json:"OldRevision"` // Obsolete
+	Categories     []string                 `bson:"categories,omitempty" json:"Categories,omitempty"`
+	Tags           []string                 `bson:"tags,omitempty" json:"Tags,omitempty"`
+	Series         []string                 `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
+	Storage        map[string]Storage       `bson:"storage,omitempty" json:"Storage,omitempty"`
+	PayloadClasses map[string]PayloadClass  `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
+	Resources      map[string]resource.Meta `bson:"resources,omitempty" json:"Resources,omitempty"`
+	Terms          []string                 `bson:"terms,omitempty" json:"Terms,omitempty"`
+	MinJujuVersion version.Number           `bson:"min-juju-version,omitempty" json:"min-juju-version,omitempty"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -268,8 +269,28 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	if err != nil {
 		return nil, errors.New("metadata: " + err.Error())
 	}
+
 	m := v.(map[string]interface{})
-	meta = &Meta{}
+	meta, err = parseMeta(m)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := meta.Check(); err != nil {
+		return nil, err
+	}
+
+	// TODO(ericsnow) This line should be moved into parseMeta as soon
+	// as the terms code gets fixed.
+	meta.Terms = parseStringList(m["terms"])
+
+	return meta, nil
+}
+
+func parseMeta(m map[string]interface{}) (*Meta, error) {
+	var meta Meta
+	var err error
+
 	meta.Name = m["name"].(string)
 	// Schema decodes as int64, but the int range should be good
 	// enough for revisions.
@@ -278,6 +299,10 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 	meta.Provides = parseRelations(m["provides"], RoleProvider)
 	meta.Requires = parseRelations(m["requires"], RoleRequirer)
 	meta.Peers = parseRelations(m["peers"], RolePeer)
+	meta.ExtraBindings, err = parseMetaExtraBindings(m["extra-bindings"])
+	if err != nil {
+		return nil, err
+	}
 	meta.Format = int(m["format"].(int64))
 	meta.Categories = parseStringList(m["categories"])
 	meta.Tags = parseStringList(m["tags"])
@@ -300,25 +325,17 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 		meta.MinJujuVersion = minver
 	}
 
-	meta.Resources = parseResources(m["resources"])
-	if err := meta.Check(); err != nil {
+	resources, err := parseMetaResources(m["resources"])
+	if err != nil {
 		return nil, err
 	}
+	meta.Resources = resources
 
-	meta.Terms = parseStringList(m["terms"])
-	return meta, nil
+	return &meta, nil
 }
 
 // GetYAML implements yaml.Getter.GetYAML.
 func (m Meta) GetYAML() (tag string, value interface{}) {
-	marshaledRelations := func(rs map[string]Relation) map[string]marshaledRelation {
-		mrs := make(map[string]marshaledRelation)
-		for name, r := range rs {
-			mrs[name] = marshaledRelation(r)
-		}
-		return mrs
-	}
-
 	var minver string
 	if m.MinJujuVersion != version.Zero {
 		minver = m.MinJujuVersion.String()
@@ -331,6 +348,7 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		Provides       map[string]marshaledRelation `yaml:"provides,omitempty"`
 		Requires       map[string]marshaledRelation `yaml:"requires,omitempty"`
 		Peers          map[string]marshaledRelation `yaml:"peers,omitempty"`
+		ExtraBindings  map[string]interface{}       `yaml:"extra-bindings,omitempty"`
 		Categories     []string                     `yaml:"categories,omitempty"`
 		Tags           []string                     `yaml:"tags,omitempty"`
 		Subordinate    bool                         `yaml:"subordinate,omitempty"`
@@ -344,6 +362,7 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		Provides:       marshaledRelations(m.Provides),
 		Requires:       marshaledRelations(m.Requires),
 		Peers:          marshaledRelations(m.Peers),
+		ExtraBindings:  marshaledExtraBindings(m.ExtraBindings),
 		Categories:     m.Categories,
 		Tags:           m.Tags,
 		Subordinate:    m.Subordinate,
@@ -351,6 +370,14 @@ func (m Meta) GetYAML() (tag string, value interface{}) {
 		Terms:          m.Terms,
 		MinJujuVersion: minver,
 	}
+}
+
+func marshaledRelations(relations map[string]Relation) map[string]marshaledRelation {
+	marshaled := make(map[string]marshaledRelation)
+	for name, relation := range relations {
+		marshaled[name] = marshaledRelation(relation)
+	}
+	return marshaled
 }
 
 type marshaledRelation Relation
@@ -382,6 +409,14 @@ func (r marshaledRelation) GetYAML() (tag string, value interface{}) {
 		mr.Scope = r.Scope
 	}
 	return "", mr
+}
+
+func marshaledExtraBindings(bindings map[string]ExtraBinding) map[string]interface{} {
+	marshaled := make(map[string]interface{})
+	for _, binding := range bindings {
+		marshaled[binding.Name] = nil
+	}
+	return marshaled
 }
 
 // Check checks that the metadata is well-formed.
@@ -423,6 +458,10 @@ func (meta Meta) Check() error {
 	}
 	if err := checkRelations(meta.Peers, RolePeer); err != nil {
 		return err
+	}
+
+	if err := validateMetaExtraBindings(meta); err != nil {
+		return fmt.Errorf("charm %q has invalid extra bindings: %v", meta.Name, err)
 	}
 
 	// Subordinate charms must have at least one relation that
@@ -478,7 +517,7 @@ func (meta Meta) Check() error {
 		}
 	}
 
-	if err := validateResources(meta.Resources); err != nil {
+	if err := validateMetaResources(meta.Resources); err != nil {
 		return err
 	}
 
@@ -519,6 +558,22 @@ func parseRelations(relations interface{}, role RelationRole) map[string]Relatio
 		result[name] = relation
 	}
 	return result
+}
+
+// CombinedRelations returns all defined relations, regardless of their type in
+// a single map.
+func (m Meta) CombinedRelations() map[string]Relation {
+	combined := make(map[string]Relation)
+	for name, relation := range m.Provides {
+		combined[name] = relation
+	}
+	for name, relation := range m.Requires {
+		combined[name] = relation
+	}
+	for name, relation := range m.Peers {
+		combined[name] = relation
+	}
+	return combined
 }
 
 // Schema coercer that expands the interface shorthand notation.
@@ -718,6 +773,7 @@ var charmSchema = schema.FieldMap(
 		"peers":            schema.StringMap(ifaceExpander(int64(1))),
 		"provides":         schema.StringMap(ifaceExpander(nil)),
 		"requires":         schema.StringMap(ifaceExpander(int64(1))),
+		"extra-bindings":   extraBindingsSchema,
 		"revision":         schema.Int(), // Obsolete
 		"format":           schema.Int(),
 		"subordinate":      schema.Bool(),
@@ -734,6 +790,7 @@ var charmSchema = schema.FieldMap(
 		"provides":         schema.Omit,
 		"requires":         schema.Omit,
 		"peers":            schema.Omit,
+		"extra-bindings":   schema.Omit,
 		"revision":         schema.Omit,
 		"format":           1,
 		"subordinate":      schema.Omit,
