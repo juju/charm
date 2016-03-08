@@ -331,8 +331,6 @@ requires:
 // for testing valid and invalid series.
 const dummyMetadata = "name: a\nsummary: b\ndescription: c"
 
-// TestSeries ensures that valid series values are parsed correctly when specified
-// in the charm metadata.
 func (s *MetaSuite) TestSeries(c *gc.C) {
 	// series not specified
 	meta, err := charm.ReadMeta(strings.NewReader(dummyMetadata))
@@ -347,8 +345,6 @@ func (s *MetaSuite) TestSeries(c *gc.C) {
 	c.Assert(meta.Series, gc.DeepEquals, []string{"precise", "trusty", "plan9"})
 }
 
-// TestInvalidSeries ensures that invalid series values cause a parse error
-// when specified in the charm metadata.
 func (s *MetaSuite) TestInvalidSeries(c *gc.C) {
 	for _, seriesName := range []string{"pre-c1se", "pre^cise", "cp/m", "OpenVMS"} {
 		_, err := charm.ReadMeta(strings.NewReader(
@@ -358,8 +354,6 @@ func (s *MetaSuite) TestInvalidSeries(c *gc.C) {
 	}
 }
 
-// TestMinJujuVersion ensures that valid MinJujuVersion values are parsed
-// correctly when specified in the charm metadata.
 func (s *MetaSuite) TestMinJujuVersion(c *gc.C) {
 	// series not specified
 	meta, err := charm.ReadMeta(strings.NewReader(dummyMetadata))
@@ -379,16 +373,12 @@ func (s *MetaSuite) TestMinJujuVersion(c *gc.C) {
 	}
 }
 
-// TestInvalidSeries ensures that invalid series values cause a parse error
-// when specified in the charm metadata.
 func (s *MetaSuite) TestInvalidMinJujuVersion(c *gc.C) {
 	_, err := charm.ReadMeta(strings.NewReader(dummyMetadata + "\nmin-juju-version: invalid-version"))
 
-	c.Check(err, gc.ErrorMatches, `invalid version "invalid-version"`)
+	c.Check(err, gc.ErrorMatches, `invalid min-juju-version: invalid version "invalid-version"`)
 }
 
-// TestInvalidSeries ensures that invalid series values cause a parse error
-// when specified in the charm metadata.
 func (s *MetaSuite) TestNoMinJujuVersion(c *gc.C) {
 	meta, err := charm.ReadMeta(strings.NewReader(dummyMetadata))
 	c.Assert(err, jc.ErrorIsNil)

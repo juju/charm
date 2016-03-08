@@ -4,7 +4,6 @@
 package charm
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,6 +16,7 @@ import (
 	"github.com/juju/version"
 	"gopkg.in/yaml.v1"
 
+	"github.com/juju/errors"
 	"gopkg.in/juju/charm.v6-unstable/hooks"
 	"gopkg.in/juju/charm.v6-unstable/resource"
 )
@@ -320,7 +320,7 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	if ver := m["min-juju-version"]; ver != nil {
 		minver, err := version.Parse(ver.(string))
 		if err != nil {
-			return meta, err
+			return &meta, errors.Annotate(err, "invalid min-juju-version")
 		}
 		meta.MinJujuVersion = minver
 	}
