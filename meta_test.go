@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	jc "github.com/juju/testing/checkers"
+	"github.com/juju/version"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v1"
 
@@ -330,8 +331,6 @@ requires:
 // for testing valid and invalid series.
 const dummyMetadata = "name: a\nsummary: b\ndescription: c"
 
-// TestSeries ensures that valid series values are parsed correctly when specified
-// in the charm metadata.
 func (s *MetaSuite) TestSeries(c *gc.C) {
 	// series not specified
 	meta, err := charm.ReadMeta(strings.NewReader(dummyMetadata))
@@ -346,8 +345,6 @@ func (s *MetaSuite) TestSeries(c *gc.C) {
 	c.Assert(meta.Series, gc.DeepEquals, []string{"precise", "trusty", "plan9"})
 }
 
-// TestInvalidSeries ensures that invalid series values cause a parse error
-// when specified in the charm metadata.
 func (s *MetaSuite) TestInvalidSeries(c *gc.C) {
 	for _, seriesName := range []string{"pre-c1se", "pre^cise", "cp/m", "OpenVMS"} {
 		_, err := charm.ReadMeta(strings.NewReader(
@@ -355,6 +352,37 @@ func (s *MetaSuite) TestInvalidSeries(c *gc.C) {
 		c.Assert(err, gc.NotNil)
 		c.Check(err, gc.ErrorMatches, `charm "a" declares invalid series: .*`)
 	}
+}
+
+func (s *MetaSuite) TestMinJujuVersion(c *gc.C) {
+	// series not specified
+	meta, err := charm.ReadMeta(strings.NewReader(dummyMetadata))
+	c.Assert(err, gc.IsNil)
+	c.Check(meta.Series, gc.HasLen, 0)
+	charmMeta := fmt.Sprintf("%s\nmin-juju-version: ", dummyMetadata)
+	vals := []version.Number{
+		{Major: 1, Minor: 25},
+		{Major: 1, Minor: 25, Tag: "alpha1"},
+		{Major: 1, Minor: 25, Patch: 1},
+	}
+	for _, ver := range vals {
+		val := charmMeta + ver.String()
+		meta, err = charm.ReadMeta(strings.NewReader(val))
+		c.Assert(err, gc.IsNil)
+		c.Assert(meta.MinJujuVersion, gc.Equals, ver)
+	}
+}
+
+func (s *MetaSuite) TestInvalidMinJujuVersion(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(dummyMetadata + "\nmin-juju-version: invalid-version"))
+
+	c.Check(err, gc.ErrorMatches, `invalid min-juju-version: invalid version "invalid-version"`)
+}
+
+func (s *MetaSuite) TestNoMinJujuVersion(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(dummyMetadata))
+	c.Assert(err, jc.ErrorIsNil)
+	c.Check(meta.MinJujuVersion, gc.Equals, version.Zero)
 }
 
 func (s *MetaSuite) TestCheckMismatchedRelationName(c *gc.C) {

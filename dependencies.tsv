@@ -7,6 +7,7 @@ github.com/juju/names	git	a6a253b0a94cc79e99a68d284b970ffce2a11ecd	2015-07-09T13
 github.com/juju/schema	git	1e25943f8c6fd6815282d6f1ac87091d21e14e19	2016-03-01T11:16:46Z
 github.com/juju/testing	git	ee18040b46bb1f8c93438383bd51ec77eb8c02ab	2016-01-12T21:04:04Z
 github.com/juju/utils	git	ef8480bcaabae506777530725c81d83a4de2fb06	2016-01-12T23:14:21Z
+github.com/juju/version	git	102b12db83e38cb2ce7003544092ea7b0ca59e92	2015-11-07T04:32:11Z
 golang.org/x/crypto	git	aedad9a179ec1ea11b7064c57cbc6dc30d7724ec	2015-08-30T18:06:42Z
 gopkg.in/check.v1	git	b3d3430320d4260e5fea99841af984b3badcea63	2015-06-26T10:50:28Z
 gopkg.in/mgo.v2	git	f4923a569136442e900b8cf5c1a706c0a8b0883c	2015-08-21T15:31:23Z

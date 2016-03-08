@@ -4,7 +4,6 @@
 package charm
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,8 +13,10 @@ import (
 
 	"github.com/juju/schema"
 	"github.com/juju/utils"
+	"github.com/juju/version"
 	"gopkg.in/yaml.v1"
 
+	"github.com/juju/errors"
 	"gopkg.in/juju/charm.v6-unstable/hooks"
 	"gopkg.in/juju/charm.v6-unstable/resource"
 )
@@ -198,6 +199,7 @@ type Meta struct {
 	PayloadClasses map[string]PayloadClass  `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
 	Resources      map[string]resource.Meta `bson:"resources,omitempty" json:"Resources,omitempty"`
 	Terms          []string                 `bson:"terms,omitempty" json:"Terms,omitempty"`
+	MinJujuVersion version.Number           `bson:"min-juju-version,omitempty" json:"min-juju-version,omitempty"`
 }
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
@@ -315,6 +317,14 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	meta.Storage = parseStorage(m["storage"])
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
 
+	if ver := m["min-juju-version"]; ver != nil {
+		minver, err := version.Parse(ver.(string))
+		if err != nil {
+			return &meta, errors.Annotate(err, "invalid min-juju-version")
+		}
+		meta.MinJujuVersion = minver
+	}
+
 	resources, err := parseMetaResources(m["resources"])
 	if err != nil {
 		return nil, err
@@ -326,32 +336,39 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 
 // GetYAML implements yaml.Getter.GetYAML.
 func (m Meta) GetYAML() (tag string, value interface{}) {
+	var minver string
+	if m.MinJujuVersion != version.Zero {
+		minver = m.MinJujuVersion.String()
+	}
+
 	return "", struct {
-		Name          string                       `yaml:"name"`
-		Summary       string                       `yaml:"summary"`
-		Description   string                       `yaml:"description"`
-		Provides      map[string]marshaledRelation `yaml:"provides,omitempty"`
-		Requires      map[string]marshaledRelation `yaml:"requires,omitempty"`
-		Peers         map[string]marshaledRelation `yaml:"peers,omitempty"`
-		ExtraBindings map[string]interface{}       `yaml:"extra-bindings,omitempty"`
-		Categories    []string                     `yaml:"categories,omitempty"`
-		Tags          []string                     `yaml:"tags,omitempty"`
-		Subordinate   bool                         `yaml:"subordinate,omitempty"`
-		Series        []string                     `yaml:"series,omitempty"`
-		Terms         []string                     `yaml:"terms,omitempty"`
+		Name           string                       `yaml:"name"`
+		Summary        string                       `yaml:"summary"`
+		Description    string                       `yaml:"description"`
+		Provides       map[string]marshaledRelation `yaml:"provides,omitempty"`
+		Requires       map[string]marshaledRelation `yaml:"requires,omitempty"`
+		Peers          map[string]marshaledRelation `yaml:"peers,omitempty"`
+		ExtraBindings  map[string]interface{}       `yaml:"extra-bindings,omitempty"`
+		Categories     []string                     `yaml:"categories,omitempty"`
+		Tags           []string                     `yaml:"tags,omitempty"`
+		Subordinate    bool                         `yaml:"subordinate,omitempty"`
+		Series         []string                     `yaml:"series,omitempty"`
+		Terms          []string                     `yaml:"terms,omitempty"`
+		MinJujuVersion string                       `yaml:"min-juju-version,omitempty"`
 	}{
-		Name:          m.Name,
-		Summary:       m.Summary,
-		Description:   m.Description,
-		Provides:      marshaledRelations(m.Provides),
-		Requires:      marshaledRelations(m.Requires),
-		Peers:         marshaledRelations(m.Peers),
-		ExtraBindings: marshaledExtraBindings(m.ExtraBindings),
-		Categories:    m.Categories,
-		Tags:          m.Tags,
-		Subordinate:   m.Subordinate,
-		Series:        m.Series,
-		Terms:         m.Terms,
+		Name:           m.Name,
+		Summary:        m.Summary,
+		Description:    m.Description,
+		Provides:       marshaledRelations(m.Provides),
+		Requires:       marshaledRelations(m.Requires),
+		Peers:          marshaledRelations(m.Peers),
+		ExtraBindings:  marshaledExtraBindings(m.ExtraBindings),
+		Categories:     m.Categories,
+		Tags:           m.Tags,
+		Subordinate:    m.Subordinate,
+		Series:         m.Series,
+		Terms:          m.Terms,
+		MinJujuVersion: minver,
 	}
 }
 
@@ -750,38 +767,40 @@ func (c propertiesC) Coerce(v interface{}, path []string) (newv interface{}, err
 
 var charmSchema = schema.FieldMap(
 	schema.Fields{
-		"name":           schema.String(),
-		"summary":        schema.String(),
-		"description":    schema.String(),
-		"peers":          schema.StringMap(ifaceExpander(int64(1))),
-		"provides":       schema.StringMap(ifaceExpander(nil)),
-		"requires":       schema.StringMap(ifaceExpander(int64(1))),
-		"extra-bindings": extraBindingsSchema,
-		"revision":       schema.Int(), // Obsolete
-		"format":         schema.Int(),
-		"subordinate":    schema.Bool(),
-		"categories":     schema.List(schema.String()),
-		"tags":           schema.List(schema.String()),
-		"series":         schema.List(schema.String()),
-		"storage":        schema.StringMap(storageSchema),
-		"payloads":       schema.StringMap(payloadClassSchema),
-		"resources":      schema.StringMap(resourceSchema),
-		"terms":          schema.List(schema.String()),
+		"name":             schema.String(),
+		"summary":          schema.String(),
+		"description":      schema.String(),
+		"peers":            schema.StringMap(ifaceExpander(int64(1))),
+		"provides":         schema.StringMap(ifaceExpander(nil)),
+		"requires":         schema.StringMap(ifaceExpander(int64(1))),
+		"extra-bindings":   extraBindingsSchema,
+		"revision":         schema.Int(), // Obsolete
+		"format":           schema.Int(),
+		"subordinate":      schema.Bool(),
+		"categories":       schema.List(schema.String()),
+		"tags":             schema.List(schema.String()),
+		"series":           schema.List(schema.String()),
+		"storage":          schema.StringMap(storageSchema),
+		"payloads":         schema.StringMap(payloadClassSchema),
+		"resources":        schema.StringMap(resourceSchema),
+		"terms":            schema.List(schema.String()),
+		"min-juju-version": schema.String(),
 	},
 	schema.Defaults{
-		"provides":       schema.Omit,
-		"requires":       schema.Omit,
-		"peers":          schema.Omit,
-		"extra-bindings": schema.Omit,
-		"revision":       schema.Omit,
-		"format":         1,
-		"subordinate":    schema.Omit,
-		"categories":     schema.Omit,
-		"tags":           schema.Omit,
-		"series":         schema.Omit,
-		"storage":        schema.Omit,
-		"payloads":       schema.Omit,
-		"resources":      schema.Omit,
-		"terms":          schema.Omit,
+		"provides":         schema.Omit,
+		"requires":         schema.Omit,
+		"peers":            schema.Omit,
+		"extra-bindings":   schema.Omit,
+		"revision":         schema.Omit,
+		"format":           1,
+		"subordinate":      schema.Omit,
+		"categories":       schema.Omit,
+		"tags":             schema.Omit,
+		"series":           schema.Omit,
+		"storage":          schema.Omit,
+		"payloads":         schema.Omit,
+		"resources":        schema.Omit,
+		"terms":            schema.Omit,
+		"min-juju-version": schema.Omit,
 	},
 )
