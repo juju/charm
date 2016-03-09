@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -319,7 +321,19 @@ func (verifier *bundleDataVerifier) verifyServices() {
 		return
 	}
 	for name, svc := range verifier.bd.Services {
-		if _, err := ParseURL(svc.Charm); err != nil {
+		if svc.Charm == "" {
+			verifier.addErrorf("empty charm path")
+		}
+		// Charm may be a local directory or a charm URL.
+		if strings.HasPrefix(svc.Charm, ".") || filepath.IsAbs(svc.Charm) {
+			if _, err := os.Stat(svc.Charm); err != nil {
+				if os.IsNotExist(err) {
+					verifier.addErrorf("charm path in service %q does not exist", name)
+				} else {
+					verifier.addErrorf("invalid charm path in service %q: %v", name, err)
+				}
+			}
+		} else if _, err := ParseURL(svc.Charm); err != nil {
 			verifier.addErrorf("invalid charm URL in service %q: %v", name, err)
 		}
 		if err := verifier.verifyConstraints(svc.Constraints); err != nil {

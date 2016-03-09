@@ -202,6 +202,8 @@ services:
         annotations:
             "gui-x": 609
             "gui-y": -15
+    riak:
+        charm: "./somepath"
     mysql:
         charm: "cs:precise/mysql-28"
         num_units: 2
@@ -247,6 +249,7 @@ relations:
 		`invalid machine id "bogus" found in machines`,
 		`invalid constraints "bad constraints" in machine "0": bad constraint`,
 		`invalid charm URL in service "mediawiki": charm or bundle URL has invalid schema: "bogus:precise/mediawiki-10"`,
+		`charm path in service "riak" does not exist`,
 		`invalid constraints "bad constraints" in service "mysql": bad constraint`,
 		`negative number of units specified on service "mediawiki"`,
 		`too many units specified in unit placement for service "mysql"`,
@@ -321,6 +324,7 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 		"precise/wordpress-2",
 		"local:foo",
 		"local:foo-45",
+		c.MkDir(),
 	} {
 		c.Logf("test %d: %s", i, u)
 		bd.Services["mediawiki"].Charm = u
