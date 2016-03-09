@@ -5,6 +5,8 @@ package charm_test
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -202,6 +204,8 @@ services:
         annotations:
             "gui-x": 609
             "gui-y": -15
+    riak:
+        charm: "./somepath"
     mysql:
         charm: "cs:precise/mysql-28"
         num_units: 2
@@ -247,6 +251,7 @@ relations:
 		`invalid machine id "bogus" found in machines`,
 		`invalid constraints "bad constraints" in machine "0": bad constraint`,
 		`invalid charm URL in service "mediawiki": charm or bundle URL has invalid schema: "bogus:precise/mediawiki-10"`,
+		`charm path in service "riak" does not exist: internal/test-charm-repo/bundle/somepath`,
 		`invalid constraints "bad constraints" in service "mysql": bad constraint`,
 		`negative number of units specified on service "mediawiki"`,
 		`too many units specified in unit placement for service "mysql"`,
@@ -269,11 +274,11 @@ relations:
 func (*bundleDataSuite) TestVerifyErrors(c *gc.C) {
 	for i, test := range verifyErrorsTests {
 		c.Logf("test %d: %s", i, test.about)
-		assertVerifyWithCharmsErrors(c, test.data, nil, test.errors)
+		assertVerifyErrors(c, test.data, nil, test.errors)
 	}
 }
 
-func assertVerifyWithCharmsErrors(c *gc.C, bundleData string, charms map[string]charm.Charm, expectErrors []string) {
+func assertVerifyErrors(c *gc.C, bundleData string, charms map[string]charm.Charm, expectErrors []string) {
 	bd, err := charm.ReadBundleData(strings.NewReader(bundleData))
 	c.Assert(err, gc.IsNil)
 
@@ -290,7 +295,12 @@ func assertVerifyWithCharmsErrors(c *gc.C, bundleData string, charms map[string]
 		return nil
 	}
 
-	err = bd.VerifyWithCharms(validateConstraints, validateStorage, charms)
+	if charms != nil {
+		err = bd.VerifyWithCharms(validateConstraints, validateStorage, charms)
+	} else {
+		err = bd.VerifyLocal("internal/test-charm-repo/bundle", validateConstraints, validateStorage)
+	}
+
 	if len(expectErrors) == 0 {
 		if err == nil {
 			return
@@ -325,6 +335,31 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 		c.Logf("test %d: %s", i, u)
 		bd.Services["mediawiki"].Charm = u
 		err := bd.Verify(nil, nil)
+		c.Assert(err, gc.IsNil, gc.Commentf("charm url %q", u))
+	}
+}
+
+func (*bundleDataSuite) TestVerifyLocalCharm(c *gc.C) {
+	bd, err := charm.ReadBundleData(strings.NewReader(mediawikiBundle))
+	c.Assert(err, gc.IsNil)
+	bundleDir := c.MkDir()
+	relativeCharmDir := filepath.Join(bundleDir, "charm")
+	err = os.MkdirAll(relativeCharmDir, 0700)
+	c.Assert(err, jc.ErrorIsNil)
+	for i, u := range []string{
+		"wordpress",
+		"cs:wordpress",
+		"cs:precise/wordpress",
+		"precise/wordpress",
+		"precise/wordpress-2",
+		"local:foo",
+		"local:foo-45",
+		c.MkDir(),
+		"./charm",
+	} {
+		c.Logf("test %d: %s", i, u)
+		bd.Services["mediawiki"].Charm = u
+		err := bd.VerifyLocal(bundleDir, nil, nil)
 		c.Assert(err, gc.IsNil, gc.Commentf("charm url %q", u))
 	}
 }
@@ -859,7 +894,7 @@ machines:
 func (*bundleDataSuite) TestVerifyWithCharmsErrors(c *gc.C) {
 	for i, test := range verifyWithCharmsErrorsTests {
 		c.Logf("test %d: %s", i, test.about)
-		assertVerifyWithCharmsErrors(c, test.data, test.charms, test.errors)
+		assertVerifyErrors(c, test.data, test.charms, test.errors)
 	}
 }
 
