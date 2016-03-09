@@ -180,7 +180,9 @@ func (err *VerificationError) Error() string {
 }
 
 type bundleDataVerifier struct {
-	bd *BundleData
+	// bundleDir is the directory containing the bundle file
+	bundleDir string
+	bd        *BundleData
 
 	// machines holds the reference counts of all machines
 	// as referred to by placement directives.
@@ -219,6 +221,21 @@ func (bd *BundleData) RequiredCharms() []string {
 	return req
 }
 
+// VerifyLocal verifies that a local bundle file is consistent.
+// A local bundle file may contain references to charms which are
+// referred to by a directory, either relative or absolute.
+//
+// bundleDir is used to construct the full path for charms specified
+// using a relative directory path. The charm path is therefore expected
+// to be relative to the bundle.yaml file.
+func (bd *BundleData) VerifyLocal(
+	bundleDir string,
+	verifyConstraints func(c string) error,
+	verifyStorage func(s string) error,
+) error {
+	return bd.verifyBundle(bundleDir, verifyConstraints, verifyStorage, nil)
+}
+
 // Verify is a convenience method that calls VerifyWithCharms
 // with a nil charms map.
 func (bd *BundleData) Verify(
@@ -254,6 +271,15 @@ func (bd *BundleData) VerifyWithCharms(
 	verifyStorage func(s string) error,
 	charms map[string]Charm,
 ) error {
+	return bd.verifyBundle("", verifyConstraints, verifyStorage, charms)
+}
+
+func (bd *BundleData) verifyBundle(
+	bundleDir string,
+	verifyConstraints func(c string) error,
+	verifyStorage func(s string) error,
+	charms map[string]Charm,
+) error {
 	if verifyConstraints == nil {
 		verifyConstraints = func(string) error {
 			return nil
@@ -265,6 +291,7 @@ func (bd *BundleData) VerifyWithCharms(
 		}
 	}
 	verifier := &bundleDataVerifier{
+		bundleDir:         bundleDir,
 		verifyConstraints: verifyConstraints,
 		verifyStorage:     verifyStorage,
 		bd:                bd,
@@ -326,9 +353,13 @@ func (verifier *bundleDataVerifier) verifyServices() {
 		}
 		// Charm may be a local directory or a charm URL.
 		if strings.HasPrefix(svc.Charm, ".") || filepath.IsAbs(svc.Charm) {
-			if _, err := os.Stat(svc.Charm); err != nil {
+			charmPath := svc.Charm
+			if !filepath.IsAbs(charmPath) {
+				charmPath = filepath.Join(verifier.bundleDir, charmPath)
+			}
+			if _, err := os.Stat(charmPath); err != nil {
 				if os.IsNotExist(err) {
-					verifier.addErrorf("charm path in service %q does not exist", name)
+					verifier.addErrorf("charm path in service %q does not exist: %v", name, charmPath)
 				} else {
 					verifier.addErrorf("invalid charm path in service %q: %v", name, err)
 				}
