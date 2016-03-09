@@ -5,6 +5,8 @@ package charm_test
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -13,8 +15,6 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/juju/charm.v6-unstable"
-	"os"
-	"path/filepath"
 )
 
 type bundleDataSuite struct {
