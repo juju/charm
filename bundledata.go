@@ -68,6 +68,11 @@ type ServiceSpec struct {
 	// use for the given service.
 	Charm string
 
+	// Series is the series to use when deploying the charm
+	// if the charm does not specify a default or the default
+	// is not the desired value.
+	Series string `yaml:",omitempty" json:",omitempty"`
+
 	// NumUnits holds the number of units of the
 	// service that will be deployed.
 	//
@@ -352,6 +357,8 @@ func (verifier *bundleDataVerifier) verifyServices() {
 			verifier.addErrorf("empty charm path")
 		}
 		// Charm may be a local directory or a charm URL.
+		var curl *URL
+		var err error
 		if strings.HasPrefix(svc.Charm, ".") || filepath.IsAbs(svc.Charm) {
 			charmPath := svc.Charm
 			if !filepath.IsAbs(charmPath) {
@@ -364,9 +371,18 @@ func (verifier *bundleDataVerifier) verifyServices() {
 					verifier.addErrorf("invalid charm path in service %q: %v", name, err)
 				}
 			}
-		} else if _, err := ParseURL(svc.Charm); err != nil {
+		} else if curl, err = ParseURL(svc.Charm); err != nil {
 			verifier.addErrorf("invalid charm URL in service %q: %v", name, err)
 		}
+
+		// Check the series.
+		if curl != nil && svc.Series != "" {
+			verifier.addErrorf("service %q declares both a series and a charm store URL", name)
+		}
+		if svc.Series != "" && !IsValidSeries(svc.Series) {
+			verifier.addErrorf("service %q declares an invalid series %q", name, svc.Series)
+		}
+
 		if err := verifier.verifyConstraints(svc.Constraints); err != nil {
 			verifier.addErrorf("invalid constraints %q in service %q: %v", svc.Constraints, name, err)
 		}
