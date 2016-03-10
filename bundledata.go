@@ -68,9 +68,11 @@ type ServiceSpec struct {
 	// use for the given service.
 	Charm string
 
-	// Series is the series to use when deploying the charm
+	// Series is the series to use when deploying a local charm,
 	// if the charm does not specify a default or the default
 	// is not the desired value.
+	// Series is not compatible with charm store charms where
+	// the series is specified in the URL.
 	Series string `yaml:",omitempty" json:",omitempty"`
 
 	// NumUnits holds the number of units of the
@@ -377,7 +379,7 @@ func (verifier *bundleDataVerifier) verifyServices() {
 
 		// Check the series.
 		if curl != nil && svc.Series != "" {
-			verifier.addErrorf("service %q declares both a series and a charm store URL", name)
+			verifier.addErrorf("service %q declares both a series and a non-local charm", name)
 		}
 		if svc.Series != "" && !IsValidSeries(svc.Series) {
 			verifier.addErrorf("service %q declares an invalid series %q", name, svc.Series)

@@ -278,7 +278,7 @@ relations:
 		`charm path in service "riak" does not exist: internal/test-charm-repo/bundle/somepath`,
 		`invalid constraints "bad constraints" in service "mysql": bad constraint`,
 		`negative number of units specified on service "mediawiki"`,
-		`service "postgres" declares both a series and a charm store URL`,
+		`service "postgres" declares both a series and a non-local charm`,
 		`too many units specified in unit placement for service "mysql"`,
 		`placement "nowhere/3" refers to a service not defined in this bundle`,
 		`placement "mediawiki/0" specifies a unit greater than the -4 unit(s) started by the target service`,
