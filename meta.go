@@ -371,7 +371,6 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 		MinJujuVersion: minver,
 	}, nil
 }
-	
 
 // GetYAML implements yaml.Getter.GetYAML (yaml.v1).
 func (m Meta) GetYAML() (tag string, value interface{}) {

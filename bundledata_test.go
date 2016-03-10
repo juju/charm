@@ -176,6 +176,27 @@ func (*bundleDataSuite) TestParse(c *gc.C) {
 	}
 }
 
+func (*bundleDataSuite) TestParseLocalWithSeries(c *gc.C) {
+	path := "internal/test-charm-repo/quanta/riak"
+	data := fmt.Sprintf(`
+        services:
+            dummy:
+                charm: %s
+                series: xenial
+                num_units: 1
+    `, path)
+	bd, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.IsNil)
+	c.Assert(bd, jc.DeepEquals, &charm.BundleData{
+		Services: map[string]*charm.ServiceSpec{
+			"dummy": {
+				Charm:    path,
+				Series:   "xenial",
+				NumUnits: 1,
+			},
+		}})
+}
+
 var verifyErrorsTests = []struct {
 	about  string
 	data   string
@@ -223,6 +244,9 @@ services:
         constraints: "bad constraints"
     wordpress:
           charm: wordpress
+    postgres:
+        charm: "cs:postgres"
+        series: trusty
     ceph:
           charm: ceph
           storage:
@@ -254,6 +278,7 @@ relations:
 		`charm path in service "riak" does not exist: internal/test-charm-repo/bundle/somepath`,
 		`invalid constraints "bad constraints" in service "mysql": bad constraint`,
 		`negative number of units specified on service "mediawiki"`,
+		`service "postgres" declares both a series and a non-local charm`,
 		`too many units specified in unit placement for service "mysql"`,
 		`placement "nowhere/3" refers to a service not defined in this bundle`,
 		`placement "mediawiki/0" specifies a unit greater than the -4 unit(s) started by the target service`,
@@ -335,7 +360,7 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 		c.Logf("test %d: %s", i, u)
 		bd.Services["mediawiki"].Charm = u
 		err := bd.Verify(nil, nil)
-		c.Assert(err, gc.IsNil, gc.Commentf("charm url %q", u))
+		c.Check(err, gc.IsNil, gc.Commentf("charm url %q", u))
 	}
 }
 
@@ -360,7 +385,7 @@ func (*bundleDataSuite) TestVerifyLocalCharm(c *gc.C) {
 		c.Logf("test %d: %s", i, u)
 		bd.Services["mediawiki"].Charm = u
 		err := bd.VerifyLocal(bundleDir, nil, nil)
-		c.Assert(err, gc.IsNil, gc.Commentf("charm url %q", u))
+		c.Check(err, gc.IsNil, gc.Commentf("charm url %q", u))
 	}
 }
 
