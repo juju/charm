@@ -378,8 +378,8 @@ func (verifier *bundleDataVerifier) verifyServices() {
 		}
 
 		// Check the series.
-		if curl != nil && svc.Series != "" {
-			verifier.addErrorf("service %q declares both a series and a non-local charm", name)
+		if curl != nil && curl.Series != "" && svc.Series != "" && curl.Series != svc.Series {
+			verifier.addErrorf("the charm URL for service %q has a series which does not match, please remove the series from the URL", name)
 		}
 		if svc.Series != "" && !IsValidSeries(svc.Series) {
 			verifier.addErrorf("service %q declares an invalid series %q", name, svc.Series)

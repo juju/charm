@@ -245,8 +245,11 @@ services:
     wordpress:
           charm: wordpress
     postgres:
-        charm: "cs:postgres"
+        charm: "cs:xenial/postgres"
         series: trusty
+    terracotta:
+        charm: "cs:xenial/terracotta"
+        series: xenial
     ceph:
           charm: ceph
           storage:
@@ -278,7 +281,7 @@ relations:
 		`charm path in service "riak" does not exist: internal/test-charm-repo/bundle/somepath`,
 		`invalid constraints "bad constraints" in service "mysql": bad constraint`,
 		`negative number of units specified on service "mediawiki"`,
-		`service "postgres" declares both a series and a non-local charm`,
+		`the charm URL for service "postgres" has a series which does not match, please remove the series from the URL`,
 		`too many units specified in unit placement for service "mysql"`,
 		`placement "nowhere/3" refers to a service not defined in this bundle`,
 		`placement "mediawiki/0" specifies a unit greater than the -4 unit(s) started by the target service`,
