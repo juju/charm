@@ -48,7 +48,13 @@ func (res Resource) Validate() error {
 }
 
 func (res Resource) validateRevision() error {
-	if res.Revision < 0 {
+	if res.Origin == OriginUpload {
+		// We do not care about the revision, so we don't check it.
+		// TODO(ericsnow) Ensure Revision is 0 for OriginUpload?
+		return nil
+	}
+
+	if res.Revision < 0 && res.isFileAvailable() {
 		return errors.NewNotValid(nil, fmt.Sprintf("must be non-negative, got %d", res.Revision))
 	}
 
@@ -71,4 +77,16 @@ func (res Resource) validateFileInfo() error {
 	}
 
 	return nil
+}
+
+// isFileAvailable determines whether or not the resource info indicates
+// that the resource file is available.
+func (res Resource) isFileAvailable() bool {
+	if !res.Fingerprint.IsZero() {
+		return true
+	}
+	if res.Size > 0 {
+		return true
+	}
+	return false
 }
