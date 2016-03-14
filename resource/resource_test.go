@@ -59,7 +59,7 @@ func (s *ResourceSuite) TestValidateBadMetadata(c *gc.C) {
 	err = res.Validate()
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `.*bad metadata.*`)
+	c.Check(err, gc.ErrorMatches, `bad metadata: .*`)
 }
 
 func (s *ResourceSuite) TestValidateBadOrigin(c *gc.C) {
@@ -81,7 +81,7 @@ func (s *ResourceSuite) TestValidateBadOrigin(c *gc.C) {
 	err = res.Validate()
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `.*bad origin.*`)
+	c.Check(err, gc.ErrorMatches, `bad origin: .*`)
 }
 
 func (s *ResourceSuite) TestValidateBadRevision(c *gc.C) {
@@ -101,7 +101,7 @@ func (s *ResourceSuite) TestValidateBadRevision(c *gc.C) {
 	err = res.Validate()
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `.*revision must be non-negative.*`)
+	c.Check(err, gc.ErrorMatches, `bad revision: must be non-negative, got -1`)
 }
 
 func (s *ResourceSuite) TestValidateZeroValueFingerprint(c *gc.C) {
@@ -143,7 +143,7 @@ func (s *ResourceSuite) TestValidateMissingFingerprint(c *gc.C) {
 	err := res.Validate()
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `.*missing fingerprint.*`)
+	c.Check(err, gc.ErrorMatches, `bad file info: missing fingerprint`)
 }
 
 func (s *ResourceSuite) TestValidateBadSize(c *gc.C) {
@@ -164,5 +164,5 @@ func (s *ResourceSuite) TestValidateBadSize(c *gc.C) {
 	err = res.Validate()
 
 	c.Check(err, jc.Satisfies, errors.IsNotValid)
-	c.Check(err, gc.ErrorMatches, `negative size not valid`)
+	c.Check(err, gc.ErrorMatches, `bad file info: negative size`)
 }

@@ -4,6 +4,8 @@
 package resource
 
 import (
+	"fmt"
+
 	"github.com/juju/errors"
 )
 
@@ -27,18 +29,33 @@ type Resource struct {
 // Validate checks the payload class to ensure its data is valid.
 func (res Resource) Validate() error {
 	if err := res.Meta.Validate(); err != nil {
-		return errors.Annotate(err, "invalid resource (bad metadata)")
+		return errors.Annotate(err, "bad metadata")
 	}
 
 	if err := res.Origin.Validate(); err != nil {
-		return errors.Annotate(err, "invalid resource (bad origin)")
+		return errors.Annotate(err, "bad origin")
 	}
 
+	if err := res.validateRevision(); err != nil {
+		return errors.Annotate(err, "bad revision")
+	}
+
+	if err := res.validateFileInfo(); err != nil {
+		return errors.Annotate(err, "bad file info")
+	}
+
+	return nil
+}
+
+func (res Resource) validateRevision() error {
 	if res.Revision < 0 {
-		return errors.NewNotValid(nil, "invalid resource (revision must be non-negative)")
+		return errors.NewNotValid(nil, fmt.Sprintf("must be non-negative, got %d", res.Revision))
 	}
-	// TODO(ericsnow) Ensure Revision is 0 for OriginUpload?
 
+	return nil
+}
+
+func (res Resource) validateFileInfo() error {
 	if res.Fingerprint.IsZero() {
 		if res.Size > 0 {
 			return errors.NewNotValid(nil, "missing fingerprint")
@@ -50,7 +67,7 @@ func (res Resource) Validate() error {
 	}
 
 	if res.Size < 0 {
-		return errors.NotValidf("negative size")
+		return errors.NewNotValid(nil, "negative size")
 	}
 
 	return nil
