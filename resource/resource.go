@@ -4,6 +4,8 @@
 package resource
 
 import (
+	"fmt"
+
 	"github.com/juju/errors"
 )
 
@@ -27,18 +29,39 @@ type Resource struct {
 // Validate checks the payload class to ensure its data is valid.
 func (res Resource) Validate() error {
 	if err := res.Meta.Validate(); err != nil {
-		return errors.Annotate(err, "invalid resource (bad metadata)")
+		return errors.Annotate(err, "bad metadata")
 	}
 
 	if err := res.Origin.Validate(); err != nil {
-		return errors.Annotate(err, "invalid resource (bad origin)")
+		return errors.Annotate(err, "bad origin")
 	}
 
-	if res.Revision < 0 {
-		return errors.NewNotValid(nil, "invalid resource (revision must be non-negative)")
+	if err := res.validateRevision(); err != nil {
+		return errors.Annotate(err, "bad revision")
 	}
-	// TODO(ericsnow) Ensure Revision is 0 for OriginUpload?
 
+	if err := res.validateFileInfo(); err != nil {
+		return errors.Annotate(err, "bad file info")
+	}
+
+	return nil
+}
+
+func (res Resource) validateRevision() error {
+	if res.Origin == OriginUpload {
+		// We do not care about the revision, so we don't check it.
+		// TODO(ericsnow) Ensure Revision is 0 for OriginUpload?
+		return nil
+	}
+
+	if res.Revision < 0 && res.isFileAvailable() {
+		return errors.NewNotValid(nil, fmt.Sprintf("must be non-negative, got %d", res.Revision))
+	}
+
+	return nil
+}
+
+func (res Resource) validateFileInfo() error {
 	if res.Fingerprint.IsZero() {
 		if res.Size > 0 {
 			return errors.NewNotValid(nil, "missing fingerprint")
@@ -50,8 +73,20 @@ func (res Resource) Validate() error {
 	}
 
 	if res.Size < 0 {
-		return errors.NotValidf("negative size")
+		return errors.NewNotValid(nil, "negative size")
 	}
 
 	return nil
+}
+
+// isFileAvailable determines whether or not the resource info indicates
+// that the resource file is available.
+func (res Resource) isFileAvailable() bool {
+	if !res.Fingerprint.IsZero() {
+		return true
+	}
+	if res.Size > 0 {
+		return true
+	}
+	return false
 }
