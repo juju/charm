@@ -42,6 +42,8 @@ services:
         bindings:
             db: db
             website: public
+        resources:
+            data: 3
     mysql:
         charm: "cs:precise/mysql-28"
         num_units: 2
@@ -105,6 +107,9 @@ var parseTests = []struct {
 				EndpointBindings: map[string]string{
 					"db":      "db",
 					"website": "public",
+				},
+				Resources: map[string]int{
+					"data": 3,
 				},
 			},
 			"mysql": {
