@@ -75,6 +75,11 @@ type ServiceSpec struct {
 	// the series is specified in the URL.
 	Series string `yaml:",omitempty" json:",omitempty"`
 
+	// Resources is the set of resource revisions to deploy for the
+	// service. Bundles only support charm store resources and not ones
+	// that were uploaded to the controller.
+	Resources map[string]int `yaml:",omitempty" json:",omitempty"`
+
 	// NumUnits holds the number of units of the
 	// service that will be deployed.
 	//
