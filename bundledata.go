@@ -415,6 +415,13 @@ func (verifier *bundleDataVerifier) verifyServices() {
 				verifier.addErrorf("service %q refers to non-existent charm %q", name, svc.Charm)
 			}
 		}
+		for resName := range svc.Resources {
+			if resName == "" {
+				verifier.addErrorf("missing resource name on service %q", name)
+			}
+			// We do not check the revisions because all values
+			// are allowed.
+		}
 		if svc.NumUnits < 0 {
 			verifier.addErrorf("negative number of units specified on service %q", name)
 		} else if len(svc.To) > svc.NumUnits {
