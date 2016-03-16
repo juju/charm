@@ -42,6 +42,8 @@ services:
         bindings:
             db: db
             website: public
+        resources:
+            data: 3
     mysql:
         charm: "cs:precise/mysql-28"
         num_units: 2
@@ -105,6 +107,9 @@ var parseTests = []struct {
 				EndpointBindings: map[string]string{
 					"db":      "db",
 					"website": "public",
+				},
+				Resources: map[string]int{
+					"data": 3,
 				},
 			},
 			"mysql": {
@@ -225,6 +230,8 @@ services:
         annotations:
             "gui-x": 609
             "gui-y": -15
+        resources:
+            "": 42
     riak:
         charm: "./somepath"
     mysql:
@@ -281,6 +288,7 @@ relations:
 		`charm path in service "riak" does not exist: internal/test-charm-repo/bundle/somepath`,
 		`invalid constraints "bad constraints" in service "mysql": bad constraint`,
 		`negative number of units specified on service "mediawiki"`,
+		`missing resource name on service "mediawiki"`,
 		`the charm URL for service "postgres" has a series which does not match, please remove the series from the URL`,
 		`too many units specified in unit placement for service "mysql"`,
 		`placement "nowhere/3" refers to a service not defined in this bundle`,

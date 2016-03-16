@@ -75,6 +75,11 @@ type ServiceSpec struct {
 	// the series is specified in the URL.
 	Series string `yaml:",omitempty" json:",omitempty"`
 
+	// Resources is the set of resource revisions to deploy for the
+	// service. Bundles only support charm store resources and not ones
+	// that were uploaded to the controller.
+	Resources map[string]int `yaml:",omitempty" json:",omitempty"`
+
 	// NumUnits holds the number of units of the
 	// service that will be deployed.
 	//
@@ -409,6 +414,13 @@ func (verifier *bundleDataVerifier) verifyServices() {
 			} else {
 				verifier.addErrorf("service %q refers to non-existent charm %q", name, svc.Charm)
 			}
+		}
+		for resName := range svc.Resources {
+			if resName == "" {
+				verifier.addErrorf("missing resource name on service %q", name)
+			}
+			// We do not check the revisions because all values
+			// are allowed.
 		}
 		if svc.NumUnits < 0 {
 			verifier.addErrorf("negative number of units specified on service %q", name)
