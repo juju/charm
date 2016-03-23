@@ -73,12 +73,12 @@ type ServiceSpec struct {
 	// is not the desired value.
 	// Series is not compatible with charm store charms where
 	// the series is specified in the URL.
-	Series string `yaml:",omitempty" json:",omitempty"`
+	Series string `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
 
 	// Resources is the set of resource revisions to deploy for the
 	// service. Bundles only support charm store resources and not ones
 	// that were uploaded to the controller.
-	Resources map[string]int `yaml:",omitempty" json:",omitempty"`
+	Resources map[string]int `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
 
 	// NumUnits holds the number of units of the
 	// service that will be deployed.
@@ -86,7 +86,7 @@ type ServiceSpec struct {
 	// For a subordinate service, this actually represents
 	// an arbitrary number of units depending on
 	// the service it is related to.
-	NumUnits int `yaml:"num_units,omitempty" json:",omitempty"`
+	NumUnits int `bson:",omitempty" yaml:"num_units,omitempty" json:",omitempty"`
 
 	// To may hold up to NumUnits members with
 	// each member specifying a desired placement
