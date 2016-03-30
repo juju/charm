@@ -573,6 +573,20 @@ Snapshot:
 
 		expectedError: "bad action name Snapshot",
 	}, {
+		description: `Reserved Action Name: "juju".`,
+		yaml: `
+juju:
+   description: A reserved action.
+`,
+		expectedError: "reserved action name juju",
+	}, {
+		description: `Reserved Action Name: "juju-run".`,
+		yaml: `
+juju-run:
+   description: A reserved action.
+`,
+		expectedError: "reserved action name juju-run",
+	}, {
 		description: "A non-string description fails to parse",
 		yaml: `
 snapshot:
