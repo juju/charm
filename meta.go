@@ -268,7 +268,14 @@ func ReadMeta(r io.Reader) (meta *Meta, err error) {
 		meta.OldRevision = int(m["revision"].(int64))
 	}
 	if series, ok := m["series"]; ok && series != nil {
-		meta.Series = series.(string)
+		multiseries, ok := series.([]interface{})
+		if ok {
+			if len(multiseries) > 0 {
+				meta.Series = multiseries[0].(string)
+			}
+		} else {
+			meta.Series = series.(string)
+		}
 	}
 	meta.Storage = parseStorage(m["storage"])
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
@@ -672,7 +679,7 @@ var charmSchema = schema.FieldMap(
 		"subordinate": schema.Bool(),
 		"categories":  schema.List(schema.String()),
 		"tags":        schema.List(schema.String()),
-		"series":      schema.String(),
+		"series":      schema.OneOf(schema.String(), schema.List(schema.String())),
 		"storage":     schema.StringMap(storageSchema),
 		"payloads":    schema.StringMap(payloadClassSchema),
 	},

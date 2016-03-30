@@ -278,6 +278,28 @@ func (s *MetaSuite) TestInvalidSeries(c *gc.C) {
 	}
 }
 
+var multiSeriesTests = []struct{
+	yamllist string
+	result string
+}{
+	{`["trusty", "precise"]`, "trusty"},
+	{`["trusty", "xenial"]`, "trusty"},
+	{`["wonky", "trusty", "happy"]`, "wonky"},
+	{`[]`, ""},
+}
+
+// TestMultiSeries validates that new style multi series charms are parsed
+// and pick the first listed series.
+func (s *MetaSuite) TestMultiSeries(c *gc.C) {
+	for _, test := range multiSeriesTests {
+		c.Logf("test %q", test.yamllist)
+		meta, err := charm.ReadMeta(strings.NewReader(
+			fmt.Sprintf("%s\nseries: %s\n", dummyMetadata, test.yamllist)))
+		c.Assert(err, gc.IsNil)
+		c.Check(meta.Series, gc.Equals, test.result)
+	}
+}
+
 func (s *MetaSuite) TestCheckMismatchedRelationName(c *gc.C) {
 	// This  Check case cannot be covered by the above
 	// TestRelationsConstraints tests.
