@@ -13,6 +13,7 @@ var (
 	ResourceSchema            = resourceSchema
 	ExtraBindingsSchema       = extraBindingsSchema
 	ValidateMetaExtraBindings = validateMetaExtraBindings
+	ParseResourceMeta         = parseResourceMeta
 )
 
 func MissingSeriesError() error {
