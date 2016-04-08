@@ -34,35 +34,6 @@ type Meta struct {
 	Description string
 }
 
-// ParseMeta parses the provided data into a Meta.
-func ParseMeta(name string, data interface{}) (Meta, error) {
-	var meta Meta
-	meta.Name = name
-
-	if data == nil {
-		return meta, nil
-	}
-	rMap := data.(map[string]interface{})
-
-	if val := rMap["type"]; val != nil {
-		var err error
-		meta.Type, err = ParseType(val.(string))
-		if err != nil {
-			return meta, errors.Trace(err)
-		}
-	}
-
-	if val := rMap["filename"]; val != nil {
-		meta.Path = val.(string)
-	}
-
-	if val := rMap["description"]; val != nil {
-		meta.Description = val.(string)
-	}
-
-	return meta, nil
-}
-
 // Validate checks the resource metadata to ensure the data is valid.
 func (meta Meta) Validate() error {
 	if meta.Name == "" {

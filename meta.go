@@ -11,12 +11,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/juju/errors"
 	"github.com/juju/schema"
 	"github.com/juju/utils"
 	"github.com/juju/version"
 	"gopkg.in/yaml.v1"
 
-	"github.com/juju/errors"
 	"gopkg.in/juju/charm.v6-unstable/hooks"
 	"gopkg.in/juju/charm.v6-unstable/resource"
 )
@@ -342,19 +342,20 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 	}
 
 	return struct {
-		Name           string                       `yaml:"name"`
-		Summary        string                       `yaml:"summary"`
-		Description    string                       `yaml:"description"`
-		Provides       map[string]marshaledRelation `yaml:"provides,omitempty"`
-		Requires       map[string]marshaledRelation `yaml:"requires,omitempty"`
-		Peers          map[string]marshaledRelation `yaml:"peers,omitempty"`
-		ExtraBindings  map[string]interface{}       `yaml:"extra-bindings,omitempty"`
-		Categories     []string                     `yaml:"categories,omitempty"`
-		Tags           []string                     `yaml:"tags,omitempty"`
-		Subordinate    bool                         `yaml:"subordinate,omitempty"`
-		Series         []string                     `yaml:"series,omitempty"`
-		Terms          []string                     `yaml:"terms,omitempty"`
-		MinJujuVersion string                       `yaml:"min-juju-version,omitempty"`
+		Name           string                           `yaml:"name"`
+		Summary        string                           `yaml:"summary"`
+		Description    string                           `yaml:"description"`
+		Provides       map[string]marshaledRelation     `yaml:"provides,omitempty"`
+		Requires       map[string]marshaledRelation     `yaml:"requires,omitempty"`
+		Peers          map[string]marshaledRelation     `yaml:"peers,omitempty"`
+		ExtraBindings  map[string]interface{}           `yaml:"extra-bindings,omitempty"`
+		Categories     []string                         `yaml:"categories,omitempty"`
+		Tags           []string                         `yaml:"tags,omitempty"`
+		Subordinate    bool                             `yaml:"subordinate,omitempty"`
+		Series         []string                         `yaml:"series,omitempty"`
+		Terms          []string                         `yaml:"terms,omitempty"`
+		MinJujuVersion string                           `yaml:"min-juju-version,omitempty"`
+		Resources      map[string]marshaledResourceMeta `yaml:"resources,omitempty"`
 	}{
 		Name:           m.Name,
 		Summary:        m.Summary,
@@ -369,7 +370,29 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 		Series:         m.Series,
 		Terms:          m.Terms,
 		MinJujuVersion: minver,
+		Resources:      marshaledResources(m.Resources),
 	}, nil
+}
+
+type marshaledResourceMeta struct {
+	Path        string `yaml:"filename"` // TODO(ericsnow) Change to "path"?
+	Type        string `yaml:"type,omitempty"`
+	Description string `yaml:"description,omitempty"`
+}
+
+func marshaledResources(rs map[string]resource.Meta) map[string]marshaledResourceMeta {
+	rs1 := make(map[string]marshaledResourceMeta, len(rs))
+	for name, r := range rs {
+		r1 := marshaledResourceMeta{
+			Path:        r.Path,
+			Description: r.Description,
+		}
+		if r.Type != resource.TypeFile {
+			r1.Type = r.Type.String()
+		}
+		rs1[name] = r1
+	}
+	return rs1
 }
 
 // GetYAML implements yaml.Getter.GetYAML (yaml.v1).

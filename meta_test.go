@@ -698,6 +698,13 @@ categories: [c1, c1]
 tags: [t1, t2]
 series:
     - someseries
+resources:
+    foo:
+        description: 'a description'
+        filename: 'x.zip'
+    bar:
+        filename: 'y.tgz'
+        type: file
 `,
 }}
 
@@ -1047,6 +1054,139 @@ resources:
 			Type: resource.TypeFile,
 			Path: "other.zip",
 		},
+	})
+}
+
+func (s *MetaSuite) TestParseResourceMetaOkay(c *gc.C) {
+	name := "my-resource"
+	data := map[string]interface{}{
+		"type":        "file",
+		"filename":    "filename.tgz",
+		"description": "One line that is useful when operators need to push it.",
+	}
+	res, err := charm.ParseResourceMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(res, jc.DeepEquals, resource.Meta{
+		Name:        "my-resource",
+		Type:        resource.TypeFile,
+		Path:        "filename.tgz",
+		Description: "One line that is useful when operators need to push it.",
+	})
+}
+
+func (s *MetaSuite) TestParseResourceMetaMissingName(c *gc.C) {
+	name := ""
+	data := map[string]interface{}{
+		"type":        "file",
+		"filename":    "filename.tgz",
+		"description": "One line that is useful when operators need to push it.",
+	}
+	res, err := charm.ParseResourceMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(res, jc.DeepEquals, resource.Meta{
+		Name:        "",
+		Type:        resource.TypeFile,
+		Path:        "filename.tgz",
+		Description: "One line that is useful when operators need to push it.",
+	})
+}
+
+func (s *MetaSuite) TestParseResourceMetaMissingType(c *gc.C) {
+	name := "my-resource"
+	data := map[string]interface{}{
+		"filename":    "filename.tgz",
+		"description": "One line that is useful when operators need to push it.",
+	}
+	res, err := charm.ParseResourceMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(res, jc.DeepEquals, resource.Meta{
+		Name: "my-resource",
+		// Type is the zero value.
+		Path:        "filename.tgz",
+		Description: "One line that is useful when operators need to push it.",
+	})
+}
+
+func (s *MetaSuite) TestParseResourceMetaEmptyType(c *gc.C) {
+	name := "my-resource"
+	data := map[string]interface{}{
+		"type":        "",
+		"filename":    "filename.tgz",
+		"description": "One line that is useful when operators need to push it.",
+	}
+	_, err := charm.ParseResourceMeta(name, data)
+
+	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
+}
+
+func (s *MetaSuite) TestParseResourceMetaUnknownType(c *gc.C) {
+	name := "my-resource"
+	data := map[string]interface{}{
+		"type":        "spam",
+		"filename":    "filename.tgz",
+		"description": "One line that is useful when operators need to push it.",
+	}
+	_, err := charm.ParseResourceMeta(name, data)
+
+	c.Check(err, gc.ErrorMatches, `unsupported resource type .*`)
+}
+
+func (s *MetaSuite) TestParseResourceMetaMissingPath(c *gc.C) {
+	name := "my-resource"
+	data := map[string]interface{}{
+		"type":        "file",
+		"description": "One line that is useful when operators need to push it.",
+	}
+	res, err := charm.ParseResourceMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(res, jc.DeepEquals, resource.Meta{
+		Name:        "my-resource",
+		Type:        resource.TypeFile,
+		Path:        "",
+		Description: "One line that is useful when operators need to push it.",
+	})
+}
+
+func (s *MetaSuite) TestParseResourceMetaMissingComment(c *gc.C) {
+	name := "my-resource"
+	data := map[string]interface{}{
+		"type":     "file",
+		"filename": "filename.tgz",
+	}
+	res, err := charm.ParseResourceMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(res, jc.DeepEquals, resource.Meta{
+		Name:        "my-resource",
+		Type:        resource.TypeFile,
+		Path:        "filename.tgz",
+		Description: "",
+	})
+}
+
+func (s *MetaSuite) TestParseResourceMetaEmpty(c *gc.C) {
+	name := "my-resource"
+	data := make(map[string]interface{})
+	res, err := charm.ParseResourceMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(res, jc.DeepEquals, resource.Meta{
+		Name: "my-resource",
+	})
+}
+
+func (s *MetaSuite) TestParseResourceMetaNil(c *gc.C) {
+	name := "my-resource"
+	var data map[string]interface{}
+	res, err := charm.ParseResourceMeta(name, data)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Check(res, jc.DeepEquals, resource.Meta{
+		Name: "my-resource",
 	})
 }
 
