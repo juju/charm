@@ -243,7 +243,7 @@ func parseStringList(list interface{}) []string {
 	return result
 }
 
-var termNameRE = regexp.MustCompile("^[a-z]+([a-z0-9-]+)/[0-9]+?$")
+var termNameRE = regexp.MustCompile("^[a-z]+([a-z0-9-]+)(/[0-9]+)?$")
 
 func checkTerm(s string) error {
 	match := termNameRE.FindStringSubmatch(s)
@@ -552,7 +552,7 @@ func (meta Meta) Check() error {
 
 	for _, term := range meta.Terms {
 		if terr := checkTerm(term); terr != nil {
-			return terr
+			return errors.Trace(terr)
 		}
 	}
 

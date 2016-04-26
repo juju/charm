@@ -64,15 +64,15 @@ func (s *MetaSuite) TestCheckTerms(c *gc.C) {
 		expectError string
 	}{{
 		about: "valid terms",
-		terms: []string{"term/1", "term/2"},
-	}, {
-		about:       "missing revision number",
-		terms:       []string{"term/1", "term"},
-		expectError: "invalid term name \"term\": must match.*",
+		terms: []string{"term/1", "term/2", "term-without-revision"},
 	}, {
 		about:       "revision not a number",
 		terms:       []string{"term/1", "term/a"},
 		expectError: "invalid term name \"term/a\": must match.*",
+	}, {
+		about:       "negative revision",
+		terms:       []string{"term/-1"},
+		expectError: "invalid term name \"term/-1\": must match.*",
 	}, {
 		about:       "wrong format",
 		terms:       []string{"term/1", "term/a/1"},
@@ -111,8 +111,10 @@ func (s *MetaSuite) TestReadCategory(c *gc.C) {
 
 func (s *MetaSuite) TestReadTerms(c *gc.C) {
 	meta, err := charm.ReadMeta(repoMeta(c, "terms"))
-	c.Assert(err, gc.IsNil)
-	c.Assert(meta.Terms, jc.DeepEquals, []string{"term1", "term2"})
+	c.Assert(err, jc.ErrorIsNil)
+	err = meta.Check()
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(meta.Terms, jc.DeepEquals, []string{"term1/1", "term2"})
 }
 
 func (s *MetaSuite) TestReadTags(c *gc.C) {
