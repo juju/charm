@@ -573,6 +573,20 @@ Snapshot:
 
 		expectedError: "bad action name Snapshot",
 	}, {
+		description: `Reserved Action Name: "juju".`,
+		yaml: `
+juju:
+   description: A reserved action.
+`,
+		expectedError: `cannot use action name juju: "juju" is a reserved name`,
+	}, {
+		description: `Reserved Action Name: "juju-run".`,
+		yaml: `
+juju-run:
+   description: A reserved action.
+`,
+		expectedError: `cannot use action name juju-run: the "juju-" prefix is reserved`,
+	}, {
 		description: "A non-string description fails to parse",
 		yaml: `
 snapshot:

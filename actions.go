@@ -109,6 +109,12 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 		if valid := actionNameRule.MatchString(name); !valid {
 			return nil, fmt.Errorf("bad action name %s", name)
 		}
+		if reserved, reason := reservedName(name); reserved {
+			return nil, fmt.Errorf(
+				"cannot use action name %s: %s",
+				name, reason,
+			)
+		}
 
 		desc := "No description"
 		thisActionSchema := map[string]interface{}{
