@@ -440,12 +440,12 @@ func (meta Meta) Check() error {
 			// Container-scoped require relations on subordinates are allowed
 			// to use the otherwise-reserved juju-* namespace.
 			if !meta.Subordinate || role != RoleRequirer || rel.Scope != ScopeContainer {
-				if reservedName(name) {
+				if reserved, _ := reservedName(name); reserved {
 					return fmt.Errorf("charm %q using a reserved relation name: %q", meta.Name, name)
 				}
 			}
 			if role != RoleRequirer {
-				if reservedName(rel.Interface) {
+				if reserved, _ := reservedName(rel.Interface); reserved {
 					return fmt.Errorf("charm %q relation %q using a reserved interface: %q", meta.Name, name, rel.Interface)
 				}
 			}
@@ -536,8 +536,14 @@ func (meta Meta) Check() error {
 	return nil
 }
 
-func reservedName(name string) bool {
-	return name == "juju" || strings.HasPrefix(name, "juju-")
+func reservedName(name string) (reserved bool, reason string) {
+	if name == "juju" {
+		return true, `"juju" is a reserved name`
+	}
+	if strings.HasPrefix(name, "juju-") {
+		return true, `the "juju-" prefix is reserved`
+	}
+	return false, ""
 }
 
 func parseRelations(relations interface{}, role RelationRole) map[string]Relation {
