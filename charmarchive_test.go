@@ -73,13 +73,6 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutMetrics(c *gc.C) {
 	c.Assert(dir.Metrics(), gc.IsNil)
 }
 
-func (s *CharmArchiveSuite) TestReadCharmArchiveWithEmptyMetrics(c *gc.C) {
-	path := archivePath(c, readCharmDir(c, "metered-empty"))
-	dir, err := charm.ReadCharmArchive(path)
-	c.Assert(err, gc.IsNil)
-	c.Assert(Keys(dir.Metrics()), gc.HasLen, 0)
-}
-
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithCustomMetrics(c *gc.C) {
 	path := archivePath(c, readCharmDir(c, "metered"))
 	dir, err := charm.ReadCharmArchive(path)

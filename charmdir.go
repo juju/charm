@@ -60,7 +60,7 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		dir.metrics, err = ReadMetrics(file)
 		file.Close()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("metrics.yaml error: %v", err)
 		}
 	} else if !os.IsNotExist(err) {
 		return nil, err
