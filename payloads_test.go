@@ -15,14 +15,14 @@ var _ = gc.Suite(&payloadClassSuite{})
 type payloadClassSuite struct{}
 
 func (s *payloadClassSuite) TestParsePayloadClassOkay(c *gc.C) {
-	name := "my-payload"
+	name := "myPayload"
 	data := map[string]interface{}{
 		"type": "docker",
 	}
 	payloadClass := charm.ParsePayloadClass(name, data)
 
 	c.Check(payloadClass, jc.DeepEquals, charm.PayloadClass{
-		Name: "my-payload",
+		Name: "myPayload",
 		Type: "docker",
 	})
 }
@@ -41,18 +41,18 @@ func (s *payloadClassSuite) TestParsePayloadClassMissingName(c *gc.C) {
 }
 
 func (s *payloadClassSuite) TestParsePayloadClassEmpty(c *gc.C) {
-	name := "my-payload"
+	name := "myPayload"
 	var data map[string]interface{}
 	payloadClass := charm.ParsePayloadClass(name, data)
 
 	c.Check(payloadClass, jc.DeepEquals, charm.PayloadClass{
-		Name: "my-payload",
+		Name: "myPayload",
 	})
 }
 
 func (s *payloadClassSuite) TestValidateFull(c *gc.C) {
 	payloadClass := charm.PayloadClass{
-		Name: "my-payload",
+		Name: "myPayload",
 		Type: "docker",
 	}
 	err := payloadClass.Validate()
@@ -76,9 +76,19 @@ func (s *payloadClassSuite) TestValidateMissingName(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `payload class missing name`)
 }
 
-func (s *payloadClassSuite) TestValidateMissingType(c *gc.C) {
+func (s *payloadClassSuite) TestValidateBadName(c *gc.C) {
 	payloadClass := charm.PayloadClass{
 		Name: "my-payload",
+		Type: "docker",
+	}
+	err := payloadClass.Validate()
+
+	c.Check(err, gc.ErrorMatches, `invalid payload class "my-payload"`)
+}
+
+func (s *payloadClassSuite) TestValidateMissingType(c *gc.C) {
+	payloadClass := charm.PayloadClass{
+		Name: "myPayload",
 	}
 	err := payloadClass.Validate()
 
