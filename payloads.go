@@ -8,7 +8,6 @@ import (
 
 	"github.com/juju/names"
 	"github.com/juju/schema"
-	"github.com/juju/utils"
 )
 
 var payloadClassSchema = schema.FieldMap(
@@ -62,10 +61,7 @@ func (pc PayloadClass) Validate() error {
 	if pc.Name == "" {
 		return fmt.Errorf("payload class missing name")
 	}
-	// For 1.25 compatibility, names.IsValidPayload() supports
-	// UUIDs for resource the "ID". However, resource classes in
-	// charm metadata should not be a UUID.
-	if !names.IsValidPayload(pc.Name) || utils.IsValidUUIDString(pc.Name) {
+	if !names.IsValidPayload(pc.Name) {
 		return fmt.Errorf("invalid payload class %q", pc.Name)
 	}
 
