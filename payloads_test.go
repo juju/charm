@@ -76,6 +76,16 @@ func (s *payloadClassSuite) TestValidateMissingName(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `payload class missing name`)
 }
 
+func (s *payloadClassSuite) TestValidateBadName(c *gc.C) {
+	payloadClass := charm.PayloadClass{
+		Name: "my-###-payload",
+		Type: "docker",
+	}
+	err := payloadClass.Validate()
+
+	c.Check(err, gc.ErrorMatches, `invalid payload class "my-###-payload"`)
+}
+
 func (s *payloadClassSuite) TestValidateMissingType(c *gc.C) {
 	payloadClass := charm.PayloadClass{
 		Name: "my-payload",

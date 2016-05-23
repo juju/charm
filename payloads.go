@@ -6,6 +6,7 @@ package charm
 import (
 	"fmt"
 
+	"github.com/juju/names"
 	"github.com/juju/schema"
 )
 
@@ -60,8 +61,13 @@ func (pc PayloadClass) Validate() error {
 	if pc.Name == "" {
 		return fmt.Errorf("payload class missing name")
 	}
+	if !names.IsValidPayload(pc.Name) {
+		return fmt.Errorf("invalid payload class %q", pc.Name)
+	}
+
 	if pc.Type == "" {
 		return fmt.Errorf("payload class missing type")
 	}
+
 	return nil
 }
