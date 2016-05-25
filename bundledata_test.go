@@ -317,12 +317,12 @@ relations:
 		`missing resource name on application "mediawiki"`,
 		`the charm URL for application "postgres" has a series which does not match, please remove the series from the URL`,
 		`too many units specified in unit placement for application "mysql"`,
-		`placement "nowhere/3" refers to a application not defined in this bundle`,
+		`placement "nowhere/3" refers to an application not defined in this bundle`,
 		`placement "mediawiki/0" specifies a unit greater than the -4 unit(s) started by the target application`,
 		`placement "2" refers to a machine not defined in this bundle`,
 		`relation ["arble:bar"] has 1 endpoint(s), not 2`,
 		`relation ["arble:bar" "mediawiki:db"] refers to application "arble" not defined in this bundle`,
-		`relation ["mysql:foo" "mysql:bar"] relates a application to itself`,
+		`relation ["mysql:foo" "mysql:bar"] relates an application to itself`,
 		`relation ["mysql:db" "mediawiki:db"] is defined more than once`,
 		`invalid placement syntax "bad placement"`,
 		`invalid relation syntax "mediawiki/db"`,
@@ -663,7 +663,7 @@ relations:
 		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
-		`relation ["application2:prova" "application2:reqa"] relates a application to itself`,
+		`relation ["application2:prova" "application2:reqa"] relates an application to itself`,
 	},
 }, {
 	about: "provider to provider relation",

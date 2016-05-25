@@ -87,7 +87,7 @@ type BundleData struct {
 	// each specifying a relation between two applications.
 	// Each two-element slice holds two endpoints,
 	// each specified as either colon-separated
-	// (application, relation) pair or just a application name.
+	// (application, relation) pair or just an application name.
 	// The relation is made between each. If the relation
 	// name is omitted, it will be inferred from the available
 	// relations defined in the applications' charms.
@@ -157,7 +157,7 @@ type ApplicationSpec struct {
 	// or the special name "new" which specifies a newly
 	// created machine.
 	//
-	// A unit placement may be specified with a application name only,
+	// A unit placement may be specified with an application name only,
 	// in which case its unit number is assumed to
 	// be one more than the unit number of the previous
 	// unit in the list with the same application, or zero
@@ -489,7 +489,7 @@ func (verifier *bundleDataVerifier) verifyPlacement(to []string) {
 		case up.Application != "":
 			spec, ok := verifier.bd.Applications[up.Application]
 			if !ok {
-				verifier.addErrorf("placement %q refers to a application not defined in this bundle", p)
+				verifier.addErrorf("placement %q refers to an application not defined in this bundle", p)
 				continue
 			}
 			if up.Unit >= 0 && up.Unit >= spec.NumUnits {
@@ -546,7 +546,7 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 			continue
 		}
 		if epPair[0].application == epPair[1].application {
-			verifier.addErrorf("relation %q relates a application to itself", relPair)
+			verifier.addErrorf("relation %q relates an application to itself", relPair)
 		}
 		// Resolve endpoint relations if necessary and we have
 		// the necessary charm information.
@@ -787,7 +787,7 @@ type UnitPlacement struct {
 	ContainerType string
 
 	// Machine holds the numeric machine id, or "new",
-	// or empty if the placement specifies a application.
+	// or empty if the placement specifies an application.
 	Machine string
 
 	// application holds the application name, or empty if
@@ -816,7 +816,7 @@ var validPlacement = regexp.MustCompile(
 )
 
 // ParsePlacement parses a unit placement directive, as
-// specified in the To clause of a application entry in the
+// specified in the To clause of an application entry in the
 // applications section of a bundle.
 func ParsePlacement(p string) (*UnitPlacement, error) {
 	m := validPlacement.FindStringSubmatch(p)

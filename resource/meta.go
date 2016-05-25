@@ -24,7 +24,7 @@ type Meta struct {
 	// Path is the relative path of the file or directory where the
 	// resource will be stored under the unit's data directory. The path
 	// is resolved against a subdirectory assigned to the resource. For
-	// example, given a application named "spam", a resource "eggs", and a
+	// example, given an application named "spam", a resource "eggs", and a
 	// path "eggs.tgz", the fully resolved storage path for the resource
 	// would be:
 	//   /var/lib/juju/agent/spam-0/resources/eggs/eggs.tgz

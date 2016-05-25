@@ -68,7 +68,7 @@ type Storage struct {
 	Type StorageType `bson:"type"`
 
 	// Shared indicates that the storage is shared between all units of
-	// a application deployed from the charm. It is an error to attempt to
+	// an application deployed from the charm. It is an error to attempt to
 	// assign non-shareable storage to a "shared" storage requirement.
 	//
 	// Shared defaults to false.

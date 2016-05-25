@@ -36,7 +36,7 @@ The OpenStack cloud deployed is completely clean; the charms don't attempt to co
 Niggles
 -------
 
-The neutron-gateway application requires a application unit with two network interfaces to provide full functionality; this part of OpenStack provides L3 routing between tenant networks and the rest of the world.  Its possible todo this when testing on OpenStack by adding a second network interface to the neutron-gateway application:
+The neutron-gateway application requires an application unit with two network interfaces to provide full functionality; this part of OpenStack provides L3 routing between tenant networks and the rest of the world.  Its possible todo this when testing on OpenStack by adding a second network interface to the neutron-gateway application:
 
     nova interface-attach --net-id <UUID for network>  <UUID of instance>
     juju set neutron-gateway ext-port=eth1
