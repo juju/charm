@@ -11,5 +11,4 @@ github.com/juju/version	git	102b12db83e38cb2ce7003544092ea7b0ca59e92	2015-11-07T
 golang.org/x/crypto	git	aedad9a179ec1ea11b7064c57cbc6dc30d7724ec	2015-08-30T18:06:42Z
 gopkg.in/check.v1	git	b3d3430320d4260e5fea99841af984b3badcea63	2015-06-26T10:50:28Z
 gopkg.in/mgo.v2	git	f4923a569136442e900b8cf5c1a706c0a8b0883c	2015-08-21T15:31:23Z
-gopkg.in/yaml.v1	git	9f9df34309c04878acc86042b16630b0f696e1de	2014-09-24T16:16:07Z
-gopkg.in/yaml.v2	git	53feefa2559fb8dfa8d81baad31be332c97d6c77	2015-09-24T14:23:14Z
+gopkg.in/yaml.v2	git	a83829b6f1293c91addabc89d0571c246397bbf4	2016-03-01T20:40:22Z

@@ -1,4 +1,4 @@
-applications:
+services:
     wordpress:
         charm: wordpress
     mysql:

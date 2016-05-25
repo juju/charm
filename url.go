@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/juju/names"
+	"gopkg.in/juju/names.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 

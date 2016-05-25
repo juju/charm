@@ -15,7 +15,7 @@ import (
 	"github.com/juju/schema"
 	"github.com/juju/utils"
 	"github.com/juju/version"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 
 	"gopkg.in/juju/charm.v6-unstable/hooks"
 	"gopkg.in/juju/charm.v6-unstable/resource"
@@ -68,7 +68,7 @@ type Storage struct {
 	Type StorageType `bson:"type"`
 
 	// Shared indicates that the storage is shared between all units of
-	// a service deployed from the charm. It is an error to attempt to
+	// a application deployed from the charm. It is an error to attempt to
 	// assign non-shareable storage to a "shared" storage requirement.
 	//
 	// Shared defaults to false.
@@ -395,12 +395,6 @@ func marshaledResources(rs map[string]resource.Meta) map[string]marshaledResourc
 	return rs1
 }
 
-// GetYAML implements yaml.Getter.GetYAML (yaml.v1).
-func (m Meta) GetYAML() (tag string, value interface{}) {
-	v, _ := m.MarshalYAML()
-	return "", v
-}
-
 func marshaledRelations(relations map[string]Relation) map[string]marshaledRelation {
 	marshaled := make(map[string]marshaledRelation)
 	for name, relation := range relations {
@@ -411,7 +405,7 @@ func marshaledRelations(relations map[string]Relation) map[string]marshaledRelat
 
 type marshaledRelation Relation
 
-func (r marshaledRelation) GetYAML() (tag string, value interface{}) {
+func (r marshaledRelation) MarshalYAML() (interface{}, error) {
 	// See calls to ifaceExpander in charmSchema.
 	noLimit := 1
 	if r.Role == RoleProvider {
@@ -420,7 +414,7 @@ func (r marshaledRelation) GetYAML() (tag string, value interface{}) {
 
 	if !r.Optional && r.Limit == noLimit && r.Scope == ScopeGlobal {
 		// All attributes are default, so use the simple string form of the relation.
-		return "", r.Interface
+		return r.Interface, nil
 	}
 	mr := struct {
 		Interface string        `yaml:"interface"`
@@ -437,7 +431,7 @@ func (r marshaledRelation) GetYAML() (tag string, value interface{}) {
 	if r.Scope != ScopeGlobal {
 		mr.Scope = r.Scope
 	}
-	return "", mr
+	return mr, nil
 }
 
 func marshaledExtraBindings(bindings map[string]ExtraBinding) map[string]interface{} {

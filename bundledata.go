@@ -4,7 +4,9 @@
 package charm
 
 import (
+	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
 	"os"
@@ -14,16 +16,61 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/juju/names"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/juju/names.v2"
 )
+
+type bundleDataCompat struct {
+	// LegacyServices holds application entries for older bundle files
+	// that have not been migrated to use the new "application" terminology.
+	LegacyServices map[string]*ApplicationSpec `json:"services,omitempty" yaml:"services,omitempty"`
+}
+
+type bundleDataUnmarshal BundleData
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (bd *BundleData) UnmarshalJSON(b []byte) error {
+	// We account for the fact that the YAML may contain a legacy entry
+	// for "services" instead of "applications".
+	var bundleData bundleDataUnmarshal
+	if err := json.Unmarshal(b, &bundleData); err != nil {
+		return err
+	}
+	*bd = BundleData(bundleData)
+	if len(bd.Applications) == 0 {
+		var compat bundleDataCompat
+		if err := json.Unmarshal(b, &compat); err != nil {
+			return err
+		}
+		bd.Applications = compat.LegacyServices
+	}
+	return nil
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (bd *BundleData) UnmarshalYAML(f func(interface{}) error) error {
+	// We account for the fact that the YAML may contain a legacy entry
+	// for "services" instead of "applications".
+	var bundleData bundleDataUnmarshal
+	if err := f(&bundleData); err != nil {
+		return err
+	}
+	*bd = BundleData(bundleData)
+	if len(bd.Applications) == 0 {
+		var compat bundleDataCompat
+		if err := f(&compat); err != nil {
+			return err
+		}
+		bd.Applications = compat.LegacyServices
+	}
+	return nil
+}
 
 // BundleData holds the contents of the bundle.
 type BundleData struct {
-	// Services holds one entry for each service
+	// Applications holds one entry for each application
 	// that the bundle will create, indexed by
-	// the service name.
-	Services map[string]*ServiceSpec
+	// the application name.
+	Applications map[string]*ApplicationSpec `bson:"applications,omitempty" json:"applications,omitempty" yaml:"applications,omitempty"`
 
 	// Machines holds one entry for each machine referred to
 	// by unit placements. These will be mapped onto actual
@@ -37,13 +84,13 @@ type BundleData struct {
 	Series string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Relations holds a slice of 2-element slices,
-	// each specifying a relation between two services.
+	// each specifying a relation between two applications.
 	// Each two-element slice holds two endpoints,
 	// each specified as either colon-separated
-	// (service, relation) pair or just a service name.
+	// (application, relation) pair or just a application name.
 	// The relation is made between each. If the relation
 	// name is omitted, it will be inferred from the available
-	// relations defined in the services' charms.
+	// relations defined in the applications' charms.
 	Relations [][]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// White listed set of tags to categorize bundles as we do charms.
@@ -61,11 +108,11 @@ type MachineSpec struct {
 	Series      string            `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 }
 
-// ServiceSpec represents a single service that will
+// ApplicationSpec represents a single application that will
 // be deployed as part of the bundle.
-type ServiceSpec struct {
+type ApplicationSpec struct {
 	// Charm holds the charm URL of the charm to
-	// use for the given service.
+	// use for the given application.
 	Charm string
 
 	// Series is the series to use when deploying a local charm,
@@ -76,21 +123,21 @@ type ServiceSpec struct {
 	Series string `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
 
 	// Resources is the set of resource revisions to deploy for the
-	// service. Bundles only support charm store resources and not ones
+	// application. Bundles only support charm store resources and not ones
 	// that were uploaded to the controller.
 	Resources map[string]int `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
 
 	// NumUnits holds the number of units of the
-	// service that will be deployed.
+	// application that will be deployed.
 	//
-	// For a subordinate service, this actually represents
+	// For a subordinate application, this actually represents
 	// an arbitrary number of units depending on
-	// the service it is related to.
+	// the application it is related to.
 	NumUnits int `bson:",omitempty" yaml:"num_units,omitempty" json:",omitempty"`
 
 	// To may hold up to NumUnits members with
 	// each member specifying a desired placement
-	// for the respective unit of the service.
+	// for the respective unit of the application.
 	//
 	// In regular-expression-like notation, each
 	// element matches the following pattern:
@@ -105,15 +152,15 @@ type ServiceSpec struct {
 	//
 	// The second part (after the colon) specifies where
 	// the new unit should be placed - it may refer to
-	// a unit of another service specified in the bundle,
+	// a unit of another application specified in the bundle,
 	// a machine id specified in the machines section,
 	// or the special name "new" which specifies a newly
 	// created machine.
 	//
-	// A unit placement may be specified with a service name only,
+	// A unit placement may be specified with a application name only,
 	// in which case its unit number is assumed to
 	// be one more than the unit number of the previous
-	// unit in the list with the same service, or zero
+	// unit in the list with the same application, or zero
 	// if there were none.
 	//
 	// If there are less elements in To than NumUnits,
@@ -125,7 +172,7 @@ type ServiceSpec struct {
 	//     wordpress/0 wordpress/1 lxc:0 kvm:new
 	//
 	//  specifies that the first two units get hulk-smashed
-	//  onto the first two units of the wordpress service,
+	//  onto the first two units of the wordpress application,
 	//  the third unit gets allocated onto an lxc container
 	//  on machine 0, and subsequent units get allocated
 	//  on kvm containers on new machines.
@@ -135,25 +182,25 @@ type ServiceSpec struct {
 	//     wordpress wordpress lxc:0 kvm:new
 	To []string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
-	// Expose holds whether the service must be exposed.
+	// Expose holds whether the application must be exposed.
 	Expose bool `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Options holds the configuration values
-	// to apply to the new service. They should
+	// to apply to the new application. They should
 	// be compatible with the charm configuration.
 	Options map[string]interface{} `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Annotations holds any annotations to apply to the
-	// service when deployed.
+	// application when deployed.
 	Annotations map[string]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Constraints holds the default constraints to apply
-	// when creating new machines for units of the service.
+	// when creating new machines for units of the application.
 	// This is ignored for units with explicit placement directives.
 	Constraints string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// Storage holds the constraints for storage to assign
-	// to units of the service.
+	// to units of the application.
 	Storage map[string]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
 	// EndpointBindings maps how endpoints are bound to spaces
@@ -225,8 +272,8 @@ func (verifier *bundleDataVerifier) err() error {
 // RequiredCharms returns a sorted slice of all the charm URLs
 // required by the bundle.
 func (bd *BundleData) RequiredCharms() []string {
-	req := make([]string, 0, len(bd.Services))
-	for _, svc := range bd.Services {
+	req := make([]string, 0, len(bd.Applications))
+	for _, svc := range bd.Applications {
 		req = append(req, svc.Charm)
 	}
 	sort.Strings(req)
@@ -266,14 +313,14 @@ func (bd *BundleData) Verify(
 // It verifies the following:
 //
 // - All defined machines are referred to by placement directives.
-// - All services referred to by placement directives are specified in the bundle.
-// - All services referred to by relations are specified in the bundle.
+// - All applications referred to by placement directives are specified in the bundle.
+// - All applications referred to by relations are specified in the bundle.
 // - All basic constraints are valid.
 // - All storage constraints are valid.
 //
 // If charms is not nil, it should hold a map with an entry for each
 // charm url returned by bd.RequiredCharms. The verification will then
-// also check that services are defined with valid charms,
+// also check that applications are defined with valid charms,
 // relations are correctly made and options are defined correctly.
 //
 // If the verification fails, Verify returns a *VerificationError describing
@@ -317,7 +364,7 @@ func (bd *BundleData) verifyBundle(
 		verifier.addErrorf("bundle declares an invalid series %q", bd.Series)
 	}
 	verifier.verifyMachines()
-	verifier.verifyServices()
+	verifier.verifyApplications()
 	verifier.verifyRelations()
 	verifier.verifyOptions()
 	verifier.verifyEndpointBindings()
@@ -354,12 +401,12 @@ func (verifier *bundleDataVerifier) verifyMachines() {
 	}
 }
 
-func (verifier *bundleDataVerifier) verifyServices() {
-	if len(verifier.bd.Services) == 0 {
-		verifier.addErrorf("at least one service must be specified")
+func (verifier *bundleDataVerifier) verifyApplications() {
+	if len(verifier.bd.Applications) == 0 {
+		verifier.addErrorf("at least one application must be specified")
 		return
 	}
-	for name, svc := range verifier.bd.Services {
+	for name, svc := range verifier.bd.Applications {
 		if svc.Charm == "" {
 			verifier.addErrorf("empty charm path")
 		}
@@ -373,59 +420,59 @@ func (verifier *bundleDataVerifier) verifyServices() {
 			}
 			if _, err := os.Stat(charmPath); err != nil {
 				if os.IsNotExist(err) {
-					verifier.addErrorf("charm path in service %q does not exist: %v", name, charmPath)
+					verifier.addErrorf("charm path in application %q does not exist: %v", name, charmPath)
 				} else {
-					verifier.addErrorf("invalid charm path in service %q: %v", name, err)
+					verifier.addErrorf("invalid charm path in application %q: %v", name, err)
 				}
 			}
 		} else if curl, err = ParseURL(svc.Charm); err != nil {
-			verifier.addErrorf("invalid charm URL in service %q: %v", name, err)
+			verifier.addErrorf("invalid charm URL in application %q: %v", name, err)
 		}
 
 		// Check the series.
 		if curl != nil && curl.Series != "" && svc.Series != "" && curl.Series != svc.Series {
-			verifier.addErrorf("the charm URL for service %q has a series which does not match, please remove the series from the URL", name)
+			verifier.addErrorf("the charm URL for application %q has a series which does not match, please remove the series from the URL", name)
 		}
 		if svc.Series != "" && !IsValidSeries(svc.Series) {
-			verifier.addErrorf("service %q declares an invalid series %q", name, svc.Series)
+			verifier.addErrorf("application %q declares an invalid series %q", name, svc.Series)
 		}
 
 		if err := verifier.verifyConstraints(svc.Constraints); err != nil {
-			verifier.addErrorf("invalid constraints %q in service %q: %v", svc.Constraints, name, err)
+			verifier.addErrorf("invalid constraints %q in application %q: %v", svc.Constraints, name, err)
 		}
 		for storageName, storageConstraints := range svc.Storage {
 			if !validStorageName.MatchString(storageName) {
-				verifier.addErrorf("invalid storage name %q in service %q", storageName, name)
+				verifier.addErrorf("invalid storage name %q in application %q", storageName, name)
 			}
 			if err := verifier.verifyStorage(storageConstraints); err != nil {
-				verifier.addErrorf("invalid storage %q in service %q: %v", storageName, name, err)
+				verifier.addErrorf("invalid storage %q in application %q: %v", storageName, name, err)
 			}
 		}
 		if verifier.charms != nil {
 			if ch, ok := verifier.charms[svc.Charm]; ok {
 				if ch.Meta().Subordinate {
 					if len(svc.To) > 0 {
-						verifier.addErrorf("service %q is subordinate but specifies unit placement", name)
+						verifier.addErrorf("application %q is subordinate but specifies unit placement", name)
 					}
 					if svc.NumUnits > 0 {
-						verifier.addErrorf("service %q is subordinate but has non-zero num_units", name)
+						verifier.addErrorf("application %q is subordinate but has non-zero num_units", name)
 					}
 				}
 			} else {
-				verifier.addErrorf("service %q refers to non-existent charm %q", name, svc.Charm)
+				verifier.addErrorf("application %q refers to non-existent charm %q", name, svc.Charm)
 			}
 		}
 		for resName := range svc.Resources {
 			if resName == "" {
-				verifier.addErrorf("missing resource name on service %q", name)
+				verifier.addErrorf("missing resource name on application %q", name)
 			}
 			// We do not check the revisions because all values
 			// are allowed.
 		}
 		if svc.NumUnits < 0 {
-			verifier.addErrorf("negative number of units specified on service %q", name)
+			verifier.addErrorf("negative number of units specified on application %q", name)
 		} else if len(svc.To) > svc.NumUnits {
-			verifier.addErrorf("too many units specified in unit placement for service %q", name)
+			verifier.addErrorf("too many units specified in unit placement for application %q", name)
 		}
 		verifier.verifyPlacement(svc.To)
 	}
@@ -439,14 +486,14 @@ func (verifier *bundleDataVerifier) verifyPlacement(to []string) {
 			continue
 		}
 		switch {
-		case up.Service != "":
-			spec, ok := verifier.bd.Services[up.Service]
+		case up.Application != "":
+			spec, ok := verifier.bd.Applications[up.Application]
 			if !ok {
-				verifier.addErrorf("placement %q refers to a service not defined in this bundle", p)
+				verifier.addErrorf("placement %q refers to a application not defined in this bundle", p)
 				continue
 			}
 			if up.Unit >= 0 && up.Unit >= spec.NumUnits {
-				verifier.addErrorf("placement %q specifies a unit greater than the %d unit(s) started by the target service", p, spec.NumUnits)
+				verifier.addErrorf("placement %q specifies a unit greater than the %d unit(s) started by the target application", p, spec.NumUnits)
 			}
 		case up.Machine == "new":
 		default:
@@ -460,14 +507,14 @@ func (verifier *bundleDataVerifier) verifyPlacement(to []string) {
 	}
 }
 
-func (verifier *bundleDataVerifier) getCharmMetaForService(svcName string) (*Meta, error) {
-	svc, ok := verifier.bd.Services[svcName]
+func (verifier *bundleDataVerifier) getCharmMetaForApplication(appName string) (*Meta, error) {
+	svc, ok := verifier.bd.Applications[appName]
 	if !ok {
-		return nil, fmt.Errorf("service %q not found", svcName)
+		return nil, fmt.Errorf("application %q not found", appName)
 	}
 	ch, ok := verifier.charms[svc.Charm]
 	if !ok {
-		return nil, fmt.Errorf("charm %q from service %q not found", svc.Charm, svcName)
+		return nil, fmt.Errorf("charm %q from application %q not found", svc.Charm, appName)
 	}
 	return ch.Meta(), nil
 }
@@ -488,8 +535,8 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 				relParseErr = true
 				continue
 			}
-			if _, ok := verifier.bd.Services[ep.service]; !ok {
-				verifier.addErrorf("relation %q refers to service %q not defined in this bundle", relPair, ep.service)
+			if _, ok := verifier.bd.Applications[ep.application]; !ok {
+				verifier.addErrorf("relation %q refers to application %q not defined in this bundle", relPair, ep.application)
 			}
 			epPair[i] = ep
 		}
@@ -498,13 +545,13 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 			// bother checking further.
 			continue
 		}
-		if epPair[0].service == epPair[1].service {
-			verifier.addErrorf("relation %q relates a service to itself", relPair)
+		if epPair[0].application == epPair[1].application {
+			verifier.addErrorf("relation %q relates a application to itself", relPair)
 		}
 		// Resolve endpoint relations if necessary and we have
 		// the necessary charm information.
 		if (epPair[0].relation == "" || epPair[1].relation == "") && verifier.charms != nil {
-			iep0, iep1, err := inferEndpoints(epPair[0], epPair[1], verifier.getCharmMetaForService)
+			iep0, iep1, err := inferEndpoints(epPair[0], epPair[1], verifier.getCharmMetaForApplication)
 			if err != nil {
 				verifier.addErrorf("cannot infer endpoint between %s and %s: %v", epPair[0], epPair[1], err)
 			} else {
@@ -535,9 +582,9 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 }
 
 func (verifier *bundleDataVerifier) verifyEndpointBindings() {
-	for name, svc := range verifier.bd.Services {
+	for name, svc := range verifier.bd.Applications {
 		charm, ok := verifier.charms[name]
-		// Only thest the ok path here because the !ok path is tested in verifyServices
+		// Only thest the ok path here because the !ok path is tested in verifyApplications
 		if !ok {
 			continue
 		}
@@ -549,7 +596,7 @@ func (verifier *bundleDataVerifier) verifyEndpointBindings() {
 
 			if !(isInProvides || isInRequires || isInPeers || isInExtraBindings) {
 				verifier.addErrorf(
-					"service %q wants to bind endpoint %q to space %q, "+
+					"application %q wants to bind endpoint %q to space %q, "+
 						"but the endpoint is not defined by the charm",
 					name, endpoint, space)
 			}
@@ -571,8 +618,8 @@ var infoRelation = Relation{
 // symmetrical (provider to requirer) and shares
 // the same interface.
 func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
-	svc0 := verifier.bd.Services[ep0.service]
-	svc1 := verifier.bd.Services[ep1.service]
+	svc0 := verifier.bd.Applications[ep0.application]
+	svc1 := verifier.bd.Applications[ep1.application]
 	if svc0 == nil || svc1 == nil || svc0 == svc1 {
 		// An error will be produced by verifyRelations for this case.
 		return
@@ -580,7 +627,7 @@ func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
 	charm0 := verifier.charms[svc0.Charm]
 	charm1 := verifier.charms[svc1.Charm]
 	if charm0 == nil || charm1 == nil {
-		// An error will be produced by verifyServices for this case.
+		// An error will be produced by verifyApplications for this case.
 		return
 	}
 	relProv0, okProv0 := charm0.Meta().Provides[ep0.relation]
@@ -591,7 +638,7 @@ func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
 	}
 	relReq0, okReq0 := charm0.Meta().Requires[ep0.relation]
 	if !okProv0 && !okReq0 {
-		verifier.addErrorf("charm %q used by service %q does not define relation %q", svc0.Charm, ep0.service, ep0.relation)
+		verifier.addErrorf("charm %q used by application %q does not define relation %q", svc0.Charm, ep0.application, ep0.relation)
 	}
 	relProv1, okProv1 := charm1.Meta().Provides[ep1.relation]
 	// The juju-info relation is provided implicitly by every
@@ -601,7 +648,7 @@ func (verifier *bundleDataVerifier) verifyRelation(ep0, ep1 endpoint) {
 	}
 	relReq1, okReq1 := charm1.Meta().Requires[ep1.relation]
 	if !okProv1 && !okReq1 {
-		verifier.addErrorf("charm %q used by service %q does not define relation %q", svc1.Charm, ep1.service, ep1.relation)
+		verifier.addErrorf("charm %q used by application %q does not define relation %q", svc1.Charm, ep1.application, ep1.relation)
 	}
 
 	var relProv, relReq Relation
@@ -634,79 +681,79 @@ func (verifier *bundleDataVerifier) verifyOptions() {
 	if verifier.charms == nil {
 		return
 	}
-	for svcName, svc := range verifier.bd.Services {
+	for appName, svc := range verifier.bd.Applications {
 		charm := verifier.charms[svc.Charm]
 		if charm == nil {
-			// An error will be produced by verifyServices for this case.
+			// An error will be produced by verifyApplications for this case.
 			continue
 		}
 		config := charm.Config()
 		for name, value := range svc.Options {
 			opt, ok := config.Options[name]
 			if !ok {
-				verifier.addErrorf("cannot validate service %q: configuration option %q not found in charm %q", svcName, name, svc.Charm)
+				verifier.addErrorf("cannot validate application %q: configuration option %q not found in charm %q", appName, name, svc.Charm)
 				continue
 			}
 			_, err := opt.validate(name, value)
 			if err != nil {
-				verifier.addErrorf("cannot validate service %q: %v", svcName, err)
+				verifier.addErrorf("cannot validate application %q: %v", appName, err)
 			}
 		}
 	}
 }
 
-var validServiceRelation = regexp.MustCompile("^(" + names.ServiceSnippet + "):(" + names.RelationSnippet + ")$")
+var validApplicationRelation = regexp.MustCompile("^(" + names.ApplicationSnippet + "):(" + names.RelationSnippet + ")$")
 
 type endpoint struct {
-	service  string
-	relation string
+	application string
+	relation    string
 }
 
 func (ep endpoint) String() string {
 	if ep.relation == "" {
-		return ep.service
+		return ep.application
 	}
-	return fmt.Sprintf("%s:%s", ep.service, ep.relation)
+	return fmt.Sprintf("%s:%s", ep.application, ep.relation)
 }
 
 func (ep1 endpoint) less(ep2 endpoint) bool {
-	if ep1.service == ep2.service {
+	if ep1.application == ep2.application {
 		return ep1.relation < ep2.relation
 	}
-	return ep1.service < ep2.service
+	return ep1.application < ep2.application
 }
 
 func parseEndpoint(ep string) (endpoint, error) {
-	m := validServiceRelation.FindStringSubmatch(ep)
+	m := validApplicationRelation.FindStringSubmatch(ep)
 	if m != nil {
 		return endpoint{
-			service:  m[1],
-			relation: m[2],
+			application: m[1],
+			relation:    m[2],
 		}, nil
 	}
-	if !names.IsValidService(ep) {
+	if !names.IsValidApplication(ep) {
 		return endpoint{}, fmt.Errorf("invalid relation syntax %q", ep)
 	}
 	return endpoint{
-		service: ep,
+		application: ep,
 	}, nil
 }
 
 // endpointInfo holds information about one endpoint of a relation.
 type endpointInfo struct {
-	serviceName string
+	applicationName string
 	Relation
 }
 
 // String returns the unique identifier of the relation endpoint.
 func (ep endpointInfo) String() string {
-	return ep.serviceName + ":" + ep.Name
+	return ep.applicationName + ":" + ep.Name
 }
 
 // canRelateTo returns whether a relation may be established between ep
 // and other.
 func (ep endpointInfo) canRelateTo(other endpointInfo) bool {
-	return ep.serviceName != other.serviceName &&
+	return ep.applicationName != other.applicationName &&
 		ep.Interface == other.Interface &&
 		ep.Role != RolePeer &&
 		counterpartRole(ep.Role) == other.Role
@@ -715,8 +762,8 @@ func (ep endpointInfo) canRelateTo(other endpointInfo) bool {
 // endpoint returns the endpoint specifier for ep.
 func (ep endpointInfo) endpoint() endpoint {
 	return endpoint{
-		service:  ep.serviceName,
-		relation: ep.Name,
+		application: ep.applicationName,
+		relation:    ep.Name,
 	}
 }
 
@@ -740,14 +787,14 @@ type UnitPlacement struct {
 	ContainerType string
 
 	// Machine holds the numeric machine id, or "new",
-	// or empty if the placement specifies a service.
+	// or empty if the placement specifies a application.
 	Machine string
 
-	// Service holds the service name, or empty if
+	// application holds the application name, or empty if
 	// the placement specifies a machine.
-	Service string
+	Application string
 
-	// Unit holds the unit number of the service, or -1
+	// Unit holds the unit number of the application, or -1
 	// if unspecified.
 	Unit int
 }
@@ -755,7 +802,7 @@ type UnitPlacement struct {
 var snippetReplacer = strings.NewReplacer(
 	"container", names.ContainerTypeSnippet,
 	"number", names.NumberSnippet,
-	"service", names.ServiceSnippet,
+	"application", names.ApplicationSnippet,
 )
 
 // validPlacement holds regexp that matches valid placement requests. To
@@ -764,13 +811,13 @@ var snippetReplacer = strings.NewReplacer(
 // using snippetReplacer.
 var validPlacement = regexp.MustCompile(
 	snippetReplacer.Replace(
-		"^(?:(container):)?(?:(service)(?:/(number))?|(number))$",
+		"^(?:(container):)?(?:(application)(?:/(number))?|(number))$",
 	),
 )
 
 // ParsePlacement parses a unit placement directive, as
-// specified in the To clause of a service entry in the
-// services section of a bundle.
+// specified in the To clause of a application entry in the
+// applications section of a bundle.
 func ParsePlacement(p string) (*UnitPlacement, error) {
 	m := validPlacement.FindStringSubmatch(p)
 	if m == nil {
@@ -778,7 +825,7 @@ func ParsePlacement(p string) (*UnitPlacement, error) {
 	}
 	up := UnitPlacement{
 		ContainerType: m[1],
-		Service:       m[2],
+		Application:   m[2],
 		Machine:       m[4],
 	}
 	if unitStr := m[3]; unitStr != "" {
@@ -788,11 +835,11 @@ func ParsePlacement(p string) (*UnitPlacement, error) {
 	} else {
 		up.Unit = -1
 	}
-	if up.Service == "new" {
+	if up.Application == "new" {
 		if up.Unit != -1 {
 			return nil, fmt.Errorf("invalid placement syntax %q", p)
 		}
-		up.Machine, up.Service = "new", ""
+		up.Machine, up.Application = "new", ""
 	}
 	return &up, nil
 }
@@ -873,7 +920,7 @@ func relationKey(endpoints []endpointInfo) string {
 // possibleEndpoints returns all the endpoints that the given endpoint spec
 // could refer to.
 func possibleEndpoints(epSpec endpoint, get func(svc string) (*Meta, error)) ([]endpointInfo, error) {
-	meta, err := get(epSpec.service)
+	meta, err := get(epSpec.application)
 	if err != nil {
 		return nil, err
 	}
@@ -882,8 +929,8 @@ func possibleEndpoints(epSpec endpoint, get func(svc string) (*Meta, error)) ([]
 	add := func(r Relation) {
 		if epSpec.relation == "" || epSpec.relation == r.Name {
 			eps = append(eps, endpointInfo{
-				serviceName: epSpec.service,
-				Relation:    r,
+				applicationName: epSpec.application,
+				Relation:        r,
 			})
 		}
 	}
@@ -894,7 +941,7 @@ func possibleEndpoints(epSpec endpoint, get func(svc string) (*Meta, error)) ([]
 	for _, r := range meta.Requires {
 		add(r)
 	}
-	// Every service implicitly provides a juju-info relation.
+	// Every application implicitly provides a juju-info relation.
 	add(Relation{
 		Name:      "juju-info",
 		Role:      RoleProvider,

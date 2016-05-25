@@ -15,7 +15,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/version"
 	gc "gopkg.in/check.v1"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 	yamlv2 "gopkg.in/yaml.v2"
 
 	"gopkg.in/juju/charm.v6-unstable"

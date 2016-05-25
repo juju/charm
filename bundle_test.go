@@ -33,6 +33,14 @@ func (*BundleSuite) TestReadBundleArchive(c *gc.C) {
 	checkWordpressBundle(c, b, path)
 }
 
+func (*BundleSuite) TestReadBundleArchiveWithLegacyServices(c *gc.C) {
+	path := bundleDirPath(c, "wordpress-legacy")
+	b, err := charm.ReadBundle(path)
+	c.Assert(err, gc.IsNil)
+	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
+	checkWordpressBundle(c, b, path)
+}
+
 func checkWordpressBundle(c *gc.C, b charm.Bundle, path string) {
 	// Load the charms required by the bundle.
 	wordpressCharm := readCharmDir(c, "wordpress")
@@ -48,7 +56,7 @@ func checkWordpressBundle(c *gc.C, b charm.Bundle, path string) {
 	err := bd.VerifyWithCharms(verifyOk, nil, charms)
 	c.Assert(err, gc.IsNil)
 
-	c.Assert(bd.Services, jc.DeepEquals, map[string]*charm.ServiceSpec{
+	c.Assert(bd.Applications, jc.DeepEquals, map[string]*charm.ApplicationSpec{
 		"wordpress": {
 			Charm: "wordpress",
 		},

@@ -12,7 +12,7 @@ import (
 
 	"github.com/juju/errors"
 	gjs "github.com/juju/gojsonschema"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 )
 
 var prohibitedSchemaKeys = map[string]bool{"$ref": true, "$schema": true}

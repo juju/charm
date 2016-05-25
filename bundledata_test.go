@@ -25,7 +25,7 @@ var _ = gc.Suite(&bundleDataSuite{})
 
 const mediawikiBundle = `
 series: precise
-services:
+applications:
     mediawiki:
         charm: "cs:precise/mediawiki-10"
         num_units: 1
@@ -87,7 +87,7 @@ var parseTests = []struct {
 	data:  mediawikiBundle,
 	expectedBD: &charm.BundleData{
 		Series: "precise",
-		Services: map[string]*charm.ServiceSpec{
+		Applications: map[string]*charm.ApplicationSpec{
 			"mediawiki": {
 				Charm:    "cs:precise/mediawiki-10",
 				NumUnits: 1,
@@ -166,6 +166,32 @@ relations:
 			{"mysql:foo", "mediawiki:bar"},
 		},
 	},
+}, {
+	about: "legacy bundle with services instead of applications",
+	data: `
+services:
+    wordpress:
+        charm: wordpress
+    mysql:
+        charm: mysql
+        num_units: 1
+relations:
+    - ["wordpress:db", "mysql:db"]
+`,
+	expectedBD: &charm.BundleData{
+		Applications: map[string]*charm.ApplicationSpec{
+			"wordpress": {
+				Charm: "wordpress",
+			},
+			"mysql": {
+				Charm:    "mysql",
+				NumUnits: 1,
+			},
+		},
+		Relations: [][]string{
+			{"wordpress:db", "mysql:db"},
+		},
+	},
 }}
 
 func (*bundleDataSuite) TestParse(c *gc.C) {
@@ -184,7 +210,7 @@ func (*bundleDataSuite) TestParse(c *gc.C) {
 func (*bundleDataSuite) TestParseLocalWithSeries(c *gc.C) {
 	path := "internal/test-charm-repo/quanta/riak"
 	data := fmt.Sprintf(`
-        services:
+        applications:
             dummy:
                 charm: %s
                 series: xenial
@@ -193,7 +219,7 @@ func (*bundleDataSuite) TestParseLocalWithSeries(c *gc.C) {
 	bd, err := charm.ReadBundleData(strings.NewReader(data))
 	c.Assert(err, gc.IsNil)
 	c.Assert(bd, jc.DeepEquals, &charm.BundleData{
-		Services: map[string]*charm.ServiceSpec{
+		Applications: map[string]*charm.ApplicationSpec{
 			"dummy": {
 				Charm:    path,
 				Series:   "xenial",
@@ -219,7 +245,7 @@ machines:
          series: 'bad series'
     bogus:
     3:
-services:
+applications:
     mediawiki:
         charm: "bogus:precise/mediawiki-10"
         num_units: -4
@@ -278,25 +304,25 @@ relations:
 `,
 	errors: []string{
 		`bundle declares an invalid series "9wrong"`,
-		`invalid storage name "no_underscores" in service "ceph"`,
-		`invalid storage "invalid-storage" in service "ceph-osd": bad storage constraint`,
+		`invalid storage name "no_underscores" in application "ceph"`,
+		`invalid storage "invalid-storage" in application "ceph-osd": bad storage constraint`,
 		`machine "3" is not referred to by a placement directive`,
 		`machine "bogus" is not referred to by a placement directive`,
 		`invalid machine id "bogus" found in machines`,
 		`invalid constraints "bad constraints" in machine "0": bad constraint`,
-		`invalid charm URL in service "mediawiki": charm or bundle URL has invalid schema: "bogus:precise/mediawiki-10"`,
-		`charm path in service "riak" does not exist: internal/test-charm-repo/bundle/somepath`,
-		`invalid constraints "bad constraints" in service "mysql": bad constraint`,
-		`negative number of units specified on service "mediawiki"`,
-		`missing resource name on service "mediawiki"`,
-		`the charm URL for service "postgres" has a series which does not match, please remove the series from the URL`,
-		`too many units specified in unit placement for service "mysql"`,
-		`placement "nowhere/3" refers to a service not defined in this bundle`,
-		`placement "mediawiki/0" specifies a unit greater than the -4 unit(s) started by the target service`,
+		`invalid charm URL in application "mediawiki": charm or bundle URL has invalid schema: "bogus:precise/mediawiki-10"`,
+		`charm path in application "riak" does not exist: internal/test-charm-repo/bundle/somepath`,
+		`invalid constraints "bad constraints" in application "mysql": bad constraint`,
+		`negative number of units specified on application "mediawiki"`,
+		`missing resource name on application "mediawiki"`,
+		`the charm URL for application "postgres" has a series which does not match, please remove the series from the URL`,
+		`too many units specified in unit placement for application "mysql"`,
+		`placement "nowhere/3" refers to a application not defined in this bundle`,
+		`placement "mediawiki/0" specifies a unit greater than the -4 unit(s) started by the target application`,
 		`placement "2" refers to a machine not defined in this bundle`,
 		`relation ["arble:bar"] has 1 endpoint(s), not 2`,
-		`relation ["arble:bar" "mediawiki:db"] refers to service "arble" not defined in this bundle`,
-		`relation ["mysql:foo" "mysql:bar"] relates a service to itself`,
+		`relation ["arble:bar" "mediawiki:db"] refers to application "arble" not defined in this bundle`,
+		`relation ["mysql:foo" "mysql:bar"] relates a application to itself`,
 		`relation ["mysql:db" "mediawiki:db"] is defined more than once`,
 		`invalid placement syntax "bad placement"`,
 		`invalid relation syntax "mediawiki/db"`,
@@ -369,7 +395,7 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 		"local:foo-45",
 	} {
 		c.Logf("test %d: %s", i, u)
-		bd.Services["mediawiki"].Charm = u
+		bd.Applications["mediawiki"].Charm = u
 		err := bd.Verify(nil, nil)
 		c.Check(err, gc.IsNil, gc.Commentf("charm url %q", u))
 	}
@@ -394,7 +420,7 @@ func (*bundleDataSuite) TestVerifyLocalCharm(c *gc.C) {
 		"./charm",
 	} {
 		c.Logf("test %d: %s", i, u)
-		bd.Services["mediawiki"].Charm = u
+		bd.Applications["mediawiki"].Charm = u
 		err := bd.VerifyLocal(bundleDir, nil, nil)
 		c.Check(err, gc.IsNil, gc.Commentf("charm url %q", u))
 	}
@@ -424,10 +450,10 @@ func (s *bundleDataSuite) testPrepareAndMutateBeforeVerifyWithCharms(c *gc.C, mu
 
 func (s *bundleDataSuite) TestVerifyBundleWithUnknownEndpointBindingGiven(c *gc.C) {
 	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
-		bd.Services["wordpress"].EndpointBindings["foo"] = "bar"
+		bd.Applications["wordpress"].EndpointBindings["foo"] = "bar"
 	})
 	c.Assert(err, gc.ErrorMatches,
-		`service "wordpress" wants to bind endpoint "foo" to space "bar", `+
+		`application "wordpress" wants to bind endpoint "foo" to space "bar", `+
 			`but the endpoint is not defined by the charm`,
 	)
 }
@@ -435,8 +461,8 @@ func (s *bundleDataSuite) TestVerifyBundleWithUnknownEndpointBindingGiven(c *gc.
 func (s *bundleDataSuite) TestVerifyBundleWithExtraBindingsSuccess(c *gc.C) {
 	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
 		// Both of these are specified in extra-bindings.
-		bd.Services["wordpress"].EndpointBindings["admin-api"] = "internal"
-		bd.Services["wordpress"].EndpointBindings["foo-bar"] = "test"
+		bd.Applications["wordpress"].EndpointBindings["admin-api"] = "internal"
+		bd.Applications["wordpress"].EndpointBindings["foo-bar"] = "test"
 	})
 	c.Assert(err, gc.IsNil)
 }
@@ -444,8 +470,8 @@ func (s *bundleDataSuite) TestVerifyBundleWithExtraBindingsSuccess(c *gc.C) {
 func (s *bundleDataSuite) TestVerifyBundleWithRelationNameBindingSuccess(c *gc.C) {
 	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
 		// Both of these are specified in as relations.
-		bd.Services["wordpress"].EndpointBindings["cache"] = "foo"
-		bd.Services["wordpress"].EndpointBindings["monitoring-port"] = "bar"
+		bd.Applications["wordpress"].EndpointBindings["cache"] = "foo"
+		bd.Applications["wordpress"].EndpointBindings["monitoring-port"] = "bar"
 	})
 	c.Assert(err, gc.IsNil)
 }
@@ -563,23 +589,23 @@ var verifyWithCharmsErrorsTests = []struct {
 	data:   mediawikiBundle,
 	charms: map[string]charm.Charm{},
 	errors: []string{
-		`service "mediawiki" refers to non-existent charm "cs:precise/mediawiki-10"`,
-		`service "mysql" refers to non-existent charm "cs:precise/mysql-28"`,
+		`application "mediawiki" refers to non-existent charm "cs:precise/mediawiki-10"`,
+		`application "mysql" refers to non-existent charm "cs:precise/mysql-28"`,
 	},
 }, {
 	about: "all present and correct",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test"
-    service2:
+    application2:
         charm: "test"
-    service3:
+    application3:
         charm: "test"
 relations:
-    - ["service1:prova", "service2:reqa"]
-    - ["service1:reqa", "service3:prova"]
-    - ["service3:provb", "service2:reqb"]
+    - ["application1:prova", "application2:reqa"]
+    - ["application1:reqa", "application3:prova"]
+    - ["application3:provb", "application2:reqb"]
 `,
 	charms: map[string]charm.Charm{
 		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
@@ -587,155 +613,155 @@ relations:
 }, {
 	about: "undefined relations",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test"
-    service2:
+    application2:
         charm: "test"
 relations:
-    - ["service1:prova", "service2:blah"]
-    - ["service1:blah", "service2:prova"]
+    - ["application1:prova", "application2:blah"]
+    - ["application1:blah", "application2:prova"]
 `,
 	charms: map[string]charm.Charm{
 		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
-		`charm "test" used by service "service1" does not define relation "blah"`,
-		`charm "test" used by service "service2" does not define relation "blah"`,
+		`charm "test" used by application "application1" does not define relation "blah"`,
+		`charm "test" used by application "application2" does not define relation "blah"`,
 	},
 }, {
-	about: "undefined services",
+	about: "undefined applications",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test"
-    service2:
+    application2:
         charm: "test"
 relations:
-    - ["unknown:prova", "service2:blah"]
-    - ["service1:blah", "unknown:prova"]
+    - ["unknown:prova", "application2:blah"]
+    - ["application1:blah", "unknown:prova"]
 `,
 	charms: map[string]charm.Charm{
 		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
-		`relation ["service1:blah" "unknown:prova"] refers to service "unknown" not defined in this bundle`,
-		`relation ["unknown:prova" "service2:blah"] refers to service "unknown" not defined in this bundle`,
+		`relation ["application1:blah" "unknown:prova"] refers to application "unknown" not defined in this bundle`,
+		`relation ["unknown:prova" "application2:blah"] refers to application "unknown" not defined in this bundle`,
 	},
 }, {
-	about: "equal services",
+	about: "equal applications",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test"
-    service2:
+    application2:
         charm: "test"
 relations:
-    - ["service2:prova", "service2:reqa"]
+    - ["application2:prova", "application2:reqa"]
 `,
 	charms: map[string]charm.Charm{
 		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
-		`relation ["service2:prova" "service2:reqa"] relates a service to itself`,
-	},
-}, {
-	about: "provider to provider relation",
-	data: `
-services:
-    service1:
-        charm: "test"
-    service2:
-        charm: "test"
-relations:
-    - ["service1:prova", "service2:prova"]
-`,
-	charms: map[string]charm.Charm{
-		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
-	},
-	errors: []string{
-		`relation "service1:prova" to "service2:prova" relates provider to provider`,
+		`relation ["application2:prova" "application2:reqa"] relates a application to itself`,
 	},
 }, {
 	about: "provider to provider relation",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test"
-    service2:
+    application2:
         charm: "test"
 relations:
-    - ["service1:reqa", "service2:reqa"]
+    - ["application1:prova", "application2:prova"]
 `,
 	charms: map[string]charm.Charm{
 		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
-		`relation "service1:reqa" to "service2:reqa" relates requirer to requirer`,
+		`relation "application1:prova" to "application2:prova" relates provider to provider`,
+	},
+}, {
+	about: "provider to provider relation",
+	data: `
+applications:
+    application1:
+        charm: "test"
+    application2:
+        charm: "test"
+relations:
+    - ["application1:reqa", "application2:reqa"]
+`,
+	charms: map[string]charm.Charm{
+		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
+	},
+	errors: []string{
+		`relation "application1:reqa" to "application2:reqa" relates requirer to requirer`,
 	},
 }, {
 	about: "interface mismatch",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test"
-    service2:
+    application2:
         charm: "test"
 relations:
-    - ["service1:reqa", "service2:provb"]
+    - ["application1:reqa", "application2:provb"]
 `,
 	charms: map[string]charm.Charm{
 		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
-		`mismatched interface between "service2:provb" and "service1:reqa" ("b" vs "a")`,
+		`mismatched interface between "application2:provb" and "application1:reqa" ("b" vs "a")`,
 	},
 }, {
 	about: "different charms",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test1"
-    service2:
+    application2:
         charm: "test2"
 relations:
-    - ["service1:reqa", "service2:prova"]
+    - ["application1:reqa", "application2:prova"]
 `,
 	charms: map[string]charm.Charm{
 		"test1": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 		"test2": testCharm("test", ""),
 	},
 	errors: []string{
-		`charm "test2" used by service "service2" does not define relation "prova"`,
+		`charm "test2" used by application "application2" does not define relation "prova"`,
 	},
 }, {
 	about: "ambiguous relation",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test1"
-    service2:
+    application2:
         charm: "test2"
 relations:
-    - [service1, service2]
+    - [application1, application2]
 `,
 	charms: map[string]charm.Charm{
 		"test1": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 		"test2": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
-		`cannot infer endpoint between service1 and service2: ambiguous relation: service1 service2 could refer to "service1:prova service2:reqa"; "service1:provb service2:reqb"; "service1:reqa service2:prova"; "service1:reqb service2:provb"`,
+		`cannot infer endpoint between application1 and application2: ambiguous relation: application1 application2 could refer to "application1:prova application2:reqa"; "application1:provb application2:reqb"; "application1:reqa application2:prova"; "application1:reqb application2:provb"`,
 	},
 }, {
 	about: "relation using juju-info",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "provider"
-    service2:
+    application2:
         charm: "requirer"
 relations:
-    - [service1, service2]
+    - [application1, application2]
 `,
 	charms: map[string]charm.Charm{
 		"provider": testCharm("provider", ""),
@@ -744,13 +770,13 @@ relations:
 }, {
 	about: "ambiguous when implicit relations taken into account",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "provider"
-    service2:
+    application2:
         charm: "requirer"
 relations:
-    - [service1, service2]
+    - [application1, application2]
 `,
 	charms: map[string]charm.Charm{
 		"provider": testCharm("provider", "provdb:db | "),
@@ -759,13 +785,13 @@ relations:
 }, {
 	about: "half of relation left open",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "provider"
-    service2:
+    application2:
         charm: "requirer"
 relations:
-    - ["service1:prova2", service2]
+    - ["application1:prova2", application2]
 `,
 	charms: map[string]charm.Charm{
 		"provider": testCharm("provider", "prova1:a prova2:a | "),
@@ -774,32 +800,32 @@ relations:
 }, {
 	about: "duplicate relation between open and fully-specified relations",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "provider"
-    service2:
+    application2:
         charm: "requirer"
 relations:
-    - ["service1:prova", "service2:reqa"]
-    - ["service1", "service2"]
+    - ["application1:prova", "application2:reqa"]
+    - ["application1", "application2"]
 `,
 	charms: map[string]charm.Charm{
 		"provider": testCharm("provider", "prova:a | "),
 		"requirer": testCharm("requirer", "| reqa:a"),
 	},
 	errors: []string{
-		`relation ["service1" "service2"] is defined more than once`,
+		`relation ["application1" "application2"] is defined more than once`,
 	},
 }, {
 	about: "configuration options specified",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test"
         options:
             title: "some title"
             skill-level: 245
-    service2:
+    application2:
         charm: "test"
         options:
             title: "another title"
@@ -810,13 +836,13 @@ services:
 }, {
 	about: "invalid type for option",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test"
         options:
             title: "some title"
             skill-level: "too much"
-    service2:
+    application2:
         charm: "test"
         options:
             title: "another title"
@@ -825,13 +851,13 @@ services:
 		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
-		`cannot validate service "service1": option "skill-level" expected int, got "too much"`,
+		`cannot validate application "application1": option "skill-level" expected int, got "too much"`,
 	},
 }, {
 	about: "unknown option",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test"
         options:
             title: "some title"
@@ -841,18 +867,18 @@ services:
 		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
-		`cannot validate service "service1": configuration option "unknown-option" not found in charm "test"`,
+		`cannot validate application "application1": configuration option "unknown-option" not found in charm "test"`,
 	},
 }, {
 	about: "multiple config problems",
 	data: `
-services:
-    service1:
+applications:
+    application1:
         charm: "test"
         options:
             title: "some title"
             unknown-option: 2345
-    service2:
+    application2:
         charm: "test"
         options:
             title: 123
@@ -862,14 +888,14 @@ services:
 		"test": testCharm("test", "prova:a provb:b | reqa:a reqb:b"),
 	},
 	errors: []string{
-		`cannot validate service "service1": configuration option "unknown-option" not found in charm "test"`,
-		`cannot validate service "service2": configuration option "another-unknown" not found in charm "test"`,
-		`cannot validate service "service2": option "title" expected string, got 123`,
+		`cannot validate application "application1": configuration option "unknown-option" not found in charm "test"`,
+		`cannot validate application "application2": configuration option "another-unknown" not found in charm "test"`,
+		`cannot validate application "application2": option "title" expected string, got 123`,
 	},
 }, {
 	about: "subordinate charm with more than zero units",
 	data: `
-services:
+applications:
     testsub:
         charm: "testsub"
         num_units: 1
@@ -878,12 +904,12 @@ services:
 		"testsub": testCharm("test-sub", ""),
 	},
 	errors: []string{
-		`service "testsub" is subordinate but has non-zero num_units`,
+		`application "testsub" is subordinate but has non-zero num_units`,
 	},
 }, {
 	about: "subordinate charm with more than one unit",
 	data: `
-services:
+applications:
     testsub:
         charm: "testsub"
         num_units: 1
@@ -892,12 +918,12 @@ services:
 		"testsub": testCharm("test-sub", ""),
 	},
 	errors: []string{
-		`service "testsub" is subordinate but has non-zero num_units`,
+		`application "testsub" is subordinate but has non-zero num_units`,
 	},
 }, {
 	about: "subordinate charm with to-clause",
 	data: `
-services:
+applications:
     testsub:
         charm: "testsub"
         to: [0]
@@ -908,13 +934,13 @@ machines:
 		"testsub": testCharm("test-sub", ""),
 	},
 	errors: []string{
-		`service "testsub" is subordinate but specifies unit placement`,
-		`too many units specified in unit placement for service "testsub"`,
+		`application "testsub" is subordinate but specifies unit placement`,
+		`too many units specified in unit placement for application "testsub"`,
 	},
 }, {
 	about: "charm with unspecified units and more than one to: entry",
 	data: `
-services:
+applications:
     test:
         charm: "test"
         to: [0, 1]
@@ -923,7 +949,7 @@ machines:
     1:
 `,
 	errors: []string{
-		`too many units specified in unit placement for service "test"`,
+		`too many units specified in unit placement for application "test"`,
 	},
 }}
 
@@ -939,17 +965,17 @@ var parsePlacementTests = []struct {
 	expect    *charm.UnitPlacement
 	expectErr string
 }{{
-	placement: "lxc:service/0",
+	placement: "lxc:application/0",
 	expect: &charm.UnitPlacement{
 		ContainerType: "lxc",
-		Service:       "service",
+		Application:   "application",
 		Unit:          0,
 	},
 }, {
-	placement: "lxc:service",
+	placement: "lxc:application",
 	expect: &charm.UnitPlacement{
 		ContainerType: "lxc",
-		Service:       "service",
+		Application:   "application",
 		Unit:          -1,
 	},
 }, {
@@ -967,22 +993,22 @@ var parsePlacementTests = []struct {
 		Unit:          -1,
 	},
 }, {
-	placement: "service/0",
+	placement: "application/0",
 	expect: &charm.UnitPlacement{
-		Service: "service",
-		Unit:    0,
+		Application: "application",
+		Unit:        0,
 	},
 }, {
-	placement: "service",
+	placement: "application",
 	expect: &charm.UnitPlacement{
-		Service: "service",
-		Unit:    -1,
+		Application: "application",
+		Unit:        -1,
 	},
 }, {
-	placement: "service45",
+	placement: "application45",
 	expect: &charm.UnitPlacement{
-		Service: "service45",
-		Unit:    -1,
+		Application: "application45",
+		Unit:        -1,
 	},
 }, {
 	placement: "99",
