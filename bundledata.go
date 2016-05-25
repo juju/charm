@@ -6,7 +6,6 @@ package charm
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"strings"
 
 	"gopkg.in/juju/names.v2"
+	"gopkg.in/yaml.v2"
 )
 
 type bundleDataCompat struct {
