@@ -36,11 +36,11 @@ The OpenStack cloud deployed is completely clean; the charms don't attempt to co
 Niggles
 -------
 
-The neutron-gateway application requires an application unit with two network interfaces to provide full functionality; this part of OpenStack provides L3 routing between tenant networks and the rest of the world.  Its possible todo this when testing on OpenStack by adding a second network interface to the neutron-gateway application:
+The neutron-gateway service requires a service unit with two network interfaces to provide full functionality; this part of OpenStack provides L3 routing between tenant networks and the rest of the world.  Its possible todo this when testing on OpenStack by adding a second network interface to the neutron-gateway service:
 
     nova interface-attach --net-id <UUID for network>  <UUID of instance>
     juju set neutron-gateway ext-port=eth1
 
 Note that you will need to be running this bundle on an OpenStack cloud that supports MAC address learning of some description; this includes using OpenStack Havana with the Neutron Open vSwitch plugin.
 
-For actual OpenStack deployments, this application would reside of a physical server with network ports attached to both the internal network (for communication with nova-compute application units) and the external network (for inbound/outbound network access to/from instances within the cloud).
+For actual OpenStack deployments, this service would reside of a physical server with network ports attached to both the internal network (for communication with nova-compute service units) and the external network (for inbound/outbound network access to/from instances within the cloud).

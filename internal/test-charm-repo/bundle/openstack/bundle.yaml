@@ -102,66 +102,66 @@ relations:
     - mysql:shared-db
   - - nova-cloud-controller:amqp
     - rabbitmq-server:amqp
-  - - nova-cloud-controller:image-application
-    - glance:image-application
-  - - nova-cloud-controller:identity-application
-    - keystone:identity-application
+  - - nova-cloud-controller:image-service
+    - glance:image-service
+  - - nova-cloud-controller:identity-service
+    - keystone:identity-service
   - - nova-compute:cloud-compute
     - nova-cloud-controller:cloud-compute
   - - nova-compute:shared-db
     - mysql:shared-db
   - - nova-compute:amqp
     - rabbitmq-server:amqp
-  - - nova-compute:image-application
-    - glance:image-application
+  - - nova-compute:image-service
+    - glance:image-service
   - - nova-compute:ceph
     - ceph:client
   - - glance:shared-db
     - mysql:shared-db
-  - - glance:identity-application
-    - keystone:identity-application
+  - - glance:identity-service
+    - keystone:identity-service
   - - glance:ceph
     - ceph:client
-  - - glance:image-application
-    - cinder:image-application
+  - - glance:image-service
+    - cinder:image-service
   - - cinder:shared-db
     - mysql:shared-db
   - - cinder:amqp
     - rabbitmq-server:amqp
-  - - cinder:cinder-volume-application
-    - nova-cloud-controller:cinder-volume-application
-  - - cinder:identity-application
-    - keystone:identity-application
+  - - cinder:cinder-volume-service
+    - nova-cloud-controller:cinder-volume-service
+  - - cinder:identity-service
+    - keystone:identity-service
   - - cinder:ceph
     - ceph:client
   - - neutron-gateway:shared-db
     - mysql:shared-db
   - - neutron-gateway:amqp
     - rabbitmq-server:amqp
-  - - neutron-gateway:quantum-network-application
-    - nova-cloud-controller:quantum-network-application
-  - - openstack-dashboard:identity-application
-    - keystone:identity-application
-  - - swift-proxy:identity-application
-    - keystone:identity-application
+  - - neutron-gateway:quantum-network-service
+    - nova-cloud-controller:quantum-network-service
+  - - openstack-dashboard:identity-service
+    - keystone:identity-service
+  - - swift-proxy:identity-service
+    - keystone:identity-service
   - - swift-proxy:swift-storage
     - swift-storage-z1:swift-storage
   - - swift-proxy:swift-storage
     - swift-storage-z2:swift-storage
   - - swift-proxy:swift-storage
     - swift-storage-z3:swift-storage
-  - - ceilometer:identity-application
-    - keystone:identity-application
+  - - ceilometer:identity-service
+    - keystone:identity-service
   - - ceilometer:amqp
     - rabbitmq-server:amqp
   - - ceilometer:shared-db
     - mongodb:database
   - - ceilometer-agent:nova-ceilometer
     - nova-compute:nova-ceilometer
-  - - ceilometer-agent:ceilometer-application
-    - ceilometer:ceilometer-application
-  - - heat:identity-application
-    - keystone:identity-application
+  - - ceilometer-agent:ceilometer-service
+    - ceilometer:ceilometer-service
+  - - heat:identity-service
+    - keystone:identity-service
   - - heat:shared-db
     - mysql:shared-db
   - - heat:amqp
