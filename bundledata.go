@@ -29,14 +29,14 @@ type bundleDataUnmarshal BundleData
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (bd *BundleData) UnmarshalJSON(b []byte) error {
-	// We account for the fact that the YAML may contain a legacy entry
-	// for "services" instead of "applications".
 	var bundleData bundleDataUnmarshal
 	if err := json.Unmarshal(b, &bundleData); err != nil {
 		return err
 	}
 	*bd = BundleData(bundleData)
 	if len(bd.Applications) == 0 {
+		// We account for the fact that the YAML may contain a legacy entry
+		// for "services" instead of "applications".
 		var compat bundleDataCompat
 		if err := json.Unmarshal(b, &compat); err != nil {
 			return err
@@ -48,14 +48,14 @@ func (bd *BundleData) UnmarshalJSON(b []byte) error {
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (bd *BundleData) UnmarshalYAML(f func(interface{}) error) error {
-	// We account for the fact that the YAML may contain a legacy entry
-	// for "services" instead of "applications".
 	var bundleData bundleDataUnmarshal
 	if err := f(&bundleData); err != nil {
 		return err
 	}
 	*bd = BundleData(bundleData)
 	if len(bd.Applications) == 0 {
+		// We account for the fact that the YAML may contain a legacy entry
+		// for "services" instead of "applications".
 		var compat bundleDataCompat
 		if err := f(&compat); err != nil {
 			return err
