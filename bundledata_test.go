@@ -4,6 +4,8 @@
 package charm_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +15,8 @@ import (
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
+	"gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v2"
 
 	"gopkg.in/juju/charm.v6-unstable"
 )
@@ -192,6 +196,22 @@ relations:
 			{"wordpress:db", "mysql:db"},
 		},
 	},
+}, {
+	about: "bundle with services and applications",
+	data: `
+applications:
+    wordpress:
+        charm: wordpress
+services:
+    wordpress:
+        charm: wordpress
+    mysql:
+        charm: mysql
+        num_units: 1
+relations:
+    - ["wordpress:db", "mysql:db"]
+`,
+	expectedErr: ".*cannot specify both applications and services",
 }}
 
 func (*bundleDataSuite) TestParse(c *gc.C) {
@@ -226,6 +246,64 @@ func (*bundleDataSuite) TestParseLocalWithSeries(c *gc.C) {
 				NumUnits: 1,
 			},
 		}})
+}
+
+func (s *bundleDataSuite) TestYAMLMarshal(c *gc.C) {
+	bd, err := charm.ReadBundleData(strings.NewReader(mediawikiBundle))
+	c.Assert(err, gc.IsNil)
+	gotYAML, err := yaml.Marshal(bd)
+	c.Assert(err, gc.IsNil)
+	gotBd, err := charm.ReadBundleData(bytes.NewReader(gotYAML))
+	c.Assert(err, gc.IsNil)
+	c.Assert(gotBd, jc.DeepEquals, bd)
+}
+
+var bundleJson = []string{
+	`{"services": {"wordpress": {"charm": "wordpress"}}}`,
+	`{"applications": {"wordpress": {"charm": "wordpress"}}}`,
+}
+
+func (s *bundleDataSuite) TestParseJson(c *gc.C) {
+	for _, data := range bundleJson {
+		var bd charm.BundleData
+		err := json.Unmarshal([]byte(data), &bd)
+		c.Assert(err, gc.IsNil)
+		c.Assert(bd, jc.DeepEquals, charm.BundleData{
+			Applications: map[string]*charm.ApplicationSpec{"wordpress": {Charm: "wordpress"}}},
+		)
+	}
+}
+
+func (s *bundleDataSuite) TestJsonMarshal(c *gc.C) {
+	for _, data := range bundleJson {
+		var bd charm.BundleData
+		err := json.Unmarshal([]byte(data), &bd)
+		c.Assert(err, gc.IsNil)
+		gotJson, err := json.Marshal(bd)
+		c.Assert(err, gc.IsNil)
+		var gotBd charm.BundleData
+		err = json.Unmarshal(gotJson, &gotBd)
+		c.Assert(err, gc.IsNil)
+		c.Assert(gotBd, jc.DeepEquals, bd)
+	}
+}
+
+var bundleBson = []bson.M{
+	bson.M{"services": bson.M{"wordpress": bson.M{"charm": "wordpress"}}},
+	bson.M{"applications": bson.M{"wordpress": bson.M{"charm": "wordpress"}}},
+}
+
+func (s *bundleDataSuite) TestBsonMarshall(c *gc.C) {
+	for _, b := range bundleBson {
+		data, err := bson.Marshal(b)
+		c.Assert(err, jc.ErrorIsNil)
+		var bd charm.BundleData
+		err = bson.Unmarshal(data, &bd)
+		c.Assert(err, gc.IsNil)
+		c.Assert(bd, jc.DeepEquals, charm.BundleData{
+			Applications: map[string]*charm.ApplicationSpec{"wordpress": {Charm: "wordpress"}}},
+		)
+	}
 }
 
 var verifyErrorsTests = []struct {

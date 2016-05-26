@@ -16,53 +16,67 @@ import (
 	"strings"
 
 	"gopkg.in/juju/names.v2"
+	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
-type bundleDataCompat struct {
+type noMethodsBundleData BundleData
+
+type legacyBundleData struct {
+	noMethodsBundleData `bson:",inline" yaml:",inline" json:",inline"`
+
 	// LegacyServices holds application entries for older bundle files
 	// that have not been migrated to use the new "application" terminology.
-	LegacyServices map[string]*ApplicationSpec `json:"services,omitempty" yaml:"services,omitempty"`
+	LegacyServices map[string]*ApplicationSpec `json:"services" yaml:"services" bson:"services"`
 }
 
-type bundleDataUnmarshal BundleData
+func (lbd *legacyBundleData) setBundleData(bd *BundleData) error {
+	if len(lbd.Applications) > 0 && len(lbd.LegacyServices) > 0 {
+		return fmt.Errorf("cannot specify both applications and services")
+	}
+	if len(lbd.LegacyServices) > 0 {
+		// We account for the fact that the YAML may contain a legacy entry
+		// for "services" instead of "applications".
+		lbd.Applications = lbd.LegacyServices
+	}
+	*bd = BundleData(lbd.noMethodsBundleData)
+	return nil
+}
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (bd *BundleData) UnmarshalJSON(b []byte) error {
-	var bundleData bundleDataUnmarshal
-	if err := json.Unmarshal(b, &bundleData); err != nil {
+	var bdc legacyBundleData
+	if err := json.Unmarshal(b, &bdc); err != nil {
 		return err
 	}
-	*bd = BundleData(bundleData)
-	if len(bd.Applications) == 0 {
-		// We account for the fact that the YAML may contain a legacy entry
-		// for "services" instead of "applications".
-		var compat bundleDataCompat
-		if err := json.Unmarshal(b, &compat); err != nil {
-			return err
-		}
-		bd.Applications = compat.LegacyServices
-	}
-	return nil
+	return bdc.setBundleData(bd)
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (bd *BundleData) UnmarshalYAML(f func(interface{}) error) error {
-	var bundleData bundleDataUnmarshal
-	if err := f(&bundleData); err != nil {
+	var bdc legacyBundleData
+	if err := f(&bdc); err != nil {
 		return err
 	}
-	*bd = BundleData(bundleData)
-	if len(bd.Applications) == 0 {
-		// We account for the fact that the YAML may contain a legacy entry
-		// for "services" instead of "applications".
-		var compat bundleDataCompat
-		if err := f(&compat); err != nil {
-			return err
-		}
-		bd.Applications = compat.LegacyServices
+	return bdc.setBundleData(bd)
+}
+
+// SetBSON implements the bson.Setter interface.
+func (bd *BundleData) SetBSON(raw bson.Raw) error {
+	// TODO(wallyworld) - bson deserialisation is not handling the inline directive,
+	// so we need to unmarshal the bundle data manually.
+	var b noMethodsBundleData
+	if err := raw.Unmarshal(&b); err != nil {
+		return err
 	}
-	return nil
+
+	var bdc legacyBundleData
+	if err := raw.Unmarshal(&bdc); err != nil {
+		return err
+	}
+	// As per the above TODO, we manually set the inline data.
+	bdc.noMethodsBundleData = b
+	return bdc.setBundleData(bd)
 }
 
 // BundleData holds the contents of the bundle.
