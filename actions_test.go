@@ -533,7 +533,7 @@ snapshot:
          default: foo.bz2
 `,
 
-		expectedError: "YAML error: line 6: mapping values are not allowed in this context",
+		expectedError: "yaml: line 6: mapping values are not allowed in this context",
 	}, {
 		description: "Malformed JSON-Schema: $schema element misplaced.",
 		yaml: `
@@ -547,7 +547,7 @@ description: Take a snapshot of the database.
          default: foo.bz2
 `,
 
-		expectedError: "YAML error: line 3: mapping values are not allowed in this context",
+		expectedError: "yaml: line 3: mapping values are not allowed in this context",
 	}, {
 		description: "Malformed Actions: hyphen at beginning of action name.",
 		yaml: `
@@ -655,7 +655,7 @@ snapshot:
       something-else: {}
    other-key: ["some", "values"],
 `,
-		expectedError: "YAML error: line 16: did not find expected key",
+		expectedError: "yaml: line 16: did not find expected key",
 	}}
 
 	for i, test := range badActionsYamlTests {

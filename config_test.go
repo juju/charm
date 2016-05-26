@@ -10,7 +10,7 @@ import (
 
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 
 	"gopkg.in/juju/charm.v6-unstable"
 )
@@ -29,11 +29,11 @@ func (s *ConfigSuite) SetUpSuite(c *gc.C) {
 options:
   title:
     default: My Title
-    description: A descriptive title used for the service.
+    description: A descriptive title used for the application.
     type: string
   subtitle:
     default: ""
-    description: An optional subtitle used for the service.
+    description: An optional subtitle used for the application.
   outlook:
     description: No default outlook.
     # type defaults to string in python
@@ -58,12 +58,12 @@ func (s *ConfigSuite) TestReadSample(c *gc.C) {
 	c.Assert(s.config.Options, jc.DeepEquals, map[string]charm.Option{
 		"title": {
 			Default:     "My Title",
-			Description: "A descriptive title used for the service.",
+			Description: "A descriptive title used for the application.",
 			Type:        "string",
 		},
 		"subtitle": {
 			Default:     "",
-			Description: "An optional subtitle used for the service.",
+			Description: "An optional subtitle used for the application.",
 			Type:        "string",
 		},
 		"username": {
