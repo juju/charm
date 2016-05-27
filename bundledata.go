@@ -65,9 +65,12 @@ func (bd *BundleData) UnmarshalYAML(f func(interface{}) error) error {
 func (bd *BundleData) SetBSON(raw bson.Raw) error {
 	// TODO(wallyworld) - bson deserialisation is not handling the inline directive,
 	// so we need to unmarshal the bundle data manually.
-	var b noMethodsBundleData
+	var b *noMethodsBundleData
 	if err := raw.Unmarshal(&b); err != nil {
 		return err
+	}
+	if b == nil {
+		return bson.SetZero
 	}
 
 	var bdc legacyBundleData
@@ -75,7 +78,7 @@ func (bd *BundleData) SetBSON(raw bson.Raw) error {
 		return err
 	}
 	// As per the above TODO, we manually set the inline data.
-	bdc.noMethodsBundleData = b
+	bdc.noMethodsBundleData = *b
 	return bdc.setBundleData(bd)
 }
 
