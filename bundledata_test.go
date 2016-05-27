@@ -307,9 +307,15 @@ func (s *bundleDataSuite) TestBsonMarshall(c *gc.C) {
 }
 
 func (s *bundleDataSuite) TestBsonNilData(c *gc.C) {
-	var bd charm.BundleData
-	err := bd.SetBSON(bson.Raw{10, []byte(nil)})
-	c.Assert(err, gc.Equals, bson.SetZero)
+	bd := map[string]*charm.BundleData{
+		"test": nil,
+	}
+	data, err := bson.Marshal(bd)
+	c.Assert(err, jc.ErrorIsNil)
+	var result map[string]*charm.BundleData
+	err = bson.Unmarshal(data, &result)
+	c.Assert(err, gc.IsNil)
+	c.Assert(result["test"], gc.IsNil)
 }
 
 var verifyErrorsTests = []struct {
