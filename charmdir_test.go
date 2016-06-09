@@ -268,7 +268,8 @@ func (s *CharmDirSuite) TestDirRevisionFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Revision(), gc.Equals, 0)
 
-	// Missing revision file with old revision in metadata
+	// Missing revision file with obsolete old revision in metadata ignores
+	// the old revision field.
 	file, err := os.OpenFile(filepath.Join(charmDir, "metadata.yaml"), os.O_WRONLY|os.O_APPEND, 0)
 	c.Assert(err, gc.IsNil)
 	_, err = file.Write([]byte("\nrevision: 1234\n"))
@@ -276,7 +277,7 @@ func (s *CharmDirSuite) TestDirRevisionFile(c *gc.C) {
 
 	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
-	c.Assert(dir.Revision(), gc.Equals, 1234)
+	c.Assert(dir.Revision(), gc.Equals, 0)
 
 	// Revision file with bad content
 	err = ioutil.WriteFile(revPath, []byte("garbage"), 0666)

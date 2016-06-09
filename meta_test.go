@@ -43,16 +43,15 @@ func (s *MetaSuite) TestReadMetaVersion1(c *gc.C) {
 	c.Assert(meta.Summary, gc.Equals, "That's a dummy charm.")
 	c.Assert(meta.Description, gc.Equals,
 		"This is a longer description which\npotentially contains multiple lines.\n")
-	c.Assert(meta.Format, gc.Equals, 1)
-	c.Assert(meta.OldRevision, gc.Equals, 0)
 	c.Assert(meta.Subordinate, gc.Equals, false)
 }
 
 func (s *MetaSuite) TestReadMetaVersion2(c *gc.C) {
+	// This checks that we can accept a charm with the
+	// obsolete "format" field, even though we ignore it.
 	meta, err := charm.ReadMeta(repoMeta(c, "format2"))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Name, gc.Equals, "format2")
-	c.Assert(meta.Format, gc.Equals, 2)
 	c.Assert(meta.Categories, gc.HasLen, 0)
 	c.Assert(meta.Terms, gc.HasLen, 0)
 }
@@ -561,37 +560,41 @@ func (s *MetaSuite) TestCodecRoundTrip(c *gc.C) {
 		Subordinate: true,
 		Provides: map[string]charm.Relation{
 			"qux": {
+				Name:      "qux",
+				Role:      charm.RoleProvider,
 				Interface: "quxx",
 				Optional:  true,
 				Limit:     42,
-				Scope:     "quxxx",
+				Scope:     charm.ScopeGlobal,
 			},
 		},
 		Requires: map[string]charm.Relation{
-			"qux": {
+			"frob": {
+				Name:      "frob",
+				Role:      charm.RoleRequirer,
 				Interface: "quxx",
 				Optional:  true,
 				Limit:     42,
-				Scope:     "quxxx",
+				Scope:     charm.ScopeContainer,
 			},
 		},
 		Peers: map[string]charm.Relation{
-			"qux": {
+			"arble": {
+				Name:      "arble",
+				Role:      charm.RolePeer,
 				Interface: "quxx",
 				Optional:  true,
 				Limit:     42,
-				Scope:     "quxxx",
+				Scope:     charm.ScopeGlobal,
 			},
 		},
 		ExtraBindings: map[string]charm.ExtraBinding{
-			"foo": {Name: "foo"},
-			"qux": {Name: "qux"},
+			"b1": {Name: "b1"},
+			"b2": {Name: "b2"},
 		},
-		Categories:  []string{"quxxxx", "quxxxxx"},
-		Tags:        []string{"openstack", "storage"},
-		Format:      10,
-		OldRevision: 11,
-		Terms:       []string{"test term 1", "test term 2"},
+		Categories: []string{"quxxxx", "quxxxxx"},
+		Tags:       []string{"openstack", "storage"},
+		Terms:      []string{"test term 1", "test term 2"},
 	}
 	for i, codec := range codecs {
 		c.Logf("codec %d", i)
@@ -600,7 +603,7 @@ func (s *MetaSuite) TestCodecRoundTrip(c *gc.C) {
 		var output charm.Meta
 		err = codec.Unmarshal(data, &output)
 		c.Assert(err, gc.IsNil)
-		c.Assert(input, jc.DeepEquals, output)
+		c.Assert(output, jc.DeepEquals, input, gc.Commentf("data: %q", data))
 	}
 }
 

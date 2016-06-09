@@ -11,6 +11,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v2"
 
 	"gopkg.in/juju/charm.v6-unstable"
 )
@@ -531,21 +532,28 @@ func (s *URLSuite) TestWithChannel(c *gc.C) {
 }
 
 var codecs = []struct {
+	Name      string
 	Marshal   func(interface{}) ([]byte, error)
 	Unmarshal func([]byte, interface{}) error
 }{{
+	Name:      "bson",
 	Marshal:   bson.Marshal,
 	Unmarshal: bson.Unmarshal,
 }, {
+	Name:      "json",
 	Marshal:   json.Marshal,
 	Unmarshal: json.Unmarshal,
+}, {
+	Name:      "yaml",
+	Marshal:   yaml.Marshal,
+	Unmarshal: yaml.Unmarshal,
 }}
 
 func (s *URLSuite) TestURLCodecs(c *gc.C) {
 	for i, codec := range codecs {
-		c.Logf("codec %d", i)
+		c.Logf("codec %d: %v", i, codec.Name)
 		type doc struct {
-			URL *charm.URL
+			URL *charm.URL `json:",omitempty" bson:",omitempty" yaml:",omitempty"`
 		}
 		url := charm.MustParseURL("cs:series/name")
 		v0 := doc{url}
@@ -567,9 +575,10 @@ func (s *URLSuite) TestURLCodecs(c *gc.C) {
 
 		data, err = codec.Marshal(doc{})
 		c.Assert(err, gc.IsNil)
+		v = doc{}
 		err = codec.Unmarshal(data, &v)
 		c.Assert(err, gc.IsNil)
-		c.Assert(v.URL, gc.IsNil)
+		c.Assert(v.URL, gc.IsNil, gc.Commentf("data: %q", data))
 	}
 }
 
