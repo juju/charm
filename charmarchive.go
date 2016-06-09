@@ -122,7 +122,6 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		if _, ok := err.(*noCharmArchiveFile); !ok {
 			return nil, err
 		}
-		b.revision = b.meta.OldRevision
 	} else {
 		_, err = fmt.Fscan(reader, &b.revision)
 		if err != nil {

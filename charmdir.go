@@ -85,8 +85,6 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		if err != nil {
 			return nil, errors.New("invalid revision file")
 		}
-	} else {
-		dir.revision = dir.meta.OldRevision
 	}
 
 	return dir, nil

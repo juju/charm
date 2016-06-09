@@ -373,6 +373,26 @@ func (u *URL) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// MarshalText implements encoding.TextMarshaler by
+// returning u.String()
+func (u *URL) MarshalText() ([]byte, error) {
+	if u == nil {
+		return nil, nil
+	}
+	return []byte(u.String()), nil
+}
+
+// UnmarshalText implements encoding.TestUnmarshaler by
+// parsing the data with ParseURL.
+func (u *URL) UnmarshalText(data []byte) error {
+	url, err := ParseURL(string(data))
+	if err != nil {
+		return err
+	}
+	*u = *url
+	return nil
+}
+
 // Quote translates a charm url string into one which can be safely used
 // in a file path.  ASCII letters, ASCII digits, dot and dash stay the
 // same; other characters are translated to their hex representation

@@ -190,8 +190,6 @@ type Meta struct {
 	Requires       map[string]Relation      `bson:"requires,omitempty" json:"Requires,omitempty"`
 	Peers          map[string]Relation      `bson:"peers,omitempty" json:"Peers,omitempty"`
 	ExtraBindings  map[string]ExtraBinding  `bson:"extra-bindings,omitempty" json:"ExtraBindings,omitempty"`
-	Format         int                      `bson:"format,omitempty" json:"Format,omitempty"`
-	OldRevision    int                      `bson:"oldrevision,omitempty" json:"OldRevision"` // Obsolete
 	Categories     []string                 `bson:"categories,omitempty" json:"Categories,omitempty"`
 	Tags           []string                 `bson:"tags,omitempty" json:"Tags,omitempty"`
 	Series         []string                 `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
@@ -255,36 +253,46 @@ func checkTerm(s string) error {
 
 // ReadMeta reads the content of a metadata.yaml file and returns
 // its representation.
-func ReadMeta(r io.Reader) (meta *Meta, err error) {
+func ReadMeta(r io.Reader) (*Meta, error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
-		return
+		return nil, err
 	}
-	raw := make(map[interface{}]interface{})
-	err = yaml.Unmarshal(data, raw)
+	var meta Meta
+	err = yaml.Unmarshal(data, &meta)
 	if err != nil {
-		return
+		return nil, err
+	}
+	return &meta, nil
+}
+
+func (meta *Meta) UnmarshalYAML(f func(interface{}) error) error {
+	raw := make(map[interface{}]interface{})
+	err := f(&raw)
+	if err != nil {
+		return err
 	}
 	v, err := charmSchema.Coerce(raw, nil)
 	if err != nil {
-		return nil, errors.New("metadata: " + err.Error())
+		return errors.New("metadata: " + err.Error())
 	}
 
 	m := v.(map[string]interface{})
-	meta, err = parseMeta(m)
+	meta1, err := parseMeta(m)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if err := meta.Check(); err != nil {
-		return nil, err
+	if err := meta1.Check(); err != nil {
+		return err
 	}
 
 	// TODO(ericsnow) This line should be moved into parseMeta as soon
 	// as the terms code gets fixed.
-	meta.Terms = parseStringList(m["terms"])
+	meta1.Terms = parseStringList(m["terms"])
 
-	return meta, nil
+	*meta = *meta1
+	return nil
 }
 
 func parseMeta(m map[string]interface{}) (*Meta, error) {
@@ -303,15 +311,10 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	if err != nil {
 		return nil, err
 	}
-	meta.Format = int(m["format"].(int64))
 	meta.Categories = parseStringList(m["categories"])
 	meta.Tags = parseStringList(m["tags"])
 	if subordinate := m["subordinate"]; subordinate != nil {
 		meta.Subordinate = subordinate.(bool)
-	}
-	if rev := m["revision"]; rev != nil {
-		// Obsolete
-		meta.OldRevision = int(m["revision"].(int64))
 	}
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
@@ -804,7 +807,7 @@ var charmSchema = schema.FieldMap(
 		"requires":         schema.StringMap(ifaceExpander(int64(1))),
 		"extra-bindings":   extraBindingsSchema,
 		"revision":         schema.Int(), // Obsolete
-		"format":           schema.Int(),
+		"format":           schema.Int(), // Obsolete
 		"subordinate":      schema.Bool(),
 		"categories":       schema.List(schema.String()),
 		"tags":             schema.List(schema.String()),
@@ -821,7 +824,7 @@ var charmSchema = schema.FieldMap(
 		"peers":            schema.Omit,
 		"extra-bindings":   schema.Omit,
 		"revision":         schema.Omit,
-		"format":           1,
+		"format":           schema.Omit,
 		"subordinate":      schema.Omit,
 		"categories":       schema.Omit,
 		"tags":             schema.Omit,

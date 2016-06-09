@@ -38,6 +38,7 @@ func (lbd *legacyBundleData) setBundleData(bd *BundleData) error {
 		// We account for the fact that the YAML may contain a legacy entry
 		// for "services" instead of "applications".
 		lbd.Applications = lbd.LegacyServices
+		lbd.unmarshaledWithServices = true
 	}
 	*bd = BundleData(lbd.noMethodsBundleData)
 	return nil
@@ -115,6 +116,17 @@ type BundleData struct {
 
 	// Short paragraph explaining what the bundle is useful for.
 	Description string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+
+	// unmarshaledWithServices holds whether the original marshaled data held a
+	// legacy "services" field rather than the "applications" field.
+	unmarshaledWithServices bool
+}
+
+// UnmarshaledWithServices reports whether the bundle data was
+// unmarshaled from a representation that used the legacy "services"
+// field rather than the "applications" field.
+func (d *BundleData) UnmarshaledWithServices() bool {
+	return d.unmarshaledWithServices
 }
 
 // MachineSpec represents a notional machine that will be mapped
