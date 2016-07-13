@@ -241,14 +241,51 @@ func parseStringList(list interface{}) []string {
 	return result
 }
 
-var termNameRE = regexp.MustCompile("^[a-z]+([a-z0-9-]+)(/[0-9]+)?$")
+var (
+	revSnippet  = `(?:\/(\d+))`
+	termSnippet = `[a-zA-Z][\w-]`
+	//termNameRE  = regexp.MustCompile(fmt.Sprintf(`^(?:(%s+)\/)?((?:%s)+)%s?$`, termSnippet, termSnippet, revSnippet))
+	termNameRE = regexp.MustCompile(`^(?:([^\/\\][\w-]+)\/)?([a-zA-Z][\w-]+)(?:\/(\d+))?$`)
+)
 
 func checkTerm(s string) error {
-	match := termNameRE.FindStringSubmatch(s)
-	if match == nil {
+	if !termNameRE.MatchString(s) {
 		return fmt.Errorf("invalid term name %q: must match %s", s, termNameRE.String())
 	}
 	return nil
+}
+
+// Term represents a single term URI. The term can either be owned
+// or "public" (meaning there is no owner).
+type Term struct {
+	Owner    string
+	Name     string
+	Revision int
+}
+
+// ParseTermRevision takes a term URI as a string and parses it into a Term.
+// A term URI would be typically in one of the following forms:
+// name
+// owner/name
+// owner/name/27 # Revision 27
+// name/283 # Revision 283
+func ParseTermRevision(s string) (*Term, error) {
+	match := termNameRE.FindStringSubmatch(s)
+	if match == nil {
+		return nil, fmt.Errorf("invalid term name %q: must match %s", s, termNameRE.String())
+	}
+	if len(match) != 4 {
+		return nil, fmt.Errorf("wrong number of matches in term. Found %d expected 4", len(match))
+	}
+	matches := match[1:]
+	t := &Term{
+		Owner: matches[0],
+		Name:  matches[1],
+	}
+	termRevision := 0
+	termRevision, _ = strconv.Atoi(matches[2])
+	t.Revision = termRevision
+	return t, nil
 }
 
 // ReadMeta reads the content of a metadata.yaml file and returns

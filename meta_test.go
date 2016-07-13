@@ -56,6 +56,47 @@ func (s *MetaSuite) TestReadMetaVersion2(c *gc.C) {
 	c.Assert(meta.Terms, gc.HasLen, 0)
 }
 
+func (s *MetaSuite) TestValidTermFormat(c *gc.C) {
+	valid := []string{
+		"foobar",
+		"foobar/27",
+		"foo/003",
+		"owner/Foo-bar",
+		"owner/foobar/27",
+		"owner/foobar",
+		"owner/foo-bar",
+		"owner/foo_bar",
+		"own-er/foobar",
+		"own_er/foobar",
+		"ibm/j9-jvm/2",
+		"term_123-23aAf/1",
+		"@les/term/1",
+	}
+
+	invalid := []string{
+		"/",
+		"/1",
+		"//",
+		"//2",
+		"27",
+		"owner/foo/foobar",
+	}
+
+	for i, s := range valid {
+		c.Logf("test %d: %s", i, s)
+		meta := charm.Meta{Terms: []string{s}}
+		err := meta.Check()
+		c.Check(err, jc.ErrorIsNil)
+	}
+
+	for i, s := range invalid {
+		c.Logf("test %d: %s", i, s)
+		meta := charm.Meta{Terms: []string{s}}
+		err := meta.Check()
+		c.Check(err, gc.ErrorMatches, "invalid term name.*")
+	}
+}
+
 func (s *MetaSuite) TestCheckTerms(c *gc.C) {
 	tests := []struct {
 		about       string
@@ -63,7 +104,7 @@ func (s *MetaSuite) TestCheckTerms(c *gc.C) {
 		expectError string
 	}{{
 		about: "valid terms",
-		terms: []string{"term/1", "term/2", "term-without-revision"},
+		terms: []string{"term/1", "term/2", "term-without-revision", "tt/2"},
 	}, {
 		about:       "revision not a number",
 		terms:       []string{"term/1", "term/a"},
@@ -74,20 +115,24 @@ func (s *MetaSuite) TestCheckTerms(c *gc.C) {
 		expectError: "invalid term name \"term/-1\": must match.*",
 	}, {
 		about:       "wrong format",
-		terms:       []string{"term/1", "term/a/1"},
-		expectError: "invalid term name \"term/a/1\": must match.*",
+		terms:       []string{"term/1", "foobar/term/abc/1"},
+		expectError: "invalid term name \"foobar/term/abc/1\": must match.*",
+	}, {
+		about: "term with owner",
+		terms: []string{"term/1", "term/abc/1"},
+	}, {
+		about: "term with owner no rev",
+		terms: []string{"term/1", "term/abc"},
 	}, {
 		about:       "term may not contain spaces",
 		terms:       []string{"term/1", "term about a term"},
 		expectError: "invalid term name \"term about a term\": must match.*",
 	}, {
-		about:       "term name must start with lowercase letter",
-		terms:       []string{"Term/1"},
-		expectError: `invalid term name "Term/1": must match.*`,
+		about: "term name must start with lowercase letter",
+		terms: []string{"Term/1"},
 	}, {
-		about:       "term name match the regexp",
-		terms:       []string{"term_123-23aAf/1"},
-		expectError: "invalid term name \"term_123-23aAf/1\": must match.*",
+		about: "term name match the regexp",
+		terms: []string{"term_123-23aAf/1"},
 	},
 	}
 	for i, test := range tests {
@@ -95,9 +140,73 @@ func (s *MetaSuite) TestCheckTerms(c *gc.C) {
 		meta := charm.Meta{Terms: test.terms}
 		err := meta.Check()
 		if test.expectError == "" {
-			c.Assert(err, jc.ErrorIsNil)
+			c.Check(err, jc.ErrorIsNil)
 		} else {
-			c.Assert(err, gc.ErrorMatches, test.expectError)
+			c.Check(err, gc.ErrorMatches, test.expectError)
+		}
+	}
+}
+
+func (s *MetaSuite) TestParseTerms(c *gc.C) {
+	tests := []struct {
+		about       string
+		term        string
+		expectError string
+		expectTerm  charm.Term
+	}{{
+		about:      "valid term",
+		term:       "term/1",
+		expectTerm: charm.Term{"", "term", 1},
+	}, {
+		about:      "valid term no revision",
+		term:       "term",
+		expectTerm: charm.Term{"", "term", 0},
+	}, {
+		about:       "revision not a number",
+		term:        "term/a",
+		expectError: "invalid term name \"term/a\": must match.*",
+	}, {
+		about:       "negative revision",
+		term:        "term/-1",
+		expectError: "invalid term name \"term/-1\": must match.*",
+	}, {
+		about:       "wrong format",
+		term:        "foobar/term/abc/1",
+		expectError: "invalid term name \"foobar/term/abc/1\": must match.*",
+	}, {
+		about:      "term with owner",
+		term:       "term/abc/1",
+		expectTerm: charm.Term{"term", "abc", 1},
+	}, {
+		about:      "term with owner no rev",
+		term:       "term/abc",
+		expectTerm: charm.Term{"term", "abc", 0},
+	}, {
+		about:       "term may not contain spaces",
+		term:        "term about a term",
+		expectError: "invalid term name \"term about a term\": must match.*",
+	}, {
+		about:      "term name may start with an uppercase letter",
+		term:       "Term/1",
+		expectTerm: charm.Term{"", "Term", 1},
+	}, {
+		about:       "term name must not start with a number",
+		term:        "1Term/1",
+		expectError: "invalid term name \"1Term/1\": must match.*",
+	}, {
+		about:      "term name match the regexp",
+		term:       "term_123-23aAf/1",
+		expectTerm: charm.Term{"", "term_123-23aAf", 1},
+	},
+	}
+	for i, test := range tests {
+		c.Logf("running test %v: %v", i, test.about)
+		term, err := charm.ParseTermRevision(test.term)
+		if test.expectError == "" {
+			c.Check(err, jc.ErrorIsNil)
+			c.Check(term, gc.DeepEquals, &test.expectTerm)
+		} else {
+			c.Check(err, gc.ErrorMatches, test.expectError)
 		}
 	}
 }
