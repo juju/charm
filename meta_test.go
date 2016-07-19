@@ -164,15 +164,15 @@ func (s *MetaSuite) TestParseTerms(c *gc.C) {
 	}, {
 		about:       "revision not a number",
 		term:        "term/a",
-		expectError: "invalid term name \"term/a\": must match.*",
+		expectError: "wrong term name format",
 	}, {
 		about:       "negative revision",
 		term:        "term/-1",
-		expectError: "invalid term name \"term/-1\": must match.*",
+		expectError: "negative term revision",
 	}, {
 		about:       "wrong format",
 		term:        "foobar/term/abc/1",
-		expectError: "invalid term name \"foobar/term/abc/1\": must match.*",
+		expectError: "unknown term revision format",
 	}, {
 		about:      "term with owner",
 		term:       "term/abc/1",
@@ -184,7 +184,7 @@ func (s *MetaSuite) TestParseTerms(c *gc.C) {
 	}, {
 		about:       "term may not contain spaces",
 		term:        "term about a term",
-		expectError: "invalid term name \"term about a term\": must match.*",
+		expectError: "wrong term name format",
 	}, {
 		about:      "term name may start with an uppercase letter",
 		term:       "Term/1",
@@ -192,7 +192,7 @@ func (s *MetaSuite) TestParseTerms(c *gc.C) {
 	}, {
 		about:       "term name must not start with a number",
 		term:        "1Term/1",
-		expectError: "invalid term name \"1Term/1\": must match.*",
+		expectError: "wrong term name format",
 	}, {
 		about:      "term name match the regexp",
 		term:       "term_123-23aAf/1",

@@ -15,6 +15,7 @@ import (
 	"github.com/juju/schema"
 	"github.com/juju/utils"
 	"github.com/juju/version"
+	"gopkg.in/juju/names.v2"
 	"gopkg.in/yaml.v2"
 
 	"gopkg.in/juju/charm.v6-unstable/hooks"
@@ -242,10 +243,8 @@ func parseStringList(list interface{}) []string {
 }
 
 var (
-	revSnippet  = `(?:\/(\d+))`
-	termSnippet = `[a-zA-Z][\w-]`
-	//termNameRE  = regexp.MustCompile(fmt.Sprintf(`^(?:(%s+)\/)?((?:%s)+)%s?$`, termSnippet, termSnippet, revSnippet))
-	termNameRE = regexp.MustCompile(`^(?:([^\/\\][\w-]+)\/)?([a-zA-Z][\w-]+)(?:\/(\d+))?$`)
+	termNameRE    = regexp.MustCompile(`^(?:([^\/\\][\w-]+)\/)?([a-zA-Z][\w-]+)(?:\/(\d+))?$`)
+	validTermName = regexp.MustCompile(`^[a-zA-Z][\w-]+$`)
 )
 
 func checkTerm(s string) error {
@@ -263,6 +262,20 @@ type Term struct {
 	Revision int
 }
 
+// Validate returns an error if the Term contains invalid data.
+func (t *Term) Validate() error {
+	if t.Owner != "" && !names.IsValidUser(t.Owner) {
+		return fmt.Errorf("wrong owner format")
+	}
+	if !validTermName.MatchString(t.Name) {
+		return fmt.Errorf("wrong term name format")
+	}
+	if t.Revision < 0 {
+		return fmt.Errorf("negative term revision")
+	}
+	return nil
+}
+
 // ParseTermRevision takes a term URI as a string and parses it into a Term.
 // A term URI would be typically in one of the following forms:
 // name
@@ -270,22 +283,31 @@ type Term struct {
 // owner/name/27 # Revision 27
 // name/283 # Revision 283
 func ParseTermRevision(s string) (*Term, error) {
-	match := termNameRE.FindStringSubmatch(s)
-	if match == nil {
-		return nil, fmt.Errorf("invalid term name %q: must match %s", s, termNameRE.String())
+	tokens := strings.Split(s, "/")
+	var term Term
+	switch len(tokens) {
+	case 1:
+		term = Term{"", tokens[0], 0}
+	case 2:
+		termRevision, err := strconv.Atoi(tokens[1])
+		if err != nil {
+			term = Term{tokens[0], tokens[1], 0}
+		} else {
+			term = Term{"", tokens[0], termRevision}
+		}
+	case 3:
+		termRevision, err := strconv.Atoi(tokens[2])
+		if err != nil {
+			return nil, errors.Trace(err)
+		}
+		term = Term{tokens[0], tokens[1], termRevision}
+	default:
+		return nil, errors.New("unknown term revision format")
 	}
-	if len(match) != 4 {
-		return nil, fmt.Errorf("wrong number of matches in term. Found %d expected 4", len(match))
+	if err := term.Validate(); err != nil {
+		return nil, errors.Trace(err)
 	}
-	matches := match[1:]
-	t := &Term{
-		Owner: matches[0],
-		Name:  matches[1],
-	}
-	termRevision := 0
-	termRevision, _ = strconv.Atoi(matches[2])
-	t.Revision = termRevision
-	return t, nil
+	return &term, nil
 }
 
 // ReadMeta reads the content of a metadata.yaml file and returns
