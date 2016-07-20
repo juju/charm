@@ -67,10 +67,9 @@ func (s *MetaSuite) TestValidTermFormat(c *gc.C) {
 		"owner/foo-bar",
 		"owner/foo_bar",
 		"own-er/foobar",
-		"own_er/foobar",
 		"ibm/j9-jvm/2",
 		"term_123-23aAf/1",
-		"@les/term/1",
+		"cs:foobar/27",
 	}
 
 	invalid := []string{
@@ -80,20 +79,22 @@ func (s *MetaSuite) TestValidTermFormat(c *gc.C) {
 		"//2",
 		"27",
 		"owner/foo/foobar",
+		"@les/term/1",
+		"own_er/foobar",
 	}
 
 	for i, s := range valid {
-		c.Logf("test %d: %s", i, s)
+		c.Logf("valid test %d: %s", i, s)
 		meta := charm.Meta{Terms: []string{s}}
 		err := meta.Check()
 		c.Check(err, jc.ErrorIsNil)
 	}
 
 	for i, s := range invalid {
-		c.Logf("test %d: %s", i, s)
+		c.Logf("invalid test %d: %s", i, s)
 		meta := charm.Meta{Terms: []string{s}}
 		err := meta.Check()
-		c.Check(err, gc.ErrorMatches, "invalid term name.*")
+		c.Check(err, gc.NotNil)
 	}
 }
 
@@ -108,15 +109,15 @@ func (s *MetaSuite) TestCheckTerms(c *gc.C) {
 	}, {
 		about:       "revision not a number",
 		terms:       []string{"term/1", "term/a"},
-		expectError: "invalid term name \"term/a\": must match.*",
+		expectError: `wrong term name format "a"`,
 	}, {
 		about:       "negative revision",
 		terms:       []string{"term/-1"},
-		expectError: "invalid term name \"term/-1\": must match.*",
+		expectError: "negative term revision",
 	}, {
 		about:       "wrong format",
 		terms:       []string{"term/1", "foobar/term/abc/1"},
-		expectError: "invalid term name \"foobar/term/abc/1\": must match.*",
+		expectError: `unknown term id format "foobar/term/abc/1"`,
 	}, {
 		about: "term with owner",
 		terms: []string{"term/1", "term/abc/1"},
@@ -126,7 +127,7 @@ func (s *MetaSuite) TestCheckTerms(c *gc.C) {
 	}, {
 		about:       "term may not contain spaces",
 		terms:       []string{"term/1", "term about a term"},
-		expectError: "invalid term name \"term about a term\": must match.*",
+		expectError: `wrong term name format "term about a term"`,
 	}, {
 		about: "term name must start with lowercase letter",
 		terms: []string{"Term/1"},
@@ -152,61 +153,85 @@ func (s *MetaSuite) TestParseTerms(c *gc.C) {
 		about       string
 		term        string
 		expectError string
-		expectTerm  charm.Term
+		expectTerm  charm.TermID
 	}{{
 		about:      "valid term",
 		term:       "term/1",
-		expectTerm: charm.Term{"", "term", 1},
+		expectTerm: charm.TermID{"", "", "term", 1},
 	}, {
 		about:      "valid term no revision",
 		term:       "term",
-		expectTerm: charm.Term{"", "term", 0},
+		expectTerm: charm.TermID{"", "", "term", 0},
 	}, {
 		about:       "revision not a number",
 		term:        "term/a",
-		expectError: "wrong term name format",
+		expectError: `wrong term name format "a"`,
 	}, {
 		about:       "negative revision",
 		term:        "term/-1",
 		expectError: "negative term revision",
 	}, {
+		about:       "bad revision",
+		term:        "owner/term/12a",
+		expectError: `invalid revision number "12a" strconv.ParseInt: parsing "12a": invalid syntax`,
+	}, {
 		about:       "wrong format",
 		term:        "foobar/term/abc/1",
-		expectError: "unknown term revision format",
+		expectError: `unknown term id format "foobar/term/abc/1"`,
 	}, {
 		about:      "term with owner",
 		term:       "term/abc/1",
-		expectTerm: charm.Term{"term", "abc", 1},
+		expectTerm: charm.TermID{"", "term", "abc", 1},
 	}, {
 		about:      "term with owner no rev",
 		term:       "term/abc",
-		expectTerm: charm.Term{"term", "abc", 0},
+		expectTerm: charm.TermID{"", "term", "abc", 0},
 	}, {
 		about:       "term may not contain spaces",
 		term:        "term about a term",
-		expectError: "wrong term name format",
+		expectError: `wrong term name format "term about a term"`,
 	}, {
 		about:      "term name may start with an uppercase letter",
 		term:       "Term/1",
-		expectTerm: charm.Term{"", "Term", 1},
+		expectTerm: charm.TermID{"", "", "Term", 1},
 	}, {
 		about:       "term name must not start with a number",
 		term:        "1Term/1",
-		expectError: "wrong term name format",
+		expectError: `wrong term name format "1Term"`,
 	}, {
 		about:      "term name match the regexp",
 		term:       "term_123-23aAf/1",
-		expectTerm: charm.Term{"", "term_123-23aAf", 1},
-	},
-	}
+		expectTerm: charm.TermID{"", "", "term_123-23aAf", 1},
+	}, {
+		about:      "full term with tenant",
+		term:       "tenant:owner/term/1",
+		expectTerm: charm.TermID{"tenant", "owner", "term", 1},
+	}, {
+		about:       "bad tenant",
+		term:        "tenant::owner/term/1",
+		expectError: `wrong owner format ":owner"`,
+	}, {
+		about:      "ownerless term with tenant",
+		term:       "tenant:term/1",
+		expectTerm: charm.TermID{"tenant", "", "term", 1},
+	}, {
+		about:      "ownerless revisionless term with tenant",
+		term:       "tenant:term",
+		expectTerm: charm.TermID{"tenant", "", "term", 0},
+	}, {
+		about:      "owner/term with tenant",
+		term:       "tenant:owner/term",
+		expectTerm: charm.TermID{"tenant", "owner", "term", 0},
+	}}
 	for i, test := range tests {
 		c.Logf("running test %v: %v", i, test.about)
-		term, err := charm.ParseTermRevision(test.term)
+		term, err := charm.ParseTerm(test.term)
 		if test.expectError == "" {
 			c.Check(err, jc.ErrorIsNil)
 			c.Check(term, gc.DeepEquals, &test.expectTerm)
 		} else {
 			c.Check(err, gc.ErrorMatches, test.expectError)
+			c.Check(term, gc.IsNil)
 		}
 	}
 }
