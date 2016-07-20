@@ -15,6 +15,7 @@ import (
 	"github.com/juju/schema"
 	"github.com/juju/utils"
 	"github.com/juju/version"
+	"gopkg.in/juju/names.v2"
 	"gopkg.in/yaml.v2"
 
 	"gopkg.in/juju/charm.v6-unstable/hooks"
@@ -241,14 +242,108 @@ func parseStringList(list interface{}) []string {
 	return result
 }
 
-var termNameRE = regexp.MustCompile("^[a-z]+([a-z0-9-]+)(/[0-9]+)?$")
+var validTermName = regexp.MustCompile(`^[a-zA-Z][\w-]+$`)
 
-func checkTerm(s string) error {
-	match := termNameRE.FindStringSubmatch(s)
-	if match == nil {
-		return fmt.Errorf("invalid term name %q: must match %s", s, termNameRE.String())
+// TermID represents a single term id. The term can either be owned
+// or "public" (meaning there is no owner).
+type TermID struct {
+	Tenant   string
+	Owner    string
+	Name     string
+	Revision int
+}
+
+// Validate returns an error if the Term contains invalid data.
+func (t *TermID) Validate() error {
+	if t.Tenant != "" && t.Tenant != "cs" {
+		if !validTermName.MatchString(t.Tenant) {
+			return fmt.Errorf("wrong term tenant format %q", t.Tenant)
+		}
+	}
+	if t.Owner != "" && !names.IsValidUser(t.Owner) {
+		return fmt.Errorf("wrong owner format %q", t.Owner)
+	}
+	if !validTermName.MatchString(t.Name) {
+		return fmt.Errorf("wrong term name format %q", t.Name)
+	}
+	if t.Revision < 0 {
+		return fmt.Errorf("negative term revision")
 	}
 	return nil
+}
+
+// ParseTerm takes a termID as a string and parses it into a Term.
+// A complete term is in the form:
+// tenant:owner/name/revision
+// This function accepts partially specified identifiers
+// typically in one of the following forms:
+// name
+// owner/name
+// owner/name/27 # Revision 27
+// name/283 # Revision 283
+// cs:owner/name # Tenant cs
+func ParseTerm(s string) (*TermID, error) {
+	tenant := ""
+	termid := s
+	if t := strings.SplitN(s, ":", 2); len(t) == 2 {
+		tenant = t[0]
+		termid = t[1]
+	}
+
+	tokens := strings.Split(termid, "/")
+	var term TermID
+	switch len(tokens) {
+	case 1: // "name"
+		term = TermID{
+			Tenant:   tenant,
+			Owner:    "",
+			Name:     tokens[0],
+			Revision: 0,
+		}
+	case 2: // owner/name or name/123
+		termRevision, err := strconv.Atoi(tokens[1])
+		if err != nil { // owner/name
+			term = TermID{
+				Tenant:   tenant,
+				Owner:    tokens[0],
+				Name:     tokens[1],
+				Revision: 0,
+			}
+		} else { // name/123
+			term = TermID{
+				Tenant:   tenant,
+				Owner:    "",
+				Name:     tokens[0],
+				Revision: termRevision,
+			}
+		}
+	case 3: // owner/name/123
+		termRevision, err := strconv.Atoi(tokens[2])
+		if err != nil {
+			return nil, errors.Errorf("invalid revision number %q %v", tokens[2], err)
+		}
+		term = TermID{
+			Tenant:   tenant,
+			Owner:    tokens[0],
+			Name:     tokens[1],
+			Revision: termRevision,
+		}
+	default:
+		return nil, errors.Errorf("unknown term id format %q", s)
+	}
+	if err := term.Validate(); err != nil {
+		return nil, errors.Trace(err)
+	}
+	return &term, nil
+}
+
+// MustParseTerm acts like ParseTerm but panics on error.
+func MustParseTerm(s string) *TermID {
+	term, err := ParseTerm(s)
+	if err != nil {
+		panic(err)
+	}
+	return term
 }
 
 // ReadMeta reads the content of a metadata.yaml file and returns
@@ -548,7 +643,7 @@ func (meta Meta) Check() error {
 	}
 
 	for _, term := range meta.Terms {
-		if terr := checkTerm(term); terr != nil {
+		if _, terr := ParseTerm(term); terr != nil {
 			return errors.Trace(terr)
 		}
 	}
