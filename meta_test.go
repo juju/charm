@@ -70,6 +70,7 @@ func (s *MetaSuite) TestValidTermFormat(c *gc.C) {
 		"ibm/j9-jvm/2",
 		"term_123-23aAf/1",
 		"cs:foobar/27",
+		"cs:foobar",
 	}
 
 	invalid := []string{
@@ -95,6 +96,28 @@ func (s *MetaSuite) TestValidTermFormat(c *gc.C) {
 		meta := charm.Meta{Terms: []string{s}}
 		err := meta.Check()
 		c.Check(err, gc.NotNil)
+	}
+}
+
+func (s *MetaSuite) TestTermStringRoundTrip(c *gc.C) {
+	terms := []string{
+		"foobar",
+		"foobar/27",
+		"owner/Foo-bar",
+		"owner/foobar/27",
+		"owner/foobar",
+		"owner/foo-bar",
+		"owner/foo_bar",
+		"own-er/foobar",
+		"ibm/j9-jvm/2",
+		"term_123-23aAf/1",
+		"cs:foobar/27",
+	}
+	for i, term := range terms {
+		c.Logf("test %d: %s", i, term)
+		id, err := charm.ParseTerm(term)
+		c.Check(err, gc.IsNil)
+		c.Check(id.String(), gc.Equals, term)
 	}
 }
 
@@ -153,15 +176,15 @@ func (s *MetaSuite) TestParseTerms(c *gc.C) {
 		about       string
 		term        string
 		expectError string
-		expectTerm  charm.TermID
+		expectTerm  charm.TermsId
 	}{{
 		about:      "valid term",
 		term:       "term/1",
-		expectTerm: charm.TermID{"", "", "term", 1},
+		expectTerm: charm.TermsId{"", "", "term", 1},
 	}, {
 		about:      "valid term no revision",
 		term:       "term",
-		expectTerm: charm.TermID{"", "", "term", 0},
+		expectTerm: charm.TermsId{"", "", "term", 0},
 	}, {
 		about:       "revision not a number",
 		term:        "term/a",
@@ -181,11 +204,11 @@ func (s *MetaSuite) TestParseTerms(c *gc.C) {
 	}, {
 		about:      "term with owner",
 		term:       "term/abc/1",
-		expectTerm: charm.TermID{"", "term", "abc", 1},
+		expectTerm: charm.TermsId{"", "term", "abc", 1},
 	}, {
 		about:      "term with owner no rev",
 		term:       "term/abc",
-		expectTerm: charm.TermID{"", "term", "abc", 0},
+		expectTerm: charm.TermsId{"", "term", "abc", 0},
 	}, {
 		about:       "term may not contain spaces",
 		term:        "term about a term",
@@ -193,7 +216,7 @@ func (s *MetaSuite) TestParseTerms(c *gc.C) {
 	}, {
 		about:      "term name may start with an uppercase letter",
 		term:       "Term/1",
-		expectTerm: charm.TermID{"", "", "Term", 1},
+		expectTerm: charm.TermsId{"", "", "Term", 1},
 	}, {
 		about:       "term name must not start with a number",
 		term:        "1Term/1",
@@ -201,11 +224,11 @@ func (s *MetaSuite) TestParseTerms(c *gc.C) {
 	}, {
 		about:      "term name match the regexp",
 		term:       "term_123-23aAf/1",
-		expectTerm: charm.TermID{"", "", "term_123-23aAf", 1},
+		expectTerm: charm.TermsId{"", "", "term_123-23aAf", 1},
 	}, {
 		about:      "full term with tenant",
 		term:       "tenant:owner/term/1",
-		expectTerm: charm.TermID{"tenant", "owner", "term", 1},
+		expectTerm: charm.TermsId{"tenant", "owner", "term", 1},
 	}, {
 		about:       "bad tenant",
 		term:        "tenant::owner/term/1",
@@ -213,15 +236,19 @@ func (s *MetaSuite) TestParseTerms(c *gc.C) {
 	}, {
 		about:      "ownerless term with tenant",
 		term:       "tenant:term/1",
-		expectTerm: charm.TermID{"tenant", "", "term", 1},
+		expectTerm: charm.TermsId{"tenant", "", "term", 1},
 	}, {
 		about:      "ownerless revisionless term with tenant",
 		term:       "tenant:term",
-		expectTerm: charm.TermID{"tenant", "", "term", 0},
+		expectTerm: charm.TermsId{"tenant", "", "term", 0},
 	}, {
 		about:      "owner/term with tenant",
 		term:       "tenant:owner/term",
-		expectTerm: charm.TermID{"tenant", "owner", "term", 0},
+		expectTerm: charm.TermsId{"tenant", "owner", "term", 0},
+	}, {
+		about:      "term with tenant",
+		term:       "tenant:term",
+		expectTerm: charm.TermsId{"tenant", "", "term", 0},
 	}}
 	for i, test := range tests {
 		c.Logf("running test %v: %v", i, test.about)
@@ -247,7 +274,21 @@ func (s *MetaSuite) TestReadTerms(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 	err = meta.Check()
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(meta.Terms, jc.DeepEquals, []string{"term1/1", "term2"})
+	c.Assert(meta.Terms, jc.DeepEquals, []string{"term1/1", "term2", "owner/term3/1"})
+}
+
+var metaDataWithInvalidTermsId = `
+name: terms
+summary: "Sample charm with terms and conditions"
+description: |
+        That's a boring charm that requires certain terms.
+terms: ["!!!/abc"]
+`
+
+func (s *MetaSuite) TestReadInvalidTerms(c *gc.C) {
+	reader := strings.NewReader(metaDataWithInvalidTermsId)
+	_, err := charm.ReadMeta(reader)
+	c.Assert(err, gc.ErrorMatches, `wrong owner format "!!!"`)
 }
 
 func (s *MetaSuite) TestReadTags(c *gc.C) {
@@ -728,7 +769,7 @@ func (s *MetaSuite) TestCodecRoundTrip(c *gc.C) {
 		},
 		Categories: []string{"quxxxx", "quxxxxx"},
 		Tags:       []string{"openstack", "storage"},
-		Terms:      []string{"test term 1", "test term 2"},
+		Terms:      []string{"test-term/1", "test-term/2"},
 	}
 	for i, codec := range codecs {
 		c.Logf("codec %d", i)

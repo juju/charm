@@ -244,9 +244,11 @@ func parseStringList(list interface{}) []string {
 
 var validTermName = regexp.MustCompile(`^[a-zA-Z][\w-]+$`)
 
-// TermID represents a single term id. The term can either be owned
+// TermsId represents a single term id. The term can either be owned
 // or "public" (meaning there is no owner).
-type TermID struct {
+// The Revision starts at 1. Therefore a value of 0 means the revision
+// is unset.
+type TermsId struct {
 	Tenant   string
 	Owner    string
 	Name     string
@@ -254,7 +256,7 @@ type TermID struct {
 }
 
 // Validate returns an error if the Term contains invalid data.
-func (t *TermID) Validate() error {
+func (t *TermsId) Validate() error {
 	if t.Tenant != "" && t.Tenant != "cs" {
 		if !validTermName.MatchString(t.Tenant) {
 			return fmt.Errorf("wrong term tenant format %q", t.Tenant)
@@ -272,6 +274,32 @@ func (t *TermID) Validate() error {
 	return nil
 }
 
+// String returns the term in canonical form.
+// This would be one of:
+//   tenant:owner/name/revision
+//   tenant:name
+//   owner/name/revision
+//   owner/name
+//   name/revision
+//   name
+func (t *TermsId) String() string {
+	id := make([]byte, 0, len(t.Tenant)+1+len(t.Owner)+1+len(t.Name)+4)
+	if t.Tenant != "" {
+		id = append(id, t.Tenant...)
+		id = append(id, ':')
+	}
+	if t.Owner != "" {
+		id = append(id, t.Owner...)
+		id = append(id, '/')
+	}
+	id = append(id, t.Name...)
+	if t.Revision != 0 {
+		id = append(id, '/')
+		id = strconv.AppendInt(id, int64(t.Revision), 10)
+	}
+	return string(id)
+}
+
 // ParseTerm takes a termID as a string and parses it into a Term.
 // A complete term is in the form:
 // tenant:owner/name/revision
@@ -282,7 +310,7 @@ func (t *TermID) Validate() error {
 // owner/name/27 # Revision 27
 // name/283 # Revision 283
 // cs:owner/name # Tenant cs
-func ParseTerm(s string) (*TermID, error) {
+func ParseTerm(s string) (*TermsId, error) {
 	tenant := ""
 	termid := s
 	if t := strings.SplitN(s, ":", 2); len(t) == 2 {
@@ -291,28 +319,24 @@ func ParseTerm(s string) (*TermID, error) {
 	}
 
 	tokens := strings.Split(termid, "/")
-	var term TermID
+	var term TermsId
 	switch len(tokens) {
 	case 1: // "name"
-		term = TermID{
-			Tenant:   tenant,
-			Owner:    "",
-			Name:     tokens[0],
-			Revision: 0,
+		term = TermsId{
+			Tenant: tenant,
+			Name:   tokens[0],
 		}
 	case 2: // owner/name or name/123
 		termRevision, err := strconv.Atoi(tokens[1])
 		if err != nil { // owner/name
-			term = TermID{
-				Tenant:   tenant,
-				Owner:    tokens[0],
-				Name:     tokens[1],
-				Revision: 0,
+			term = TermsId{
+				Tenant: tenant,
+				Owner:  tokens[0],
+				Name:   tokens[1],
 			}
 		} else { // name/123
-			term = TermID{
+			term = TermsId{
 				Tenant:   tenant,
-				Owner:    "",
 				Name:     tokens[0],
 				Revision: termRevision,
 			}
@@ -322,7 +346,7 @@ func ParseTerm(s string) (*TermID, error) {
 		if err != nil {
 			return nil, errors.Errorf("invalid revision number %q %v", tokens[2], err)
 		}
-		term = TermID{
+		term = TermsId{
 			Tenant:   tenant,
 			Owner:    tokens[0],
 			Name:     tokens[1],
@@ -338,7 +362,7 @@ func ParseTerm(s string) (*TermID, error) {
 }
 
 // MustParseTerm acts like ParseTerm but panics on error.
-func MustParseTerm(s string) *TermID {
+func MustParseTerm(s string) *TermsId {
 	term, err := ParseTerm(s)
 	if err != nil {
 		panic(err)
@@ -382,10 +406,6 @@ func (meta *Meta) UnmarshalYAML(f func(interface{}) error) error {
 		return err
 	}
 
-	// TODO(ericsnow) This line should be moved into parseMeta as soon
-	// as the terms code gets fixed.
-	meta1.Terms = parseStringList(m["terms"])
-
 	*meta = *meta1
 	return nil
 }
@@ -422,6 +442,7 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 		}
 		meta.MinJujuVersion = minver
 	}
+	meta.Terms = parseStringList(m["terms"])
 
 	resources, err := parseMetaResources(m["resources"])
 	if err != nil {
