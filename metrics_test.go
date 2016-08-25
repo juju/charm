@@ -225,3 +225,50 @@ func (s *MetricsSuite) TestValidateValue(c *gc.C) {
 		}
 	}
 }
+
+func (s *MetricsSuite) TestPlanRequired(c *gc.C) {
+	tests := []struct {
+		about        string
+		input        string
+		planRequired bool
+	}{{
+		about: "not specified",
+		input: `
+metrics:
+  some-metric:
+    type: gauge
+    description: thing
+`,
+		planRequired: false,
+	}, {
+		about: "plan optional",
+		input: `
+plan: 
+  required: false
+metrics:
+`,
+		planRequired: false,
+	}, {
+		about: "plan required",
+		input: `
+plan: 
+  required: true
+metrics:
+`,
+		planRequired: true,
+	}, {
+		about: "not set",
+		input: `
+plan:
+metrics:
+`,
+		planRequired: false,
+	},
+	}
+	for i, test := range tests {
+		c.Logf("testplanrequired %d: %s", i, test.about)
+		metrics, err := charm.ReadMetrics(strings.NewReader(test.input))
+		c.Assert(err, gc.IsNil)
+		c.Assert(metrics.PlanRequired(), gc.Equals, test.planRequired)
+	}
+}

@@ -58,14 +58,20 @@ func (m MetricType) validateValue(value string) error {
 
 // Metric represents a single metric definition
 type Metric struct {
-	Type        MetricType
-	Description string
+	Type        MetricType `yaml:"type"`
+	Description string     `yaml:"description"`
+}
+
+// Plan represents the plan section of metrics.yaml
+type Plan struct {
+	Required bool `yaml:"required,omitempty"`
 }
 
 // Metrics contains the metrics declarations encoded in the metrics.yaml
 // file.
 type Metrics struct {
-	Metrics map[string]Metric
+	Metrics map[string]Metric `yaml:"metrics"`
+	Plan    *Plan             `yaml:"plan,omitempty"`
 }
 
 // ReadMetrics reads a MetricsDeclaration in YAML format.
@@ -111,4 +117,9 @@ func (m Metrics) ValidateMetric(name, value string) error {
 		return validateValue(value)
 	}
 	return metric.Type.validateValue(value)
+}
+
+// PlanRequired reports whether these metrics require a plan.
+func (m Metrics) PlanRequired() bool {
+	return m.Plan != nil && m.Plan.Required
 }
