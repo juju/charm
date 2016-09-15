@@ -539,7 +539,7 @@ func (s *MetaSuite) TestMinJujuVersion(c *gc.C) {
 	charmMeta := fmt.Sprintf("%s\nmin-juju-version: ", dummyMetadata)
 	vals := []version.Number{
 		{Major: 1, Minor: 25},
-		{Major: 1, Minor: 25, Tag: "alpha1"},
+		{Major: 1, Minor: 25, Tag: "alpha"},
 		{Major: 1, Minor: 25, Patch: 1},
 	}
 	for _, ver := range vals {
