@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/juju/utils/series"
+	"github.com/juju/utils/set"
 	"gopkg.in/juju/names.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -23,35 +25,43 @@ type Location interface {
 }
 
 // URL represents a charm or bundle location:
+//   Preferred format:
+//     joe/wordpress/trusty/1
+//     joe/wordpress
+//     wordpress/saucy
+//     wordpress/1
 //
+//   Older formats, still accepted:
 //     cs:~joe/oneiric/wordpress
 //     cs:oneiric/wordpress-42
 //     local:oneiric/wordpress
 //     cs:~joe/wordpress
 //     cs:wordpress
 //     cs:precise/wordpress-20
-//     cs:development/precise/wordpress-20
-//     cs:~joe/development/wordpress
 //
 type URL struct {
 	Schema   string // "cs" or "local".
 	User     string // "joe".
 	Name     string // "wordpress".
 	Revision int    // -1 if unset, N otherwise.
-	Series   string // "precise" or "" if unset; "bundle" if it's a bundle.
+	Series   string // "precise" or "" if unset
 }
 
 var ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
 
 var (
-	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
+	validSeries = set.NewStrings(series.SupportedSeries()...)
 	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
+
+func init() {
+	validSeries.Add("bundle")
+}
 
 // IsValidSeries reports whether series is a valid series in charm or bundle
 // URLs.
 func IsValidSeries(series string) bool {
-	return validSeries.MatchString(series)
+	return validSeries.Contains(series)
 }
 
 // IsValidName reports whether name is a valid charm or bundle name.
@@ -115,14 +125,14 @@ func ParseURL(url string) (*URL, error) {
 	case u.Opaque != "":
 		// Shortcut old-style URLs.
 		u.Path = u.Opaque
-		curl, err = parseV1URL(u, url)
+		curl, err = parseNonWebURL(u, url)
 	case u.Scheme == "http" || u.Scheme == "https":
-		// Shortcut new-style URLs.
+		// Shortcut web URLs.
 		curl, err = parseV2URL(u)
 	default:
 		// TODO: for now, fall through to parsing v1 references; this will be
 		// expanded to be more robust in the future.
-		curl, err = parseV1URL(u, url)
+		curl, err = parseNonWebURL(u, url)
 	}
 	if err != nil {
 		return nil, err
@@ -133,6 +143,23 @@ func ParseURL(url string) (*URL, error) {
 	return curl, nil
 }
 
+func parseNonWebURL(url *gourl.URL, originalURL string) (*URL, error) {
+	parts := strings.Split(url.Path, "/")
+
+	// Special-case to handle ambiguity between series/name (V1) and user/name (V3).
+	if IsValidSeries(parts[0]) {
+		return parseV1URL(url, originalURL)
+	}
+	result, err := parseV3URL(url)
+	if err == nil {
+		return result, err
+	}
+	return parseV1URL(url, originalURL)
+}
+
+// parseV1URL accepts URLs of the form:
+//    cs:~username/series/name-revision
+// Any of the schema, username, series and revision can be omitted.
 func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 	var r URL
 	if url.Scheme != "" {
@@ -199,6 +226,69 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 	return &r, nil
 }
 
+func convertRevision(revision string, url *gourl.URL) (int, error) {
+	result, err := strconv.Atoi(revision)
+	if err != nil {
+		return -1, fmt.Errorf("charm or bundle URL has malformed revision: %q in %q", revision, url)
+	}
+	return result, nil
+}
+
+func parseV3URL(url *gourl.URL) (*URL, error) {
+	var r URL
+	r.Revision = -1
+	invalidName := fmt.Errorf("URL has invalid charm or bundle name: %q", url)
+	unrecognizedParts := fmt.Errorf("charm or bundle URL %q has unrecognized parts", url)
+
+	if url.Scheme != "" {
+		r.Schema = url.Scheme
+		if r.Schema != "cs" && r.Schema != "local" {
+			return nil, fmt.Errorf("charm or bundle URL has invalid schema: %q", url)
+		}
+	}
+
+	parts := strings.Split(url.Path, "/")
+	if len(parts) < 1 {
+		return nil, invalidName
+	}
+	if len(parts) > 4 {
+		return nil, unrecognizedParts
+	}
+
+	last := len(parts) - 1
+	revision, err := strconv.Atoi(parts[last])
+	if err == nil {
+		last -= 1
+		r.Revision = revision
+	}
+	if last >= 0 && IsValidSeries(parts[last]) {
+		r.Series = parts[last]
+		last -= 1
+	}
+
+	// Name is required
+	if last < 0 || !IsValidName(parts[last]) {
+		return nil, invalidName
+	}
+	r.Name = parts[last]
+	last -= 1
+
+	if last >= 0 {
+		if !names.IsValidUser(parts[last]) {
+			return nil, fmt.Errorf("charm or bundle URL has invalid user name: %q", url)
+		}
+		r.User = parts[last]
+		last -= 1
+	}
+
+	// Make sure we've used all the components.
+	if last != -1 {
+		return nil, unrecognizedParts
+	}
+
+	return &r, nil
+}
+
 func parseV2URL(url *gourl.URL) (*URL, error) {
 	var r URL
 	r.Schema = "cs"
@@ -247,15 +337,15 @@ func parseV2URL(url *gourl.URL) (*URL, error) {
 func (r *URL) path() string {
 	var parts []string
 	if r.User != "" {
-		parts = append(parts, fmt.Sprintf("~%s", r.User))
+		parts = append(parts, fmt.Sprintf("%s", r.User))
 	}
+	// Name is required.
+	parts = append(parts, r.Name)
 	if r.Series != "" {
 		parts = append(parts, r.Series)
 	}
 	if r.Revision >= 0 {
-		parts = append(parts, fmt.Sprintf("%s-%d", r.Name, r.Revision))
-	} else {
-		parts = append(parts, r.Name)
+		parts = append(parts, fmt.Sprintf("%d", r.Revision))
 	}
 	return strings.Join(parts, "/")
 }
