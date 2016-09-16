@@ -26,172 +26,110 @@ var urlTests = []struct {
 	url    *charm.URL
 }{{
 	s:   "cs:~user/series/name",
-	url: &charm.URL{"cs", "user", "name", -1, "series", ""},
+	url: &charm.URL{"cs", "user", "name", -1, "series"},
 }, {
 	s:   "cs:~user/series/name-0",
-	url: &charm.URL{"cs", "user", "name", 0, "series", ""},
+	url: &charm.URL{"cs", "user", "name", 0, "series"},
 }, {
 	s:   "cs:series/name",
-	url: &charm.URL{"cs", "", "name", -1, "series", ""},
+	url: &charm.URL{"cs", "", "name", -1, "series"},
 }, {
 	s:   "cs:series/name-42",
-	url: &charm.URL{"cs", "", "name", 42, "series", ""},
+	url: &charm.URL{"cs", "", "name", 42, "series"},
 }, {
 	s:   "local:series/name-1",
-	url: &charm.URL{"local", "", "name", 1, "series", ""},
+	url: &charm.URL{"local", "", "name", 1, "series"},
 }, {
 	s:   "local:series/name",
-	url: &charm.URL{"local", "", "name", -1, "series", ""},
+	url: &charm.URL{"local", "", "name", -1, "series"},
 }, {
 	s:   "local:series/n0-0n-n0",
-	url: &charm.URL{"local", "", "n0-0n-n0", -1, "series", ""},
+	url: &charm.URL{"local", "", "n0-0n-n0", -1, "series"},
 }, {
 	s:   "cs:~user/name",
-	url: &charm.URL{"cs", "user", "name", -1, "", ""},
+	url: &charm.URL{"cs", "user", "name", -1, ""},
 }, {
 	s:   "cs:name",
-	url: &charm.URL{"cs", "", "name", -1, "", ""},
+	url: &charm.URL{"cs", "", "name", -1, ""},
 }, {
 	s:   "local:name",
-	url: &charm.URL{"local", "", "name", -1, "", ""},
-}, {
-	s:   "cs:~user/development/series/name-0",
-	url: &charm.URL{"cs", "user", "name", 0, "series", charm.DevelopmentChannel},
-}, {
-	s:   "cs:~user/development/series/name-0",
-	url: &charm.URL{"cs", "user", "name", 0, "series", charm.DevelopmentChannel},
-}, {
-	s:   "cs:development/series/name",
-	url: &charm.URL{"cs", "", "name", -1, "series", charm.DevelopmentChannel},
-}, {
-	s:   "cs:development/series/name-42",
-	url: &charm.URL{"cs", "", "name", 42, "series", charm.DevelopmentChannel},
-}, {
-	s:   "cs:~user/development/name",
-	url: &charm.URL{"cs", "user", "name", -1, "", charm.DevelopmentChannel},
-}, {
-	s:   "cs:development/name",
-	url: &charm.URL{"cs", "", "name", -1, "", charm.DevelopmentChannel},
+	url: &charm.URL{"local", "", "name", -1, ""},
 }, {
 	s:     "http://jujucharms.com/u/user/name/series/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "series", ""},
+	url:   &charm.URL{"cs", "user", "name", 1, "series"},
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "http://www.jujucharms.com/u/user/name/series/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "series", ""},
+	url:   &charm.URL{"cs", "user", "name", 1, "series"},
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://www.jujucharms.com/u/user/name/series/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "series", ""},
+	url:   &charm.URL{"cs", "user", "name", 1, "series"},
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "series", ""},
+	url:   &charm.URL{"cs", "user", "name", 1, "series"},
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series",
-	url:   &charm.URL{"cs", "user", "name", -1, "series", ""},
+	url:   &charm.URL{"cs", "user", "name", -1, "series"},
 	exact: "cs:~user/series/name",
 }, {
 	s:     "https://jujucharms.com/u/user/name/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "", ""},
+	url:   &charm.URL{"cs", "user", "name", 1, ""},
 	exact: "cs:~user/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name",
-	url:   &charm.URL{"cs", "user", "name", -1, "", ""},
+	url:   &charm.URL{"cs", "user", "name", -1, ""},
 	exact: "cs:~user/name",
 }, {
 	s:     "https://jujucharms.com/name",
-	url:   &charm.URL{"cs", "", "name", -1, "", ""},
+	url:   &charm.URL{"cs", "", "name", -1, ""},
 	exact: "cs:name",
 }, {
 	s:     "https://jujucharms.com/name/series",
-	url:   &charm.URL{"cs", "", "name", -1, "series", ""},
+	url:   &charm.URL{"cs", "", "name", -1, "series"},
 	exact: "cs:series/name",
 }, {
 	s:     "https://jujucharms.com/name/1",
-	url:   &charm.URL{"cs", "", "name", 1, "", ""},
+	url:   &charm.URL{"cs", "", "name", 1, ""},
 	exact: "cs:name-1",
 }, {
 	s:     "https://jujucharms.com/name/series/1",
-	url:   &charm.URL{"cs", "", "name", 1, "series", ""},
+	url:   &charm.URL{"cs", "", "name", 1, "series"},
 	exact: "cs:series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series/1/",
-	url:   &charm.URL{"cs", "user", "name", 1, "series", ""},
+	url:   &charm.URL{"cs", "user", "name", 1, "series"},
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series/",
-	url:   &charm.URL{"cs", "user", "name", -1, "series", ""},
+	url:   &charm.URL{"cs", "user", "name", -1, "series"},
 	exact: "cs:~user/series/name",
 }, {
 	s:     "https://jujucharms.com/u/user/name/1/",
-	url:   &charm.URL{"cs", "user", "name", 1, "", ""},
+	url:   &charm.URL{"cs", "user", "name", 1, ""},
 	exact: "cs:~user/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/",
-	url:   &charm.URL{"cs", "user", "name", -1, "", ""},
+	url:   &charm.URL{"cs", "user", "name", -1, ""},
 	exact: "cs:~user/name",
 }, {
 	s:     "https://jujucharms.com/name/",
-	url:   &charm.URL{"cs", "", "name", -1, "", ""},
+	url:   &charm.URL{"cs", "", "name", -1, ""},
 	exact: "cs:name",
 }, {
 	s:     "https://jujucharms.com/name/series/",
-	url:   &charm.URL{"cs", "", "name", -1, "series", ""},
+	url:   &charm.URL{"cs", "", "name", -1, "series"},
 	exact: "cs:series/name",
 }, {
 	s:     "https://jujucharms.com/name/1/",
-	url:   &charm.URL{"cs", "", "name", 1, "", ""},
+	url:   &charm.URL{"cs", "", "name", 1, ""},
 	exact: "cs:name-1",
 }, {
 	s:     "https://jujucharms.com/name/series/1/",
-	url:   &charm.URL{"cs", "", "name", 1, "series", ""},
+	url:   &charm.URL{"cs", "", "name", 1, "series"},
 	exact: "cs:series/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/development/name/series/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "series", charm.DevelopmentChannel},
-	exact: "cs:~user/development/series/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/development/name/series",
-	url:   &charm.URL{"cs", "user", "name", -1, "series", charm.DevelopmentChannel},
-	exact: "cs:~user/development/series/name",
-}, {
-	s:     "https://jujucharms.com/u/user/development/name/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "", charm.DevelopmentChannel},
-	exact: "cs:~user/development/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/development/name",
-	url:   &charm.URL{"cs", "user", "name", -1, "", charm.DevelopmentChannel},
-	exact: "cs:~user/development/name",
-}, {
-	s:     "https://jujucharms.com/development/name",
-	url:   &charm.URL{"cs", "", "name", -1, "", charm.DevelopmentChannel},
-	exact: "cs:development/name",
-}, {
-	s:     "https://jujucharms.com/development/name/series",
-	url:   &charm.URL{"cs", "", "name", -1, "series", charm.DevelopmentChannel},
-	exact: "cs:development/series/name",
-}, {
-	s:     "https://jujucharms.com/development/name/1",
-	url:   &charm.URL{"cs", "", "name", 1, "", charm.DevelopmentChannel},
-	exact: "cs:development/name-1",
-}, {
-	s:     "https://jujucharms.com/development/name/series/1",
-	url:   &charm.URL{"cs", "", "name", 1, "series", charm.DevelopmentChannel},
-	exact: "cs:development/series/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/development/name/series/",
-	url:   &charm.URL{"cs", "user", "name", -1, "series", charm.DevelopmentChannel},
-	exact: "cs:~user/development/series/name",
-}, {
-	s:     "https://jujucharms.com/u/user/development/name/1/",
-	url:   &charm.URL{"cs", "user", "name", 1, "", charm.DevelopmentChannel},
-	exact: "cs:~user/development/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/development/name/",
-	url:   &charm.URL{"cs", "user", "name", -1, "", charm.DevelopmentChannel},
-	exact: "cs:~user/development/name",
 }, {
 	s:   "https://jujucharms.com/",
 	err: `URL has invalid charm or bundle name: $URL`,
@@ -253,9 +191,6 @@ var urlTests = []struct {
 	s:   "cs:~user/production/series/name-1",
 	err: `charm or bundle URL has invalid form: $URL`,
 }, {
-	s:   "cs:~user/development/series/badwolf/name-1",
-	err: `charm or bundle URL has invalid form: $URL`,
-}, {
 	s:   "cs:/name",
 	err: `charm or bundle URL has invalid series: $URL`,
 }, {
@@ -265,55 +200,33 @@ var urlTests = []struct {
 	s:   "local:~user/name",
 	err: `local charm or bundle URL with user name: $URL`,
 }, {
-	s:   "local:development/name",
-	err: `local charm or bundle URL with channel: $URL`,
-}, {
-	s:   "local:development/series/name-1",
-	err: `local charm or bundle URL with channel: $URL`,
-}, {
 	s:     "precise/wordpress",
 	exact: "cs:precise/wordpress",
-	url:   &charm.URL{"cs", "", "wordpress", -1, "precise", ""},
+	url:   &charm.URL{"cs", "", "wordpress", -1, "precise"},
 }, {
 	s:     "foo",
 	exact: "cs:foo",
-	url:   &charm.URL{"cs", "", "foo", -1, "", ""},
+	url:   &charm.URL{"cs", "", "foo", -1, ""},
 }, {
 	s:     "foo-1",
 	exact: "cs:foo-1",
-	url:   &charm.URL{"cs", "", "foo", 1, "", ""},
+	url:   &charm.URL{"cs", "", "foo", 1, ""},
 }, {
 	s:     "n0-n0-n0",
 	exact: "cs:n0-n0-n0",
-	url:   &charm.URL{"cs", "", "n0-n0-n0", -1, "", ""},
+	url:   &charm.URL{"cs", "", "n0-n0-n0", -1, ""},
 }, {
 	s:     "cs:foo",
 	exact: "cs:foo",
-	url:   &charm.URL{"cs", "", "foo", -1, "", ""},
+	url:   &charm.URL{"cs", "", "foo", -1, ""},
 }, {
 	s:     "local:foo",
 	exact: "local:foo",
-	url:   &charm.URL{"local", "", "foo", -1, "", ""},
+	url:   &charm.URL{"local", "", "foo", -1, ""},
 }, {
 	s:     "series/foo",
 	exact: "cs:series/foo",
-	url:   &charm.URL{"cs", "", "foo", -1, "series", ""},
-}, {
-	s:     "development/foo",
-	exact: "cs:development/foo",
-	url:   &charm.URL{"cs", "", "foo", -1, "", charm.DevelopmentChannel},
-}, {
-	s:     "development/foo-1",
-	exact: "cs:development/foo-1",
-	url:   &charm.URL{"cs", "", "foo", 1, "", charm.DevelopmentChannel},
-}, {
-	s:     "development/n0-n0-n0",
-	exact: "cs:development/n0-n0-n0",
-	url:   &charm.URL{"cs", "", "n0-n0-n0", -1, "", charm.DevelopmentChannel},
-}, {
-	s:     "development/series/foo",
-	exact: "cs:development/series/foo",
-	url:   &charm.URL{"cs", "", "foo", -1, "series", charm.DevelopmentChannel},
+	url:   &charm.URL{"cs", "", "foo", -1, "series"},
 }, {
 	s:   "series/foo/bar",
 	err: `charm or bundle URL has invalid form: "series/foo/bar"`,
@@ -368,13 +281,6 @@ var inferTests = []struct {
 	{"bs:foo", "bs:defseries/foo"},
 	{"cs:~1/foo", "cs:~1/defseries/foo"},
 	{"cs:foo-1-2", "cs:defseries/foo-1-2"},
-	{"development/foo", "cs:development/defseries/foo"},
-	{"development/foo-1", "cs:development/defseries/foo-1"},
-	{"development/series/foo", "cs:development/series/foo"},
-	{"local:development/series/foo", "local:development/series/foo"},
-	{"cs:~user/development/foo", "cs:~user/development/defseries/foo"},
-	{"local:~user/development/series/foo", "local:~user/development/series/foo"},
-	{"cs:~1/development/foo", "cs:~1/development/defseries/foo"},
 }
 
 func (s *URLSuite) TestInferURL(c *gc.C) {
@@ -412,13 +318,6 @@ var inferNoDefaultSeriesTests = []struct {
 	{"series/foo", "cs:series/foo", true},
 	{"cs:series/foo", "cs:series/foo", true},
 	{"cs:~user/series/foo", "cs:~user/series/foo", true},
-	{"development/foo", "", false},
-	{"development/foo-1", "", false},
-	{"cs:development/foo", "", false},
-	{"cs:~user/development/foo", "", false},
-	{"development/series/foo", "cs:development/series/foo", true},
-	{"cs:development/series/foo", "cs:development/series/foo", true},
-	{"cs:~user/development/series/foo", "cs:~user/development/series/foo", true},
 }
 
 func (s *URLSuite) TestInferURLNoDefaultSeries(c *gc.C) {
@@ -474,30 +373,9 @@ func (s *URLSuite) TestValidCheckers(c *gc.C) {
 	}
 }
 
-var isValidChannelTests = []struct {
-	channel charm.Channel
-	expect  bool
-}{{
-	channel: charm.DevelopmentChannel,
-	expect:  true,
-}, {
-	channel: "",
-}, {
-	channel: "-development",
-}, {
-	channel: "bad wolf",
-}}
-
-func (s *URLSuite) TestIsValidChannel(c *gc.C) {
-	for i, t := range isValidChannelTests {
-		c.Logf("test %d: %s", i, t.channel)
-		c.Assert(charm.IsValidChannel(t.channel), gc.Equals, t.expect, gc.Commentf("%s", t.channel))
-	}
-}
-
 func (s *URLSuite) TestMustParseURL(c *gc.C) {
 	url := charm.MustParseURL("cs:series/name")
-	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series", ""})
+	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series"})
 	f := func() { charm.MustParseURL("local:@@/name") }
 	c.Assert(f, gc.PanicMatches, "charm or bundle URL has invalid series: .*")
 	f = func() { charm.MustParseURL("cs:~user") }
@@ -509,26 +387,12 @@ func (s *URLSuite) TestMustParseURL(c *gc.C) {
 func (s *URLSuite) TestWithRevision(c *gc.C) {
 	url := charm.MustParseURL("cs:series/name")
 	other := url.WithRevision(1)
-	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series", ""})
-	c.Assert(other, gc.DeepEquals, &charm.URL{"cs", "", "name", 1, "series", ""})
+	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series"})
+	c.Assert(other, gc.DeepEquals, &charm.URL{"cs", "", "name", 1, "series"})
 
 	// Should always copy. The opposite behavior is error prone.
 	c.Assert(other.WithRevision(1), gc.Not(gc.Equals), other)
 	c.Assert(other.WithRevision(1), gc.DeepEquals, other)
-}
-
-func (s *URLSuite) TestWithChannel(c *gc.C) {
-	url := charm.MustParseURL("cs:series/name")
-	other := url.WithChannel("development")
-	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series", ""})
-	c.Assert(other, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series", "development"})
-
-	// Should always copy. The opposite behavior is error prone.
-	c.Assert(other.WithRevision(1), gc.Not(gc.Equals), other)
-
-	// Set the channel back to empty.
-	other = url.WithChannel("")
-	c.Assert(other, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series", ""})
 }
 
 var codecs = []struct {
