@@ -294,7 +294,7 @@ var urlTests = []struct {
 }, {
 	// Bundle URLs that come back from the charm store look like this:
 	s:     "cs:bundle/mediawiki-single-1",
-	exact: "cs:mediawiki-single/bundle/1",
+	exact: "cs:mediawiki-single/1",
 	url:   &charm.URL{"cs", "", "mediawiki-single", 1, "bundle"},
 }}
 

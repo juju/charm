@@ -47,16 +47,14 @@ type URL struct {
 	Series   string // "precise" or "" if unset
 }
 
+const bundleSeries = "bundle"
+
 var ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
 
 var (
-	validSeries = set.NewStrings(series.SupportedSeries()...)
+	validSeries = set.NewStrings(series.SupportedSeries()...).Union(set.NewStrings(bundleSeries))
 	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
-
-func init() {
-	validSeries.Add("bundle")
-}
 
 // IsValidSeries reports whether series is a valid series in charm or bundle
 // URLs.
@@ -381,7 +379,7 @@ func (u URL) String() string {
 	}
 	// Name is required.
 	parts = append(parts, u.Name)
-	if u.Series != "" {
+	if u.Series != "" && u.Series != bundleSeries {
 		parts = append(parts, u.Series)
 	}
 	if u.Revision >= 0 {
