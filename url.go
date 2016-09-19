@@ -334,24 +334,24 @@ func parseV2URL(url *gourl.URL) (*URL, error) {
 	return &r, nil
 }
 
-func (r *URL) path() string {
+// Path returns the the path that should be used to request this
+// charm/bundle archive from the charm store. At the moment, this
+// needs to be the old-style ~user/series/name-rev format - the store
+// API doesn't recognise the newer user/name/series/rev urls.
+func (u URL) Path() string {
 	var parts []string
-	if r.User != "" {
-		parts = append(parts, fmt.Sprintf("%s", r.User))
+	if u.User != "" {
+		parts = append(parts, fmt.Sprintf("~%s", u.User))
 	}
-	// Name is required.
-	parts = append(parts, r.Name)
-	if r.Series != "" {
-		parts = append(parts, r.Series)
+	if u.Series != "" {
+		parts = append(parts, u.Series)
 	}
-	if r.Revision >= 0 {
-		parts = append(parts, fmt.Sprintf("%d", r.Revision))
+	if u.Revision >= 0 {
+		parts = append(parts, fmt.Sprintf("%s-%d", u.Name, u.Revision))
+	} else {
+		parts = append(parts, u.Name)
 	}
 	return strings.Join(parts, "/")
-}
-
-func (r URL) Path() string {
-	return r.path()
 }
 
 // InferURL parses src as a reference, fills out the series in the
@@ -372,8 +372,22 @@ func InferURL(src, defaultSeries string) (*URL, error) {
 	return u, nil
 }
 
+// String returns the charm URL in the newer cs:user/name/series/rev
+// format (where everything except the name are optional).
 func (u URL) String() string {
-	return fmt.Sprintf("%s:%s", u.Schema, u.Path())
+	var parts []string
+	if u.User != "" {
+		parts = append(parts, fmt.Sprintf("%s", u.User))
+	}
+	// Name is required.
+	parts = append(parts, u.Name)
+	if u.Series != "" {
+		parts = append(parts, u.Series)
+	}
+	if u.Revision >= 0 {
+		parts = append(parts, fmt.Sprintf("%d", u.Revision))
+	}
+	return fmt.Sprintf("%s:%s", u.Schema, strings.Join(parts, "/"))
 }
 
 // GetBSON turns u into a bson.Getter so it can be saved directly

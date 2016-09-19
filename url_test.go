@@ -517,6 +517,11 @@ func (s *URLSuite) TestJSONGarbage(c *gc.C) {
 	}
 }
 
+func (*URLSuite) TestPath(c *gc.C) {
+	c.Check(charm.MustParseURL("cs:user/name/quantal/4").Path(), gc.Equals, "~user/quantal/name-4")
+	c.Check(charm.MustParseURL("cs:user/name/quantal").Path(), gc.Equals, "~user/quantal/name")
+}
+
 type QuoteSuite struct{}
 
 var _ = gc.Suite(&QuoteSuite{})
