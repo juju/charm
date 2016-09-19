@@ -44,7 +44,7 @@ type URL struct {
 	User     string // "joe".
 	Name     string // "wordpress".
 	Revision int    // -1 if unset, N otherwise.
-	Series   string // "precise" or "" if unset
+	Series   string // "precise" or "" if unset; "bundle" if it's a bundle.
 }
 
 const bundleSeries = "bundle"
@@ -222,14 +222,6 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 		return nil, fmt.Errorf("URL has invalid charm or bundle name: %q", originalURL)
 	}
 	return &r, nil
-}
-
-func convertRevision(revision string, url *gourl.URL) (int, error) {
-	result, err := strconv.Atoi(revision)
-	if err != nil {
-		return -1, fmt.Errorf("charm or bundle URL has malformed revision: %q in %q", revision, url)
-	}
-	return result, nil
 }
 
 func parseV3URL(url *gourl.URL) (*URL, error) {
