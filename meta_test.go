@@ -61,14 +61,11 @@ func (s *MetaSuite) TestValidTermFormat(c *gc.C) {
 		"foobar",
 		"foobar/27",
 		"foo/003",
-		"owner/Foo-bar",
 		"owner/foobar/27",
 		"owner/foobar",
 		"owner/foo-bar",
-		"owner/foo_bar",
 		"own-er/foobar",
 		"ibm/j9-jvm/2",
-		"term_123-23aAf/1",
 		"cs:foobar/27",
 		"cs:foobar",
 	}
@@ -103,14 +100,11 @@ func (s *MetaSuite) TestTermStringRoundTrip(c *gc.C) {
 	terms := []string{
 		"foobar",
 		"foobar/27",
-		"owner/Foo-bar",
 		"owner/foobar/27",
 		"owner/foobar",
 		"owner/foo-bar",
-		"owner/foo_bar",
 		"own-er/foobar",
 		"ibm/j9-jvm/2",
-		"term_123-23aAf/1",
 		"cs:foobar/27",
 	}
 	for i, term := range terms {
@@ -152,11 +146,33 @@ func (s *MetaSuite) TestCheckTerms(c *gc.C) {
 		terms:       []string{"term/1", "term about a term"},
 		expectError: `wrong term name format "term about a term"`,
 	}, {
-		about: "term name must start with lowercase letter",
-		terms: []string{"Term/1"},
+		about:       "term name must start with lowercase letter",
+		terms:       []string{"Term/1"},
+		expectError: `wrong term name format "Term"`,
 	}, {
-		about: "term name match the regexp",
-		terms: []string{"term_123-23aAf/1"},
+		about:       "term name cannot contain capital letters",
+		terms:       []string{"owner/foO-Bar"},
+		expectError: `wrong term name format "foO-Bar"`,
+	}, {
+		about:       "term name cannot contain underscores, that's what dashes are for",
+		terms:       []string{"owner/foo_bar"},
+		expectError: `wrong term name format "foo_bar"`,
+	}, {
+		about:       "term name can't end with a dash",
+		terms:       []string{"o-/1"},
+		expectError: `wrong term name format "o-"`,
+	}, {
+		about:       "term name can't contain consecutive dashes",
+		terms:       []string{"o-oo--ooo---o/1"},
+		expectError: `wrong term name format "o-oo--ooo---o"`,
+	}, {
+		about:       "term name more than a single char",
+		terms:       []string{"z/1"},
+		expectError: `wrong term name format "z"`,
+	}, {
+		about:       "term name match the regexp",
+		terms:       []string{"term_123-23aAf/1"},
+		expectError: `wrong term name format "term_123-23aAf"`,
 	},
 	}
 	for i, test := range tests {
@@ -214,17 +230,9 @@ func (s *MetaSuite) TestParseTerms(c *gc.C) {
 		term:        "term about a term",
 		expectError: `wrong term name format "term about a term"`,
 	}, {
-		about:      "term name may start with an uppercase letter",
-		term:       "Term/1",
-		expectTerm: charm.TermsId{"", "", "Term", 1},
-	}, {
 		about:       "term name must not start with a number",
 		term:        "1Term/1",
 		expectError: `wrong term name format "1Term"`,
-	}, {
-		about:      "term name match the regexp",
-		term:       "term_123-23aAf/1",
-		expectTerm: charm.TermsId{"", "", "term_123-23aAf", 1},
 	}, {
 		about:      "full term with tenant",
 		term:       "tenant:owner/term/1",
