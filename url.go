@@ -49,9 +49,9 @@ type URL struct {
 
 const bundleSeries = "bundle"
 
-var ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
-
 var (
+	ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
+
 	validSeries = set.NewStrings(series.SupportedSeries()...).Union(set.NewStrings(bundleSeries))
 	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
