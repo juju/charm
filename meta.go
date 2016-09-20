@@ -242,7 +242,7 @@ func parseStringList(list interface{}) []string {
 	return result
 }
 
-var validTermName = regexp.MustCompile(`^[a-zA-Z][\w-]+$`)
+var validTermName = regexp.MustCompile(`^[a-z](-?[a-z0-9]+)+$`)
 
 // TermsId represents a single term id. The term can either be owned
 // or "public" (meaning there is no owner).
