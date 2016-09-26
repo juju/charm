@@ -384,7 +384,7 @@ relations:
 		`machine "bogus" is not referred to by a placement directive`,
 		`invalid machine id "bogus" found in machines`,
 		`invalid constraints "bad constraints" in machine "0": bad constraint`,
-		`invalid charm URL in application "mediawiki": charm or bundle URL has invalid schema: "bogus:precise/mediawiki-10"`,
+		`invalid charm URL in application "mediawiki": cannot parse URL "bogus:precise/mediawiki-10": schema "bogus" not valid`,
 		`charm path in application "riak" does not exist: internal/test-charm-repo/bundle/somepath`,
 		`invalid constraints "bad constraints" in application "mysql": bad constraint`,
 		`negative number of units specified on application "mediawiki"`,
