@@ -140,10 +140,10 @@ var urlTests = []struct {
 	exact: "cs:name/quantal/1",
 }, {
 	s:   "https://jujucharms.com/",
-	err: `URL has invalid charm or bundle name: $URL`,
+	err: `cannot parse URL $URL: name "" not valid`,
 }, {
 	s:   "https://jujucharms.com/bad.wolf",
-	err: `URL has invalid charm or bundle name: $URL`,
+	err: `cannot parse URL $URL: name "bad.wolf" not valid`,
 }, {
 	s:   "https://jujucharms.com/u/",
 	err: "charm or bundle URL $URL malformed, expected \"/u/<user>/<name>\"",
@@ -155,7 +155,7 @@ var urlTests = []struct {
 	err: "charm or bundle URL has malformed revision: \"badwolf\" in $URL",
 }, {
 	s:   "https://jujucharms.com/name/badwolf/42",
-	err: `charm or bundle URL has invalid series: $URL`,
+	err: `cannot parse URL $URL: series name "badwolf" not valid`,
 }, {
 	s:   "https://badwolf@jujucharms.com/name/saucy/42",
 	err: `charm or bundle URL $URL has unrecognized parts`,
@@ -167,7 +167,7 @@ var urlTests = []struct {
 	err: `charm or bundle URL $URL has unrecognized parts`,
 }, {
 	s:   "bs:~user/utopic/name-1",
-	err: `charm or bundle URL has invalid schema: $URL`,
+	err: `cannot parse URL $URL: schema "bs" not valid`,
 }, {
 	s:   ":foo",
 	err: `cannot parse charm or bundle URL: $URL`,
@@ -179,19 +179,19 @@ var urlTests = []struct {
 	err: `URL without charm or bundle name: $URL`,
 }, {
 	s:   "cs:~user/unknown/name-1",
-	err: `charm or bundle URL has invalid series: $URL`,
+	err: `cannot parse URL $URL: series name "unknown" not valid`,
 }, {
 	s:   "cs:~user/wily/name-1-2",
-	err: `URL has invalid charm or bundle name: $URL`,
+	err: `cannot parse URL $URL: name "name-1" not valid`,
 }, {
 	s:   "cs:~user/xenial/name-1-name-2",
-	err: `URL has invalid charm or bundle name: $URL`,
+	err: `cannot parse URL $URL: name "name-1-name" not valid`,
 }, {
 	s:   "cs:~user/precise/name--name-2",
-	err: `URL has invalid charm or bundle name: $URL`,
+	err: `cannot parse URL $URL: name "name--name" not valid`,
 }, {
 	s:   "cs:foo-1-2",
-	err: `URL has invalid charm or bundle name: $URL`,
+	err: `cannot parse URL $URL: name "foo-1" not valid`,
 }, {
 	s:   "cs:~user/quantal/huh/name-1",
 	err: `charm or bundle URL has invalid form: $URL`,
@@ -203,7 +203,7 @@ var urlTests = []struct {
 	err: `charm or bundle URL has invalid form: $URL`,
 }, {
 	s:   "cs:/name",
-	err: `charm or bundle URL has invalid series: $URL`,
+	err: `cannot parse URL $URL: series name "" not valid`,
 }, {
 	s:   "local:~user/trusty/name",
 	err: `local charm or bundle URL with user name: $URL`,
@@ -243,7 +243,7 @@ var urlTests = []struct {
 	err: `charm or bundle URL has invalid form: "wily/foo/bar"`,
 }, {
 	s:   "cs:foo/~blah",
-	err: `charm or bundle URL has invalid series: $URL`,
+	err: `cannot parse URL $URL: series name "foo" not valid`,
 }, {
 	s:     "babbageclunk/mysql/xenial/20",
 	exact: "cs:babbageclunk/mysql/xenial/20",
@@ -281,13 +281,10 @@ var urlTests = []struct {
 	err: "charm or bundle URL has invalid form: $URL",
 }, {
 	s:   "1",
-	err: `URL has invalid charm or bundle name: $URL`,
+	err: `cannot parse URL $URL: name "1" not valid`,
 }, {
-	// 	s:   "vivid",
-	// 	err: `URL has invalid charm or bundle name: $URL`,
-	// }, {
 	s:   "vivid/1",
-	err: `URL has invalid charm or bundle name: $URL`,
+	err: `cannot parse URL $URL: name "1" not valid`,
 }, {
 	s:   "something/nbabbageclunk/mysql/vivid/1",
 	err: "charm or bundle URL has invalid form: $URL",
@@ -309,13 +306,13 @@ func (s *URLSuite) TestParseURL(c *gc.C) {
 		url, uerr := charm.ParseURL(t.s)
 		if t.err != "" {
 			t.err = strings.Replace(t.err, "$URL", regexp.QuoteMeta(fmt.Sprintf("%q", t.s)), -1)
-			c.Assert(uerr, gc.ErrorMatches, t.err)
-			c.Assert(url, gc.IsNil)
+			c.Check(uerr, gc.ErrorMatches, t.err)
+			c.Check(url, gc.IsNil)
 			continue
 		}
 		c.Assert(uerr, gc.IsNil)
-		c.Assert(url, gc.DeepEquals, t.url)
-		c.Assert(url.String(), gc.Equals, expectStr)
+		c.Check(url, gc.DeepEquals, t.url)
+		c.Check(url.String(), gc.Equals, expectStr)
 
 		// URL strings are generated as expected.  Reversability is preserved
 		// with v1 URLs.
@@ -440,7 +437,7 @@ func (s *URLSuite) TestMustParseURL(c *gc.C) {
 	url := charm.MustParseURL("cs:precise/name")
 	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "precise"})
 	f := func() { charm.MustParseURL("local:@@/name") }
-	c.Assert(f, gc.PanicMatches, "charm or bundle URL has invalid series: .*")
+	c.Assert(f, gc.PanicMatches, "cannot parse URL \"local:@@/name\": series name \"@@\" not valid")
 	f = func() { charm.MustParseURL("cs:~user") }
 	c.Assert(f, gc.PanicMatches, "URL without charm or bundle name: .*")
 	f = func() { charm.MustParseURL("cs:~user") }

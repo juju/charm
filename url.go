@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/juju/errors"
 	"github.com/juju/utils/series"
 	"github.com/juju/utils/set"
 	"gopkg.in/juju/names.v2"
@@ -50,11 +51,19 @@ type URL struct {
 const bundleSeries = "bundle"
 
 var (
-	ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
+	ErrUnresolvedUrl error = errors.Errorf("charm or bundle url series is not resolved")
 
 	validSeries = set.NewStrings(series.SupportedSeries()...).Union(set.NewStrings(bundleSeries))
 	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
+
+// ValidateSchema returns an error if the schema is invalid.
+func ValidateSchema(schema string) error {
+	if schema != "cs" && schema != "local" {
+		return errors.NotValidf("schema %q", schema)
+	}
+	return nil
+}
 
 // IsValidSeries reports whether series is a valid series in charm or bundle
 // URLs.
@@ -62,9 +71,25 @@ func IsValidSeries(series string) bool {
 	return validSeries.Contains(series)
 }
 
+// ValidateSeries returns an error if the given series is invalid.
+func ValidateSeries(series string) error {
+	if IsValidSeries(series) == false {
+		return errors.NotValidf("series name %q", series)
+	}
+	return nil
+}
+
 // IsValidName reports whether name is a valid charm or bundle name.
 func IsValidName(name string) bool {
 	return validName.MatchString(name)
+}
+
+// ValidateName returns an error if the given name is invalid.
+func ValidateName(name string) error {
+	if IsValidName(name) == false {
+		return errors.NotValidf("name %q", name)
+	}
+	return nil
 }
 
 // WithRevision returns a URL equivalent to url but with Revision set
@@ -113,10 +138,10 @@ func ParseURL(url string) (*URL, error) {
 	// Check if we're dealing with a v1 or v2 URL.
 	u, err := gourl.Parse(url)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse charm or bundle URL: %q", url)
+		return nil, errors.Errorf("cannot parse charm or bundle URL: %q", url)
 	}
 	if u.RawQuery != "" || u.Fragment != "" || u.User != nil {
-		return nil, fmt.Errorf("charm or bundle URL %q has unrecognized parts", url)
+		return nil, errors.Errorf("charm or bundle URL %q has unrecognized parts", url)
 	}
 	var curl *URL
 	switch {
@@ -133,7 +158,7 @@ func ParseURL(url string) (*URL, error) {
 		curl, err = parseNonWebURL(u, url)
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.Trace(err)
 	}
 	if curl.Schema == "" {
 		curl.Schema = "cs"
@@ -162,37 +187,37 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 	var r URL
 	if url.Scheme != "" {
 		r.Schema = url.Scheme
-		if r.Schema != "cs" && r.Schema != "local" {
-			return nil, fmt.Errorf("charm or bundle URL has invalid schema: %q", originalURL)
+		if err := ValidateSchema(r.Schema); err != nil {
+			return nil, errors.Annotatef(err, "cannot parse URL %q", url)
 		}
 	}
 	i := 0
 	parts := strings.Split(url.Path[i:], "/")
 	if len(parts) < 1 || len(parts) > 4 {
-		return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", originalURL)
+		return nil, errors.Errorf("charm or bundle URL has invalid form: %q", originalURL)
 	}
 
 	// ~<username>
 	if strings.HasPrefix(parts[0], "~") {
 		if r.Schema == "local" {
-			return nil, fmt.Errorf("local charm or bundle URL with user name: %q", originalURL)
+			return nil, errors.Errorf("local charm or bundle URL with user name: %q", originalURL)
 		}
 		r.User, parts = parts[0][1:], parts[1:]
 	}
 
 	if len(parts) > 2 {
-		return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", originalURL)
+		return nil, errors.Errorf("charm or bundle URL has invalid form: %q", originalURL)
 	}
 
 	// <series>
 	if len(parts) == 2 {
 		r.Series, parts = parts[0], parts[1:]
-		if !IsValidSeries(r.Series) {
-			return nil, fmt.Errorf("charm or bundle URL has invalid series: %q", originalURL)
+		if err := ValidateSeries(r.Series); err != nil {
+			return nil, errors.Annotatef(err, "cannot parse URL %q", originalURL)
 		}
 	}
 	if len(parts) < 1 {
-		return nil, fmt.Errorf("URL without charm or bundle name: %q", originalURL)
+		return nil, errors.Errorf("URL without charm or bundle name: %q", originalURL)
 	}
 
 	// <name>[-<revision>]
@@ -215,11 +240,11 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 	}
 	if r.User != "" {
 		if !names.IsValidUser(r.User) {
-			return nil, fmt.Errorf("charm or bundle URL has invalid user name: %q", originalURL)
+			return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", originalURL)
 		}
 	}
-	if !IsValidName(r.Name) {
-		return nil, fmt.Errorf("URL has invalid charm or bundle name: %q", originalURL)
+	if err := ValidateName(r.Name); err != nil {
+		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
 	}
 	return &r, nil
 }
@@ -227,13 +252,13 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 func parseV3URL(url *gourl.URL) (*URL, error) {
 	var r URL
 	r.Revision = -1
-	invalidName := fmt.Errorf("URL has invalid charm or bundle name: %q", url)
-	unrecognizedParts := fmt.Errorf("charm or bundle URL %q has unrecognized parts", url)
+	invalidName := errors.Errorf("URL has invalid charm or bundle name: %q", url)
+	unrecognizedParts := errors.Errorf("charm or bundle URL %q has unrecognized parts", url)
 
 	if url.Scheme != "" {
 		r.Schema = url.Scheme
-		if r.Schema != "cs" && r.Schema != "local" {
-			return nil, fmt.Errorf("charm or bundle URL has invalid schema: %q", url)
+		if err := ValidateSchema(r.Schema); err != nil {
+			return nil, errors.Annotatef(err, "cannot parse URL %q", url)
 		}
 	}
 
@@ -265,7 +290,7 @@ func parseV3URL(url *gourl.URL) (*URL, error) {
 
 	if last >= 0 {
 		if !names.IsValidUser(parts[last]) {
-			return nil, fmt.Errorf("charm or bundle URL has invalid user name: %q", url)
+			return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", url)
 		}
 		r.User = parts[last]
 		last -= 1
@@ -285,7 +310,7 @@ func parseV2URL(url *gourl.URL) (*URL, error) {
 	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
 	if parts[0] == "u" {
 		if len(parts) < 3 {
-			return nil, fmt.Errorf(`charm or bundle URL %q malformed, expected "/u/<user>/<name>"`, url)
+			return nil, errors.Errorf(`charm or bundle URL %q malformed, expected "/u/<user>/<name>"`, url)
 		}
 		r.User, parts = parts[1], parts[2:]
 	}
@@ -297,29 +322,29 @@ func parseV2URL(url *gourl.URL) (*URL, error) {
 			r.Revision = revision
 		} else {
 			r.Series = parts[0]
-			if !IsValidSeries(r.Series) {
-				return nil, fmt.Errorf("charm or bundle URL has invalid series: %q", url)
+			if err := ValidateSeries(r.Series); err != nil {
+				return nil, errors.Annotatef(err, "cannot parse URL %q", url)
 			}
 			parts = parts[1:]
 			if len(parts) == 1 {
 				r.Revision, err = strconv.Atoi(parts[0])
 				if err != nil {
-					return nil, fmt.Errorf("charm or bundle URL has malformed revision: %q in %q", parts[0], url)
+					return nil, errors.Errorf("charm or bundle URL has malformed revision: %q in %q", parts[0], url)
 				}
 			} else {
 				if len(parts) != 0 {
-					return nil, fmt.Errorf("charm or bundle URL has invalid form: %q", url)
+					return nil, errors.Errorf("charm or bundle URL has invalid form: %q", url)
 				}
 			}
 		}
 	}
 	if r.User != "" {
 		if !names.IsValidUser(r.User) {
-			return nil, fmt.Errorf("charm or bundle URL has invalid user name: %q", url)
+			return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", url)
 		}
 	}
-	if !IsValidName(r.Name) {
-		return nil, fmt.Errorf("URL has invalid charm or bundle name: %q", url)
+	if err := ValidateName(r.Name); err != nil {
+		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
 	}
 	return &r, nil
 }
@@ -355,7 +380,7 @@ func InferURL(src, defaultSeries string) (*URL, error) {
 	}
 	if u.Series == "" {
 		if defaultSeries == "" {
-			return nil, fmt.Errorf("cannot infer charm or bundle URL for %q: charm or bundle url series is not resolved", src)
+			return nil, errors.Errorf("cannot infer charm or bundle URL for %q: charm or bundle url series is not resolved", src)
 		}
 		u.Series = defaultSeries
 	}
