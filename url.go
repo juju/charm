@@ -45,23 +45,18 @@ type URL struct {
 	User     string // "joe".
 	Name     string // "wordpress".
 	Revision int    // -1 if unset, N otherwise.
-	Series   string // "precise" or "" if unset; "bundle" if it's a bundle.
+	Series   string // "precise" or "" if unset
 }
 
-const bundleSeries = "bundle"
+var ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
 
 var (
-	ErrUnresolvedUrl error = errors.Errorf("charm or bundle url series is not resolved")
-	validSeries            = set.NewStrings(series.SupportedSeries()...).Union(set.NewStrings(bundleSeries))
-	validName              = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
+	validSeries = set.NewStrings(series.SupportedSeries()...)
+	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
 
-// ValidateSchema returns an error if the schema is invalid.
-func ValidateSchema(schema string) error {
-	if schema != "cs" && schema != "local" {
-		return errors.NotValidf("schema %q", schema)
-	}
-	return nil
+func init() {
+	validSeries.Add("bundle")
 }
 
 // IsValidSeries reports whether series is a valid series in charm or bundle
@@ -248,6 +243,14 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 	return &r, nil
 }
 
+func convertRevision(revision string, url *gourl.URL) (int, error) {
+	result, err := strconv.Atoi(revision)
+	if err != nil {
+		return -1, fmt.Errorf("charm or bundle URL has malformed revision: %q in %q", revision, url)
+	}
+	return result, nil
+}
+
 func parseV3URL(url *gourl.URL) (*URL, error) {
 	var r URL
 	r.Revision = -1
@@ -395,7 +398,7 @@ func (u URL) String() string {
 	}
 	// Name is required.
 	parts = append(parts, u.Name)
-	if u.Series != "" && u.Series != bundleSeries {
+	if u.Series != "" {
 		parts = append(parts, u.Series)
 	}
 	if u.Revision >= 0 {
