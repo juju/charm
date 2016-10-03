@@ -522,12 +522,12 @@ func (s *MetaSuite) TestSeries(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Check(meta.Series, gc.HasLen, 0)
 	charmMeta := fmt.Sprintf("%s\nseries:", dummyMetadata)
-	for _, seriesName := range []string{"precise", "trusty", "centos7"} {
+	for _, seriesName := range []string{"precise", "trusty", "plan9"} {
 		charmMeta = fmt.Sprintf("%s\n    - %s", charmMeta, seriesName)
 	}
 	meta, err = charm.ReadMeta(strings.NewReader(charmMeta))
 	c.Assert(err, gc.IsNil)
-	c.Assert(meta.Series, gc.DeepEquals, []string{"precise", "trusty", "centos7"})
+	c.Assert(meta.Series, gc.DeepEquals, []string{"precise", "trusty", "plan9"})
 }
 
 func (s *MetaSuite) TestInvalidSeries(c *gc.C) {
@@ -885,7 +885,7 @@ extra-bindings:
 categories: [c1, c1]
 tags: [t1, t2]
 series:
-    - saucy
+    - someseries
 resources:
     foo:
         description: 'a description'
