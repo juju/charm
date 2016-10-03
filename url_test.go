@@ -147,7 +147,7 @@ var urlTests = []struct {
 	err: "charm or bundle URL has malformed revision: \"badwolf\" in $URL",
 }, {
 	s:   "https://jujucharms.com/name/bad.wolf/42",
-	err: `charm or bundle URL has invalid series: $URL`,
+	err: `cannot parse URL $URL: series name "bad.wolf" not valid`,
 }, {
 	s:   "https://badwolf@jujucharms.com/name/series/42",
 	err: `charm or bundle URL $URL has unrecognized parts`,
@@ -159,7 +159,7 @@ var urlTests = []struct {
 	err: `charm or bundle URL $URL has unrecognized parts`,
 }, {
 	s:   "bs:~user/series/name-1",
-	err: `charm or bundle URL has invalid schema: $URL`,
+	err: `cannot parse URL $URL: schema "bs" not valid`,
 }, {
 	s:   ":foo",
 	err: `cannot parse charm or bundle URL: $URL`,
@@ -171,16 +171,16 @@ var urlTests = []struct {
 	err: `URL without charm or bundle name: $URL`,
 }, {
 	s:   "cs:~user/1/name-1",
-	err: `charm or bundle URL has invalid series: $URL`,
+	err: `cannot parse URL $URL: series name "1" not valid`,
 }, {
 	s:   "cs:~user/series/name-1-2",
-	err: `URL has invalid charm or bundle name: $URL`,
+	err: `cannot parse URL $URL: name "name-1" not valid`,
 }, {
 	s:   "cs:~user/series/name-1-name-2",
-	err: `URL has invalid charm or bundle name: $URL`,
+	err: `cannot parse URL $URL: name "name-1-name" not valid`,
 }, {
 	s:   "cs:~user/series/name--name-2",
-	err: `URL has invalid charm or bundle name: $URL`,
+	err: `cannot parse URL $URL: name "name--name" not valid`,
 }, {
 	s:   "cs:foo-1-2",
 	err: `cannot parse URL $URL: name "foo-1" not valid`,
@@ -232,7 +232,7 @@ var urlTests = []struct {
 	err: `charm or bundle URL has invalid form: "series/foo/bar"`,
 }, {
 	s:   "cs:foo/~blah",
-	err: `URL has invalid charm or bundle name: "cs:foo/~blah"`,
+	err: `cannot parse URL $URL: name "~blah" not valid`,
 }}
 
 func (s *URLSuite) TestParseURL(c *gc.C) {

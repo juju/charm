@@ -43,12 +43,19 @@ type URL struct {
 	Series   string // "precise" or "" if unset; "bundle" if it's a bundle.
 }
 
-var ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
-
 var (
-	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
-	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
+	ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
+	validSeries            = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
+	validName              = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
+
+// ValidateSchema returns an error if the schema is invalid.
+func ValidateSchema(schema string) error {
+	if schema != "cs" && schema != "local" {
+		return errors.NotValidf("schema %q", schema)
+	}
+	return nil
+}
 
 // IsValidSeries reports whether series is a valid series in charm or bundle
 // URLs.
