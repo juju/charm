@@ -52,9 +52,8 @@ const bundleSeries = "bundle"
 
 var (
 	ErrUnresolvedUrl error = errors.Errorf("charm or bundle url series is not resolved")
-
-	validSeries = set.NewStrings(series.SupportedSeries()...).Union(set.NewStrings(bundleSeries))
-	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
+	validSeries            = set.NewStrings(series.SupportedSeries()...).Union(set.NewStrings(bundleSeries))
+	validName              = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
 
 // ValidateSchema returns an error if the schema is invalid.
