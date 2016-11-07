@@ -55,10 +55,16 @@ type Metric struct {
 	Description string
 }
 
+// Plan represents the plan section of metrics.yaml
+type Plan struct {
+	Required bool `yaml:"required,omitempty"`
+}
+
 // Metrics contains the metrics declarations encoded in the metrics.yaml
 // file.
 type Metrics struct {
-	Metrics map[string]Metric
+	Metrics map[string]Metric `yaml:"metrics"`
+	Plan    *Plan             `yaml:"plan,omitempty"`
 }
 
 // ReadMetrics reads a MetricsDeclaration in YAML format.
