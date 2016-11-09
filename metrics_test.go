@@ -195,3 +195,30 @@ metrics:
 		c.Assert(err, gc.ErrorMatches, `metric "juju-unit-time" is using a prefix reserved for built-in metrics: it should not have type or description specification`)
 	}
 }
+
+func (s *MetricsSuite) TestDefaultNotRequired(c *gc.C) {
+	metrics, err := charm.ReadMetrics(strings.NewReader(`
+metrics:
+  some-metric:
+    type: gauge
+    description: something
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(metrics, gc.NotNil)
+	c.Assert(metrics.Plan, gc.IsNil)
+}
+
+func (s *MetricsSuite) TestRequired(c *gc.C) {
+	metrics, err := charm.ReadMetrics(strings.NewReader(`
+plan:
+  required: true
+metrics:
+  some-metric:
+    type: gauge
+    description: something
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(metrics, gc.NotNil)
+	c.Assert(metrics.Plan, gc.NotNil)
+	c.Assert(metrics.Plan.Required, gc.Equals, true)
+}
