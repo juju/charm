@@ -29,6 +29,17 @@ type CharmDir struct {
 // Trick to ensure *CharmDir implements the Charm interface.
 var _ Charm = (*CharmDir)(nil)
 
+// IsCharmDir returns true if the path reasonably represents a charm, even
+// if it is later shown to be problematic.
+func IsCharmDir(path string) bool {
+	dir := &CharmDir{Path: path}
+	_, err := os.Open(dir.join("metadata.yaml"))
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 // ReadCharmDir returns a CharmDir representing an expanded charm directory.
 func ReadCharmDir(path string) (dir *CharmDir, err error) {
 	dir = &CharmDir{Path: path}
