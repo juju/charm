@@ -7,6 +7,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	jc "github.com/juju/testing/checkers"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -24,6 +25,21 @@ type CharmDirSuite struct {
 }
 
 var _ = gc.Suite(&CharmDirSuite{})
+
+func (s *CharmDirSuite) TestIsCharmDirGoodCharm(c *gc.C) {
+	path := charmDirPath(c, "dummy")
+	c.Assert(charm.IsCharmDir(path), jc.IsTrue)
+}
+
+func (s *CharmDirSuite) TestIsCharmDirBundle(c *gc.C) {
+	path := bundleDirPath(c, "wordpress-simple")
+	c.Assert(charm.IsCharmDir(path), jc.IsFalse)
+}
+
+func (s *CharmDirSuite) TestIsCharmDirNoMetadataYaml(c *gc.C) {
+	path := charmDirPath(c, "bad")
+	c.Assert(charm.IsCharmDir(path), jc.IsFalse)
+}
 
 func (s *CharmDirSuite) TestReadCharmDir(c *gc.C) {
 	path := charmDirPath(c, "dummy")
