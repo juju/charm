@@ -289,9 +289,16 @@ func (a *CharmArchive) ExpandTo(dir string) error {
 	if err != nil {
 		return err
 	}
-	_, err = revFile.Write([]byte(strconv.Itoa(a.revision)))
-	revFile.Close()
-	return err
+	if _, err := revFile.Write([]byte(strconv.Itoa(a.revision))); err != nil {
+		return err
+	}
+	if err := revFile.Sync(); err != nil {
+		return err
+	}
+	if err := revFile.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // fixHookFunc returns a WalkFunc that makes sure hooks are owner-executable.
