@@ -85,7 +85,7 @@ func ReadMetrics(r io.Reader) (*Metrics, error) {
 		return nil, err
 	}
 	if metrics.Metrics == nil {
-		return &metrics, nil
+		return &metrics, fmt.Errorf("no metrics defined")
 	}
 	for name, metric := range metrics.Metrics {
 		if IsBuiltinMetric(name) {

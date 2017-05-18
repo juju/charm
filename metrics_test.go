@@ -29,17 +29,25 @@ type MetricsSuite struct{}
 var _ = gc.Suite(&MetricsSuite{})
 
 func (s *MetricsSuite) TestReadEmpty(c *gc.C) {
-	metrics, err := charm.ReadMetrics(strings.NewReader(""))
-	c.Assert(err, gc.IsNil)
-	c.Assert(metrics, gc.NotNil)
+	_, err := charm.ReadMetrics(strings.NewReader(""))
+	c.Assert(err, gc.ErrorMatches, "no metrics defined")
 }
 
 func (s *MetricsSuite) TestReadAlmostEmpty(c *gc.C) {
-	metrics, err := charm.ReadMetrics(strings.NewReader(`
+	_, err := charm.ReadMetrics(strings.NewReader(`
 metrics:
 `))
-	c.Assert(err, gc.IsNil)
-	c.Assert(metrics, gc.NotNil)
+	c.Assert(err, gc.ErrorMatches, "no metrics defined")
+}
+
+func (s *MetricsSuite) TestErrorAtTopLevel(c *gc.C) {
+	_, err := charm.ReadMetrics(strings.NewReader(`
+xmetrics:
+  some-metric:
+    type: gauge
+    description: Some description.
+`))
+	c.Assert(err, gc.ErrorMatches, "no metrics defined")
 }
 
 func (s *MetricsSuite) TestNoDescription(c *gc.C) {

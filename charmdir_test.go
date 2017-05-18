@@ -70,9 +70,8 @@ func (s *CharmDirSuite) TestReadCharmDirWithoutMetrics(c *gc.C) {
 
 func (s *CharmDirSuite) TestReadCharmDirWithEmptyMetrics(c *gc.C) {
 	path := charmDirPath(c, "metered-empty")
-	dir, err := charm.ReadCharmDir(path)
-	c.Assert(err, gc.IsNil)
-	c.Assert(Keys(dir.Metrics()), gc.HasLen, 0)
+	_, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.ErrorMatches, "metrics.yaml error: no metrics defined")
 }
 
 func (s *CharmDirSuite) TestReadCharmDirWithCustomMetrics(c *gc.C) {
