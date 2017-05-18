@@ -212,7 +212,7 @@ func (s *MetaSuite) TestParseTerms(c *gc.C) {
 	}, {
 		about:       "bad revision",
 		term:        "owner/term/12a",
-		expectError: `invalid revision number "12a" strconv.ParseInt: parsing "12a": invalid syntax`,
+		expectError: `invalid revision number "12a" strconv.Atoi: parsing "12a": invalid syntax`,
 	}, {
 		about:       "wrong format",
 		term:        "foobar/term/abc/1",
