@@ -35,6 +35,7 @@ func NewActions() *Actions {
 // http://json-schema.org/draft-04/schema# (see http://json-schema.org/latest/json-schema-core.html)
 type ActionSpec struct {
 	Description string
+	NonBlocking bool
 	Params      map[string]interface{}
 }
 
@@ -117,6 +118,7 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 		}
 
 		desc := "No description"
+		nonBlocking := false
 		thisActionSchema := map[string]interface{}{
 			"description": desc,
 			"type":        "object",
@@ -141,6 +143,13 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 					return nil, errors.Errorf("value for schema key %q must be a string", key)
 				}
 				thisActionSchema[key] = typed
+			case "nonblocking":
+				// These fields must be a YAML boolean
+				typed, ok := value.(bool)
+				if !ok {
+					return nil, errors.Errorf("value for schema key %q must be a YAML boolean", key)
+				}
+				nonBlocking = typed
 			case "required":
 				typed, ok := value.([]interface{})
 				if !ok {
@@ -182,6 +191,7 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 		// Now assign the resulting schema to the final entry for the result.
 		result.ActionSpecs[name] = ActionSpec{
 			Description: desc,
+			NonBlocking: nonBlocking,
 			Params:      thisActionSchema,
 		}
 	}

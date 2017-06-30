@@ -315,6 +315,7 @@ func (s *ActionsSuite) TestReadGoodActionsYaml(c *gc.C) {
 		yaml: `
 snapshot:
    description: Take a snapshot of the database.
+   nonblocking: true
    params:
       outfile:
          description: "The file to write out to."
@@ -324,6 +325,7 @@ snapshot:
 		expectedActions: &Actions{map[string]ActionSpec{
 			"snapshot": {
 				Description: "Take a snapshot of the database.",
+				NonBlocking: true,
 				Params: map[string]interface{}{
 					"title":       "snapshot",
 					"description": "Take a snapshot of the database.",
@@ -344,6 +346,7 @@ snapshot:
 		yaml: `
 snapshot:
    description: "Take a snapshot of the database."
+   nonblocking: false
    params:
       outfile:
          description: "The file to write out to."
@@ -413,6 +416,7 @@ remote-sync:
 		yaml: `
 snapshot:
    description: "Take a snapshot of the database."
+   nonblocking: false
    params:
       outfile:
          description: "The file to write out to."
@@ -430,6 +434,7 @@ snapshot:
 		expectedActions: &Actions{map[string]ActionSpec{
 			"snapshot": {
 				Description: "Take a snapshot of the database.",
+				NonBlocking: false,
 				Params: map[string]interface{}{
 					"title":       "snapshot",
 					"description": "Take a snapshot of the database.",
@@ -656,8 +661,19 @@ snapshot:
    other-key: ["some", "values"],
 `,
 		expectedError: "yaml: line 16: did not find expected key",
+	}, {
+		description: "A schema with an empty \"params\" key fails to parse",
+		yaml: `
+snapshot:
+   description: Take a snapshot of the database.
+   nonblocking: 5
+   params:
+     outfile:
+         description: "The file to write out to."
+         type: "string"
+`,
+		expectedError: "value for schema key \"nonblocking\" must be a YAML boolean",
 	}}
-
 	for i, test := range badActionsYamlTests {
 		c.Logf("test %d: %s", i, test.description)
 		reader := bytes.NewReader([]byte(test.yaml))
