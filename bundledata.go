@@ -154,7 +154,7 @@ type ApplicationSpec struct {
 	// Resources is the set of resource revisions to deploy for the
 	// application. Bundles only support charm store resources and not ones
 	// that were uploaded to the controller.
-	Resources map[string]int `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
+	Resources map[string]interface{} `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
 
 	// NumUnits holds the number of units of the
 	// application that will be deployed.

@@ -62,6 +62,8 @@ applications:
         constraints: "mem=8g"
         bindings:
             db: db
+        resources:
+            data: "resources/data.tar"
 relations:
     - ["mediawiki:db", "mysql:db"]
     - ["mysql:foo", "mediawiki:bar"]
@@ -110,7 +112,7 @@ var parseTests = []struct {
 					"db":      "db",
 					"website": "public",
 				},
-				Resources: map[string]int{
+				Resources: map[string]interface{}{
 					"data": 3,
 				},
 			},
@@ -134,6 +136,7 @@ var parseTests = []struct {
 				EndpointBindings: map[string]string{
 					"db": "db",
 				},
+				Resources: map[string]interface{}{"data": "resources/data.tar"},
 			},
 		},
 		Machines: map[string]*charm.MachineSpec{
@@ -241,6 +244,15 @@ func (*bundleDataSuite) TestCodecRoundTrip(c *gc.C) {
 			var bd charm.BundleData
 			err = codec.Unmarshal(data, &bd)
 			c.Assert(err, gc.IsNil)
+
+			for _, app := range bd.Applications {
+				for resName, res := range app.Resources {
+					if val, ok := res.(float64); ok {
+						app.Resources[resName] = int(val)
+					}
+				}
+			}
+
 			c.Assert(&bd, jc.DeepEquals, test.expectedBD)
 		}
 	}
