@@ -228,7 +228,7 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 		if relpath == "build" {
 			return filepath.SkipDir
 		}
-		if hidden {
+		if hidden && !strings.HasPrefix(relpath, ".git") {
 			return filepath.SkipDir
 		}
 		relpath += "/"
@@ -242,7 +242,7 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 	if mode&os.ModeSymlink != 0 {
 		method = zip.Store
 	}
-	if hidden || relpath == "revision" {
+	if hidden && !strings.HasPrefix(relpath, ".git") || relpath == "revision" {
 		return nil
 	}
 	h := &zip.FileHeader{
