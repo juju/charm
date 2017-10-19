@@ -40,14 +40,14 @@ func (option Option) validate(name string, value interface{}) (_ interface{}, er
 	if value == nil {
 		return nil, nil
 	}
-	defer option.error(&err, name, value)
 	if checker := optionTypeCheckers[option.Type]; checker != nil {
+		defer option.error(&err, name, value)
 		if value, err = checker.Coerce(value, nil); err != nil {
 			return nil, err
 		}
 		return value, nil
 	}
-	panic(fmt.Errorf("option %q has unknown type %q", name, option.Type))
+	return nil, fmt.Errorf("option %q has unknown type %q", name, option.Type)
 }
 
 var optionTypeCheckers = map[string]schema.Checker{
@@ -57,21 +57,22 @@ var optionTypeCheckers = map[string]schema.Checker{
 	"boolean": schema.Bool(),
 }
 
-// parse returns an appropriately-typed value for the supplied string, or
-// returns an error if it cannot be parsed to the correct type.
-func (option Option) parse(name, str string) (_ interface{}, err error) {
-	defer option.error(&err, name, str)
+func (option Option) parse(name, str string) (val interface{}, err error) {
 	switch option.Type {
 	case "string":
 		return str, nil
 	case "int":
-		return strconv.ParseInt(str, 10, 64)
+		val, err = strconv.ParseInt(str, 10, 64)
 	case "float":
-		return strconv.ParseFloat(str, 64)
+		val, err = strconv.ParseFloat(str, 64)
 	case "boolean":
-		return strconv.ParseBool(str)
+		val, err = strconv.ParseBool(str)
+	default:
+		return nil, fmt.Errorf("option %q has unknown type %q", name, option.Type)
 	}
-	panic(fmt.Errorf("option %q has unknown type %q", name, option.Type))
+
+	defer option.error(&err, name, str)
+	return
 }
 
 // Config represents the supported configuration options for a charm,
