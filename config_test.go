@@ -469,3 +469,14 @@ options:
 	c.Assert(err, gc.IsNil)
 	c.Assert(newCfg, jc.DeepEquals, cfg)
 }
+
+func (s *ConfigSuite) TestErrorOnInvalidOptionTypes(c *gc.C) {
+	cfg := charm.Config{
+		Options: map[string]charm.Option{"testOption": charm.Option{Type: "invalid type"}},
+	}
+	_, err := cfg.ParseSettingsYAML([]byte("testKey:\n  testOption: 12.345"), "testKey")
+	c.Assert(err, gc.ErrorMatches, "option \"testOption\" has unknown type \"invalid type\"")
+
+	_, err = cfg.ParseSettingsYAML([]byte("testKey:\n  testOption: \"some string value\""), "testKey")
+	c.Assert(err, gc.ErrorMatches, "option \"testOption\" has unknown type \"invalid type\"")
+}
