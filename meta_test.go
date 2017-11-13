@@ -18,8 +18,8 @@ import (
 	"gopkg.in/yaml.v2"
 	yamlv2 "gopkg.in/yaml.v2"
 
-	"gopkg.in/juju/charm.v6-unstable"
-	"gopkg.in/juju/charm.v6-unstable/resource"
+	"gopkg.in/juju/charm.v6"
+	"gopkg.in/juju/charm.v6/resource"
 )
 
 func repoMeta(c *gc.C, name string) io.Reader {

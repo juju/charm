@@ -192,7 +192,6 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 // strings, and coerces acceptable maps to contain only maps with string keys.
 func cleanse(input interface{}) (interface{}, error) {
 	switch typedInput := input.(type) {
-
 	// In this case, recurse in.
 	case map[string]interface{}:
 		newMap := make(map[string]interface{})
