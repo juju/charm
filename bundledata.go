@@ -234,6 +234,10 @@ type ApplicationSpec struct {
 
 	// EndpointBindings maps how endpoints are bound to spaces
 	EndpointBindings map[string]string `bson:"bindings,omitempty" json:"bindings,omitempty" yaml:"bindings,omitempty"`
+
+	// Plan specifies the plan under which the application is to be deployed.
+	// If "default", the default plan will be used for the charm
+	Plan string `bson:"plan,omitempty" json:"plan,omitempty" yaml:"plan,omitempty"`
 }
 
 // ReadBundleData reads bundle data from the given reader.
