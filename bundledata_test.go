@@ -1131,3 +1131,41 @@ func (*bundleDataSuite) TestParsePlacement(c *gc.C) {
 		}
 	}
 }
+
+func (*bundleDataSuite) TestApplicationPlans(c *gc.C) {
+	data := `
+applications:
+    application1:
+        charm: "test"
+        plan: "testisv/test"
+    application2:
+        charm: "test"
+        plan: "testisv/test2"
+    application3:
+        charm: "test"
+        plan: "default"
+relations:
+    - ["application1:prova", "application2:reqa"]
+    - ["application1:reqa", "application3:prova"]
+    - ["application3:provb", "application2:reqb"]
+`
+
+	bd, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.IsNil)
+
+	c.Assert(bd.Applications, jc.DeepEquals, map[string]*charm.ApplicationSpec{
+		"application1": &charm.ApplicationSpec{
+			Charm: "test",
+			Plan:  "testisv/test",
+		},
+		"application2": &charm.ApplicationSpec{
+			Charm: "test",
+			Plan:  "testisv/test2",
+		},
+		"application3": &charm.ApplicationSpec{
+			Charm: "test",
+			Plan:  "default",
+		},
+	})
+
+}
