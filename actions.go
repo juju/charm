@@ -17,7 +17,7 @@ import (
 
 var prohibitedSchemaKeys = map[string]bool{"$ref": true, "$schema": true}
 
-var actionNameRule = regexp.MustCompile("^[a-z](?:[a-z-]*[a-z])?$")
+var actionNameRule = regexp.MustCompile("^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
 
 // Actions defines the available actions for the charm.  Additional params
 // may be added as metadata at a future time (e.g. version.)
