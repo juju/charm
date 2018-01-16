@@ -485,6 +485,29 @@ snapshot:
 					"type":        "object",
 					"properties":  map[string]interface{}{},
 				}}}},
+	}, {
+		description: "A simple snapshot actions YAML with numeric characters.",
+		yaml: `
+snapshot-01:
+   description: Take database first snapshot.
+   params:
+      outfile-01:
+         description: "The file to write out to."
+         type: string
+   required: ["outfile"]
+`,
+		expectedActions: &Actions{map[string]ActionSpec{
+			"snapshot-01": {
+				Description: "Take database first snapshot.",
+				Params: map[string]interface{}{
+					"title":       "snapshot-01",
+					"description": "Take database first snapshot.",
+					"type":        "object",
+					"properties": map[string]interface{}{
+						"outfile-01": map[string]interface{}{
+							"description": "The file to write out to.",
+							"type":        "string"}},
+					"required": []interface{}{"outfile"}}}}},
 	}}
 
 	// Beginning of testing loop
