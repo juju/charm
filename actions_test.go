@@ -305,6 +305,23 @@ func (s *ActionsSuite) TestCleanseFail(c *gc.C) {
 	}
 }
 
+func (s *ActionsSuite) TestGetActionNameRule(c *gc.C) {
+
+	var regExCheck = [] struct {
+		description string
+		regExString string
+	}{{
+		description: "Check returned actionNameRule regex",
+		regExString: "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$",
+	}}
+
+	for i, t := range regExCheck {
+		c.Logf("test %d: %v: %#v\n", i, t.description, t.regExString)
+		obtained := GetActionNameRule()
+		c.Assert(obtained.String(), gc.Equals, t.regExString)
+	}
+}
+
 func (s *ActionsSuite) TestReadGoodActionsYaml(c *gc.C) {
 	var goodActionsYamlTests = []struct {
 		description     string
