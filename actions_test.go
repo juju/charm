@@ -307,7 +307,7 @@ func (s *ActionsSuite) TestCleanseFail(c *gc.C) {
 
 func (s *ActionsSuite) TestGetActionNameRule(c *gc.C) {
 
-	var regExCheck = [] struct {
+	var regExCheck = []struct {
 		description string
 		regExString string
 	}{{
@@ -503,7 +503,7 @@ snapshot:
 					"properties":  map[string]interface{}{},
 				}}}},
 	}, {
-		description: "A simple snapshot actions YAML ending characters.",
+		description: "A simple snapshot actions YAML with names ending characters.",
 		yaml: `
 snapshot-01:
    description: Take database first snapshot.
@@ -526,7 +526,7 @@ snapshot-01:
 							"type":        "string"}},
 					"required": []interface{}{"outfile"}}}}},
 	}, {
-		description: "A simple snapshot actions YAML containing characters.",
+		description: "A simple snapshot actions YAML with names containing characters.",
 		yaml: `
 snapshot-0-foo:
    description: Take database first snapshot.
@@ -549,7 +549,7 @@ snapshot-0-foo:
 							"type":        "string"}},
 					"required": []interface{}{"outfile"}}}}},
 	}, {
-		description: "A simple snapshot actions YAML starting characters.",
+		description: "A simple snapshot actions YAML with names starting characters.",
 		yaml: `
 01-snapshot:
    description: Take database first snapshot.
