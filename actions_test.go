@@ -509,6 +509,29 @@ snapshot-01:
 							"type":        "string"}},
 					"required": []interface{}{"outfile"}}}}},
 	}, {
+		description: "A simple snapshot actions YAML containing characters.",
+		yaml: `
+snapshot-0-foo:
+   description: Take database first snapshot.
+   params:
+      outfile:
+         description: "The file to write out to."
+         type: string
+   required: ["outfile"]
+`,
+		expectedActions: &Actions{map[string]ActionSpec{
+			"snapshot-0-foo": {
+				Description: "Take database first snapshot.",
+				Params: map[string]interface{}{
+					"title":       "snapshot-0-foo",
+					"description": "Take database first snapshot.",
+					"type":        "object",
+					"properties": map[string]interface{}{
+						"outfile": map[string]interface{}{
+							"description": "The file to write out to.",
+							"type":        "string"}},
+					"required": []interface{}{"outfile"}}}}},
+	}, {
 		description: "A simple snapshot actions YAML starting characters.",
 		yaml: `
 01-snapshot:
