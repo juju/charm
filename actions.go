@@ -19,7 +19,12 @@ var prohibitedSchemaKeys = map[string]bool{"$ref": true, "$schema": true}
 
 var actionNameRule = regexp.MustCompile("^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")
 
-// Actions defines the available actions for the charm.  Additional params
+// Export `actionNameRule` variable to different contexts.
+func GetActionNameRule() *regexp.Regexp {
+	return actionNameRule
+}
+
+// Actions defines the available actions for the charm. Additional params
 // may be added as metadata at a future time (e.g. version.)
 type Actions struct {
 	ActionSpecs map[string]ActionSpec `yaml:"actions,omitempty" bson:",omitempty"`

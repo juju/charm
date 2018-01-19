@@ -305,6 +305,23 @@ func (s *ActionsSuite) TestCleanseFail(c *gc.C) {
 	}
 }
 
+func (s *ActionsSuite) TestGetActionNameRule(c *gc.C) {
+
+	var regExCheck = []struct {
+		description string
+		regExString string
+	}{{
+		description: "Check returned actionNameRule regex",
+		regExString: "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$",
+	}}
+
+	for i, t := range regExCheck {
+		c.Logf("test %d: %v: %#v\n", i, t.description, t.regExString)
+		obtained := GetActionNameRule()
+		c.Assert(obtained.String(), gc.Equals, t.regExString)
+	}
+}
+
 func (s *ActionsSuite) TestReadGoodActionsYaml(c *gc.C) {
 	var goodActionsYamlTests = []struct {
 		description     string
@@ -486,7 +503,7 @@ snapshot:
 					"properties":  map[string]interface{}{},
 				}}}},
 	}, {
-		description: "A simple snapshot actions YAML with numeric characters.",
+		description: "A simple snapshot actions YAML with names ending characters.",
 		yaml: `
 snapshot-01:
    description: Take database first snapshot.
@@ -505,6 +522,52 @@ snapshot-01:
 					"type":        "object",
 					"properties": map[string]interface{}{
 						"outfile-01": map[string]interface{}{
+							"description": "The file to write out to.",
+							"type":        "string"}},
+					"required": []interface{}{"outfile"}}}}},
+	}, {
+		description: "A simple snapshot actions YAML with names containing characters.",
+		yaml: `
+snapshot-0-foo:
+   description: Take database first snapshot.
+   params:
+      outfile:
+         description: "The file to write out to."
+         type: string
+   required: ["outfile"]
+`,
+		expectedActions: &Actions{map[string]ActionSpec{
+			"snapshot-0-foo": {
+				Description: "Take database first snapshot.",
+				Params: map[string]interface{}{
+					"title":       "snapshot-0-foo",
+					"description": "Take database first snapshot.",
+					"type":        "object",
+					"properties": map[string]interface{}{
+						"outfile": map[string]interface{}{
+							"description": "The file to write out to.",
+							"type":        "string"}},
+					"required": []interface{}{"outfile"}}}}},
+	}, {
+		description: "A simple snapshot actions YAML with names starting characters.",
+		yaml: `
+01-snapshot:
+   description: Take database first snapshot.
+   params:
+      01-outfile:
+         description: "The file to write out to."
+         type: string
+   required: ["outfile"]
+`,
+		expectedActions: &Actions{map[string]ActionSpec{
+			"01-snapshot": {
+				Description: "Take database first snapshot.",
+				Params: map[string]interface{}{
+					"title":       "01-snapshot",
+					"description": "Take database first snapshot.",
+					"type":        "object",
+					"properties": map[string]interface{}{
+						"01-outfile": map[string]interface{}{
 							"description": "The file to write out to.",
 							"type":        "string"}},
 					"required": []interface{}{"outfile"}}}}},
@@ -800,7 +863,7 @@ act:
   params:
     val:
       type: object
-      properties: 
+      properties:
         var:
           type: object
           properties:
