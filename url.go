@@ -13,8 +13,8 @@ import (
 
 	"github.com/juju/errors"
 
+	"github.com/juju/mgo/bson"
 	"gopkg.in/juju/names.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // Location represents a charm location, which must declare a path component
@@ -324,7 +324,7 @@ func (u *URL) GetBSON() (interface{}, error) {
 // from a MongoDB database with mgo.
 func (u *URL) SetBSON(raw bson.Raw) error {
 	if raw.Kind == 10 {
-		return bson.SetZero
+		return bson.ErrSetZero
 	}
 	var s string
 	err := raw.Unmarshal(&s)

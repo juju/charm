@@ -10,10 +10,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/juju/mgo/bson"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 
 	"gopkg.in/juju/charm.v6"
 )

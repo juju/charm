@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/juju/mgo/bson"
 	"gopkg.in/juju/names.v2"
-	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -71,7 +71,7 @@ func (bd *BundleData) SetBSON(raw bson.Raw) error {
 		return err
 	}
 	if b == nil {
-		return bson.SetZero
+		return bson.ErrSetZero
 	}
 
 	var bdc legacyBundleData
