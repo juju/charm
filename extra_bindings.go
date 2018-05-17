@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/juju/collections/set"
 	"github.com/juju/schema"
-	"github.com/juju/utils/set"
 )
 
 // ExtraBinding represents an extra bindable endpoint that is not a relation.
