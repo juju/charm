@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/juju/utils/set"
+	"github.com/juju/collections/set"
 	ziputil "github.com/juju/utils/zip"
 )
 
