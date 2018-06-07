@@ -68,7 +68,7 @@ func (s *FingerprintSuite) TestParseFingerprintOkay(c *gc.C) {
 }
 
 func (s *FingerprintSuite) TestParseFingerprintNonHex(c *gc.C) {
-	_, err := resource.ParseFingerprint("XYZ") // not hex
+	_, err := resource.ParseFingerprint("abc") // not hex
 
 	c.Check(err, gc.ErrorMatches, `.*odd length hex string.*`)
 }

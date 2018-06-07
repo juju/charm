@@ -49,7 +49,7 @@ func (meta Meta) Validate() error {
 		return errors.NewNotValid(nil, msg)
 	}
 
-	if meta.Path == "" {
+	if meta.Type == TypeFile && meta.Path == "" {
 		// TODO(ericsnow) change "filename" to "path"
 		return errors.NewNotValid(nil, "resource missing filename")
 	}
