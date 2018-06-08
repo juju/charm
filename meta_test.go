@@ -1227,20 +1227,28 @@ resources:
     other-resource:
         type: file
         filename: other.zip
+    image-resource:
+         type: docker
+         description: "An image"
 `))
 	c.Assert(err, gc.IsNil)
 
 	c.Check(meta.Resources, jc.DeepEquals, map[string]resource.Meta{
-		"resource-name": resource.Meta{
+		"resource-name": {
 			Name:        "resource-name",
 			Type:        resource.TypeFile,
 			Path:        "filename.tgz",
 			Description: "One line that is useful when operators need to push it.",
 		},
-		"other-resource": resource.Meta{
+		"other-resource": {
 			Name: "other-resource",
 			Type: resource.TypeFile,
 			Path: "other.zip",
+		},
+		"image-resource": {
+			Name:        "image-resource",
+			Type:        resource.TypeDocker,
+			Description: "An image",
 		},
 	})
 }
