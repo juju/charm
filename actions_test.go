@@ -597,7 +597,7 @@ snapshot:
    params:
       $schema: "http://json-schema.org/draft-03/schema#"
 `,
-		expectedError: "schema key \"$schema\" not compatible with this version of juju",
+		expectedError: `schema key "\$schema" not compatible with this version of juju`,
 	}, {
 		description: "Reject JSON-Schema containing references.",
 		yaml: `
@@ -606,7 +606,7 @@ snapshot:
    params:
       outfile: { $ref: "http://json-schema.org/draft-03/schema#" }
 `,
-		expectedError: "schema key \"$ref\" not compatible with this version of juju",
+		expectedError: `schema key "\$ref" not compatible with this version of juju`,
 	}, {
 		description: "Malformed YAML: missing key in \"outfile\".",
 		yaml: `
@@ -619,7 +619,7 @@ snapshot:
          default: foo.bz2
 `,
 
-		expectedError: "yaml: line 6: mapping values are not allowed in this context",
+		expectedError: `yaml: line [0-9]: mapping values are not allowed in this context`,
 	}, {
 		description: "Malformed JSON-Schema: $schema element misplaced.",
 		yaml: `
@@ -633,7 +633,7 @@ description: Take a snapshot of the database.
          default: foo.bz2
 `,
 
-		expectedError: "yaml: line 3: mapping values are not allowed in this context",
+		expectedError: `yaml: line [0-9]: mapping values are not allowed in this context`,
 	}, {
 		description: "Malformed Actions: hyphen at beginning of action name.",
 		yaml: `
@@ -641,7 +641,7 @@ description: Take a snapshot of the database.
    description: Take a snapshot of the database.
 `,
 
-		expectedError: "bad action name -snapshot",
+		expectedError: `bad action name -snapshot`,
 	}, {
 		description: "Malformed Actions: hyphen after action name.",
 		yaml: `
@@ -649,7 +649,7 @@ snapshot-:
    description: Take a snapshot of the database.
 `,
 
-		expectedError: "bad action name snapshot-",
+		expectedError: `bad action name snapshot-`,
 	}, {
 		description: "Malformed Actions: caps in action name.",
 		yaml: `
@@ -657,7 +657,7 @@ Snapshot:
    description: Take a snapshot of the database.
 `,
 
-		expectedError: "bad action name Snapshot",
+		expectedError: `bad action name Snapshot`,
 	}, {
 		description: `Reserved Action Name: "juju".`,
 		yaml: `
@@ -678,7 +678,7 @@ juju-run:
 snapshot:
    description: ["Take a snapshot of the database."]
 `,
-		expectedError: "value for schema key \"description\" must be a string",
+		expectedError: `value for schema key "description" must be a string`,
 	}, {
 		description: "A non-list \"required\" key",
 		yaml: `
@@ -690,7 +690,7 @@ snapshot:
          type: string
    required: "outfile"
 `,
-		expectedError: "value for schema key \"required\" must be a YAML list",
+		expectedError: `value for schema key "required" must be a YAML list`,
 	}, {
 		description: "A schema with an empty \"params\" key fails to parse",
 		yaml: `
@@ -698,7 +698,7 @@ snapshot:
    description: Take a snapshot of the database.
    params:
 `,
-		expectedError: "params failed to parse as a map",
+		expectedError: `params failed to parse as a map`,
 	}, {
 		description: "A schema with a non-map \"params\" value fails to parse",
 		yaml: `
@@ -706,7 +706,7 @@ snapshot:
    description: Take a snapshot of the database.
    params: ["a", "b"]
 `,
-		expectedError: "params failed to parse as a map",
+		expectedError: `params failed to parse as a map`,
 	}, {
 		description: "\"definitions\" goes against JSON-Schema definition",
 		yaml: `
@@ -720,7 +720,7 @@ snapshot:
       diskdevice: ["a"]
       something-else: {"a": "b"}
 `,
-		expectedError: "invalid params schema for action schema snapshot: definitions must be of type array of schemas",
+		expectedError: `invalid params schema for action schema snapshot: definitions must be of type array of schemas`,
 	}, {
 		description: "excess keys not in the JSON-Schema spec will be rejected",
 		yaml: `
@@ -741,15 +741,14 @@ snapshot:
       something-else: {}
    other-key: ["some", "values"],
 `,
-		expectedError: "yaml: line 16: did not find expected key",
+		expectedError: `yaml: line [0-9]+: did not find expected key`,
 	}}
 
 	for i, test := range badActionsYamlTests {
 		c.Logf("test %d: %s", i, test.description)
 		reader := bytes.NewReader([]byte(test.yaml))
 		_, err := ReadActionsYaml(reader)
-		c.Assert(err, gc.NotNil)
-		c.Check(err.Error(), gc.Equals, test.expectedError)
+		c.Check(err, gc.ErrorMatches, test.expectedError)
 	}
 }
 

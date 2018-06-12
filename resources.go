@@ -20,6 +20,7 @@ var resourceSchema = schema.FieldMap(
 	},
 	schema.Defaults{
 		"type":        resource.TypeFile.String(),
+		"filename":    "",
 		"description": "",
 	},
 )

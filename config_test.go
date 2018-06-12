@@ -422,7 +422,7 @@ func (s *ConfigSuite) TestDefaultType(c *gc.C) {
 	assertDefault("boolean", "true", true)
 	assertDefault("string", "golden grahams", "golden grahams")
 	assertDefault("string", `""`, "")
-	assertDefault("float", "2.2e11", 2.2e11)
+	assertDefault("float", "2.211", 2.211)
 	assertDefault("int", "99", int64(99))
 
 	assertTypeError := func(type_, str, value string) {

@@ -61,16 +61,6 @@ func (s *resourceSuite) TestSchemaUnknownType(c *gc.C) {
 	})
 }
 
-func (s *resourceSuite) TestSchemaMissingPath(c *gc.C) {
-	raw := map[interface{}]interface{}{
-		"type":        "file",
-		"description": "One line that is useful when operators need to push it.",
-	}
-	_, err := charm.ResourceSchema.Coerce(raw, nil)
-
-	c.Check(err, gc.NotNil)
-}
-
 func (s *resourceSuite) TestSchemaMissingComment(c *gc.C) {
 	raw := map[interface{}]interface{}{
 		"type":     "file",
