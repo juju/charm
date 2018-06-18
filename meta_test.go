@@ -964,6 +964,98 @@ extra-bindings:
 	})
 }
 
+func (s *MetaSuite) TestDevice(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+device:
+    nvidia.com/gpu:
+        description: a big gpu device
+        type: gpu
+        request: 1
+        limit: 2
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.Device, gc.DeepEquals, map[string]charm.Device{
+		"nvidia.com/gpu": {
+			Name:        "nvidia.com/gpu",
+			Description: "a big gpu device",
+			Type:        "gpu",
+			Request:     1,
+			Limit:       2,
+		},
+	}, gc.Commentf("meta: %+v", meta))
+}
+
+func (s *MetaSuite) TestDeviceDefaultLimitAndRequest(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+device:
+    nvidia.com/gpu:
+        description: a big gpu device
+        type: gpu
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.Device, gc.DeepEquals, map[string]charm.Device{
+		"nvidia.com/gpu": {
+			Name:        "nvidia.com/gpu",
+			Description: "a big gpu device",
+			Type:        "gpu",
+			Request:     1,
+			Limit:       1,
+		},
+	}, gc.Commentf("meta: %+v", meta))
+}
+
+type testErrorPayload struct {
+	desc string
+	yaml string
+	err  string
+}
+
+func testErrors(c *gc.C, prefix string, tests []testErrorPayload) {
+	for i, test := range tests {
+		c.Logf("test %d: %s", i, test.desc)
+		c.Logf("\n%s\n", prefix+test.yaml)
+		_, err := charm.ReadMeta(strings.NewReader(prefix + test.yaml))
+		c.Assert(err, gc.ErrorMatches, test.err)
+	}
+}
+
+func (s *MetaSuite) TestDeviceErrors(c *gc.C) {
+	prefix := `
+name: a
+summary: b
+description: c
+device:
+    bad-nvidia.com/gpu:
+`[1:]
+
+	tests := []testErrorPayload{{
+		desc: "device type is required",
+		yaml: "        request: 0",
+		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": type must be specified",
+	}, {
+		desc: "limit has to be greater than 0",
+		yaml: "        limit: 0\n        description: a big gpu device\n        type: gpu",
+		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": invalid limit amount 0",
+	}, {
+		desc: "request has to be greater than 0",
+		yaml: "        request: 0\n        description: a big gpu device\n        type: gpu",
+		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": invalid request amount 0",
+	}, {
+		desc: "limit can not be smaller than request",
+		yaml: "        request: 2\n        limit: 1\n        description: a big gpu device\n        type: gpu",
+		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": limit amount 1 can not be smaller than request amount 2",
+	}}
+
+	testErrors(c, prefix, tests)
+
+}
+
 func (s *MetaSuite) TestStorage(c *gc.C) {
 	// "type" is the only required attribute for storage.
 	meta, err := charm.ReadMeta(strings.NewReader(`
@@ -1004,13 +1096,7 @@ storage:
  store-bad:
 `[1:]
 
-	type test struct {
-		desc string
-		yaml string
-		err  string
-	}
-
-	tests := []test{{
+	tests := []testErrorPayload{{
 		desc: "type is required",
 		yaml: "  required: false",
 		err:  "metadata: storage.store-bad.type: unexpected value <nil>",
@@ -1048,12 +1134,7 @@ storage:
 		err:  `metadata: .* unexpected value "foo"`,
 	}}
 
-	for i, test := range tests {
-		c.Logf("test %d: %s", i, test.desc)
-		c.Logf("\n%s\n", prefix+test.yaml)
-		_, err := charm.ReadMeta(strings.NewReader(prefix + test.yaml))
-		c.Assert(err, gc.ErrorMatches, test.err)
-	}
+	testErrors(c, prefix, tests)
 }
 
 func (s *MetaSuite) TestStorageCount(c *gc.C) {

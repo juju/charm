@@ -122,6 +122,44 @@ type Storage struct {
 	Properties []string `bson:"properties,omitempty"`
 }
 
+// DeviceType defines a device type
+type DeviceType string
+
+// DeviceGPU represents GPU device type
+const DeviceGPU DeviceType = "gpu"
+
+// DeviceTypes defines current supported device types.
+var DeviceTypes = []DeviceType{DeviceGPU}
+
+// Validate does validation check for DeviceType
+func (dt *DeviceType) Validate() error {
+	for _, t := range DeviceTypes {
+		if *dt == t {
+			return nil
+		}
+	}
+	return fmt.Errorf("Invalid device type: %q, current supported are %+v", dt, DeviceTypes)
+}
+
+// Device represents a charm's device requirement(GPU for example).
+type Device struct {
+	// Name is the name of the device.
+	// name of the GPU device on k8s could be like: nvidia.com/gpu
+	Name string `bson:"name"`
+
+	// Description is a description of the device.
+	Description string `bson:"description"`
+
+	// Type is the device type
+	Type DeviceType `bson:"type"`
+
+	// Request is the min number of devices to use
+	Request int64 `bson:"request"`
+
+	// Limit is the max number of devices to use
+	Limit int64 `bson:"limit"`
+}
+
 // Relation represents a single relation defined in the charm
 // metadata.yaml file.
 type Relation struct {
@@ -195,6 +233,7 @@ type Meta struct {
 	Tags           []string                 `bson:"tags,omitempty" json:"Tags,omitempty"`
 	Series         []string                 `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
 	Storage        map[string]Storage       `bson:"storage,omitempty" json:"Storage,omitempty"`
+	Device         map[string]Device        `bson:"device,omitempty" json:"Device,omitempty"`
 	PayloadClasses map[string]PayloadClass  `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
 	Resources      map[string]resource.Meta `bson:"resources,omitempty" json:"Resources,omitempty"`
 	Terms          []string                 `bson:"terms,omitempty" json:"Terms,omitempty"`
@@ -433,6 +472,7 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	}
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
+	meta.Device = parseDevice(m["device"])
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
 
 	if ver := m["min-juju-version"]; ver != nil {
@@ -461,32 +501,34 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 	}
 
 	return struct {
-		Name           string                           `yaml:"name"`
-		Summary        string                           `yaml:"summary"`
-		Description    string                           `yaml:"description"`
-		Provides       map[string]marshaledRelation     `yaml:"provides,omitempty"`
-		Requires       map[string]marshaledRelation     `yaml:"requires,omitempty"`
-		Peers          map[string]marshaledRelation     `yaml:"peers,omitempty"`
-		ExtraBindings  map[string]interface{}           `yaml:"extra-bindings,omitempty"`
-		Categories     []string                         `yaml:"categories,omitempty"`
-		Tags           []string                         `yaml:"tags,omitempty"`
-		Subordinate    bool                             `yaml:"subordinate,omitempty"`
-		Series         []string                         `yaml:"series,omitempty"`
+		Name          string                       `yaml:"name"`
+		Summary       string                       `yaml:"summary"`
+		Description   string                       `yaml:"description"`
+		Provides      map[string]marshaledRelation `yaml:"provides,omitempty"`
+		Requires      map[string]marshaledRelation `yaml:"requires,omitempty"`
+		Peers         map[string]marshaledRelation `yaml:"peers,omitempty"`
+		ExtraBindings map[string]interface{}       `yaml:"extra-bindings,omitempty"`
+		Categories    []string                     `yaml:"categories,omitempty"`
+		Tags          []string                     `yaml:"tags,omitempty"`
+		Subordinate   bool                         `yaml:"subordinate,omitempty"`
+		Series        []string                     `yaml:"series,omitempty"`
+		// Device         map[string]Device                `bson:"device,omitempty"`
 		Terms          []string                         `yaml:"terms,omitempty"`
 		MinJujuVersion string                           `yaml:"min-juju-version,omitempty"`
 		Resources      map[string]marshaledResourceMeta `yaml:"resources,omitempty"`
 	}{
-		Name:           m.Name,
-		Summary:        m.Summary,
-		Description:    m.Description,
-		Provides:       marshaledRelations(m.Provides),
-		Requires:       marshaledRelations(m.Requires),
-		Peers:          marshaledRelations(m.Peers),
-		ExtraBindings:  marshaledExtraBindings(m.ExtraBindings),
-		Categories:     m.Categories,
-		Tags:           m.Tags,
-		Subordinate:    m.Subordinate,
-		Series:         m.Series,
+		Name:          m.Name,
+		Summary:       m.Summary,
+		Description:   m.Description,
+		Provides:      marshaledRelations(m.Provides),
+		Requires:      marshaledRelations(m.Requires),
+		Peers:         marshaledRelations(m.Peers),
+		ExtraBindings: marshaledExtraBindings(m.ExtraBindings),
+		Categories:    m.Categories,
+		Tags:          m.Tags,
+		Subordinate:   m.Subordinate,
+		Series:        m.Series,
+		// Device:         m.Device,
 		Terms:          m.Terms,
 		MinJujuVersion: minver,
 		Resources:      marshaledResources(m.Resources),
@@ -648,6 +690,26 @@ func (meta Meta) Check() error {
 			return fmt.Errorf("charm %q storage %q: duplicated storage name", meta.Name, name)
 		}
 		names[name] = true
+	}
+
+	for name, device := range meta.Device {
+		if device.Type == "" {
+			return fmt.Errorf("charm %q device %q: type must be specified", meta.Name, name)
+		}
+		if err := device.Type.Validate(); err != nil {
+			return err
+		}
+		if device.Request <= 0 {
+			return fmt.Errorf("charm %q device %q: invalid request amount %d", meta.Name, name, device.Request)
+		}
+		if device.Limit <= 0 {
+			return fmt.Errorf("charm %q device %q: invalid limit amount %d", meta.Name, name, device.Limit)
+		}
+		if device.Limit > 0 && device.Request > 0 && device.Request > device.Limit {
+			return fmt.Errorf(
+				"charm %q device %q: limit amount %d can not be smaller than request amount %d",
+				meta.Name, name, device.Limit, device.Request)
+		}
 	}
 
 	for name, payloadClass := range meta.PayloadClasses {
@@ -832,6 +894,37 @@ func parseStorage(stores interface{}) map[string]Storage {
 	return result
 }
 
+func parseDevice(devices interface{}) map[string]Device {
+	if devices == nil {
+		return nil
+	}
+	result := make(map[string]Device)
+	for name, device := range devices.(map[string]interface{}) {
+		deviceMap := device.(map[string]interface{})
+		deviceType, ok := deviceMap["type"].(string)
+		if !ok {
+			deviceType = ""
+		}
+		device := Device{
+			Name:    name,
+			Type:    DeviceType(deviceType),
+			Request: 1,
+			Limit:   1,
+		}
+		if desc, ok := deviceMap["description"].(string); ok {
+			device.Description = desc
+		}
+		if request, ok := deviceMap["request"].(int64); ok {
+			device.Request = request
+		}
+		if limit, ok := deviceMap["limit"].(int64); ok {
+			device.Limit = limit
+		}
+		result[name] = device
+	}
+	return result
+}
+
 var storageSchema = schema.FieldMap(
 	schema.Fields{
 		"type":      schema.OneOf(schema.Const(string(StorageBlock)), schema.Const(string(StorageFilesystem))),
@@ -856,6 +949,22 @@ var storageSchema = schema.FieldMap(
 		"description":  schema.Omit,
 		"properties":   schema.Omit,
 		"minimum-size": schema.Omit,
+	},
+)
+
+var deviceSchema = schema.FieldMap(
+	schema.Fields{
+		"description": schema.String(),
+		"type": schema.OneOf(
+			schema.Const(string(DeviceGPU)),
+		),
+		"request": schema.Int(),
+		"limit":   schema.Int(),
+	}, schema.Defaults{
+		"description": schema.Omit,
+		"type":        schema.Omit,
+		"request":     schema.Omit,
+		"limit":       schema.Omit,
 	},
 )
 
@@ -929,6 +1038,7 @@ var charmSchema = schema.FieldMap(
 		"tags":             schema.List(schema.String()),
 		"series":           schema.List(schema.String()),
 		"storage":          schema.StringMap(storageSchema),
+		"device":           schema.StringMap(deviceSchema),
 		"payloads":         schema.StringMap(payloadClassSchema),
 		"resources":        schema.StringMap(resourceSchema),
 		"terms":            schema.List(schema.String()),
@@ -946,6 +1056,7 @@ var charmSchema = schema.FieldMap(
 		"tags":             schema.Omit,
 		"series":           schema.Omit,
 		"storage":          schema.Omit,
+		"device":           schema.Omit,
 		"payloads":         schema.Omit,
 		"resources":        schema.Omit,
 		"terms":            schema.Omit,
