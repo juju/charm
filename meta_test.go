@@ -1039,6 +1039,10 @@ device:
 		yaml: "        request: 0",
 		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": type must be specified",
 	}, {
+		desc: "invalid device type",
+		yaml: "        limit: 0\n        description: a big gpu device\n        type: wrong-device-type",
+		err:  "metadata: device.bad-nvidia.com/gpu.type: unexpected value \"wrong-device-type\"",
+	}, {
 		desc: "limit has to be greater than 0",
 		yaml: "        limit: 0\n        description: a big gpu device\n        type: gpu",
 		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": invalid limit amount 0",
