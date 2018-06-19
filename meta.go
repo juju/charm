@@ -472,7 +472,10 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	}
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
-	meta.Device = parseDevice(m["device"])
+	meta.Device, err = parseDevice(m["device"])
+	if err != nil {
+		return nil, err
+	}
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
 
 	if ver := m["min-juju-version"]; ver != nil {
@@ -894,16 +897,16 @@ func parseStorage(stores interface{}) map[string]Storage {
 	return result
 }
 
-func parseDevice(devices interface{}) map[string]Device {
+func parseDevice(devices interface{}) (map[string]Device, error) {
 	if devices == nil {
-		return nil
+		return nil, nil
 	}
 	result := make(map[string]Device)
 	for name, device := range devices.(map[string]interface{}) {
 		deviceMap := device.(map[string]interface{})
 		deviceType, ok := deviceMap["type"].(string)
 		if !ok {
-			deviceType = ""
+			return nil, fmt.Errorf("%q has invalid device type", name)
 		}
 		device := Device{
 			Name:    name,
@@ -922,7 +925,7 @@ func parseDevice(devices interface{}) map[string]Device {
 		}
 		result[name] = device
 	}
-	return result
+	return result, nil
 }
 
 var storageSchema = schema.FieldMap(

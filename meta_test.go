@@ -1035,9 +1035,9 @@ device:
 `[1:]
 
 	tests := []testErrorPayload{{
-		desc: "device type is required",
+		desc: "invalid device type",
 		yaml: "        request: 0",
-		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": type must be specified",
+		err:  "\"bad-nvidia.com/gpu\" has invalid device type",
 	}, {
 		desc: "invalid device type",
 		yaml: "        limit: 0\n        description: a big gpu device\n        type: wrong-device-type",
