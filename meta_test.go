@@ -973,8 +973,8 @@ device:
     nvidia.com/gpu:
         description: a big gpu device
         type: gpu
-        request: 1
-        limit: 2
+        countmin: 1
+        countmax: 2
 `))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Device, gc.DeepEquals, map[string]charm.Device{
@@ -982,8 +982,8 @@ device:
 			Name:        "nvidia.com/gpu",
 			Description: "a big gpu device",
 			Type:        "gpu",
-			Request:     1,
-			Limit:       2,
+			CountMin:    1,
+			CountMax:    2,
 		},
 	}, gc.Commentf("meta: %+v", meta))
 }
@@ -1004,8 +1004,8 @@ device:
 			Name:        "nvidia.com/gpu",
 			Description: "a big gpu device",
 			Type:        "gpu",
-			Request:     1,
-			Limit:       1,
+			CountMin:    1,
+			CountMax:    1,
 		},
 	}, gc.Commentf("meta: %+v", meta))
 }
@@ -1036,24 +1036,24 @@ device:
 
 	tests := []testErrorPayload{{
 		desc: "invalid device type",
-		yaml: "        request: 0",
+		yaml: "        countmin: 0",
 		err:  "\"bad-nvidia.com/gpu\" has invalid device type",
 	}, {
 		desc: "invalid device type",
-		yaml: "        limit: 0\n        description: a big gpu device\n        type: wrong-device-type",
+		yaml: "        countmax: 0\n        description: a big gpu device\n        type: wrong-device-type",
 		err:  "metadata: device.bad-nvidia.com/gpu.type: unexpected value \"wrong-device-type\"",
 	}, {
-		desc: "limit has to be greater than 0",
-		yaml: "        limit: 0\n        description: a big gpu device\n        type: gpu",
-		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": invalid limit amount 0",
+		desc: "countmax has to be greater than 0",
+		yaml: "        countmax: 0\n        description: a big gpu device\n        type: gpu",
+		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": invalid countmax amount 0",
 	}, {
-		desc: "request has to be greater than 0",
-		yaml: "        request: 0\n        description: a big gpu device\n        type: gpu",
-		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": invalid request amount 0",
+		desc: "countmin has to be greater than 0",
+		yaml: "        countmin: 0\n        description: a big gpu device\n        type: gpu",
+		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": invalid countmin amount 0",
 	}, {
-		desc: "limit can not be smaller than request",
-		yaml: "        request: 2\n        limit: 1\n        description: a big gpu device\n        type: gpu",
-		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": limit amount 1 can not be smaller than request amount 2",
+		desc: "countmax can not be smaller than countmin",
+		yaml: "        countmin: 2\n        countmax: 1\n        description: a big gpu device\n        type: gpu",
+		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": countmax amount 1 can not be smaller than countmin amount 2",
 	}}
 
 	testErrors(c, prefix, tests)

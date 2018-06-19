@@ -153,11 +153,11 @@ type Device struct {
 	// Type is the device type
 	Type DeviceType `bson:"type"`
 
-	// Request is the min number of devices to use
-	Request int64 `bson:"request"`
+	// CountMin is the min number of devices to use
+	CountMin int64 `bson:"countmin"`
 
-	// Limit is the max number of devices to use
-	Limit int64 `bson:"limit"`
+	// CountMax is the max number of devices to use
+	CountMax int64 `bson:"countmax"`
 }
 
 // Relation represents a single relation defined in the charm
@@ -702,16 +702,16 @@ func (meta Meta) Check() error {
 		if err := device.Type.Validate(); err != nil {
 			return err
 		}
-		if device.Request <= 0 {
-			return fmt.Errorf("charm %q device %q: invalid request amount %d", meta.Name, name, device.Request)
+		if device.CountMin <= 0 {
+			return fmt.Errorf("charm %q device %q: invalid countmin amount %d", meta.Name, name, device.CountMin)
 		}
-		if device.Limit <= 0 {
-			return fmt.Errorf("charm %q device %q: invalid limit amount %d", meta.Name, name, device.Limit)
+		if device.CountMax <= 0 {
+			return fmt.Errorf("charm %q device %q: invalid countmax amount %d", meta.Name, name, device.CountMax)
 		}
-		if device.Limit > 0 && device.Request > 0 && device.Request > device.Limit {
+		if device.CountMax > 0 && device.CountMin > 0 && device.CountMin > device.CountMax {
 			return fmt.Errorf(
-				"charm %q device %q: limit amount %d can not be smaller than request amount %d",
-				meta.Name, name, device.Limit, device.Request)
+				"charm %q device %q: countmax amount %d can not be smaller than countmin amount %d",
+				meta.Name, name, device.CountMax, device.CountMin)
 		}
 	}
 
@@ -909,19 +909,19 @@ func parseDevice(devices interface{}) (map[string]Device, error) {
 			return nil, fmt.Errorf("%q has invalid device type", name)
 		}
 		device := Device{
-			Name:    name,
-			Type:    DeviceType(deviceType),
-			Request: 1,
-			Limit:   1,
+			Name:     name,
+			Type:     DeviceType(deviceType),
+			CountMin: 1,
+			CountMax: 1,
 		}
 		if desc, ok := deviceMap["description"].(string); ok {
 			device.Description = desc
 		}
-		if request, ok := deviceMap["request"].(int64); ok {
-			device.Request = request
+		if countmin, ok := deviceMap["countmin"].(int64); ok {
+			device.CountMin = countmin
 		}
-		if limit, ok := deviceMap["limit"].(int64); ok {
-			device.Limit = limit
+		if countmax, ok := deviceMap["countmax"].(int64); ok {
+			device.CountMax = countmax
 		}
 		result[name] = device
 	}
@@ -961,13 +961,13 @@ var deviceSchema = schema.FieldMap(
 		"type": schema.OneOf(
 			schema.Const(string(DeviceGPU)),
 		),
-		"request": schema.Int(),
-		"limit":   schema.Int(),
+		"countmin": schema.Int(),
+		"countmax": schema.Int(),
 	}, schema.Defaults{
 		"description": schema.Omit,
 		"type":        schema.Omit,
-		"request":     schema.Omit,
-		"limit":       schema.Omit,
+		"countmin":    schema.Omit,
+		"countmax":    schema.Omit,
 	},
 )
 
