@@ -122,6 +122,31 @@ type Storage struct {
 	Properties []string `bson:"properties,omitempty"`
 }
 
+// DeviceType defines a device type.
+type DeviceType string
+
+// Device represents a charm's device requirement (GPU for example).
+type Device struct {
+	// Name is the name of the device.
+	Name string `bson:"name"`
+
+	// Description is a description of the device.
+	Description string `bson:"description"`
+
+	// Type is the device type.
+	// currently supported types are
+	// - gpu
+	// - nvidia.com/gpu
+	// - amd.com/gpu
+	Type DeviceType `bson:"type"`
+
+	// CountMin is the min number of devices that the charm requires.
+	CountMin int64 `bson:"countmin"`
+
+	// CountMax is the max number of devices that the charm requires.
+	CountMax int64 `bson:"countmax"`
+}
+
 // Relation represents a single relation defined in the charm
 // metadata.yaml file.
 type Relation struct {
@@ -195,6 +220,7 @@ type Meta struct {
 	Tags           []string                 `bson:"tags,omitempty" json:"Tags,omitempty"`
 	Series         []string                 `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
 	Storage        map[string]Storage       `bson:"storage,omitempty" json:"Storage,omitempty"`
+	Devices        map[string]Device        `bson:"devices,omitempty" json:"Devices,omitempty"`
 	PayloadClasses map[string]PayloadClass  `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
 	Resources      map[string]resource.Meta `bson:"resources,omitempty" json:"Resources,omitempty"`
 	Terms          []string                 `bson:"terms,omitempty" json:"Terms,omitempty"`
@@ -422,8 +448,7 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	meta.Provides = parseRelations(m["provides"], RoleProvider)
 	meta.Requires = parseRelations(m["requires"], RoleRequirer)
 	meta.Peers = parseRelations(m["peers"], RolePeer)
-	meta.ExtraBindings, err = parseMetaExtraBindings(m["extra-bindings"])
-	if err != nil {
+	if meta.ExtraBindings, err = parseMetaExtraBindings(m["extra-bindings"]); err != nil {
 		return nil, err
 	}
 	meta.Categories = parseStringList(m["categories"])
@@ -433,6 +458,7 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	}
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
+	meta.Devices = parseDevices(m["devices"])
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
 
 	if ver := m["min-juju-version"]; ver != nil {
@@ -472,6 +498,8 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 		Tags           []string                         `yaml:"tags,omitempty"`
 		Subordinate    bool                             `yaml:"subordinate,omitempty"`
 		Series         []string                         `yaml:"series,omitempty"`
+		Storage        map[string]Storage               `yaml:"storage,omitempty"`
+		Devices        map[string]Device                `yaml:"devices,omitempty"`
 		Terms          []string                         `yaml:"terms,omitempty"`
 		MinJujuVersion string                           `yaml:"min-juju-version,omitempty"`
 		Resources      map[string]marshaledResourceMeta `yaml:"resources,omitempty"`
@@ -487,6 +515,8 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 		Tags:           m.Tags,
 		Subordinate:    m.Subordinate,
 		Series:         m.Series,
+		Storage:        m.Storage,
+		Devices:        m.Devices,
 		Terms:          m.Terms,
 		MinJujuVersion: minver,
 		Resources:      marshaledResources(m.Resources),
@@ -646,6 +676,22 @@ func (meta Meta) Check() error {
 		}
 		if names[name] {
 			return fmt.Errorf("charm %q storage %q: duplicated storage name", meta.Name, name)
+		}
+		names[name] = true
+	}
+
+	names = make(map[string]bool)
+	for name, device := range meta.Devices {
+		if device.Type == "" {
+			return fmt.Errorf("charm %q device %q: type must be specified", meta.Name, name)
+		}
+		if device.CountMax >= 0 && device.CountMin >= 0 && device.CountMin > device.CountMax {
+			return fmt.Errorf(
+				"charm %q device %q: maximum count %d can not be smaller than minimum count %d",
+				meta.Name, name, device.CountMax, device.CountMin)
+		}
+		if names[name] {
+			return fmt.Errorf("charm %q device %q: duplicated device name", meta.Name, name)
 		}
 		names[name] = true
 	}
@@ -832,6 +878,33 @@ func parseStorage(stores interface{}) map[string]Storage {
 	return result
 }
 
+func parseDevices(devices interface{}) map[string]Device {
+	if devices == nil {
+		return nil
+	}
+	result := make(map[string]Device)
+	for name, device := range devices.(map[string]interface{}) {
+		deviceMap := device.(map[string]interface{})
+		device := Device{
+			Name:     name,
+			Type:     DeviceType(deviceMap["type"].(string)),
+			CountMin: 1,
+			CountMax: 1,
+		}
+		if desc, ok := deviceMap["description"].(string); ok {
+			device.Description = desc
+		}
+		if countmin, ok := deviceMap["countmin"].(int64); ok {
+			device.CountMin = countmin
+		}
+		if countmax, ok := deviceMap["countmax"].(int64); ok {
+			device.CountMax = countmax
+		}
+		result[name] = device
+	}
+	return result
+}
+
 var storageSchema = schema.FieldMap(
 	schema.Fields{
 		"type":      schema.OneOf(schema.Const(string(StorageBlock)), schema.Const(string(StorageFilesystem))),
@@ -858,6 +931,34 @@ var storageSchema = schema.FieldMap(
 		"minimum-size": schema.Omit,
 	},
 )
+
+var deviceSchema = schema.FieldMap(
+	schema.Fields{
+		"description": schema.String(),
+		"type":        schema.String(),
+		"countmin":    deviceCountC{},
+		"countmax":    deviceCountC{},
+	}, schema.Defaults{
+		"description": schema.Omit,
+		"countmin":    schema.Omit,
+		"countmax":    schema.Omit,
+	},
+)
+
+type deviceCountC struct{}
+
+func (c deviceCountC) Coerce(v interface{}, path []string) (interface{}, error) {
+	s, err := schema.Int().Coerce(v, path)
+	if err != nil {
+		return 0, err
+	}
+	if m, ok := s.(int64); ok {
+		if m >= 0 {
+			return m, nil
+		}
+	}
+	return 0, fmt.Errorf("invalid device count %d", s)
+}
 
 type storageCountC struct{}
 
@@ -929,6 +1030,7 @@ var charmSchema = schema.FieldMap(
 		"tags":             schema.List(schema.String()),
 		"series":           schema.List(schema.String()),
 		"storage":          schema.StringMap(storageSchema),
+		"devices":          schema.StringMap(deviceSchema),
 		"payloads":         schema.StringMap(payloadClassSchema),
 		"resources":        schema.StringMap(resourceSchema),
 		"terms":            schema.List(schema.String()),
@@ -946,6 +1048,7 @@ var charmSchema = schema.FieldMap(
 		"tags":             schema.Omit,
 		"series":           schema.Omit,
 		"storage":          schema.Omit,
+		"devices":          schema.Omit,
 		"payloads":         schema.Omit,
 		"resources":        schema.Omit,
 		"terms":            schema.Omit,
