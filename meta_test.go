@@ -1061,11 +1061,7 @@ devices:
 	tests := []testErrorPayload{{
 		desc: "invalid device type",
 		yaml: "        countmin: 0",
-		err:  "metadata: devices.bad-nvidia-gpu.type: unexpected value <nil>",
-	}, {
-		desc: "invalid device type",
-		yaml: "        countmax: 0\n        description: a big gpu device\n        type: wrong-device-type",
-		err:  "metadata: devices.bad-nvidia-gpu.type: unexpected value \"wrong-device-type\"",
+		err:  "metadata: devices.bad-nvidia-gpu.type: expected string, got nothing",
 	}, {
 		desc: "countmax has to be greater than 0",
 		yaml: "        countmax: -1\n        description: a big gpu device\n        type: gpu",

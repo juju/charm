@@ -125,15 +125,6 @@ type Storage struct {
 // DeviceType defines a device type.
 type DeviceType string
 
-// DeviceGPUGeneric represents generic GPU device type.
-const DeviceGPUGeneric DeviceType = "gpu"
-
-// DeviceGPUAMD represents AMD GPU device type.
-const DeviceGPUAMD DeviceType = "amd.com/gpu"
-
-// DeviceGPUNVIDIA represents NVDIA GPU device type.
-const DeviceGPUNVIDIA DeviceType = "nvidia.com/gpu"
-
 // Device represents a charm's device requirement (GPU for example).
 type Device struct {
 	// Name is the name of the device.
@@ -149,10 +140,10 @@ type Device struct {
 	// - amd.com/gpu
 	Type DeviceType `bson:"type"`
 
-	// CountMin is the min number of devices to use.
+	// CountMin is the min number of devices that the charm requires.
 	CountMin int64 `bson:"countmin"`
 
-	// CountMax is the max number of devices to use.
+	// CountMax is the max number of devices that the charm requires.
 	CountMax int64 `bson:"countmax"`
 }
 
@@ -944,13 +935,9 @@ var storageSchema = schema.FieldMap(
 var deviceSchema = schema.FieldMap(
 	schema.Fields{
 		"description": schema.String(),
-		"type": schema.OneOf(
-			schema.Const(string(DeviceGPUGeneric)),
-			schema.Const(string(DeviceGPUAMD)),
-			schema.Const(string(DeviceGPUNVIDIA)),
-		),
-		"countmin": deviceCountC{},
-		"countmax": deviceCountC{},
+		"type":        schema.String(),
+		"countmin":    deviceCountC{},
+		"countmax":    deviceCountC{},
 	}, schema.Defaults{
 		"description": schema.Omit,
 		"countmin":    schema.Omit,
