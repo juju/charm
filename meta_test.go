@@ -964,44 +964,68 @@ extra-bindings:
 	})
 }
 
-func (s *MetaSuite) TestDevice(c *gc.C) {
+func (s *MetaSuite) TestDevices(c *gc.C) {
 	meta, err := charm.ReadMeta(strings.NewReader(`
 name: a
 summary: b
 description: c
-device:
-    nvidia.com/gpu:
+devices:
+    bitcoin-miner1:
         description: a big gpu device
         type: gpu
+        countmin: 1
+        countmax: 1
+    bitcoin-miner2:
+        description: a nvdia gpu device
+        type: nvidia.com/gpu
+        countmin: 1
+        countmax: 2
+    bitcoin-miner3:
+        description: an amd gpu device
+        type: amd.com/gpu
         countmin: 1
         countmax: 2
 `))
 	c.Assert(err, gc.IsNil)
-	c.Assert(meta.Device, gc.DeepEquals, map[string]charm.Device{
-		"nvidia.com/gpu": {
-			Name:        "nvidia.com/gpu",
+	c.Assert(meta.Devices, gc.DeepEquals, map[string]charm.Device{
+		"bitcoin-miner1": {
+			Name:        "bitcoin-miner1",
 			Description: "a big gpu device",
 			Type:        "gpu",
+			CountMin:    1,
+			CountMax:    1,
+		},
+		"bitcoin-miner2": {
+			Name:        "bitcoin-miner2",
+			Description: "a nvdia gpu device",
+			Type:        "nvidia.com/gpu",
+			CountMin:    1,
+			CountMax:    2,
+		},
+		"bitcoin-miner3": {
+			Name:        "bitcoin-miner3",
+			Description: "an amd gpu device",
+			Type:        "amd.com/gpu",
 			CountMin:    1,
 			CountMax:    2,
 		},
 	}, gc.Commentf("meta: %+v", meta))
 }
 
-func (s *MetaSuite) TestDeviceDefaultLimitAndRequest(c *gc.C) {
+func (s *MetaSuite) TestDevicesDefaultLimitAndRequest(c *gc.C) {
 	meta, err := charm.ReadMeta(strings.NewReader(`
 name: a
 summary: b
 description: c
-device:
-    nvidia.com/gpu:
+devices:
+    bitcoin-miner:
         description: a big gpu device
         type: gpu
 `))
 	c.Assert(err, gc.IsNil)
-	c.Assert(meta.Device, gc.DeepEquals, map[string]charm.Device{
-		"nvidia.com/gpu": {
-			Name:        "nvidia.com/gpu",
+	c.Assert(meta.Devices, gc.DeepEquals, map[string]charm.Device{
+		"bitcoin-miner": {
+			Name:        "bitcoin-miner",
 			Description: "a big gpu device",
 			Type:        "gpu",
 			CountMin:    1,
@@ -1025,35 +1049,35 @@ func testErrors(c *gc.C, prefix string, tests []testErrorPayload) {
 	}
 }
 
-func (s *MetaSuite) TestDeviceErrors(c *gc.C) {
+func (s *MetaSuite) TestDevicesErrors(c *gc.C) {
 	prefix := `
 name: a
 summary: b
 description: c
-device:
-    bad-nvidia.com/gpu:
+devices:
+    bad-nvidia-gpu:
 `[1:]
 
 	tests := []testErrorPayload{{
 		desc: "invalid device type",
 		yaml: "        countmin: 0",
-		err:  "\"bad-nvidia.com/gpu\" has invalid device type",
+		err:  "metadata: devices.bad-nvidia-gpu.type: unexpected value <nil>",
 	}, {
 		desc: "invalid device type",
 		yaml: "        countmax: 0\n        description: a big gpu device\n        type: wrong-device-type",
-		err:  "metadata: device.bad-nvidia.com/gpu.type: unexpected value \"wrong-device-type\"",
+		err:  "metadata: devices.bad-nvidia-gpu.type: unexpected value \"wrong-device-type\"",
 	}, {
 		desc: "countmax has to be greater than 0",
-		yaml: "        countmax: 0\n        description: a big gpu device\n        type: gpu",
-		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": invalid countmax amount 0",
+		yaml: "        countmax: -1\n        description: a big gpu device\n        type: gpu",
+		err:  "metadata: invalid device count -1",
 	}, {
 		desc: "countmin has to be greater than 0",
-		yaml: "        countmin: 0\n        description: a big gpu device\n        type: gpu",
-		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": invalid countmin amount 0",
+		yaml: "        countmin: -1\n        description: a big gpu device\n        type: gpu",
+		err:  "metadata: invalid device count -1",
 	}, {
 		desc: "countmax can not be smaller than countmin",
 		yaml: "        countmin: 2\n        countmax: 1\n        description: a big gpu device\n        type: gpu",
-		err:  "charm \"a\" device \"bad-nvidia.com/gpu\": countmax amount 1 can not be smaller than countmin amount 2",
+		err:  "charm \"a\" device \"bad-nvidia-gpu\": maximum count 1 can not be smaller than minimum count 2",
 	}}
 
 	testErrors(c, prefix, tests)
