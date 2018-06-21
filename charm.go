@@ -105,46 +105,39 @@ func IsUnsupportedSeriesError(err error) bool {
 // MaybeCreateVersionFile creates/overwrite charm version file.
 func MaybeCreateVersionFile(path string) error {
 	var charmVersion string
+	var cmdArgs []string
+	var err error
 	// Verify that it is revision control directory.
-	if _, err := os.Stat(filepath.Join(path, ".git")); err == nil {
+	if _, err = os.Stat(filepath.Join(path, ".git")); err == nil {
 		// It is git version control.
-		cmd := exec.Command("git", "describe", "--dirty")
-
-		outStr, err := cmd.CombinedOutput()
-
-		if err != nil {
-			logger.Infof("Command output: %v", outStr)
-			return err
-		}
-		charmVersion = string(outStr)
+		cmdArgs = []string{"git", "describe", "--dirty"}
+	} else if _, err = os.Stat(filepath.Join(path, ".bzr")); err == nil {
+		// It is baazar.
+		cmdArgs = []string{"bzr", "revision-info"}
+	} else if _, err = os.Stat(filepath.Join(path, ".hg")); err == nil {
+		cmdArgs = []string{"hg", "id", "--id"}
 	} else {
-		if _, err := os.Stat(filepath.Join(path, ".bzr")); err == nil {
-			// It is baazar.
-			cmd := exec.Command("bzr", "revesion-info")
+		logger.Infof("Charm is not in revision control directory")
+		return nil
+	}
 
-			outStr, err := cmd.CombinedOutput()
-			if err != nil {
-				logger.Infof("Command output: %v", outStr)
-				return err
-			}
-			charmVersion = string(outStr)
-		} else {
-			if _, err := os.Stat(filepath.Join(path, ".hg")); err == nil {
-				cmd := exec.Command("hg", "id", "--id")
-
-				outStr, err := cmd.CombinedOutput()
-				if err != nil {
-					logger.Infof("Command output: %v", outStr)
-					return err
-				}
-				charmVersion = string(outStr)
-			}
+	var args []string
+	for pos, arg := range cmdArgs {
+		if pos != 0 {
+			args = append(args, arg)
 		}
 	}
+	cmd := exec.Command(cmdArgs[0], args...)
+	outStr, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Infof("Command output: %v", outStr)
+		return err
+	}
+	charmVersion = string(outStr)
 
 	versionPath := filepath.Join(path, "version")
 	// Overwrite the existing version file.
-	var file, err = os.OpenFile(versionPath, os.O_RDWR|os.O_CREATE, 0666)
+	file, err := os.OpenFile(versionPath, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		return err
 	}
