@@ -219,3 +219,14 @@ func cloneDir(c *gc.C, path string) string {
 	c.Assert(err, gc.IsNil)
 	return newPath
 }
+
+func (s *CharmSuite) TestMaybeCreateVersionFile(c *gc.C) {
+	path := "internal/test-charm-repo/dummy-gitversion"
+
+	err := charm.MaybeCreateVersionFile(path)
+	c.Assert(err, gc.IsNil)
+
+	versionPath := filepath.Join(path, "version")
+	_, err = os.Stat(versionPath)
+	c.Assert(err, gc.IsNil)
+}

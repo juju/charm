@@ -6,9 +6,11 @@ package charm
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/juju/loggo"
+	"os/exec"
 )
 
 var logger = loggo.GetLogger("juju.charm")
@@ -98,4 +100,60 @@ func NewUnsupportedSeriesError(requestedSeries string, supportedSeries []string)
 func IsUnsupportedSeriesError(err error) bool {
 	_, ok := err.(*unsupportedSeriesError)
 	return ok
+}
+
+// MaybeCreateVersionFile creates/overwrite charm version file.
+func MaybeCreateVersionFile(path string) error {
+	var charmVersion string
+	// Verify that it is revision control directory.
+	if _, err := os.Stat(filepath.Join(path, ".git")); err == nil {
+		// It is git version control.
+		cmd := exec.Command("git", "describe", "--dirty")
+
+		outStr, err := cmd.CombinedOutput()
+
+		if err != nil {
+			logger.Infof("Command output: %v", outStr)
+			return err
+		}
+		charmVersion = string(outStr)
+	} else {
+		if _, err := os.Stat(filepath.Join(path, ".bzr")); err == nil {
+			// It is baazar.
+			cmd := exec.Command("bzr", "revesion-info")
+
+			outStr, err := cmd.CombinedOutput()
+			if err != nil {
+				logger.Infof("Command output: %v", outStr)
+				return err
+			}
+			charmVersion = string(outStr)
+		} else {
+			if _, err := os.Stat(filepath.Join(path, ".hg")); err == nil {
+				cmd := exec.Command("hg", "id", "--id")
+
+				outStr, err := cmd.CombinedOutput()
+				if err != nil {
+					logger.Infof("Command output: %v", outStr)
+					return err
+				}
+				charmVersion = string(outStr)
+			}
+		}
+	}
+
+	versionPath := filepath.Join(path, "version")
+	// Overwrite the existing version file.
+	var file, err = os.OpenFile(versionPath, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(charmVersion)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
