@@ -220,13 +220,33 @@ func cloneDir(c *gc.C, path string) string {
 	return newPath
 }
 
-func (s *CharmSuite) TestMaybeCreateVersionFile(c *gc.C) {
-	path := "internal/test-charm-repo/dummy-gitversion"
+// TestCreateMaybeCreateVersionFile verifies if the version file can be created
+// in case of git revision control directory
+func (s *CharmSuite) TestCreateMaybeCreateVersionFile(c *gc.C) {
+	// Read the charmDir from the testing folder
+	dummyPath := charmDirPath(c, "dummy")
 
-	err := charm.MaybeCreateVersionFile(path)
+	// copy all the contents from 'path' to 'tmp folder dummy-charm'
+	// Using cloneDir
+	tempPath := cloneDir(c, dummyPath)
+	// check if it has all contents copied
+	/*metaPath := filepath.Join(tempPath, "metatdata.yaml")
+	_, err := os.Stat(metaPath)
+	c.Assert(err, gc.IsNil)*/
+
+	// create an empty .git file inside tempDir
+	gitPath := filepath.Join(tempPath, ".git")
+	_, err := os.Create(gitPath)
+	c.Assert(err, gc.IsNil)
+	// check if .git exists
+	_, err = os.Stat(gitPath)
 	c.Assert(err, gc.IsNil)
 
-	versionPath := filepath.Join(path, "version")
+	err = charm.MaybeCreateVersionFile(tempPath)
+	c.Assert(err, gc.IsNil)
+	// TODO: exec.Command(git describe fails here)
+
+	versionPath := filepath.Join(tempPath, "version")
 	_, err = os.Stat(versionPath)
 	c.Assert(err, gc.IsNil)
 }

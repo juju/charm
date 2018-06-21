@@ -6,11 +6,11 @@ package charm
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/juju/loggo"
-	"os/exec"
 )
 
 var logger = loggo.GetLogger("juju.charm")
