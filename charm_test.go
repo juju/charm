@@ -30,24 +30,6 @@ type CharmSuite struct {
 	coretesting.BaseSuite
 }
 
-var expectedArgs = struct {
-	gitBase []string
-	bzrBase []string
-	hgBase  []string
-}{
-	gitBase: []string{
-		"describe",
-		"--dirty",
-	},
-	bzrBase: []string{
-		"revision-info",
-	},
-	hgBase: []string{
-		"id",
-		"--id",
-	},
-}
-
 var _ = gc.Suite(&CharmSuite{})
 
 func (s *CharmSuite) TestReadCharm(c *gc.C) {
@@ -262,11 +244,21 @@ func (s *CharmSuite) TestGitMaybeCreateVersionFile(c *gc.C) {
 	err = charm.MaybeCreateVersionFile(tempPath)
 	c.Assert(err, gc.IsNil)
 
-	testing.AssertEchoArgs(c, "git", expectedArgs.gitBase...)
+	versionString := []string{"describe", "--dirty"}
+	testing.AssertEchoArgs(c, "git", versionString...)
 
+	// Verify if version exists.
 	versionPath := filepath.Join(tempPath, "version")
 	_, err = os.Stat(versionPath)
 	c.Assert(err, gc.IsNil)
+
+	// Read the contents of version file.
+	var version string
+	f, err := os.Open(versionPath)
+	c.Assert(err, gc.IsNil)
+	defer f.Close()
+	_, err = fmt.Fscanln(f, &version)
+	c.Assert(version, gc.Equals, versionString)
 }
 
 // TestBzrMaybeCreateVersionFile verifies if the version file can be created
@@ -289,11 +281,21 @@ func (s *CharmSuite) TestBazaarMaybeCreateVersionFile(c *gc.C) {
 	err = charm.MaybeCreateVersionFile(tempPath)
 	c.Assert(err, gc.IsNil)
 
-	testing.AssertEchoArgs(c, "bzr", expectedArgs.bzrBase...)
+	versionString := []string{"revision-info"}
+	testing.AssertEchoArgs(c, "bzr", versionString...)
 
+	// Verify if the version file exists.
 	versionPath := filepath.Join(tempPath, "version")
 	_, err = os.Stat(versionPath)
 	c.Assert(err, gc.IsNil)
+
+	// Read the contents of version file.
+	var version string
+	f, err := os.Open(versionPath)
+	c.Assert(err, gc.IsNil)
+	defer f.Close()
+	_, err = fmt.Fscanln(f, &version)
+	c.Assert(version, gc.Equals, versionString)
 }
 
 // TestHgMaybeCreateVersionFile verifies if the version file can be created
@@ -316,11 +318,21 @@ func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
 	err = charm.MaybeCreateVersionFile(tempPath)
 	c.Assert(err, gc.IsNil)
 
-	testing.AssertEchoArgs(c, "hg", expectedArgs.hgBase...)
+	versionString := []string{"id", "--id"}
+	testing.AssertEchoArgs(c, "hg", versionString...)
 
+	// Verify if the version file exists.
 	versionPath := filepath.Join(tempPath, "version")
 	_, err = os.Stat(versionPath)
 	c.Assert(err, gc.IsNil)
+
+	// Read the contents of version file.
+	var version string
+	f, err := os.Open(versionPath)
+	c.Assert(err, gc.IsNil)
+	defer f.Close()
+	_, err = fmt.Fscanln(f, &version)
+	c.Assert(version, gc.Equals, versionString)
 }
 
 // TestNOVCSMaybeCreateVersionFile verifies that version file not created
