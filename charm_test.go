@@ -12,19 +12,41 @@ import (
 	"path/filepath"
 	stdtesting "testing"
 
+	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils/fs"
 	gc "gopkg.in/check.v1"
+	"gopkg.in/juju/charm.v6"
 	"gopkg.in/yaml.v2"
 
-	"gopkg.in/juju/charm.v6"
+	coretesting "github.com/juju/juju/testing"
 )
 
 func Test(t *stdtesting.T) {
 	gc.TestingT(t)
 }
 
-type CharmSuite struct{}
+type CharmSuite struct {
+	coretesting.BaseSuite
+}
+
+var expectedArgs = struct {
+	gitBase []string
+	bzrBase []string
+	hgBase  []string
+}{
+	gitBase: []string{
+		"describe",
+		"--dirty",
+	},
+	bzrBase: []string{
+		"revision-info",
+	},
+	hgBase: []string{
+		"id",
+		"--id",
+	},
+}
 
 var _ = gc.Suite(&CharmSuite{})
 
@@ -222,31 +244,95 @@ func cloneDir(c *gc.C, path string) string {
 
 // TestCreateMaybeCreateVersionFile verifies if the version file can be created
 // in case of git revision control directory
-func (s *CharmSuite) TestCreateMaybeCreateVersionFile(c *gc.C) {
+func (s *CharmSuite) TestGitMaybeCreateVersionFile(c *gc.C) {
 	// Read the charmDir from the testing folder
 	dummyPath := charmDirPath(c, "dummy")
+
+	testing.PatchExecutableAsEchoArgs(c, s, "git")
 
 	// copy all the contents from 'path' to 'tmp folder dummy-charm'
 	// Using cloneDir
 	tempPath := cloneDir(c, dummyPath)
-	// check if it has all contents copied
-	/*metaPath := filepath.Join(tempPath, "metatdata.yaml")
-	_, err := os.Stat(metaPath)
-	c.Assert(err, gc.IsNil)*/
 
 	// create an empty .git file inside tempDir
 	gitPath := filepath.Join(tempPath, ".git")
 	_, err := os.Create(gitPath)
 	c.Assert(err, gc.IsNil)
-	// check if .git exists
-	_, err = os.Stat(gitPath)
-	c.Assert(err, gc.IsNil)
 
 	err = charm.MaybeCreateVersionFile(tempPath)
 	c.Assert(err, gc.IsNil)
-	// TODO: exec.Command(git describe fails here)
+
+	testing.AssertEchoArgs(c, "git", expectedArgs.gitBase...)
 
 	versionPath := filepath.Join(tempPath, "version")
 	_, err = os.Stat(versionPath)
 	c.Assert(err, gc.IsNil)
+}
+
+// TestBzrMaybeCreateVersionFile verifies if the version file can be created
+// in case of bazaar revision control directory.
+func (s *CharmSuite) TestBazaarMaybeCreateVersionFile(c *gc.C) {
+	// Read the charmDir from the testing folder.
+	dummyPath := charmDirPath(c, "dummy")
+
+	testing.PatchExecutableAsEchoArgs(c, s, "bzr")
+
+	// copy all the contents from 'path' to 'tmp folder dummy-charm'.
+	// Using cloneDir.
+	tempPath := cloneDir(c, dummyPath)
+
+	// create an empty .bzr file inside tempDir
+	bzrPath := filepath.Join(tempPath, ".bzr")
+	_, err := os.Create(bzrPath)
+	c.Assert(err, gc.IsNil)
+
+	err = charm.MaybeCreateVersionFile(tempPath)
+	c.Assert(err, gc.IsNil)
+
+	testing.AssertEchoArgs(c, "bzr", expectedArgs.bzrBase...)
+
+	versionPath := filepath.Join(tempPath, "version")
+	_, err = os.Stat(versionPath)
+	c.Assert(err, gc.IsNil)
+}
+
+// TestHgMaybeCreateVersionFile verifies if the version file can be created
+// in case of Mecurial revision control directory.
+func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
+	// Read the charmDir from the testing folder.
+	dummyPath := charmDirPath(c, "dummy")
+
+	testing.PatchExecutableAsEchoArgs(c, s, "hg")
+
+	// copy all the contents from 'path' to 'tmp folder dummy-charm'.
+	// Using cloneDir.
+	tempPath := cloneDir(c, dummyPath)
+
+	// create an empty .hg file inside tempDir
+	hgPath := filepath.Join(tempPath, ".hg")
+	_, err := os.Create(hgPath)
+	c.Assert(err, gc.IsNil)
+
+	err = charm.MaybeCreateVersionFile(tempPath)
+	c.Assert(err, gc.IsNil)
+
+	testing.AssertEchoArgs(c, "hg", expectedArgs.hgBase...)
+
+	versionPath := filepath.Join(tempPath, "version")
+	_, err = os.Stat(versionPath)
+	c.Assert(err, gc.IsNil)
+}
+
+// TestNOVCSMaybeCreateVersionFile verifies that version file not created
+// in case of not a revision control directory.
+func (s *CharmSuite) TestNOVCSMaybeCreateVersionFile(c *gc.C) {
+	// Read the charmDir from the testing folder.
+	dummyPath := charmDirPath(c, "dummy")
+
+	// copy all the contents from 'path' to 'tmp folder dummy-charm'.
+	// Using cloneDir.
+	tempPath := cloneDir(c, dummyPath)
+
+	err := charm.MaybeCreateVersionFile(tempPath)
+	c.Assert(err, gc.NotNil)
 }

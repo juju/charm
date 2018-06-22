@@ -6,11 +6,11 @@ package charm
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/juju/loggo"
+	"github.com/juju/utils"
 )
 
 var logger = loggo.GetLogger("juju.charm")
@@ -119,13 +119,10 @@ func MaybeCreateVersionFile(path string) error {
 		return nil
 	}
 
-	var charmVersion string
-	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	outStr, err := cmd.CombinedOutput()
+	outStr, err := utils.RunCommand(cmdArgs[0], cmdArgs[1:]...)
 	if err != nil {
 		return err
 	}
-	charmVersion = string(outStr)
 
 	versionPath := filepath.Join(path, "version")
 	// Overwrite the existing version file.
@@ -135,7 +132,7 @@ func MaybeCreateVersionFile(path string) error {
 	}
 	defer file.Close()
 
-	_, err = file.WriteString(charmVersion)
+	_, err = file.WriteString(outStr)
 	if err != nil {
 		return err
 	}
