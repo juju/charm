@@ -335,4 +335,8 @@ func (s *CharmSuite) TestNOVCSMaybeCreateVersionFile(c *gc.C) {
 
 	err := charm.MaybeCreateVersionFile(tempPath)
 	c.Assert(err, gc.NotNil)
+
+	versionPath := filepath.Join(tempPath, "version")
+	_, err = os.Stat(versionPath)
+	c.Check(err, jc.Satisfies, os.IsNotExist)
 }
