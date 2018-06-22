@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	coretesting "github.com/juju/juju/testing"
+	"strings"
 )
 
 func Test(t *stdtesting.T) {
@@ -295,7 +296,7 @@ func (s *CharmSuite) TestBazaarMaybeCreateVersionFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	defer f.Close()
 	_, err = fmt.Fscanln(f, &version)
-	c.Assert(version, gc.Equals, versionString)
+	c.Assert(version, gc.Equals, strings.Join(versionString, " "))
 }
 
 // TestHgMaybeCreateVersionFile verifies if the version file can be created
@@ -319,7 +320,7 @@ func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	versionString := []string{"id", "--id"}
-	testing.AssertEchoArgs(c, "hg", versionString...)
+	testing.AssertEchoArgs(c, "hg", strings.Join(versionString, " "))
 
 	// Verify if the version file exists.
 	versionPath := filepath.Join(tempPath, "version")
@@ -332,7 +333,7 @@ func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	defer f.Close()
 	_, err = fmt.Fscanln(f, &version)
-	c.Assert(version, gc.Equals, versionString)
+	c.Assert(version, gc.Equals, strings.Join(versionString, " "))
 }
 
 // TestNOVCSMaybeCreateVersionFile verifies that version file not created
