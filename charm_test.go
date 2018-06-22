@@ -258,7 +258,7 @@ func (s *CharmSuite) TestGitMaybeCreateVersionFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	defer f.Close()
 	_, err = fmt.Fscanln(f, &version)
-	c.Assert(version, gc.Equals, versionString)
+	c.Assert(version, gc.Equals, "git")
 }
 
 // TestBzrMaybeCreateVersionFile verifies if the version file can be created
