@@ -224,28 +224,23 @@ func cloneDir(c *gc.C, path string) string {
 	return newPath
 }
 
-// TestCreateMaybeCreateVersionFile verifies if the version file can be created
-// in case of git revision control directory
-func (s *CharmSuite) TestGitMaybeCreateVersionFile(c *gc.C) {
-	// Read the charmDir from the testing folder
-	dummyPath := charmDirPath(c, "dummy")
-
-	testing.PatchExecutableAsEchoArgs(c, s, "git")
+func (s *CharmSuite)assertVersionFile(c *gc.C, dir string, execName string, args []string) {
+	testing.PatchExecutableAsEchoArgs(c, s, execName)
 
 	// copy all the contents from 'path' to 'tmp folder dummy-charm'
 	// Using cloneDir
-	tempPath := cloneDir(c, dummyPath)
+	tempPath := cloneDir(c, dir)
 
-	// create an empty .git file inside tempDir
-	gitPath := filepath.Join(tempPath, ".git")
-	_, err := os.Create(gitPath)
+	// create an empty .execName file inside tempDir
+	lookupDir := "."+ execName
+	vcsPath := filepath.Join(tempPath, lookupDir)
+	_, err := os.Create(vcsPath)
 	c.Assert(err, gc.IsNil)
 
 	err = charm.MaybeCreateVersionFile(tempPath)
 	c.Assert(err, gc.IsNil)
 
-	versionString := []string{"describe", "--dirty"}
-	testing.AssertEchoArgs(c, "git", versionString...)
+	testing.AssertEchoArgs(c, execName, args...)
 
 	// Verify if version exists.
 	versionPath := filepath.Join(tempPath, "version")
@@ -258,7 +253,15 @@ func (s *CharmSuite) TestGitMaybeCreateVersionFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	defer f.Close()
 	_, err = fmt.Fscanln(f, &version)
-	c.Assert(version, gc.Equals, "git")
+	c.Assert(version, gc.Equals, execName)
+}
+
+// TestCreateMaybeCreateVersionFile verifies if the version file can be created
+// in case of git revision control directory
+func (s *CharmSuite) TestGitMaybeCreateVersionFile(c *gc.C) {
+	// Read the charmDir from the testing folder
+	dummyPath := charmDirPath(c, "dummy")
+	s.assertVersionFile(c, dummyPath, "git", []string{"describe", "--dirty"})
 }
 
 // TestBzrMaybeCreateVersionFile verifies if the version file can be created
@@ -266,36 +269,7 @@ func (s *CharmSuite) TestGitMaybeCreateVersionFile(c *gc.C) {
 func (s *CharmSuite) TestBazaarMaybeCreateVersionFile(c *gc.C) {
 	// Read the charmDir from the testing folder.
 	dummyPath := charmDirPath(c, "dummy")
-
-	testing.PatchExecutableAsEchoArgs(c, s, "bzr")
-
-	// copy all the contents from 'path' to 'tmp folder dummy-charm'.
-	// Using cloneDir.
-	tempPath := cloneDir(c, dummyPath)
-
-	// create an empty .bzr file inside tempDir
-	bzrPath := filepath.Join(tempPath, ".bzr")
-	_, err := os.Create(bzrPath)
-	c.Assert(err, gc.IsNil)
-
-	err = charm.MaybeCreateVersionFile(tempPath)
-	//c.Assert(err, gc.IsNil)
-
-	versionString := []string{"version-info"}
-	testing.AssertEchoArgs(c, "bzr", versionString...)
-
-	// Verify if the version file exists.
-	versionPath := filepath.Join(tempPath, "version")
-	_, err = os.Stat(versionPath)
-	c.Assert(err, gc.IsNil)
-
-	// Read the contents of version file.
-	var version string
-	f, err := os.Open(versionPath)
-	c.Assert(err, gc.IsNil)
-	defer f.Close()
-	_, err = fmt.Fscanln(f, &version)
-	c.Assert(version, gc.Equals, "bzr")
+	s.assertVersionFile(c, dummyPath, "bzr", []string{"version-info"})
 }
 
 // TestHgMaybeCreateVersionFile verifies if the version file can be created
@@ -303,36 +277,7 @@ func (s *CharmSuite) TestBazaarMaybeCreateVersionFile(c *gc.C) {
 func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
 	// Read the charmDir from the testing folder.
 	dummyPath := charmDirPath(c, "dummy")
-
-	// copy all the contents from 'path' to 'tmp folder dummy-charm'.
-	// Using cloneDir.
-	tempPath := cloneDir(c, dummyPath)
-
-	// create an empty .hg file inside tempDir
-	hgPath := filepath.Join(tempPath, ".hg")
-	_, err := os.Create(hgPath)
-	c.Assert(err, gc.IsNil)
-
-	testing.PatchExecutableAsEchoArgs(c, s, "hg")
-
-	err = charm.MaybeCreateVersionFile(tempPath)
-	c.Assert(err, gc.IsNil)
-
-	versionString := []string{"id", "-n"}
-	testing.AssertEchoArgs(c, "hg", versionString...)
-
-	// Verify if the version file exists.
-	versionPath := filepath.Join(tempPath, "version")
-	_, err = os.Stat(versionPath)
-	c.Assert(err, gc.IsNil)
-
-	// Read the contents of version file.
-	var version string
-	f, err := os.Open(versionPath)
-	c.Assert(err, gc.IsNil)
-	defer f.Close()
-	_, err = fmt.Fscanln(f, &version)
-	c.Assert(version, gc.Equals, "hg")
+	s.assertVersionFile(c, dummyPath, "hg", []string{"id", "-n"})
 }
 
 // TestNOVCSMaybeCreateVersionFile verifies that version file not created
