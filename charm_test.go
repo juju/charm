@@ -20,7 +20,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	coretesting "github.com/juju/juju/testing"
-	"strings"
 )
 
 func Test(t *stdtesting.T) {
@@ -280,9 +279,9 @@ func (s *CharmSuite) TestBazaarMaybeCreateVersionFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	err = charm.MaybeCreateVersionFile(tempPath)
-	c.Assert(err, gc.IsNil)
+	//c.Assert(err, gc.IsNil)
 
-	versionString := []string{"revision-info"}
+	versionString := []string{"version-info"}
 	testing.AssertEchoArgs(c, "bzr", versionString...)
 
 	// Verify if the version file exists.
@@ -296,7 +295,7 @@ func (s *CharmSuite) TestBazaarMaybeCreateVersionFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	defer f.Close()
 	_, err = fmt.Fscanln(f, &version)
-	c.Assert(version, gc.Equals, strings.Join(versionString, " "))
+	c.Assert(version, gc.Equals, "bzr")
 }
 
 // TestHgMaybeCreateVersionFile verifies if the version file can be created
@@ -304,8 +303,6 @@ func (s *CharmSuite) TestBazaarMaybeCreateVersionFile(c *gc.C) {
 func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
 	// Read the charmDir from the testing folder.
 	dummyPath := charmDirPath(c, "dummy")
-
-	testing.PatchExecutableAsEchoArgs(c, s, "hg")
 
 	// copy all the contents from 'path' to 'tmp folder dummy-charm'.
 	// Using cloneDir.
@@ -316,11 +313,13 @@ func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
 	_, err := os.Create(hgPath)
 	c.Assert(err, gc.IsNil)
 
+	testing.PatchExecutableAsEchoArgs(c, s, "hg")
+
 	err = charm.MaybeCreateVersionFile(tempPath)
 	c.Assert(err, gc.IsNil)
 
-	versionString := []string{"id", "--id"}
-	testing.AssertEchoArgs(c, "hg", strings.Join(versionString, " "))
+	versionString := []string{"id", "-n"}
+	testing.AssertEchoArgs(c, "hg", versionString...)
 
 	// Verify if the version file exists.
 	versionPath := filepath.Join(tempPath, "version")
@@ -333,7 +332,7 @@ func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	defer f.Close()
 	_, err = fmt.Fscanln(f, &version)
-	c.Assert(version, gc.Equals, strings.Join(versionString, " "))
+	c.Assert(version, gc.Equals, "hg")
 }
 
 // TestNOVCSMaybeCreateVersionFile verifies that version file not created

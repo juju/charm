@@ -106,14 +106,12 @@ func IsUnsupportedSeriesError(err error) bool {
 func MaybeCreateVersionFile(path string) error {
 	var cmdArgs []string
 	// Verify that it is revision control directory.
-	if _, err := os.Stat(filepath.Join(path, ".git")); err == nil {
-		// It is git version control.
-		cmdArgs = []string{"git", "describe", "--dirty"}
+	if _, err := os.Stat(filepath.Join(path, ".hg")); err == nil {
+		cmdArgs = []string{"hg", "id", "-n"}
 	} else if _, err = os.Stat(filepath.Join(path, ".bzr")); err == nil {
-		// It is baazar.
-		cmdArgs = []string{"bzr", "revision-info"}
-	} else if _, err = os.Stat(filepath.Join(path, ".hg")); err == nil {
-		cmdArgs = []string{"hg", "id", "--id"}
+		cmdArgs = []string{"bzr", "version-info"}
+	} else if _, err = os.Stat(filepath.Join(path, ".git")); err == nil {
+		cmdArgs = []string{"git", "describe", "--dirty"}
 	} else {
 		logger.Debugf("Charm is not in revision control directory")
 		return nil
@@ -122,19 +120,19 @@ func MaybeCreateVersionFile(path string) error {
 	outStr, err := utils.RunCommand(cmdArgs[0], cmdArgs[1:]...)
 	if err != nil {
 		return err
-	}
+	} else {
+		versionPath := filepath.Join(path, "version")
+		// Overwrite the existing version file.
+		file, err := os.OpenFile(versionPath, os.O_RDWR|os.O_CREATE, 0644)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
 
-	versionPath := filepath.Join(path, "version")
-	// Overwrite the existing version file.
-	file, err := os.OpenFile(versionPath, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = file.WriteString(outStr)
-	if err != nil {
-		return err
+		_, err = file.WriteString(outStr)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
