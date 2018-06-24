@@ -19,7 +19,9 @@ import (
 	"gopkg.in/juju/charm.v6"
 	"gopkg.in/yaml.v2"
 
+	"bufio"
 	coretesting "github.com/juju/juju/testing"
+	"strings"
 )
 
 func Test(t *stdtesting.T) {
@@ -224,7 +226,7 @@ func cloneDir(c *gc.C, path string) string {
 	return newPath
 }
 
-func (s *CharmSuite)assertVersionFile(c *gc.C, dir string, execName string, args []string) {
+func (s *CharmSuite) assertVersionFile(c *gc.C, dir string, execName string, args []string) {
 	testing.PatchExecutableAsEchoArgs(c, s, execName)
 
 	// copy all the contents from 'path' to 'tmp folder dummy-charm'
@@ -232,7 +234,7 @@ func (s *CharmSuite)assertVersionFile(c *gc.C, dir string, execName string, args
 	tempPath := cloneDir(c, dir)
 
 	// create an empty .execName file inside tempDir
-	lookupDir := "."+ execName
+	lookupDir := "." + execName
 	vcsPath := filepath.Join(tempPath, lookupDir)
 	_, err := os.Create(vcsPath)
 	c.Assert(err, gc.IsNil)
@@ -248,12 +250,23 @@ func (s *CharmSuite)assertVersionFile(c *gc.C, dir string, execName string, args
 	c.Assert(err, gc.IsNil)
 
 	// Read the contents of version file.
-	var version string
+	var version []string
+
+	// Build from input arguments.
+	expectedVersion := make([]string, 1, 2)
+	for pos := range args {
+		args[pos] = "'" + args[pos] + "'"
+	}
+	expectedVersion[0] = execName + " " + strings.Join(args, " ")
+
 	f, err := os.Open(versionPath)
 	c.Assert(err, gc.IsNil)
 	defer f.Close()
-	_, err = fmt.Fscanln(f, &version)
-	c.Assert(version, gc.Equals, execName)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		version = append(version, scanner.Text())
+	}
+	c.Assert(version, gc.DeepEquals, expectedVersion)
 }
 
 // TestCreateMaybeCreateVersionFile verifies if the version file can be created
