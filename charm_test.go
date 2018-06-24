@@ -4,6 +4,7 @@
 package charm_test
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	stdtesting "testing"
+	"strings"
 
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
@@ -19,9 +21,7 @@ import (
 	"gopkg.in/juju/charm.v6"
 	"gopkg.in/yaml.v2"
 
-	"bufio"
 	coretesting "github.com/juju/juju/testing"
-	"strings"
 )
 
 func Test(t *stdtesting.T) {
