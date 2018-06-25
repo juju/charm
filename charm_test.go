@@ -258,8 +258,7 @@ func (s *CharmSuite) assertVersionFile(c *gc.C, execName string, args []string) 
 	c.Assert(err, jc.ErrorIsNil)
 	defer f.Close()
 
-	var version []byte
-	version, err = ioutil.ReadAll(f)
+	version, err := ioutil.ReadAll(f)
 	c.Assert(err, jc.ErrorIsNil)
 
 	actualVersion := strings.TrimSuffix(string(version), "\n")
