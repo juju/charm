@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	stdtesting "testing"
 
 	"github.com/juju/testing"
@@ -18,7 +19,6 @@ import (
 	gc "gopkg.in/check.v1"
 	"gopkg.in/juju/charm.v6"
 	"gopkg.in/yaml.v2"
-	"strings"
 )
 
 func Test(t *stdtesting.T) {
