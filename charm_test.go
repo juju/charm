@@ -4,7 +4,6 @@
 package charm_test
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -12,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	stdtesting "testing"
-	"strings"
 
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
@@ -20,8 +18,7 @@ import (
 	gc "gopkg.in/check.v1"
 	"gopkg.in/juju/charm.v6"
 	"gopkg.in/yaml.v2"
-
-	coretesting "github.com/juju/juju/testing"
+	"strings"
 )
 
 func Test(t *stdtesting.T) {
@@ -29,7 +26,7 @@ func Test(t *stdtesting.T) {
 }
 
 type CharmSuite struct {
-	coretesting.BaseSuite
+	testing.CleanupSuite
 }
 
 var _ = gc.Suite(&CharmSuite{})
@@ -226,16 +223,18 @@ func cloneDir(c *gc.C, path string) string {
 	return newPath
 }
 
-func (s *CharmSuite) assertVersionFile(c *gc.C, dir string, execName string, args []string) {
+func (s *CharmSuite) assertVersionFile(c *gc.C, execName string, args []string) {
+	// Read the charmDir from the testing folder
+	charmDir := charmDirPath(c, "dummy")
+
 	testing.PatchExecutableAsEchoArgs(c, s, execName)
 
 	// copy all the contents from 'path' to 'tmp folder dummy-charm'
 	// Using cloneDir
-	tempPath := cloneDir(c, dir)
+	tempPath := cloneDir(c, charmDir)
 
 	// create an empty .execName file inside tempDir
-	lookupDir := "." + execName
-	vcsPath := filepath.Join(tempPath, lookupDir)
+	vcsPath := filepath.Join(tempPath, "."+execName)
 	_, err := os.Create(vcsPath)
 	c.Assert(err, gc.IsNil)
 
@@ -249,10 +248,6 @@ func (s *CharmSuite) assertVersionFile(c *gc.C, dir string, execName string, arg
 	_, err = os.Stat(versionPath)
 	c.Assert(err, gc.IsNil)
 
-	// Read the contents of version file.
-	var version []string
-
-	// Build from input arguments.
 	expectedVersion := make([]string, 1, 2)
 	for pos := range args {
 		args[pos] = "'" + args[pos] + "'"
@@ -262,35 +257,33 @@ func (s *CharmSuite) assertVersionFile(c *gc.C, dir string, execName string, arg
 	f, err := os.Open(versionPath)
 	c.Assert(err, gc.IsNil)
 	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		version = append(version, scanner.Text())
-	}
-	c.Assert(version, gc.DeepEquals, expectedVersion)
+
+	var version []byte
+	version, err = ioutil.ReadAll(f)
+	c.Assert(err, gc.IsNil)
+
+	actualVersion := strings.TrimSuffix(string(version), "\n")
+
+	c.Assert(actualVersion, gc.Equals, strings.Join(expectedVersion, " "))
 }
 
 // TestCreateMaybeCreateVersionFile verifies if the version file can be created
 // in case of git revision control directory
 func (s *CharmSuite) TestGitMaybeCreateVersionFile(c *gc.C) {
-	// Read the charmDir from the testing folder
-	dummyPath := charmDirPath(c, "dummy")
-	s.assertVersionFile(c, dummyPath, "git", []string{"describe", "--dirty"})
+
+	s.assertVersionFile(c, "git", []string{"describe", "--dirty"})
 }
 
 // TestBzrMaybeCreateVersionFile verifies if the version file can be created
 // in case of bazaar revision control directory.
 func (s *CharmSuite) TestBazaarMaybeCreateVersionFile(c *gc.C) {
-	// Read the charmDir from the testing folder.
-	dummyPath := charmDirPath(c, "dummy")
-	s.assertVersionFile(c, dummyPath, "bzr", []string{"version-info"})
+	s.assertVersionFile(c, "bzr", []string{"version-info"})
 }
 
 // TestHgMaybeCreateVersionFile verifies if the version file can be created
 // in case of Mecurial revision control directory.
 func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
-	// Read the charmDir from the testing folder.
-	dummyPath := charmDirPath(c, "dummy")
-	s.assertVersionFile(c, dummyPath, "hg", []string{"id", "-n"})
+	s.assertVersionFile(c, "hg", []string{"id", "-n"})
 }
 
 // TestNOVCSMaybeCreateVersionFile verifies that version file not created
