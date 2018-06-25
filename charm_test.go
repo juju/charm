@@ -297,7 +297,7 @@ func (s *CharmSuite) TestNoVCSMaybeCreateVersionFile(c *gc.C) {
 	tempPath := cloneDir(c, dummyPath)
 
 	err := charm.MaybeCreateVersionFile(tempPath)
-	c.Assert(err, gc.IsNil)
+	c.Assert(err, jc.ErrorIsNil)
 
 	versionPath := filepath.Join(tempPath, "version")
 	_, err = os.Stat(versionPath)
