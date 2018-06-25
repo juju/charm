@@ -6,9 +6,11 @@ package charm
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/juju/loggo"
+	"github.com/juju/utils"
 )
 
 var logger = loggo.GetLogger("juju.charm")
@@ -98,4 +100,39 @@ func NewUnsupportedSeriesError(requestedSeries string, supportedSeries []string)
 func IsUnsupportedSeriesError(err error) bool {
 	_, ok := err.(*unsupportedSeriesError)
 	return ok
+}
+
+// MaybeCreateVersionFile creates/overwrite charm version file.
+func MaybeCreateVersionFile(path string) error {
+	var cmdArgs []string
+	// Verify that it is revision control directory.
+	if _, err := os.Stat(filepath.Join(path, ".hg")); err == nil {
+		cmdArgs = []string{"hg", "id", "-n"}
+	} else if _, err = os.Stat(filepath.Join(path, ".bzr")); err == nil {
+		cmdArgs = []string{"bzr", "version-info"}
+	} else if _, err = os.Stat(filepath.Join(path, ".git")); err == nil {
+		cmdArgs = []string{"git", "describe", "--dirty"}
+	} else {
+		logger.Debugf("charm is not in revision control directory")
+		return nil
+	}
+
+	outStr, err := utils.RunCommand(cmdArgs[0], cmdArgs[1:]...)
+	if err != nil {
+		return err
+	}
+
+	versionPath := filepath.Join(path, "version")
+	// Overwrite the existing version file.
+	file, err := os.OpenFile(versionPath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if _, err = file.WriteString(outStr); err != nil {
+		return err
+	}
+
+	return nil
 }
