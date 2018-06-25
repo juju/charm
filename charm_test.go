@@ -15,6 +15,7 @@ import (
 
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
+	util "github.com/juju/utils"
 	"github.com/juju/utils/fs"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/juju/charm.v6"
@@ -248,11 +249,10 @@ func (s *CharmSuite) assertVersionFile(c *gc.C, execName string, args []string) 
 	_, err = os.Stat(versionPath)
 	c.Assert(err, jc.ErrorIsNil)
 
-	expectedVersion := make([]string, 1, 2)
-	for pos := range args {
-		args[pos] = "'" + args[pos] + "'"
+	expectedVersion := execName
+	for _, arg := range args {
+		expectedVersion = fmt.Sprintf("%s %s", expectedVersion, util.ShQuote(arg))
 	}
-	expectedVersion[0] = execName + " " + strings.Join(args, " ")
 
 	f, err := os.Open(versionPath)
 	c.Assert(err, jc.ErrorIsNil)
@@ -264,7 +264,7 @@ func (s *CharmSuite) assertVersionFile(c *gc.C, execName string, args []string) 
 
 	actualVersion := strings.TrimSuffix(string(version), "\n")
 
-	c.Assert(actualVersion, gc.Equals, strings.Join(expectedVersion, " "))
+	c.Assert(actualVersion, gc.Equals, expectedVersion)
 }
 
 // TestCreateMaybeCreateVersionFile verifies if the version file can be created

@@ -113,7 +113,7 @@ func MaybeCreateVersionFile(path string) error {
 	} else if _, err = os.Stat(filepath.Join(path, ".git")); err == nil {
 		cmdArgs = []string{"git", "describe", "--dirty"}
 	} else {
-		logger.Debugf("Charm is not in revision control directory")
+		logger.Debugf("charm is not in revision control directory")
 		return nil
 	}
 
