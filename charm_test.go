@@ -236,17 +236,17 @@ func (s *CharmSuite) assertVersionFile(c *gc.C, execName string, args []string) 
 	// create an empty .execName file inside tempDir
 	vcsPath := filepath.Join(tempPath, "."+execName)
 	_, err := os.Create(vcsPath)
-	c.Assert(err, gc.IsNil)
+	c.Assert(err, jc.ErrorIsNil)
 
 	err = charm.MaybeCreateVersionFile(tempPath)
-	c.Assert(err, gc.IsNil)
+	c.Assert(err, jc.ErrorIsNil)
 
 	testing.AssertEchoArgs(c, execName, args...)
 
 	// Verify if version exists.
 	versionPath := filepath.Join(tempPath, "version")
 	_, err = os.Stat(versionPath)
-	c.Assert(err, gc.IsNil)
+	c.Assert(err, jc.ErrorIsNil)
 
 	expectedVersion := make([]string, 1, 2)
 	for pos := range args {
@@ -255,12 +255,12 @@ func (s *CharmSuite) assertVersionFile(c *gc.C, execName string, args []string) 
 	expectedVersion[0] = execName + " " + strings.Join(args, " ")
 
 	f, err := os.Open(versionPath)
-	c.Assert(err, gc.IsNil)
+	c.Assert(err, jc.ErrorIsNil)
 	defer f.Close()
 
 	var version []byte
 	version, err = ioutil.ReadAll(f)
-	c.Assert(err, gc.IsNil)
+	c.Assert(err, jc.ErrorIsNil)
 
 	actualVersion := strings.TrimSuffix(string(version), "\n")
 
@@ -288,7 +288,7 @@ func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
 
 // TestNOVCSMaybeCreateVersionFile verifies that version file not created
 // in case of not a revision control directory.
-func (s *CharmSuite) TestNOVCSMaybeCreateVersionFile(c *gc.C) {
+func (s *CharmSuite) TestNoVCSMaybeCreateVersionFile(c *gc.C) {
 	// Read the charmDir from the testing folder.
 	dummyPath := charmDirPath(c, "dummy")
 
@@ -297,9 +297,9 @@ func (s *CharmSuite) TestNOVCSMaybeCreateVersionFile(c *gc.C) {
 	tempPath := cloneDir(c, dummyPath)
 
 	err := charm.MaybeCreateVersionFile(tempPath)
-	c.Assert(err, gc.NotNil)
+	c.Assert(err, gc.IsNil)
 
 	versionPath := filepath.Join(tempPath, "version")
 	_, err = os.Stat(versionPath)
-	c.Check(err, jc.Satisfies, os.IsNotExist)
+	c.Assert(err, jc.Satisfies, os.IsNotExist)
 }
