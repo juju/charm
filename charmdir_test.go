@@ -7,7 +7,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	jc "github.com/juju/testing/checkers"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,8 +14,9 @@ import (
 	"syscall"
 
 	"github.com/juju/testing"
+	jc "github.com/juju/testing/checkers"
+	"github.com/juju/utils"
 	gc "gopkg.in/check.v1"
-
 	"gopkg.in/juju/charm.v6"
 )
 
@@ -98,6 +98,59 @@ func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
 	s.assertArchiveTo(c, baseDir, charmDir)
+}
+
+func (s *CharmSuite) TestArchiveToWithVersionString(c *gc.C) {
+	baseDir := c.MkDir()
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+
+	dir, err := charm.ReadCharmDir(charmDir)
+	c.Assert(err, gc.IsNil)
+
+	// create an empty .execName file inside tempDir
+	vcsPath := filepath.Join(dir.Path, ".git")
+	_, err = os.Create(vcsPath)
+	c.Assert(err, jc.ErrorIsNil)
+
+	path := filepath.Join(baseDir, "archive.charm")
+	file, err := os.Create(path)
+	c.Assert(err, gc.IsNil)
+
+	testing.PatchExecutableAsEchoArgs(c, s, "git")
+
+	err = dir.ArchiveTo(file)
+	file.Close()
+	c.Assert(err, gc.IsNil)
+
+	args := []string{"describe", "--dirty"}
+	testing.AssertEchoArgs(c, "git", args...)
+
+	zipr, err := zip.OpenReader(path)
+	c.Assert(err, gc.IsNil)
+	defer zipr.Close()
+
+	var verf *zip.File
+	for _, f := range zipr.File {
+		if f.Name == "version" {
+			verf = f
+		}
+	}
+
+	c.Assert(verf, gc.NotNil)
+	reader, err := verf.Open()
+	c.Assert(err, gc.IsNil)
+	data, err := ioutil.ReadAll(reader)
+	reader.Close()
+	c.Assert(err, gc.IsNil)
+
+	obtainedData := string(data)
+	obtainedData = strings.TrimSuffix(obtainedData, "\n")
+
+	expectedArg := "git"
+	for _, arg := range args {
+		expectedArg = fmt.Sprintf("%s %s", expectedArg, utils.ShQuote(arg))
+	}
+	c.Assert(obtainedData, gc.Equals, expectedArg)
 }
 
 func (s *CharmDirSuite) TestArchiveToWithSymlinkedRootDir(c *gc.C) {
@@ -332,4 +385,56 @@ func (s *CharmDirSuite) TestDirSetDiskRevision(c *gc.C) {
 	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Revision(), gc.Equals, 42)
+}
+
+func (s *CharmSuite) assertGenerateVersionString(c *gc.C, execName string, args []string) {
+	// Read the charmDir from the testing folder and clone all contents.
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+
+	testing.PatchExecutableAsEchoArgs(c, s, execName)
+
+	// create an empty .execName file inside tempDir
+	vcsPath := filepath.Join(charmDir, "."+execName)
+	_, err := os.Create(vcsPath)
+	c.Assert(err, jc.ErrorIsNil)
+
+	dir, err := charm.ReadCharmDir(charmDir)
+	c.Assert(err, gc.IsNil)
+
+	_, err = dir.MaybeGenerateVersionString()
+	c.Assert(err, jc.ErrorIsNil)
+
+	testing.AssertEchoArgs(c, execName, args...)
+}
+
+// TestCreateMaybeGenerateVersionString verifies if the version string can be generated
+// in case of git revision control directory
+func (s *CharmSuite) TestGitMaybeGenerateVersionString(c *gc.C) {
+	s.assertGenerateVersionString(c, "git", []string{"describe", "--dirty"})
+}
+
+// TestBzrMaybeGenaretVersionString verifies if the version string can be generated
+// in case of bazaar revision control directory.
+func (s *CharmSuite) TestBazaarMaybeGenerateVersionString(c *gc.C) {
+	s.assertGenerateVersionString(c, "bzr", []string{"version-info"})
+}
+
+// TestHgMaybeGenerateVersionString verifies if the version string can be generated
+// in case of Mecurial revision control directory.
+func (s *CharmSuite) TestHgMaybeGenerateVersionString(c *gc.C) {
+	s.assertGenerateVersionString(c, "hg", []string{"id", "-n"})
+}
+
+// TestNoVCSMaybeGenerateVersionString verifies that version string not generated
+// in case of not a revision control directory.
+func (s *CharmSuite) TestNoVCSMaybeGenerateVersionString(c *gc.C) {
+	// Read the charmDir from the testing folder and clone the contents.
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+
+	dir, err := charm.ReadCharmDir(charmDir)
+	c.Assert(err, gc.IsNil)
+
+	versionString, err := dir.MaybeGenerateVersionString()
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(versionString, gc.Equals, "")
 }
