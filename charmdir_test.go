@@ -100,6 +100,18 @@ func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 	s.assertArchiveTo(c, baseDir, charmDir)
 }
 
+func (s *CharmDirSuite) TestArchiveToWithVersionString(c *gc.C) {
+	baseDir := c.MkDir()
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+
+	// create an empty .execName file inside tempDir
+	vcsPath := filepath.Join(charmDir, ".git")
+	_, err := os.Create(vcsPath)
+	c.Assert(err, jc.ErrorIsNil)
+
+	s.assertArchiveTo(c, baseDir, charmDir)
+}
+
 func (s *CharmDirSuite) TestArchiveToWithSymlinkedRootDir(c *gc.C) {
 	path := cloneDir(c, charmDirPath(c, "dummy"))
 	baseDir := filepath.Dir(path)
@@ -110,7 +122,7 @@ func (s *CharmDirSuite) TestArchiveToWithSymlinkedRootDir(c *gc.C) {
 	s.assertArchiveTo(c, baseDir, charmDir)
 }
 
-func (s *CharmDirSuite) assertArchiveTo(c *gc.C, baseDir, charmDir string) {
+func (s *CharmDirSuite) assertArchiveTo(c *gc.C, baseDir string, charmDir string) {
 	haveSymlinks := true
 	if err := os.Symlink("../target", filepath.Join(charmDir, "hooks/symlink")); err != nil {
 		haveSymlinks = false
@@ -332,4 +344,59 @@ func (s *CharmDirSuite) TestDirSetDiskRevision(c *gc.C) {
 	dir, err = charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Revision(), gc.Equals, 42)
+}
+
+func (s *CharmSuite) assertVersionFile(c *gc.C, execName string, args []string) {
+	// Read the charmDir from the testing folder
+	charmDir := charmDirPath(c, "dummy")
+
+	testing.PatchExecutableAsEchoArgs(c, s, execName)
+
+	// copy all the contents from 'path' to 'tmp folder dummy-charm'
+	// Using cloneDir
+	tempPath := cloneDir(c, charmDir)
+
+	// create an empty .execName file inside tempDir
+	vcsPath := filepath.Join(tempPath, "."+execName)
+	_, err := os.Create(vcsPath)
+	c.Assert(err, jc.ErrorIsNil)
+
+	_, err = charm.MaybeCreateGenerateString(tempPath)
+	c.Assert(err, jc.ErrorIsNil)
+
+	testing.AssertEchoArgs(c, execName, args...)
+}
+
+// TestCreateMaybeCreateVersionFile verifies if the version file can be generated
+// in case of git revision control directory
+func (s *CharmSuite) TestGitMaybeCreateVersionFile(c *gc.C) {
+
+	s.assertVersionFile(c, "git", []string{"describe", "--dirty"})
+}
+
+// TestBzrMaybeCreateVersionFile verifies if the version string can be generated
+// in case of bazaar revision control directory.
+func (s *CharmSuite) TestBazaarMaybeCreateVersionFile(c *gc.C) {
+	s.assertVersionFile(c, "bzr", []string{"version-info"})
+}
+
+// TestHgMaybeCreateVersionFile verifies if the version string can be generated
+// in case of Mecurial revision control directory.
+func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
+	s.assertVersionFile(c, "hg", []string{"id", "-n"})
+}
+
+// TestNOVCSMaybeCreateVersionFile verifies that version file not generated
+// in case of not a revision control directory.
+func (s *CharmSuite) TestNoVCSMaybeCreateVersionFile(c *gc.C) {
+	// Read the charmDir from the testing folder.
+	dummyPath := charmDirPath(c, "dummy")
+
+	// copy all the contents from 'path' to 'tmp folder dummy-charm'.
+	// Using cloneDir.
+	tempPath := cloneDir(c, dummyPath)
+
+	versionString, err := charm.MaybeCreateGenerateString(tempPath)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(versionString, gc.Equals, "")
 }
