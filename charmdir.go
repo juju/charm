@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/juju/utils"
 )
 
 // The CharmDir type encapsulates access to data and operations
@@ -172,10 +174,14 @@ func resolveSymlinkedRoot(rootPath string) (string, error) {
 // ArchiveTo creates a charm file from the charm expanded in dir.
 // By convention a charm archive should have a ".charm" suffix.
 func (dir *CharmDir) ArchiveTo(w io.Writer) error {
-	return writeArchive(w, dir.Path, dir.revision, dir.Meta().Hooks())
+	versionString, err := dir.MaybeGenerateVersionString()
+	if err != nil {
+		logger.Warningf("version string generation failed : %v", err)
+	}
+	return writeArchive(w, dir.Path, dir.revision, versionString, dir.Meta().Hooks())
 }
 
-func writeArchive(w io.Writer, path string, revision int, hooks map[string]bool) error {
+func writeArchive(w io.Writer, path string, revision int, versionString string, hooks map[string]bool) error {
 	zipw := zip.NewWriter(w)
 	defer zipw.Close()
 
@@ -187,7 +193,10 @@ func writeArchive(w io.Writer, path string, revision int, hooks map[string]bool)
 	}
 	zp := zipPacker{zipw, rootPath, hooks}
 	if revision != -1 {
-		zp.AddRevision(revision)
+		zp.AddFile("revision", strconv.Itoa(revision))
+	}
+	if versionString != "" {
+		zp.AddFile("version", versionString)
 	}
 	return filepath.Walk(rootPath, zp.WalkFunc())
 }
@@ -204,12 +213,12 @@ func (zp *zipPacker) WalkFunc() filepath.WalkFunc {
 	}
 }
 
-func (zp *zipPacker) AddRevision(revision int) error {
-	h := &zip.FileHeader{Name: "revision"}
+func (zp *zipPacker) AddFile(filename string, value string) error {
+	h := &zip.FileHeader{Name: filename}
 	h.SetMode(syscall.S_IFREG | 0644)
 	w, err := zp.CreateHeader(h)
 	if err == nil {
-		_, err = w.Write([]byte(strconv.Itoa(revision)))
+		_, err = w.Write([]byte(value))
 	}
 	return err
 }
@@ -315,4 +324,23 @@ func checkFileType(path string, mode os.FileMode) error {
 		e = "file is a device: %q"
 	}
 	return fmt.Errorf(e, path)
+}
+
+// MaybeGenerateVersionString generates charm version string.
+func (dir *CharmDir) MaybeGenerateVersionString() (string, error) {
+	var cmdArgs []string
+	// Verify that it is revision control directory.
+	if _, err := os.Stat(filepath.Join(dir.Path, ".hg")); err == nil {
+		cmdArgs = []string{"hg", "id", "-n"}
+	} else if _, err = os.Stat(filepath.Join(dir.Path, ".bzr")); err == nil {
+		cmdArgs = []string{"bzr", "version-info"}
+	} else if _, err = os.Stat(filepath.Join(dir.Path, ".git")); err == nil {
+		cmdArgs = []string{"git", "describe", "--dirty"}
+	} else {
+		logger.Debugf("charm is not in revision control directory")
+		// Return empty string.
+		return "", nil
+	}
+
+	return utils.RunCommand(cmdArgs[0], cmdArgs[1:]...)
 }
