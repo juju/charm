@@ -10,12 +10,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	stdtesting "testing"
 
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
-	util "github.com/juju/utils"
 	"github.com/juju/utils/fs"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/juju/charm.v6"
@@ -222,83 +220,4 @@ func cloneDir(c *gc.C, path string) string {
 	err := fs.Copy(path, newPath)
 	c.Assert(err, gc.IsNil)
 	return newPath
-}
-
-func (s *CharmSuite) assertVersionFile(c *gc.C, execName string, args []string) {
-	// Read the charmDir from the testing folder
-	charmDir := charmDirPath(c, "dummy")
-
-	testing.PatchExecutableAsEchoArgs(c, s, execName)
-
-	// copy all the contents from 'path' to 'tmp folder dummy-charm'
-	// Using cloneDir
-	tempPath := cloneDir(c, charmDir)
-
-	// create an empty .execName file inside tempDir
-	vcsPath := filepath.Join(tempPath, "."+execName)
-	_, err := os.Create(vcsPath)
-	c.Assert(err, jc.ErrorIsNil)
-
-	err = charm.MaybeCreateVersionFile(tempPath)
-	c.Assert(err, jc.ErrorIsNil)
-
-	testing.AssertEchoArgs(c, execName, args...)
-
-	// Verify if version exists.
-	versionPath := filepath.Join(tempPath, "version")
-	_, err = os.Stat(versionPath)
-	c.Assert(err, jc.ErrorIsNil)
-
-	expectedVersion := execName
-	for _, arg := range args {
-		expectedVersion = fmt.Sprintf("%s %s", expectedVersion, util.ShQuote(arg))
-	}
-
-	f, err := os.Open(versionPath)
-	c.Assert(err, jc.ErrorIsNil)
-	defer f.Close()
-
-	version, err := ioutil.ReadAll(f)
-	c.Assert(err, jc.ErrorIsNil)
-
-	actualVersion := strings.TrimSuffix(string(version), "\n")
-
-	c.Assert(actualVersion, gc.Equals, expectedVersion)
-}
-
-// TestCreateMaybeCreateVersionFile verifies if the version file can be created
-// in case of git revision control directory
-func (s *CharmSuite) TestGitMaybeCreateVersionFile(c *gc.C) {
-
-	s.assertVersionFile(c, "git", []string{"describe", "--dirty"})
-}
-
-// TestBzrMaybeCreateVersionFile verifies if the version file can be created
-// in case of bazaar revision control directory.
-func (s *CharmSuite) TestBazaarMaybeCreateVersionFile(c *gc.C) {
-	s.assertVersionFile(c, "bzr", []string{"version-info"})
-}
-
-// TestHgMaybeCreateVersionFile verifies if the version file can be created
-// in case of Mecurial revision control directory.
-func (s *CharmSuite) TestHgMaybeCreateVersionFile(c *gc.C) {
-	s.assertVersionFile(c, "hg", []string{"id", "-n"})
-}
-
-// TestNOVCSMaybeCreateVersionFile verifies that version file not created
-// in case of not a revision control directory.
-func (s *CharmSuite) TestNoVCSMaybeCreateVersionFile(c *gc.C) {
-	// Read the charmDir from the testing folder.
-	dummyPath := charmDirPath(c, "dummy")
-
-	// copy all the contents from 'path' to 'tmp folder dummy-charm'.
-	// Using cloneDir.
-	tempPath := cloneDir(c, dummyPath)
-
-	err := charm.MaybeCreateVersionFile(tempPath)
-	c.Assert(err, jc.ErrorIsNil)
-
-	versionPath := filepath.Join(tempPath, "version")
-	_, err = os.Stat(versionPath)
-	c.Assert(err, jc.Satisfies, os.IsNotExist)
 }

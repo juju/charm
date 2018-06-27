@@ -448,6 +448,7 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 		var err error
 		if strings.HasPrefix(svc.Charm, ".") || filepath.IsAbs(svc.Charm) {
 			charmPath := svc.Charm
+
 			if !filepath.IsAbs(charmPath) {
 				charmPath = filepath.Join(verifier.bundleDir, charmPath)
 			}
