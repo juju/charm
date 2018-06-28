@@ -442,11 +442,16 @@ func assertVerifyErrors(c *gc.C, bundleData string, charms map[string]charm.Char
 		}
 		return nil
 	}
-
+	validateDevices := func(c string) error {
+		if c == "bad device constraints" {
+			return fmt.Errorf("bad device constraint")
+		}
+		return nil
+	}
 	if charms != nil {
-		err = bd.VerifyWithCharms(validateConstraints, validateStorage, charms)
+		err = bd.VerifyWithCharms(validateConstraints, validateStorage, validateDevices, charms)
 	} else {
-		err = bd.VerifyLocal("internal/test-charm-repo/bundle", validateConstraints, validateStorage)
+		err = bd.VerifyLocal("internal/test-charm-repo/bundle", validateConstraints, validateStorage, validateDevices)
 	}
 
 	if len(expectErrors) == 0 {
@@ -482,7 +487,7 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 	} {
 		c.Logf("test %d: %s", i, u)
 		bd.Applications["mediawiki"].Charm = u
-		err := bd.Verify(nil, nil)
+		err := bd.Verify(nil, nil, nil)
 		c.Check(err, gc.IsNil, gc.Commentf("charm url %q", u))
 	}
 }
@@ -507,7 +512,7 @@ func (*bundleDataSuite) TestVerifyLocalCharm(c *gc.C) {
 	} {
 		c.Logf("test %d: %s", i, u)
 		bd.Applications["mediawiki"].Charm = u
-		err := bd.VerifyLocal(bundleDir, nil, nil)
+		err := bd.VerifyLocal(bundleDir, nil, nil, nil)
 		c.Check(err, gc.IsNil, gc.Commentf("charm url %q", u))
 	}
 }
@@ -531,7 +536,7 @@ func (s *bundleDataSuite) testPrepareAndMutateBeforeVerifyWithCharms(c *gc.C, mu
 		mutator(bd)
 	}
 
-	return bd.VerifyWithCharms(nil, nil, charms)
+	return bd.VerifyWithCharms(nil, nil, nil, charms)
 }
 
 func (s *bundleDataSuite) TestVerifyBundleWithUnknownEndpointBindingGiven(c *gc.C) {

@@ -232,6 +232,10 @@ type ApplicationSpec struct {
 	// to units of the application.
 	Storage map[string]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
+	// Devices holds the constraints for devices to assign
+	// to units of the application.
+	Devices map[string]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+
 	// EndpointBindings maps how endpoints are bound to spaces
 	EndpointBindings map[string]string `bson:"bindings,omitempty" json:"bindings,omitempty" yaml:"bindings,omitempty"`
 
@@ -285,6 +289,7 @@ type bundleDataVerifier struct {
 	errors            []error
 	verifyConstraints func(c string) error
 	verifyStorage     func(s string) error
+	verifyDevices     func(s string) error
 }
 
 func (verifier *bundleDataVerifier) addErrorf(f string, a ...interface{}) {
@@ -324,8 +329,9 @@ func (bd *BundleData) VerifyLocal(
 	bundleDir string,
 	verifyConstraints func(c string) error,
 	verifyStorage func(s string) error,
+	verifyDevices func(s string) error,
 ) error {
-	return bd.verifyBundle(bundleDir, verifyConstraints, verifyStorage, nil)
+	return bd.verifyBundle(bundleDir, verifyConstraints, verifyStorage, verifyDevices, nil)
 }
 
 // Verify is a convenience method that calls VerifyWithCharms
@@ -333,14 +339,15 @@ func (bd *BundleData) VerifyLocal(
 func (bd *BundleData) Verify(
 	verifyConstraints func(c string) error,
 	verifyStorage func(s string) error,
+	verifyDevices func(s string) error,
 ) error {
-	return bd.VerifyWithCharms(verifyConstraints, verifyStorage, nil)
+	return bd.VerifyWithCharms(verifyConstraints, verifyStorage, verifyDevices, nil)
 }
 
 // VerifyWithCharms verifies that the bundle is consistent.
 // The verifyConstraints function is called to verify any constraints
 // that are found. If verifyConstraints is nil, no checking
-// of constraints will be done. Similarly, a non-nil verifyStorage
+// of constraints will be done. Similarly, a non-nil verifyStorage, verifyDevices
 // function is called to verify any storage constraints.
 //
 // It verifies the following:
@@ -361,15 +368,17 @@ func (bd *BundleData) Verify(
 func (bd *BundleData) VerifyWithCharms(
 	verifyConstraints func(c string) error,
 	verifyStorage func(s string) error,
+	verifyDevices func(s string) error,
 	charms map[string]Charm,
 ) error {
-	return bd.verifyBundle("", verifyConstraints, verifyStorage, charms)
+	return bd.verifyBundle("", verifyConstraints, verifyStorage, verifyDevices, charms)
 }
 
 func (bd *BundleData) verifyBundle(
 	bundleDir string,
 	verifyConstraints func(c string) error,
 	verifyStorage func(s string) error,
+	verifyDevices func(s string) error,
 	charms map[string]Charm,
 ) error {
 	if verifyConstraints == nil {
@@ -379,6 +388,11 @@ func (bd *BundleData) verifyBundle(
 	}
 	if verifyStorage == nil {
 		verifyStorage = func(string) error {
+			return nil
+		}
+	}
+	if verifyDevices == nil {
+		verifyDevices = func(string) error {
 			return nil
 		}
 	}
@@ -413,6 +427,7 @@ func (bd *BundleData) verifyBundle(
 var (
 	validMachineId   = regexp.MustCompile("^" + names.NumberSnippet + "$")
 	validStorageName = regexp.MustCompile("^" + names.StorageNameSnippet + "$")
+	validDeviceName  = regexp.MustCompile("^" + "(?:[a-z][a-z0-9]*(?:-[a-z0-9]*[a-z][a-z0-9]*)*)" + "$")
 )
 
 func (verifier *bundleDataVerifier) verifyMachines() {
@@ -462,23 +477,33 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 			verifier.addErrorf("invalid charm URL in application %q: %v", name, err)
 		}
 
-		// Check the series.
+		// Check the Series.
 		if curl != nil && curl.Series != "" && svc.Series != "" && curl.Series != svc.Series {
 			verifier.addErrorf("the charm URL for application %q has a series which does not match, please remove the series from the URL", name)
 		}
 		if svc.Series != "" && !IsValidSeries(svc.Series) {
 			verifier.addErrorf("application %q declares an invalid series %q", name, svc.Series)
 		}
-
+		// Check the Constraints.
 		if err := verifier.verifyConstraints(svc.Constraints); err != nil {
 			verifier.addErrorf("invalid constraints %q in application %q: %v", svc.Constraints, name, err)
 		}
+		// Check the Storage.
 		for storageName, storageConstraints := range svc.Storage {
 			if !validStorageName.MatchString(storageName) {
 				verifier.addErrorf("invalid storage name %q in application %q", storageName, name)
 			}
 			if err := verifier.verifyStorage(storageConstraints); err != nil {
 				verifier.addErrorf("invalid storage %q in application %q: %v", storageName, name, err)
+			}
+		}
+		// Check the Devices.
+		for deviceName, deviceConstraints := range svc.Devices {
+			if !validDeviceName.MatchString(deviceName) {
+				verifier.addErrorf("invalid device name %q in application %q", deviceName, name)
+			}
+			if err := verifier.verifyDevices(deviceConstraints); err != nil {
+				verifier.addErrorf("invalid device %q in application %q: %v", deviceName, name, err)
 			}
 		}
 		if verifier.charms != nil {
@@ -617,7 +642,7 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 func (verifier *bundleDataVerifier) verifyEndpointBindings() {
 	for name, svc := range verifier.bd.Applications {
 		charm, ok := verifier.charms[name]
-		// Only thest the ok path here because the !ok path is tested in verifyApplications
+		// Only test the ok path here because the !ok path is tested in verifyApplications
 		if !ok {
 			continue
 		}
