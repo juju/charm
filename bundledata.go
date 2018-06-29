@@ -400,6 +400,7 @@ func (bd *BundleData) verifyBundle(
 		bundleDir:         bundleDir,
 		verifyConstraints: verifyConstraints,
 		verifyStorage:     verifyStorage,
+		verifyDevices:     verifyDevices,
 		bd:                bd,
 		machineRefCounts:  make(map[string]int),
 		charms:            charms,
