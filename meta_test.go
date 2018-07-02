@@ -714,6 +714,8 @@ func (s *MetaSuite) TestMetaHooks(c *gc.C) {
 		"monitoring-port-relation-changed":  true,
 		"monitoring-port-relation-departed": true,
 		"monitoring-port-relation-broken":   true,
+		"pre-series-upgrade":                true,
+		"post-series-upgrade":               true,
 		"url-relation-joined":               true,
 		"url-relation-changed":              true,
 		"url-relation-departed":             true,
