@@ -23,6 +23,8 @@ const (
 	LeaderDeposed         Kind = "leader-deposed"
 	LeaderSettingsChanged Kind = "leader-settings-changed"
 	UpdateStatus          Kind = "update-status"
+	PreSeriesUpgrade      Kind = "pre-series-upgrade"
+	PostSeriesUpgrade     Kind = "post-series-upgrade"
 
 	// These hooks require an associated relation, and the name of the relation
 	// unit whose change triggered the hook. The hook file names that these
@@ -56,6 +58,8 @@ var unitHooks = []Kind{
 	LeaderDeposed,
 	LeaderSettingsChanged,
 	UpdateStatus,
+	PreSeriesUpgrade,
+	PostSeriesUpgrade,
 }
 
 // UnitHooks returns all known unit hook kinds.
