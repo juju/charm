@@ -182,6 +182,21 @@ func (s *ResourceSuite) TestValidateMissingFingerprint(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `bad file info: missing fingerprint`)
 }
 
+func (s *ResourceSuite) TestValidateDockerType(c *gc.C) {
+	res := resource.Resource{
+		Meta: resource.Meta{
+			Name:        "my-resource",
+			Type:        resource.TypeDocker,
+			Description: "One line that is useful when operators need to push it.",
+		},
+		Origin:   resource.OriginStore,
+		Revision: 1,
+	}
+	err := res.Validate()
+
+	c.Check(err, jc.ErrorIsNil)
+}
+
 func (s *ResourceSuite) TestValidateBadSize(c *gc.C) {
 	fp, err := resource.NewFingerprint(fingerprint)
 	c.Assert(err, jc.ErrorIsNil)

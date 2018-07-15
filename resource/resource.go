@@ -40,8 +40,10 @@ func (res Resource) Validate() error {
 		return errors.Annotate(err, "bad revision")
 	}
 
-	if err := res.validateFileInfo(); err != nil {
-		return errors.Annotate(err, "bad file info")
+	if res.Type == TypeFile {
+		if err := res.validateFileInfo(); err != nil {
+			return errors.Annotate(err, "bad file info")
+		}
 	}
 
 	return nil
