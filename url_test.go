@@ -245,7 +245,7 @@ func (s *URLSuite) TestParseURL(c *gc.C) {
 		}
 		url, uerr := charm.ParseURL(t.s)
 		if t.err != "" {
-			t.err = strings.Replace(t.err, "$URL", regexp.QuoteMeta(fmt.Sprintf("%q", t.s)), -1)
+			t.err = strings.Replace(t.err, "$URL", regexp.QuoteMeta(fmt.Sprintf("%q", strings.TrimSuffix(t.s, "/"))), -1)
 			c.Check(uerr, gc.ErrorMatches, t.err)
 			c.Check(url, gc.IsNil)
 			continue
