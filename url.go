@@ -127,6 +127,9 @@ func MustParseURL(url string) *URL {
 //
 // A missing schema is assumed to be 'cs'.
 func ParseURL(url string) (*URL, error) {
+
+	url = strings.TrimSuffix(url, "/")
+
 	// Check if we're dealing with a v1 or v2 URL.
 	u, err := gourl.Parse(url)
 	if err != nil {
