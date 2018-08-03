@@ -16,18 +16,11 @@ var _ = gc.Suite(&TypeSuite{})
 type TypeSuite struct{}
 
 func (s *TypeSuite) TestParseTypeOkay(c *gc.C) {
-	rt, err := resource.ParseType("file")
-	c.Assert(err, jc.ErrorIsNil)
-
-	c.Check(rt, gc.Equals, resource.TypeFile)
-}
-
-func (s *TypeSuite) TestParseTypeRecognized(c *gc.C) {
-	supported := []resource.Type{
-		resource.TypeFile,
-	}
-	for _, expected := range supported {
-		rt, err := resource.ParseType(expected.String())
+	for resourceType, expected := range map[string]resource.Type{
+		"file":      resource.TypeFile,
+		"oci-image": resource.TypeContainerImage,
+	} {
+		rt, err := resource.ParseType(resourceType)
 		c.Assert(err, jc.ErrorIsNil)
 
 		c.Check(rt, gc.Equals, expected)
@@ -52,7 +45,8 @@ func (s *TypeSuite) TestParseTypeUnsupported(c *gc.C) {
 
 func (s *TypeSuite) TestTypeStringSupported(c *gc.C) {
 	supported := map[resource.Type]string{
-		resource.TypeFile: "file",
+		resource.TypeFile:           "file",
+		resource.TypeContainerImage: "oci-image",
 	}
 	for rt, expected := range supported {
 		str := rt.String()
@@ -71,6 +65,7 @@ func (s *TypeSuite) TestTypeStringUnknown(c *gc.C) {
 func (s *TypeSuite) TestTypeValidateSupported(c *gc.C) {
 	supported := []resource.Type{
 		resource.TypeFile,
+		resource.TypeContainerImage,
 	}
 	for _, rt := range supported {
 		err := rt.Validate()

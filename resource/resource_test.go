@@ -186,7 +186,7 @@ func (s *ResourceSuite) TestValidateDockerType(c *gc.C) {
 	res := resource.Resource{
 		Meta: resource.Meta{
 			Name:        "my-resource",
-			Type:        resource.TypeDocker,
+			Type:        resource.TypeContainerImage,
 			Description: "One line that is useful when operators need to push it.",
 		},
 		Origin:   resource.OriginStore,
