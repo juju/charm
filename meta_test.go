@@ -1335,7 +1335,7 @@ resources:
         type: file
         filename: other.zip
     image-resource:
-         type: docker
+         type: oci-image
          description: "An image"
 `))
 	c.Assert(err, gc.IsNil)
@@ -1354,7 +1354,7 @@ resources:
 		},
 		"image-resource": {
 			Name:        "image-resource",
-			Type:        resource.TypeDocker,
+			Type:        resource.TypeContainerImage,
 			Description: "An image",
 		},
 	})

@@ -11,12 +11,12 @@ import (
 const (
 	typeUnknown Type = iota
 	TypeFile
-	TypeDocker
+	TypeContainerImage
 )
 
 var types = map[Type]string{
-	TypeFile:  "file",
-	TypeDocker: "docker",
+	TypeFile:           "file",
+	TypeContainerImage: "oci-image",
 }
 
 // Type enumerates the recognized resource types.
