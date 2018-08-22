@@ -231,6 +231,10 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 	if err != nil {
 		return err
 	}
+	// Replace any Windows path separators with "/".
+	// zip file spec 4.4.17.1 says that separators are always "/" even on Windows.
+	relpath = filepath.ToSlash(relpath)
+
 	method := zip.Deflate
 	hidden := len(relpath) > 1 && relpath[0] == '.'
 	if fi.IsDir() {
