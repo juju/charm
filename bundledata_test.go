@@ -344,6 +344,8 @@ applications:
             "gui-y": -15
         resources:
             "": 42
+            "foo":
+               "not": int
     riak:
         charm: "./somepath"
     mysql:
@@ -401,6 +403,7 @@ relations:
 		`invalid constraints "bad constraints" in application "mysql": bad constraint`,
 		`negative number of units specified on application "mediawiki"`,
 		`missing resource name on application "mediawiki"`,
+		`resource revision "mediawiki" is not int or string`,
 		`the charm URL for application "postgres" has a series which does not match, please remove the series from the URL`,
 		`too many units specified in unit placement for application "mysql"`,
 		`placement "nowhere/3" refers to an application not defined in this bundle`,
