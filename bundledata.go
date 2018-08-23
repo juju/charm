@@ -154,6 +154,8 @@ type ApplicationSpec struct {
 	// Resources is the set of resource revisions to deploy for the
 	// application. Bundles only support charm store resources and not ones
 	// that were uploaded to the controller.
+	// A resource value can either be an integer revision number,
+	// or a string holding a path to a local resource file.
 	Resources map[string]interface{} `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
 
 	// NumUnits holds the number of units of the
@@ -521,12 +523,15 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 				verifier.addErrorf("application %q refers to non-existent charm %q", name, svc.Charm)
 			}
 		}
-		for resName := range svc.Resources {
+		for resName, rev := range svc.Resources {
 			if resName == "" {
 				verifier.addErrorf("missing resource name on application %q", name)
 			}
-			// We do not check the revisions because all values
-			// are allowed.
+			switch rev.(type) {
+			case int, string:
+			default:
+				verifier.addErrorf("resource revision %q is not int or string", name)
+			}
 		}
 		if svc.NumUnits < 0 {
 			verifier.addErrorf("negative number of units specified on application %q", name)
