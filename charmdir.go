@@ -9,12 +9,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
-
-	"github.com/juju/utils"
 )
 
 // The CharmDir type encapsulates access to data and operations
@@ -174,9 +173,13 @@ func resolveSymlinkedRoot(rootPath string) (string, error) {
 // ArchiveTo creates a charm file from the charm expanded in dir.
 // By convention a charm archive should have a ".charm" suffix.
 func (dir *CharmDir) ArchiveTo(w io.Writer) error {
-	versionString, err := dir.MaybeGenerateVersionString()
+	versionString, vcsType, err := dir.MaybeGenerateVersionString()
 	if err != nil {
-		logger.Warningf("version string generation failed : %v", err)
+		// Just to be safe, ensure version is "" on error.
+		versionString = ""
+		logger.Warningf(
+			"%q version string generation failed : %v\nThis means that the charm version won't show in juju status.",
+			vcsType, err)
 	}
 	return writeArchive(w, dir.Path, dir.revision, versionString, dir.Meta().Hooks())
 }
@@ -331,7 +334,8 @@ func checkFileType(path string, mode os.FileMode) error {
 }
 
 // MaybeGenerateVersionString generates charm version string.
-func (dir *CharmDir) MaybeGenerateVersionString() (string, error) {
+// The second return value is the detected vcs type.
+func (dir *CharmDir) MaybeGenerateVersionString() (string, string, error) {
 	var cmdArgs []string
 	// Verify that it is revision control directory.
 	if _, err := os.Stat(filepath.Join(dir.Path, ".hg")); err == nil {
@@ -339,12 +343,25 @@ func (dir *CharmDir) MaybeGenerateVersionString() (string, error) {
 	} else if _, err = os.Stat(filepath.Join(dir.Path, ".bzr")); err == nil {
 		cmdArgs = []string{"bzr", "version-info"}
 	} else if _, err = os.Stat(filepath.Join(dir.Path, ".git")); err == nil {
-		cmdArgs = []string{"git", "describe", "--dirty"}
+		cmdArgs = []string{"git", "describe", "--dirty", "--always"}
 	} else {
 		logger.Debugf("charm is not in revision control directory")
 		// Return empty string.
-		return "", nil
+		return "", "", nil
 	}
 
-	return utils.RunCommand(cmdArgs[0], cmdArgs[1:]...)
+	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	// version string value is written to stdout if successful.
+	out, err := cmd.Output()
+	output := string(out)
+	if err == nil {
+		return output, cmdArgs[0], nil
+	}
+
+	// If there's an error, we may be able to get a relevant cause string.
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok || len(exitErr.Stderr) == 0 {
+		return "", cmdArgs[0], err
+	}
+	return "", cmdArgs[0], fmt.Errorf("%s: %s", err, string(exitErr.Stderr))
 }
