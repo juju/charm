@@ -350,18 +350,22 @@ func (dir *CharmDir) MaybeGenerateVersionString() (string, string, error) {
 		return "", "", nil
 	}
 
+	vcsType := cmdArgs[0]
 	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	// version string value is written to stdout if successful.
 	out, err := cmd.Output()
+	if err != nil {
+		return "", vcsType, err
+	}
 	output := string(out)
 	if err == nil {
-		return output, cmdArgs[0], nil
+		return output, vcsType, nil
 	}
 
 	// If there's an error, we may be able to get a relevant cause string.
 	exitErr, ok := err.(*exec.ExitError)
 	if !ok || len(exitErr.Stderr) == 0 {
-		return "", cmdArgs[0], err
+		return "", vcsType, err
 	}
-	return "", cmdArgs[0], fmt.Errorf("%s: %s", err, string(exitErr.Stderr))
+	return "", vcsType, fmt.Errorf("%s: %s", err, string(exitErr.Stderr))
 }
