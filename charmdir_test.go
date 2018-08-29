@@ -13,6 +13,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/juju/loggo"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils"
@@ -122,7 +123,7 @@ func (s *CharmSuite) TestArchiveToWithVersionString(c *gc.C) {
 	file.Close()
 	c.Assert(err, gc.IsNil)
 
-	args := []string{"describe", "--dirty"}
+	args := []string{"describe", "--dirty", "--always"}
 	testing.AssertEchoArgs(c, "git", args...)
 
 	zipr, err := zip.OpenReader(path)
@@ -151,6 +152,51 @@ func (s *CharmSuite) TestArchiveToWithVersionString(c *gc.C) {
 		expectedArg = fmt.Sprintf("%s %s", expectedArg, utils.ShQuote(arg))
 	}
 	c.Assert(obtainedData, gc.Equals, expectedArg)
+}
+
+func (s *CharmSuite) TestArchiveToWithVersionStringError(c *gc.C) {
+	baseDir := c.MkDir()
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+
+	dir, err := charm.ReadCharmDir(charmDir)
+	c.Assert(err, gc.IsNil)
+
+	// create an empty .execName file inside tempDir
+	vcsPath := filepath.Join(dir.Path, ".git")
+	_, err = os.Create(vcsPath)
+	c.Assert(err, jc.ErrorIsNil)
+
+	path := filepath.Join(baseDir, "archive.charm")
+	file, err := os.Create(path)
+	c.Assert(err, gc.IsNil)
+
+	testing.PatchExecutableThrowError(c, s, "git", 128)
+	var tw loggo.TestWriter
+	err = loggo.RegisterWriter("versionstring-test", &tw, loggo.WARNING)
+	c.Assert(err, jc.ErrorIsNil)
+	defer loggo.RemoveWriter("versionstring-test")
+
+	err = dir.ArchiveTo(file)
+	file.Close()
+	c.Assert(err, jc.ErrorIsNil)
+
+	msg := `
+"git" version string generation failed : exit status 128
+This means that the charm version won't show in juju status.`[1:]
+
+	c.Assert(tw.Log(), jc.LogMatches, jc.SimpleMessages{{
+		loggo.WARNING, msg,
+	}})
+
+	zipr, err := zip.OpenReader(path)
+	c.Assert(err, gc.IsNil)
+	defer zipr.Close()
+
+	for _, f := range zipr.File {
+		if f.Name == "version" {
+			c.Fatal("unexpected version in charm archive")
+		}
+	}
 }
 
 func (s *CharmDirSuite) TestArchiveToWithSymlinkedRootDir(c *gc.C) {
@@ -387,6 +433,23 @@ func (s *CharmDirSuite) TestDirSetDiskRevision(c *gc.C) {
 	c.Assert(dir.Revision(), gc.Equals, 42)
 }
 
+func (s *CharmSuite) TestMaybeGenerateVersionStringError(c *gc.C) {
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+
+	testing.PatchExecutableThrowError(c, s, "git", 128)
+	vcsPath := filepath.Join(charmDir, ".git")
+	_, err := os.Create(vcsPath)
+	c.Assert(err, jc.ErrorIsNil)
+
+	dir, err := charm.ReadCharmDir(charmDir)
+	c.Assert(err, gc.IsNil)
+
+	version, vcsType, err := dir.MaybeGenerateVersionString()
+	c.Assert(err, gc.ErrorMatches, "exit status 128")
+	c.Assert(version, gc.Equals, "")
+	c.Assert(vcsType, gc.Equals, "git")
+}
+
 func (s *CharmSuite) assertGenerateVersionString(c *gc.C, execName string, args []string) {
 	// Read the charmDir from the testing folder and clone all contents.
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
@@ -401,8 +464,14 @@ func (s *CharmSuite) assertGenerateVersionString(c *gc.C, execName string, args 
 	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
-	_, err = dir.MaybeGenerateVersionString()
+	version, vcsType, err := dir.MaybeGenerateVersionString()
 	c.Assert(err, jc.ErrorIsNil)
+
+	version = strings.Trim(version, "\n")
+	version = strings.Replace(version, "'", "", -1)
+	expectedVersion := strings.Join(append([]string{execName}, args...), " ")
+	c.Assert(version, gc.Equals, expectedVersion)
+	c.Assert(vcsType, gc.Equals, execName)
 
 	testing.AssertEchoArgs(c, execName, args...)
 }
@@ -410,7 +479,7 @@ func (s *CharmSuite) assertGenerateVersionString(c *gc.C, execName string, args 
 // TestCreateMaybeGenerateVersionString verifies if the version string can be generated
 // in case of git revision control directory
 func (s *CharmSuite) TestGitMaybeGenerateVersionString(c *gc.C) {
-	s.assertGenerateVersionString(c, "git", []string{"describe", "--dirty"})
+	s.assertGenerateVersionString(c, "git", []string{"describe", "--dirty", "--always"})
 }
 
 // TestBzrMaybeGenaretVersionString verifies if the version string can be generated
@@ -434,7 +503,8 @@ func (s *CharmSuite) TestNoVCSMaybeGenerateVersionString(c *gc.C) {
 	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
-	versionString, err := dir.MaybeGenerateVersionString()
+	versionString, vcsType, err := dir.MaybeGenerateVersionString()
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(versionString, gc.Equals, "")
+	c.Assert(vcsType, gc.Equals, "")
 }
