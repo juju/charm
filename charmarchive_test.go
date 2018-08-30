@@ -39,6 +39,7 @@ var dummyManifest = []string{
 	"empty/.gitkeep",
 	"hooks",
 	"hooks/install",
+	"lxd-profile.yaml",
 	"metadata.yaml",
 	"revision",
 	"src",
