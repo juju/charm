@@ -20,6 +20,7 @@ type Charm interface {
 	Config() *Config
 	Metrics() *Metrics
 	Actions() *Actions
+	LXDProfile() *LXDProfile
 	Revision() int
 }
 

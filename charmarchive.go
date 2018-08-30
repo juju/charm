@@ -23,12 +23,13 @@ import (
 type CharmArchive struct {
 	zopen zipOpener
 
-	Path     string // May be empty if CharmArchive wasn't read from a file
-	meta     *Meta
-	config   *Config
-	metrics  *Metrics
-	actions  *Actions
-	revision int
+	Path       string // May be empty if CharmArchive wasn't read from a file
+	meta       *Meta
+	config     *Config
+	metrics    *Metrics
+	actions    *Actions
+	lxdProfile *LXDProfile
+	revision   int
 }
 
 // Trick to ensure *CharmArchive implements the Charm interface.
@@ -129,6 +130,19 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		}
 	}
 
+	reader, err = zipOpenFile(zipr, "lxd-profile.yaml")
+	if _, ok := err.(*noCharmArchiveFile); ok {
+		b.lxdProfile = NewLXDProfile()
+	} else if err != nil {
+		return nil, err
+	} else {
+		b.lxdProfile, err = ReadLXDProfile(reader)
+		reader.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return b, nil
 }
 
@@ -183,6 +197,12 @@ func (a *CharmArchive) Metrics() *Metrics {
 // archive.
 func (a *CharmArchive) Actions() *Actions {
 	return a.actions
+}
+
+// LXDProfile returns the LXDProfile representing the lxd-profile.yaml file
+// for the charm expanded in dir.
+func (a *CharmArchive) LXDProfile() *LXDProfile {
+	return a.lxdProfile
 }
 
 type zipReadCloser struct {
