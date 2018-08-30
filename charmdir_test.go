@@ -13,6 +13,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/juju/collections/set"
 	"github.com/juju/loggo"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
@@ -99,6 +100,31 @@ func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
 	s.assertArchiveTo(c, baseDir, charmDir)
+}
+
+func (s *CharmDirSuite) TestArchiveToWithIgnoredFiles(c *gc.C) {
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+	dir, err := charm.ReadCharmDir(charmDir)
+
+	// Add a directory/files that should be ignored
+	nestedGitDir := filepath.Join(dir.Path, ".git/nested")
+	err = os.MkdirAll(nestedGitDir, 0700)
+	c.Assert(err, jc.ErrorIsNil)
+
+	f, err := os.Create(filepath.Join(nestedGitDir, "foo"))
+	c.Assert(err, jc.ErrorIsNil)
+	defer f.Close()
+
+	var b bytes.Buffer
+	err = dir.ArchiveTo(&b)
+	c.Assert(err, jc.ErrorIsNil)
+
+	archive, err := charm.ReadCharmArchiveBytes(b.Bytes())
+	c.Assert(err, jc.ErrorIsNil)
+
+	manifest, err := archive.Manifest()
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifest...))
 }
 
 func (s *CharmSuite) TestArchiveToWithVersionString(c *gc.C) {

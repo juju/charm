@@ -16,15 +16,25 @@ import (
 	"syscall"
 )
 
+// defaultIgnoreDirectories defines all directories (currently common vcs)
+// that should be ignored when archiving
+var defaultIgnoreDirectories = []string{
+	".git",
+	".svn",
+	".hg",
+	".bzr",
+}
+
 // The CharmDir type encapsulates access to data and operations
 // on a charm directory.
 type CharmDir struct {
-	Path     string
-	meta     *Meta
-	config   *Config
-	metrics  *Metrics
-	actions  *Actions
-	revision int
+	Path       string
+	meta       *Meta
+	config     *Config
+	metrics    *Metrics
+	actions    *Actions
+	revision   int
+	ignoreDirs []string
 }
 
 // Trick to ensure *CharmDir implements the Charm interface.
@@ -33,14 +43,14 @@ var _ Charm = (*CharmDir)(nil)
 // IsCharmDir report whether the path is likely to represent
 // a charm, even it may be incomplete.
 func IsCharmDir(path string) bool {
-	dir := &CharmDir{Path: path}
+	dir := &CharmDir{Path: path, ignoreDirs: defaultIgnoreDirectories}
 	_, err := os.Stat(dir.join("metadata.yaml"))
 	return err == nil
 }
 
 // ReadCharmDir returns a CharmDir representing an expanded charm directory.
 func ReadCharmDir(path string) (dir *CharmDir, err error) {
-	dir = &CharmDir{Path: path}
+	dir = &CharmDir{Path: path, ignoreDirs: defaultIgnoreDirectories}
 	file, err := os.Open(dir.join("metadata.yaml"))
 	if err != nil {
 		return nil, err
@@ -181,10 +191,10 @@ func (dir *CharmDir) ArchiveTo(w io.Writer) error {
 			"%q version string generation failed : %v\nThis means that the charm version won't show in juju status.",
 			vcsType, err)
 	}
-	return writeArchive(w, dir.Path, dir.revision, versionString, dir.Meta().Hooks())
+	return writeArchive(w, dir.Path, dir.revision, versionString, dir.Meta().Hooks(), dir.ignoreDirs)
 }
 
-func writeArchive(w io.Writer, path string, revision int, versionString string, hooks map[string]bool) error {
+func writeArchive(w io.Writer, path string, revision int, versionString string, hooks map[string]bool, ignore []string) error {
 	zipw := zip.NewWriter(w)
 	defer zipw.Close()
 
@@ -194,7 +204,7 @@ func writeArchive(w io.Writer, path string, revision int, versionString string, 
 	if err != nil {
 		return err
 	}
-	zp := zipPacker{zipw, rootPath, hooks}
+	zp := zipPacker{zipw, rootPath, hooks, ignore}
 	if revision != -1 {
 		zp.AddFile("revision", strconv.Itoa(revision))
 	}
@@ -206,8 +216,9 @@ func writeArchive(w io.Writer, path string, revision int, versionString string, 
 
 type zipPacker struct {
 	*zip.Writer
-	root  string
-	hooks map[string]bool
+	root       string
+	hooks      map[string]bool
+	ignoreDirs []string
 }
 
 func (zp *zipPacker) WalkFunc() filepath.WalkFunc {
@@ -239,12 +250,11 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 	relpath = filepath.ToSlash(relpath)
 
 	method := zip.Deflate
-	hidden := len(relpath) > 1 && relpath[0] == '.'
 	if fi.IsDir() {
 		if relpath == "build" {
 			return filepath.SkipDir
 		}
-		if hidden {
+		if zp.shouldIgnoreDir(relpath) {
 			return filepath.SkipDir
 		}
 		relpath += "/"
@@ -258,7 +268,7 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 	if mode&os.ModeSymlink != 0 {
 		method = zip.Store
 	}
-	if hidden || relpath == "revision" {
+	if relpath == "revision" {
 		return nil
 	}
 	h := &zip.FileHeader{
@@ -305,6 +315,17 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 		_, err = io.Copy(w, file)
 	}
 	return err
+}
+
+// shouldIgnoreDir takes a path and returns true if the directory should be ignored
+// when creating a zip
+func (zp zipPacker) shouldIgnoreDir(path string) bool {
+	for _, p := range zp.ignoreDirs {
+		if p == path {
+			return true
+		}
+	}
+	return false
 }
 
 func checkSymlinkTarget(basedir, symlink, target string) error {
