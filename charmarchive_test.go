@@ -43,6 +43,7 @@ var dummyManifest = []string{
 	"revision",
 	"src",
 	"src/hello.c",
+	".notignored",
 }
 
 func (s *CharmArchiveSuite) TestReadCharmArchive(c *gc.C) {
