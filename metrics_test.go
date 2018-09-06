@@ -9,7 +9,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/juju/charm.v6"
+	"gopkg.in/juju/charm.v7-unstable"
 )
 
 // Keys returns a list of all defined metrics keys.

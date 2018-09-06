@@ -1,4 +1,4 @@
-module gopkg.in/juju/charm.v6
+module gopkg.in/juju/charm.v7-unstable
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
