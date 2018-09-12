@@ -46,10 +46,8 @@ func (profile *LXDProfile) HasName() bool {
 // ValidateConfigDevices validates the Config and Devices properties of the LXDProfile.
 // WhiteList devices: unix-char, unix-block, gpu, usb.
 // BlackList config: boot*, limits* and migration*.
+// An empty profile will not return an error.
 func (profile *LXDProfile) ValidateConfigDevices() error {
-	if len(profile.Devices) < 1 && len(profile.Config) < 1 {
-		return fmt.Errorf("invalid lxd-profile.yaml: does not contain devices nor config")
-	}
 	for _, val := range profile.Devices {
 		goodDevs := set.NewStrings("unix-char", "unix-block", "gpu", "usb")
 		if devType, ok := val["type"]; ok {
@@ -66,4 +64,9 @@ func (profile *LXDProfile) ValidateConfigDevices() error {
 		}
 	}
 	return nil
+}
+
+// Empty returns true if neither devices nor config have been defined in the profile.
+func (profile *LXDProfile) Empty() bool {
+	return len(profile.Devices) < 1 && len(profile.Config) < 1
 }

@@ -166,12 +166,14 @@ devices:
 	c.Assert(profile, gc.NotNil)
 }
 
-func (s *ProfileSuite) TestReadLXDProfileEmptyFile(c *gc.C) {
+func (s *ProfileSuite) TestLXDProfileEmptyFile(c *gc.C) {
 	profile, err := charm.ReadLXDProfile(strings.NewReader(`
  
 `))
 	c.Assert(profile, gc.DeepEquals, &charm.LXDProfile{})
 	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(profile.Empty(), jc.IsTrue)
+	c.Assert(profile.ValidateConfigDevices(), jc.ErrorIsNil)
 }
 
 func (s *ProfileSuite) TestReadLXDProfileFailUnmarshall(c *gc.C) {
