@@ -11,12 +11,14 @@ import (
 
 	"github.com/juju/errors"
 	"github.com/juju/utils/set"
-	lxdapi "github.com/lxc/lxd/shared/api"
 	"gopkg.in/yaml.v2"
 )
 
+// LXDProfile is the same as ProfilePut defined in github.com/lxc/lxd/shared/api/profile.go
 type LXDProfile struct {
-	lxdapi.Profile
+	Config      map[string]string            `json:"config" yaml:"config"`
+	Description string                       `json:"description" yaml:"description"`
+	Devices     map[string]map[string]string `json:"devices" yaml:"devices"`
 }
 
 func NewLXDProfile() *LXDProfile {
@@ -32,15 +34,10 @@ func ReadLXDProfile(r io.Reader) (*LXDProfile, error) {
 		return nil, err
 	}
 	var profile LXDProfile
-	if err := yaml.Unmarshal(data, &profile.Profile); err != nil {
+	if err := yaml.Unmarshal(data, &profile); err != nil {
 		return nil, errors.Annotate(err, "failed to unmarshall lxd-profile.yaml")
 	}
 	return &profile, nil
-}
-
-// HasName returns true if the lxd profile name is set
-func (profile *LXDProfile) HasName() bool {
-	return profile.Name != ""
 }
 
 // ValidateConfigDevices validates the Config and Devices properties of the LXDProfile.

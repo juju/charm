@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	jc "github.com/juju/testing/checkers"
-	lxdapi "github.com/lxc/lxd/shared/api"
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/juju/charm.v7-unstable"
@@ -26,33 +25,28 @@ func (s *ProfileSuite) TestValidate(c *gc.C) {
 		{
 			description: "success",
 			profile: &charm.LXDProfile{
-				lxdapi.Profile{
-					Name: "success",
-					ProfilePut: lxdapi.ProfilePut{
-						Config: map[string]string{
-							"security.nesting":     "true",
-							"security.privileged":  "true",
-							"linux.kernel_modules": "openvswitch,ip_tables,ip6_tables",
-						},
-						Description: "success",
-						Devices: map[string]map[string]string{
-							"tun": {
-								"path": "/dev/net/tun",
-								"type": "unix-char",
-							},
-							"sony": {
-								"type":      "usb",
-								"vendorid":  "0fce",
-								"productid": "51da",
-							},
-							"bdisk": {
-								"type":   "unix-block",
-								"source": "/dev/loop0",
-							},
-							"gpu": {
-								"type": "gpu",
-							},
-						},
+				Config: map[string]string{
+					"security.nesting":     "true",
+					"security.privileged":  "true",
+					"linux.kernel_modules": "openvswitch,ip_tables,ip6_tables",
+				},
+				Description: "success",
+				Devices: map[string]map[string]string{
+					"tun": {
+						"path": "/dev/net/tun",
+						"type": "unix-char",
+					},
+					"sony": {
+						"type":      "usb",
+						"vendorid":  "0fce",
+						"productid": "51da",
+					},
+					"bdisk": {
+						"type":   "unix-block",
+						"source": "/dev/loop0",
+					},
+					"gpu": {
+						"type": "gpu",
 					},
 				},
 			},
@@ -60,64 +54,44 @@ func (s *ProfileSuite) TestValidate(c *gc.C) {
 		}, {
 			description: "fail on boot config",
 			profile: &charm.LXDProfile{
-				lxdapi.Profile{
-					Name: "boot config",
-					ProfilePut: lxdapi.ProfilePut{
-						Config: map[string]string{
-							"security.privileged":  "true",
-							"linux.kernel_modules": "openvswitch,ip_tables,ip6_tables",
-							"boot.autostart":       "true",
-						},
-					},
+				Config: map[string]string{
+					"security.privileged":  "true",
+					"linux.kernel_modules": "openvswitch,ip_tables,ip6_tables",
+					"boot.autostart":       "true",
 				},
 			},
 			expectedError: "invalid lxd-profile.yaml: contains config value \"boot.autostart\"",
 		}, {
 			description: "fail on limits config",
 			profile: &charm.LXDProfile{
-				lxdapi.Profile{
-					Name: "limits config",
-					ProfilePut: lxdapi.ProfilePut{
-						Config: map[string]string{
-							"security.privileged":  "true",
-							"linux.kernel_modules": "openvswitch,ip_tables,ip6_tables",
-							"limits.memory":        "256MB",
-						},
-					},
+				Config: map[string]string{
+					"security.privileged":  "true",
+					"linux.kernel_modules": "openvswitch,ip_tables,ip6_tables",
+					"limits.memory":        "256MB",
 				},
 			},
 			expectedError: "invalid lxd-profile.yaml: contains config value \"limits.memory\"",
 		}, {
 			description: "fail on migration config",
 			profile: &charm.LXDProfile{
-				lxdapi.Profile{
-					Name: "migration config",
-					ProfilePut: lxdapi.ProfilePut{
-						Config: map[string]string{
-							"security.privileged":          "true",
-							"linux.kernel_modules":         "openvswitch,ip_tables,ip6_tables",
-							"migration.incremental.memory": "true",
-						},
-					},
+				Config: map[string]string{
+					"security.privileged":          "true",
+					"linux.kernel_modules":         "openvswitch,ip_tables,ip6_tables",
+					"migration.incremental.memory": "true",
 				},
 			},
 			expectedError: "invalid lxd-profile.yaml: contains config value \"migration.incremental.memory\"",
 		}, {
 			description: "fail on unix-disk device",
 			profile: &charm.LXDProfile{
-				lxdapi.Profile{
-					Name: "boot config",
-					ProfilePut: lxdapi.ProfilePut{
-						Config: map[string]string{
-							"security.privileged":  "true",
-							"linux.kernel_modules": "openvswitch,ip_tables,ip6_tables",
-						},
-						Devices: map[string]map[string]string{
-							"bdisk": {
-								"type":   "unix-disk",
-								"source": "/dev/loop0",
-							},
-						},
+				Config: map[string]string{
+					"security.privileged":  "true",
+					"linux.kernel_modules": "openvswitch,ip_tables,ip6_tables",
+				},
+				Devices: map[string]map[string]string{
+					"bdisk": {
+						"type":   "unix-disk",
+						"source": "/dev/loop0",
 					},
 				},
 			},
@@ -135,14 +109,6 @@ func (s *ProfileSuite) TestValidate(c *gc.C) {
 		}
 	}
 
-}
-
-func (s *ProfileSuite) TestHasNameTrue(c *gc.C) {
-	profile := &charm.LXDProfile{
-		lxdapi.Profile{
-			Name: "boot config",
-		}}
-	c.Assert(profile.HasName(), jc.IsTrue)
 }
 
 func (s *ProfileSuite) TestReadLXDProfile(c *gc.C) {
