@@ -1507,6 +1507,10 @@ func (c *dummyCharm) Actions() *charm.Actions {
 	panic("unused")
 }
 
+func (c *dummyCharm) LXDProfile() *charm.LXDProfile {
+	panic("unused")
+}
+
 func (c *dummyCharm) Revision() int {
 	panic("unused")
 }
