@@ -123,6 +123,21 @@ func checkDummy(c *gc.C, f charm.Charm, path string) {
 								"type":        "string",
 								"default":     "foo.bz2",
 							}}}}}})
+	lpc, ok := f.(charm.LXDProfiler)
+	c.Assert(ok, jc.IsTrue)
+	c.Assert(lpc.LXDProfile(), jc.DeepEquals, &charm.LXDProfile{
+			Config: map[string]string{
+				"security.nesting":    "true",
+				"security.privileged": "true",
+			},
+			Description: "sample lxdprofile for testing",
+			Devices: map[string]map[string]string{
+				"tun": {
+					"path": "/dev/net/tun",
+					"type": "unix-char",
+				},
+			},
+	})
 	switch f := f.(type) {
 	case *charm.CharmArchive:
 		c.Assert(f.Path, gc.Equals, path)

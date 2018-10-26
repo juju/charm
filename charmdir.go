@@ -33,6 +33,7 @@ type CharmDir struct {
 	config     *Config
 	metrics    *Metrics
 	actions    *Actions
+	lxdProfile *LXDProfile
 	revision   int
 	ignoreDirs []string
 }
@@ -106,6 +107,19 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		}
 	}
 
+	file, err = os.Open(dir.join("lxd-profile.yaml"))
+	if _, ok := err.(*os.PathError); ok {
+		dir.lxdProfile = NewLXDProfile()
+	} else if err != nil {
+		return nil, err
+	} else {
+		dir.lxdProfile, err = ReadLXDProfile(file)
+		file.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return dir, nil
 }
 
@@ -144,6 +158,12 @@ func (dir *CharmDir) Metrics() *Metrics {
 // for the charm expanded in dir.
 func (dir *CharmDir) Actions() *Actions {
 	return dir.actions
+}
+
+// LXDProfile returns the LXDProfile representing the lxd-profile.yaml file
+// for the charm expanded in dir.
+func (dir *CharmDir) LXDProfile() *LXDProfile {
+	return dir.lxdProfile
 }
 
 // SetRevision changes the charm revision number. This affects
