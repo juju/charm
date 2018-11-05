@@ -198,7 +198,7 @@ func (s *CharmSuite) TestArchiveToWithVersionStringError(c *gc.C) {
 
 	testing.PatchExecutableThrowError(c, s, "git", 128)
 	var tw loggo.TestWriter
-	err = loggo.RegisterWriter("versionstring-test", &tw, loggo.WARNING)
+	err = loggo.RegisterWriter("versionstring-test", &tw)
 	c.Assert(err, jc.ErrorIsNil)
 	defer loggo.RemoveWriter("versionstring-test")
 
