@@ -90,7 +90,6 @@ var parseTests = []struct {
 	about: "mediawiki",
 	data:  mediawikiBundle,
 	expectedBD: &charm.BundleData{
-		Type:   "",
 		Series: "precise",
 		Applications: map[string]*charm.ApplicationSpec{
 			"mediawiki": {
@@ -228,7 +227,6 @@ applications:
 			"mysql": {
 				Charm:    "mysql",
 				NumUnits: 1,
-				Scale:    1,
 			},
 		},
 	},
@@ -398,9 +396,6 @@ applications:
           charm: ceph-osd
           storage:
               invalid-storage: "bad storage constraints"
-    hadoop:
-          charm: hadoop
-          placement: foo=bar
 relations:
     - ["mediawiki:db", "mysql:db"]
     - ["mysql:foo", "mediawiki:bar"]
@@ -428,7 +423,6 @@ relations:
 		`the charm URL for application "postgres" has a series which does not match, please remove the series from the URL`,
 		`too many units specified in unit placement for application "mysql"`,
 		`placement "nowhere/3" refers to an application not defined in this bundle`,
-		`placement (foo=bar) not valid for non-Kubernetes application "hadoop"`,
 		`placement "mediawiki/0" specifies a unit greater than the -4 unit(s) started by the target application`,
 		`placement "2" refers to a machine not defined in this bundle`,
 		`relation ["arble:bar"] has 1 endpoint(s), not 2`,
@@ -594,7 +588,7 @@ func (s *bundleDataSuite) TestVerifyBundleWithRelationNameBindingSuccess(c *gc.C
 
 func (s *bundleDataSuite) TestParseKubernetesBundleType(c *gc.C) {
 	data := `
-bundle: "kubernetes"
+bundle: kubernetes
 
 applications:
     mariadb:
@@ -605,11 +599,10 @@ applications:
         charm: "cs:gitlab-k8s-10"
         num_units: 3
         to: [foo=baz]
+        series: kubernetes
     redis:
         charm: "cs:redis-k8s-10"
         scale: 3
-        num_units: 3
-        placement: foo=baz
         to: [foo=baz]
 `
 	bd, err := charm.ReadBundleData(strings.NewReader(data))
@@ -620,30 +613,29 @@ applications:
 		Type: "kubernetes",
 		Applications: map[string]*charm.ApplicationSpec{
 			"mariadb": {
-				Charm:     "cs:mariadb-k8s-10",
-				To:        []string{"foo=bar"},
-				Placement: "foo=bar",
-				Scale:     2,
-				NumUnits:  2,
+				Charm:    "cs:mariadb-k8s-10",
+				Series:   "kubernetes",
+				To:       []string{"foo=bar"},
+				NumUnits: 2,
 			},
 			"gitlab": {
 				Charm:    "cs:gitlab-k8s-10",
+				Series:   "kubernetes",
 				To:       []string{"foo=baz"},
 				NumUnits: 3,
 			},
 			"redis": {
-				Charm:     "cs:redis-k8s-10",
-				To:        []string{"foo=baz"},
-				Placement: "foo=baz",
-				Scale:     3,
-				NumUnits:  3,
+				Charm:    "cs:redis-k8s-10",
+				Series:   "kubernetes",
+				To:       []string{"foo=baz"},
+				NumUnits: 3,
 			}},
 	})
 }
 
 func (s *bundleDataSuite) TestInvalidBundleType(c *gc.C) {
 	data := `
-bundle: "foo"
+bundle: foo
 
 applications:
     mariadb:
@@ -654,6 +646,45 @@ applications:
 	c.Assert(err, gc.IsNil)
 	err = bd.Verify(nil, nil, nil)
 	c.Assert(err, gc.ErrorMatches, `bundle has an invalid type "foo"`)
+}
+
+func (s *bundleDataSuite) TestInvalidScaleAndNumUnits(c *gc.C) {
+	data := `
+bundle: kubernetes
+
+applications:
+    mariadb:
+        charm: "cs:mariadb-k8s-10"
+        scale: 2
+        num_units: 2
+`
+	_, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.ErrorMatches, `.*cannot specify both scale and num_units for application "mariadb"`)
+}
+
+func (s *bundleDataSuite) TestInvalidPlacementAndTo(c *gc.C) {
+	data := `
+bundle: kubernetes
+
+applications:
+    mariadb:
+        charm: "cs:mariadb-k8s-10"
+        placement: foo=bar
+        to: [foo=bar]
+`
+	_, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.ErrorMatches, `.*cannot specify both placement and to for application "mariadb"`)
+}
+
+func (s *bundleDataSuite) TestInvalidIAASPlacement(c *gc.C) {
+	data := `
+applications:
+    mariadb:
+        charm: "cs:mariadb"
+        placement: foo=bar
+`
+	_, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.ErrorMatches, `.*placement \(foo=bar\) not valid for non-Kubernetes application "mariadb"`)
 }
 
 func (s *bundleDataSuite) TestKubernetesBundleErrors(c *gc.C) {
@@ -669,18 +700,6 @@ applications:
         charm: "cs:mariadb-k8s-10"
         series: "xenial"
         scale: 2
-    gitlab:
-        charm: "cs:gitlab-k8s-8"
-        num_units: 3
-        scale: 2
-    kafka:
-        charm: "cs:kafka-k8s-7"
-        placement: "foo=bar"
-        to: ["foo=baz"]
-    redis:
-        charm: "cs:redis-k8s-7"
-        placement: "foo=bar"
-        to: ["foo=bar", "1"]
     casandra:
         charm: "cs:casnadra-k8s-6"
         to: ["foo=bar", "foo=baz"]
@@ -692,9 +711,6 @@ applications:
 		"bundle series not valid for Kubernetes bundles",
 		`expected "key=value", got "foo" for application "hadoop"`,
 		`bundle machines not valid for Kubernetes bundles`,
-		`inconsistent num units (3) and scale (2) on application "gitlab"`,
-		`inconsistent placement (foo=bar) and to ([foo=bar 1]) for application "redis"`,
-		`inconsistent placement (foo=bar) and to ([foo=baz]) for application "kafka"`,
 		`series for application "mariadb" not valid for Kubernetes bundles`,
 		`too many placement directives for application "casandra"`,
 	}

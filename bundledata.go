@@ -21,6 +21,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const kubernetes = "kubernetes"
+
 type noMethodsBundleData BundleData
 
 type legacyBundleData struct {
@@ -42,14 +44,35 @@ func (lbd *legacyBundleData) setBundleData(bd *BundleData) error {
 		lbd.unmarshaledWithServices = true
 	}
 	for appName, app := range lbd.Applications {
+		if app == nil {
+			continue
+		}
 		// Kubernetes bundles use "scale" instead of "num_units".
-		if app.Scale > 0 && app.NumUnits == 0 {
-			app.NumUnits = app.Scale
+		if app.Scale_ > 0 && app.NumUnits > 0 {
+			return fmt.Errorf("cannot specify both scale and num_units for application %q", appName)
+		}
+		if app.Scale_ > 0 && app.NumUnits == 0 {
+			app.NumUnits = app.Scale_
+			app.Scale_ = 0
 			lbd.Applications[appName] = app
 		}
+		// // Kubernetes bundles default to series "kubernetes".
+		if lbd.Type == kubernetes && app.Series == "" {
+			app.Series = kubernetes
+			lbd.Applications[appName] = app
+		}
+		// Non-Kubernetes bundles do not use the placement attribute.
+		if lbd.Type != kubernetes && app.Placement_ != "" {
+			return fmt.Errorf("placement (%s) not valid for non-Kubernetes application %q", app.Placement_, appName)
+		}
 		// Kubernetes bundles only use a single placement directive.
-		if app.Placement != "" && len(app.To) == 0 {
-			app.To = []string{app.Placement}
+		if app.Placement_ != "" {
+			if len(app.To) > 0 {
+				return fmt.Errorf("cannot specify both placement and to for application %q", appName)
+			}
+			app.To = []string{app.Placement_}
+			app.Placement_ = ""
+			lbd.Applications[appName] = app
 		}
 	}
 	*bd = BundleData(lbd.noMethodsBundleData)
@@ -183,9 +206,9 @@ type ApplicationSpec struct {
 	// the application it is related to.
 	NumUnits int `bson:",omitempty" yaml:"num_units,omitempty" json:",omitempty"`
 
-	// Scale holds the number of pods required for the application.
+	// Scale_ holds the number of pods required for the application.
 	// For IAAS bundles, this will be an alias for NumUnits.
-	Scale int `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
+	Scale_ int `bson:"scale,omitempty" yaml:"scale,omitempty" json:"scale,omitempty"`
 
 	// To is interpreted according to whether this is an
 	// IAAS or Kubernetes bundle.
@@ -241,10 +264,10 @@ type ApplicationSpec struct {
 	//     wordpress wordpress lxc:0 kvm:new
 	To []string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
-	// Placement holds a model selector/affinity expression used to specify
+	// Placement_ holds a model selector/affinity expression used to specify
 	// pod placement for Kubernetes applications.
 	// Not relevant for IAAS applications.
-	Placement string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+	Placement_ string `bson:"placement,omitempty" json:"placement,omitempty" yaml:"placement,omitempty"`
 
 	// Expose holds whether the application must be exposed.
 	Expose bool `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
@@ -440,10 +463,10 @@ func (bd *BundleData) verifyBundle(
 		machineRefCounts:  make(map[string]int),
 		charms:            charms,
 	}
-	if bd.Type != "" && bd.Type != "kubernetes" {
+	if bd.Type != "" && bd.Type != kubernetes {
 		verifier.addErrorf("bundle has an invalid type %q", bd.Type)
 	}
-	if bd.Type == "kubernetes" {
+	if bd.Type == kubernetes {
 		if bd.Series != "" {
 			verifier.addErrorf("bundle series not valid for Kubernetes bundles")
 		}
@@ -529,8 +552,8 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 		if curl != nil && curl.Series != "" && app.Series != "" && curl.Series != app.Series {
 			verifier.addErrorf("the charm URL for application %q has a series which does not match, please remove the series from the URL", name)
 		}
-		if verifier.bd.Type == "kubernetes" {
-			if app.Series != "" {
+		if verifier.bd.Type == kubernetes {
+			if app.Series != "" && app.Series != kubernetes {
 				verifier.addErrorf("series for application %q not valid for Kubernetes bundles", name)
 			}
 		} else {
@@ -584,19 +607,12 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 				verifier.addErrorf("resource revision %q is not int or string", name)
 			}
 		}
-		if app.Scale > 0 && app.Scale != app.NumUnits {
-			verifier.addErrorf("inconsistent num units (%d) and scale (%d) on application %q", app.NumUnits, app.Scale, name)
-		}
 		if app.NumUnits < 0 {
 			verifier.addErrorf("negative number of units specified on application %q", name)
 		}
-		if verifier.bd.Type == "kubernetes" {
-			verifier.verifyKubernetesPlacement(name, app.Placement, app.To)
+		if verifier.bd.Type == kubernetes {
+			verifier.verifyKubernetesPlacement(name, app.To)
 		} else {
-			if app.Placement != "" {
-				verifier.addErrorf("placement (%s) not valid for non-Kubernetes application %q", app.Placement, name)
-				continue
-			}
 			verifier.verifyPlacement(name, app.NumUnits, app.To)
 		}
 	}
@@ -634,13 +650,9 @@ func (verifier *bundleDataVerifier) verifyPlacement(name string, numUnits int, t
 	}
 }
 
-func (verifier *bundleDataVerifier) verifyKubernetesPlacement(name, placement string, to []string) {
-	if len(to) > 1 || len(to) == 1 && placement != "" && placement != to[0] {
-		if placement != "" {
-			verifier.addErrorf("inconsistent placement (%s) and to (%s) for application %q", placement, to, name)
-		} else {
-			verifier.addErrorf("too many placement directives for application %q", name)
-		}
+func (verifier *bundleDataVerifier) verifyKubernetesPlacement(name string, to []string) {
+	if len(to) > 1 {
+		verifier.addErrorf("too many placement directives for application %q", name)
 		return
 	}
 	if len(to) == 0 {
