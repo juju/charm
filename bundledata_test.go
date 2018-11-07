@@ -214,6 +214,22 @@ relations:
     - ["wordpress:db", "mysql:db"]
 `,
 	expectedErr: ".*cannot specify both applications and services",
+}, {
+	about: "scale alias for num_units",
+	data: `
+applications:
+    mysql:
+        charm: mysql
+        scale: 1
+`,
+	expectedBD: &charm.BundleData{
+		Applications: map[string]*charm.ApplicationSpec{
+			"mysql": {
+				Charm:    "mysql",
+				NumUnits: 1,
+			},
+		},
+	},
 }}
 
 func (*bundleDataSuite) TestParse(c *gc.C) {
@@ -568,6 +584,138 @@ func (s *bundleDataSuite) TestVerifyBundleWithRelationNameBindingSuccess(c *gc.C
 		bd.Applications["wordpress"].EndpointBindings["monitoring-port"] = "bar"
 	})
 	c.Assert(err, gc.IsNil)
+}
+
+func (s *bundleDataSuite) TestParseKubernetesBundleType(c *gc.C) {
+	data := `
+bundle: kubernetes
+
+applications:
+    mariadb:
+        charm: "cs:mariadb-k8s-10"
+        scale: 2
+        placement: foo=bar
+    gitlab:
+        charm: "cs:gitlab-k8s-10"
+        num_units: 3
+        to: [foo=baz]
+        series: kubernetes
+    redis:
+        charm: "cs:redis-k8s-10"
+        scale: 3
+        to: [foo=baz]
+`
+	bd, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.IsNil)
+	err = bd.Verify(nil, nil, nil)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(bd, jc.DeepEquals, &charm.BundleData{
+		Type: "kubernetes",
+		Applications: map[string]*charm.ApplicationSpec{
+			"mariadb": {
+				Charm:    "cs:mariadb-k8s-10",
+				Series:   "kubernetes",
+				To:       []string{"foo=bar"},
+				NumUnits: 2,
+			},
+			"gitlab": {
+				Charm:    "cs:gitlab-k8s-10",
+				Series:   "kubernetes",
+				To:       []string{"foo=baz"},
+				NumUnits: 3,
+			},
+			"redis": {
+				Charm:    "cs:redis-k8s-10",
+				Series:   "kubernetes",
+				To:       []string{"foo=baz"},
+				NumUnits: 3,
+			}},
+	})
+}
+
+func (s *bundleDataSuite) TestInvalidBundleType(c *gc.C) {
+	data := `
+bundle: foo
+
+applications:
+    mariadb:
+        charm: "cs:mariadb-k8s-10"
+        scale: 2
+`
+	bd, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.IsNil)
+	err = bd.Verify(nil, nil, nil)
+	c.Assert(err, gc.ErrorMatches, `bundle has an invalid type "foo"`)
+}
+
+func (s *bundleDataSuite) TestInvalidScaleAndNumUnits(c *gc.C) {
+	data := `
+bundle: kubernetes
+
+applications:
+    mariadb:
+        charm: "cs:mariadb-k8s-10"
+        scale: 2
+        num_units: 2
+`
+	_, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.ErrorMatches, `.*cannot specify both scale and num_units for application "mariadb"`)
+}
+
+func (s *bundleDataSuite) TestInvalidPlacementAndTo(c *gc.C) {
+	data := `
+bundle: kubernetes
+
+applications:
+    mariadb:
+        charm: "cs:mariadb-k8s-10"
+        placement: foo=bar
+        to: [foo=bar]
+`
+	_, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.ErrorMatches, `.*cannot specify both placement and to for application "mariadb"`)
+}
+
+func (s *bundleDataSuite) TestInvalidIAASPlacement(c *gc.C) {
+	data := `
+applications:
+    mariadb:
+        charm: "cs:mariadb"
+        placement: foo=bar
+`
+	_, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.ErrorMatches, `.*placement \(foo=bar\) not valid for non-Kubernetes application "mariadb"`)
+}
+
+func (s *bundleDataSuite) TestKubernetesBundleErrors(c *gc.C) {
+	data := `
+bundle: "kubernetes"
+series: "xenial"
+
+machines:
+    0:
+
+applications:
+    mariadb:
+        charm: "cs:mariadb-k8s-10"
+        series: "xenial"
+        scale: 2
+    casandra:
+        charm: "cs:casnadra-k8s-6"
+        to: ["foo=bar", "foo=baz"]
+    hadoop:
+        charm: "cs:hadoop-k8s-6"
+        to: ["foo"]
+`
+	errors := []string{
+		"bundle series not valid for Kubernetes bundles",
+		`expected "key=value", got "foo" for application "hadoop"`,
+		`bundle machines not valid for Kubernetes bundles`,
+		`series for application "mariadb" not valid for Kubernetes bundles`,
+		`too many placement directives for application "casandra"`,
+	}
+
+	assertVerifyErrors(c, data, nil, errors)
 }
 
 func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {

@@ -15,10 +15,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/juju/utils/keyvalues"
 	"gopkg.in/juju/names.v2"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
+
+const kubernetes = "kubernetes"
 
 type noMethodsBundleData BundleData
 
@@ -39,6 +42,38 @@ func (lbd *legacyBundleData) setBundleData(bd *BundleData) error {
 		// for "services" instead of "applications".
 		lbd.Applications = lbd.LegacyServices
 		lbd.unmarshaledWithServices = true
+	}
+	for appName, app := range lbd.Applications {
+		if app == nil {
+			continue
+		}
+		// Kubernetes bundles use "scale" instead of "num_units".
+		if app.Scale_ > 0 && app.NumUnits > 0 {
+			return fmt.Errorf("cannot specify both scale and num_units for application %q", appName)
+		}
+		if app.Scale_ > 0 && app.NumUnits == 0 {
+			app.NumUnits = app.Scale_
+			app.Scale_ = 0
+			lbd.Applications[appName] = app
+		}
+		// // Kubernetes bundles default to series "kubernetes".
+		if lbd.Type == kubernetes && app.Series == "" {
+			app.Series = kubernetes
+			lbd.Applications[appName] = app
+		}
+		// Non-Kubernetes bundles do not use the placement attribute.
+		if lbd.Type != kubernetes && app.Placement_ != "" {
+			return fmt.Errorf("placement (%s) not valid for non-Kubernetes application %q", app.Placement_, appName)
+		}
+		// Kubernetes bundles only use a single placement directive.
+		if app.Placement_ != "" {
+			if len(app.To) > 0 {
+				return fmt.Errorf("cannot specify both placement and to for application %q", appName)
+			}
+			app.To = []string{app.Placement_}
+			app.Placement_ = ""
+			lbd.Applications[appName] = app
+		}
 	}
 	*bd = BundleData(lbd.noMethodsBundleData)
 	return nil
@@ -85,6 +120,10 @@ func (bd *BundleData) SetBSON(raw bson.Raw) error {
 
 // BundleData holds the contents of the bundle.
 type BundleData struct {
+	// Type is used to signify whether this bundle is for IAAS or Kubernetes deployments.
+	// Valid values are "Kubernetes" or "", with empty signifying an IAAS bundle.
+	Type string `bson:"bundle,omitempty" json:"bundle,omitempty" yaml:"bundle,omitempty"`
+
 	// Applications holds one entry for each application
 	// that the bundle will create, indexed by
 	// the application name.
@@ -160,13 +199,25 @@ type ApplicationSpec struct {
 
 	// NumUnits holds the number of units of the
 	// application that will be deployed.
+	// For Kubernetes bundles, this will be an alias for Scale.
 	//
 	// For a subordinate application, this actually represents
 	// an arbitrary number of units depending on
 	// the application it is related to.
 	NumUnits int `bson:",omitempty" yaml:"num_units,omitempty" json:",omitempty"`
 
-	// To may hold up to NumUnits members with
+	// Scale_ holds the number of pods required for the application.
+	// For IAAS bundles, this will be an alias for NumUnits.
+	Scale_ int `bson:"scale,omitempty" yaml:"scale,omitempty" json:"scale,omitempty"`
+
+	// To is interpreted according to whether this is an
+	// IAAS or Kubernetes bundle.
+	//
+	// For Kubernetes bundles, the use of Placement is preferred.
+	// To must be a single valued list representing label key values
+	// used as a node selector.
+	//
+	// For IAAS bundles, To may hold up to NumUnits members with
 	// each member specifying a desired placement
 	// for the respective unit of the application.
 	//
@@ -212,6 +263,11 @@ type ApplicationSpec struct {
 	//
 	//     wordpress wordpress lxc:0 kvm:new
 	To []string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+
+	// Placement_ holds a model selector/affinity expression used to specify
+	// pod placement for Kubernetes applications.
+	// Not relevant for IAAS applications.
+	Placement_ string `bson:"placement,omitempty" json:"placement,omitempty" yaml:"placement,omitempty"`
 
 	// Expose holds whether the application must be exposed.
 	Expose bool `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
@@ -407,6 +463,18 @@ func (bd *BundleData) verifyBundle(
 		machineRefCounts:  make(map[string]int),
 		charms:            charms,
 	}
+	if bd.Type != "" && bd.Type != kubernetes {
+		verifier.addErrorf("bundle has an invalid type %q", bd.Type)
+	}
+	if bd.Type == kubernetes {
+		if bd.Series != "" {
+			verifier.addErrorf("bundle series not valid for Kubernetes bundles")
+		}
+		if len(bd.Machines) > 0 {
+			verifier.addErrorf("bundle machines not valid for Kubernetes bundles")
+		}
+		bd.Machines = nil
+	}
 	for id := range bd.Machines {
 		verifier.machineRefCounts[id] = 0
 	}
@@ -457,15 +525,15 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 		verifier.addErrorf("at least one application must be specified")
 		return
 	}
-	for name, svc := range verifier.bd.Applications {
-		if svc.Charm == "" {
+	for name, app := range verifier.bd.Applications {
+		if app.Charm == "" {
 			verifier.addErrorf("empty charm path")
 		}
 		// Charm may be a local directory or a charm URL.
 		var curl *URL
 		var err error
-		if strings.HasPrefix(svc.Charm, ".") || filepath.IsAbs(svc.Charm) {
-			charmPath := svc.Charm
+		if strings.HasPrefix(app.Charm, ".") || filepath.IsAbs(app.Charm) {
+			charmPath := app.Charm
 			if !filepath.IsAbs(charmPath) {
 				charmPath = filepath.Join(verifier.bundleDir, charmPath)
 			}
@@ -476,23 +544,29 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 					verifier.addErrorf("invalid charm path in application %q: %v", name, err)
 				}
 			}
-		} else if curl, err = ParseURL(svc.Charm); err != nil {
+		} else if curl, err = ParseURL(app.Charm); err != nil {
 			verifier.addErrorf("invalid charm URL in application %q: %v", name, err)
 		}
 
 		// Check the Series.
-		if curl != nil && curl.Series != "" && svc.Series != "" && curl.Series != svc.Series {
+		if curl != nil && curl.Series != "" && app.Series != "" && curl.Series != app.Series {
 			verifier.addErrorf("the charm URL for application %q has a series which does not match, please remove the series from the URL", name)
 		}
-		if svc.Series != "" && !IsValidSeries(svc.Series) {
-			verifier.addErrorf("application %q declares an invalid series %q", name, svc.Series)
+		if verifier.bd.Type == kubernetes {
+			if app.Series != "" && app.Series != kubernetes {
+				verifier.addErrorf("series for application %q not valid for Kubernetes bundles", name)
+			}
+		} else {
+			if app.Series != "" && !IsValidSeries(app.Series) {
+				verifier.addErrorf("application %q declares an invalid series %q", name, app.Series)
+			}
 		}
 		// Check the Constraints.
-		if err := verifier.verifyConstraints(svc.Constraints); err != nil {
-			verifier.addErrorf("invalid constraints %q in application %q: %v", svc.Constraints, name, err)
+		if err := verifier.verifyConstraints(app.Constraints); err != nil {
+			verifier.addErrorf("invalid constraints %q in application %q: %v", app.Constraints, name, err)
 		}
 		// Check the Storage.
-		for storageName, storageConstraints := range svc.Storage {
+		for storageName, storageConstraints := range app.Storage {
 			if !validStorageName.MatchString(storageName) {
 				verifier.addErrorf("invalid storage name %q in application %q", storageName, name)
 			}
@@ -501,7 +575,7 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 			}
 		}
 		// Check the Devices.
-		for deviceName, deviceConstraints := range svc.Devices {
+		for deviceName, deviceConstraints := range app.Devices {
 			if !validDeviceName.MatchString(deviceName) {
 				verifier.addErrorf("invalid device name %q in application %q", deviceName, name)
 			}
@@ -510,20 +584,20 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 			}
 		}
 		if verifier.charms != nil {
-			if ch, ok := verifier.charms[svc.Charm]; ok {
+			if ch, ok := verifier.charms[app.Charm]; ok {
 				if ch.Meta().Subordinate {
-					if len(svc.To) > 0 {
+					if len(app.To) > 0 {
 						verifier.addErrorf("application %q is subordinate but specifies unit placement", name)
 					}
-					if svc.NumUnits > 0 {
+					if app.NumUnits > 0 {
 						verifier.addErrorf("application %q is subordinate but has non-zero num_units", name)
 					}
 				}
 			} else {
-				verifier.addErrorf("application %q refers to non-existent charm %q", name, svc.Charm)
+				verifier.addErrorf("application %q refers to non-existent charm %q", name, app.Charm)
 			}
 		}
-		for resName, rev := range svc.Resources {
+		for resName, rev := range app.Resources {
 			if resName == "" {
 				verifier.addErrorf("missing resource name on application %q", name)
 			}
@@ -533,16 +607,21 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 				verifier.addErrorf("resource revision %q is not int or string", name)
 			}
 		}
-		if svc.NumUnits < 0 {
+		if app.NumUnits < 0 {
 			verifier.addErrorf("negative number of units specified on application %q", name)
-		} else if len(svc.To) > svc.NumUnits {
-			verifier.addErrorf("too many units specified in unit placement for application %q", name)
 		}
-		verifier.verifyPlacement(svc.To)
+		if verifier.bd.Type == kubernetes {
+			verifier.verifyKubernetesPlacement(name, app.To)
+		} else {
+			verifier.verifyPlacement(name, app.NumUnits, app.To)
+		}
 	}
 }
 
-func (verifier *bundleDataVerifier) verifyPlacement(to []string) {
+func (verifier *bundleDataVerifier) verifyPlacement(name string, numUnits int, to []string) {
+	if numUnits >= 0 && len(to) > numUnits {
+		verifier.addErrorf("too many units specified in unit placement for application %q", name)
+	}
 	for _, p := range to {
 		up, err := ParsePlacement(p)
 		if err != nil {
@@ -568,6 +647,20 @@ func (verifier *bundleDataVerifier) verifyPlacement(to []string) {
 			}
 			verifier.machineRefCounts[up.Machine]++
 		}
+	}
+}
+
+func (verifier *bundleDataVerifier) verifyKubernetesPlacement(name string, to []string) {
+	if len(to) > 1 {
+		verifier.addErrorf("too many placement directives for application %q", name)
+		return
+	}
+	if len(to) == 0 {
+		return
+	}
+	_, err := keyvalues.Parse(strings.Split(to[0], ","), false)
+	if err != nil {
+		verifier.addErrorf("%v for application %q", err, name)
 	}
 }
 
