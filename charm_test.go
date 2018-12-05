@@ -63,11 +63,9 @@ func (s *CharmSuite) TestSeriesToUse(c *gc.C) {
 		seriesToUse     string
 		err             string
 	}{{
-		series: "",
-		err:    "series not specified and charm does not define any",
-	}, {
-		series:      "trusty",
-		seriesToUse: "trusty",
+		series:          "",
+		supportedSeries: []string{},
+		err:             `no supported series were specified for charm`,
 	}, {
 		series:          "trusty",
 		supportedSeries: []string{"precise", "trusty"},
@@ -126,17 +124,17 @@ func checkDummy(c *gc.C, f charm.Charm, path string) {
 	lpc, ok := f.(charm.LXDProfiler)
 	c.Assert(ok, jc.IsTrue)
 	c.Assert(lpc.LXDProfile(), jc.DeepEquals, &charm.LXDProfile{
-			Config: map[string]string{
-				"security.nesting":    "true",
-				"security.privileged": "true",
+		Config: map[string]string{
+			"security.nesting":    "true",
+			"security.privileged": "true",
+		},
+		Description: "sample lxdprofile for testing",
+		Devices: map[string]map[string]string{
+			"tun": {
+				"path": "/dev/net/tun",
+				"type": "unix-char",
 			},
-			Description: "sample lxdprofile for testing",
-			Devices: map[string]map[string]string{
-				"tun": {
-					"path": "/dev/net/tun",
-					"type": "unix-char",
-				},
-			},
+		},
 	})
 	switch f := f.(type) {
 	case *charm.CharmArchive:

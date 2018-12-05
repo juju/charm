@@ -42,16 +42,16 @@ func ReadCharm(path string) (charm Charm, err error) {
 }
 
 // SeriesForCharm takes a requested series and a list of series supported by a
-// charm and returns the series which is relevant.
-// If the requested series is empty, then the first supported series is used,
-// otherwise the requested series is validated against the supported series.
+// charm and returns the series which is relevant. If the requested series is
+// empty, then the first supported series is used, otherwise the requested
+// series is validated against the supported series. If no series are supported
+// SeriesForCharm returns an error; it is incorrect usage for supportedSeries to
+// be the empty slice since it should always be possible to determine the
+// supported series of a charm.
 func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, error) {
 	// Old charm with no supported series.
 	if len(supportedSeries) == 0 {
-		if requestedSeries == "" {
-			return "", missingSeriesError
-		}
-		return requestedSeries, nil
+		return "", missingSeriesError
 	}
 	// Use the charm default.
 	if requestedSeries == "" {
@@ -67,9 +67,9 @@ func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, e
 
 // missingSeriesError is used to denote that SeriesForCharm could not determine
 // a series because a legacy charm did not declare any.
-var missingSeriesError = fmt.Errorf("series not specified and charm does not define any")
+var missingSeriesError = fmt.Errorf("no supported series were specified for charm")
 
-// IsMissingSeriesError returns true if err is an missingSeriesError.
+// IsMissingSeriesError returns true if err is a missingSeriesError.
 func IsMissingSeriesError(err error) bool {
 	return err == missingSeriesError
 }
