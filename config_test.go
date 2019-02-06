@@ -434,7 +434,7 @@ func (s *ConfigSuite) TestDefaultType(c *gc.C) {
 
 	assertTypeError("boolean", "henry", `"henry"`)
 	assertTypeError("string", "2.5", "2.5")
-	assertTypeError("float", "123", "123")
+	assertTypeError("float", "123a", `"123a"`)
 	assertTypeError("int", "true", "true")
 }
 
