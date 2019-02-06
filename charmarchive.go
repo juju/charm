@@ -30,6 +30,7 @@ type CharmArchive struct {
 	actions    *Actions
 	lxdProfile *LXDProfile
 	revision   int
+	version    string
 }
 
 // Trick to ensure *CharmArchive implements the Charm interface.
@@ -143,6 +144,19 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		}
 	}
 
+	reader, err = zipOpenFile(zipr, "version")
+	if err != nil {
+		if _, ok := err.(*noCharmArchiveFile); !ok {
+			return nil, err
+		}
+	} else {
+		b.version, err = ReadVersion(reader)
+		reader.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return b, nil
 }
 
@@ -161,6 +175,11 @@ type noCharmArchiveFile struct {
 
 func (err noCharmArchiveFile) Error() string {
 	return fmt.Sprintf("archive file %q not found", err.path)
+}
+
+// Version returns the VCS version representing the version file from archive.
+func (a *CharmArchive) Version() string {
+	return a.version
 }
 
 // Revision returns the revision number for the charm
