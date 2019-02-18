@@ -113,7 +113,13 @@ func (s *CharmDirSuite) TestArchiveToWithIgnoredFiles(c *gc.C) {
 
 	f, err := os.Create(filepath.Join(nestedGitDir, "foo"))
 	c.Assert(err, jc.ErrorIsNil)
-	defer f.Close()
+	_ = f.Close()
+
+	// Ensure that we cannot spoof the version or revision files
+	err = ioutil.WriteFile(filepath.Join(dir.Path, "version"), []byte("spoofed version"), 0644)
+	c.Assert(err, jc.ErrorIsNil)
+	err = ioutil.WriteFile(filepath.Join(dir.Path, "revision"), []byte("42"), 0644)
+	c.Assert(err, jc.ErrorIsNil)
 
 	var b bytes.Buffer
 	err = dir.ArchiveTo(&b)
@@ -125,6 +131,9 @@ func (s *CharmDirSuite) TestArchiveToWithIgnoredFiles(c *gc.C) {
 	manifest, err := archive.Manifest()
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifest...))
+
+	c.Assert(archive.Version(), gc.Not(gc.Equals), "spoofed version")
+	c.Assert(archive.Revision(), gc.Not(gc.Equals), 42)
 }
 
 func (s *CharmSuite) TestArchiveToWithVersionString(c *gc.C) {
