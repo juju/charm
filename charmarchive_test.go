@@ -11,10 +11,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"syscall"
 
 	"github.com/juju/collections/set"
+	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
@@ -23,12 +25,14 @@ import (
 )
 
 type CharmArchiveSuite struct {
+	testing.IsolationSuite
 	archivePath string
 }
 
 var _ = gc.Suite(&CharmArchiveSuite{})
 
 func (s *CharmArchiveSuite) SetUpSuite(c *gc.C) {
+	s.IsolationSuite.SetUpSuite(c)
 	s.archivePath = archivePath(c, readCharmDir(c, "dummy"))
 }
 
@@ -173,10 +177,32 @@ func (s *CharmArchiveSuite) TestExpandTo(c *gc.C) {
 }
 
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithVersion(c *gc.C) {
-	path := archivePath(c, readCharmDir(c, "versioned"))
+	clonedPath := cloneDir(c, charmDirPath(c, "versioned"))
+	_, err := os.Create(filepath.Join(clonedPath, ".git"))
+	c.Assert(err, gc.IsNil)
+
+	// NOTE(achilleasa) Initially, I tried using PatchExecutableAsEchoArgs
+	// but it doesn't work as expected on my bionic box so I reverted to
+	// the following less elegant approach to stubbing git output.
+	var gitOutput string
+	switch runtime.GOOS {
+	case "windows":
+		gitOutput = "@echo off\r\necho c0ffee"
+	default:
+		gitOutput = "#!/bin/bash -norc\necho c0ffee"
+	}
+	testing.PatchExecutable(c, s, "git", gitOutput)
+
+	// Read cloned path and archive it; the archive should now include
+	// the version fetched from our mocked call to git
+	cd, err := charm.ReadCharmDir(clonedPath)
+	c.Assert(err, gc.IsNil)
+	path := archivePath(c, cd)
+
+	// Read back the archive and verify the correct version
 	archive, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
-	c.Assert(archive.Version(), gc.Equals, "929903d")
+	c.Assert(archive.Version(), gc.Equals, "c0ffee")
 }
 
 func (s *CharmArchiveSuite) prepareCharmArchive(c *gc.C, charmDir *charm.CharmDir, archivePath string) {
