@@ -5,7 +5,6 @@ package charm
 
 import (
 	"archive/zip"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/juju/errors"
 )
 
 // defaultJujuIgnore contains jujuignore directives for excluding VCS- and
@@ -33,6 +34,8 @@ var defaultJujuIgnore = `
 /build/
 /revision
 /version
+
+.jujuignore
 `
 
 // The CharmDir type encapsulates access to data and operations
@@ -140,6 +143,20 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 // compiles a set of rules that are used to decide which files should be
 // archived.
 func (dir *CharmDir) setupIgnoreRules() error {
+	pathToJujuignore := dir.join(".jujuignore")
+	if _, err := os.Stat(pathToJujuignore); err == nil {
+		file, err := os.Open(dir.join(".jujuignore"))
+		if err != nil {
+			return err
+		}
+		defer func() { _ = file.Close() }()
+
+		dir.ignoreRules, err = newIgnoreRuleset(file)
+		if err != nil {
+			return errors.Annotate(err, ".jujuignore")
+		}
+	}
+
 	defaultRules, err := newIgnoreRuleset(strings.NewReader(defaultJujuIgnore))
 	if err != nil {
 		return err

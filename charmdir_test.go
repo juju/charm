@@ -136,6 +136,60 @@ func (s *CharmDirSuite) TestArchiveToWithIgnoredFiles(c *gc.C) {
 	c.Assert(archive.Revision(), gc.Not(gc.Equals), 42)
 }
 
+func (s *CharmDirSuite) TestArchiveToWithJujuignore(c *gc.C) {
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+
+	jujuignore := `
+# Ignore directory named "bar" anywhere in the charm
+bar/
+
+# Retain "tox" but ignore everything inside it EXCEPT "keep"
+tox/**
+!tox/keep
+`
+	// Add .jujuignore
+	err := ioutil.WriteFile(filepath.Join(charmDir, ".jujuignore"), []byte(jujuignore), 0644)
+	c.Assert(err, jc.ErrorIsNil)
+
+	// Add directory/files that should be ignored based on jujuignore rules
+	nestedDir := filepath.Join(charmDir, "foo/bar/baz")
+	err = os.MkdirAll(nestedDir, 0700)
+	c.Assert(err, jc.ErrorIsNil)
+
+	toxDir := filepath.Join(charmDir, "tox")
+	err = os.MkdirAll(filepath.Join(toxDir, "data"), 0700)
+	c.Assert(err, jc.ErrorIsNil)
+
+	f, err := os.Create(filepath.Join(toxDir, "keep"))
+	c.Assert(err, jc.ErrorIsNil)
+	_ = f.Close()
+
+	f, err = os.Create(filepath.Join(toxDir, "ignore"))
+	c.Assert(err, jc.ErrorIsNil)
+	_ = f.Close()
+
+	dir, err := charm.ReadCharmDir(charmDir)
+	c.Assert(err, jc.ErrorIsNil)
+
+	var b bytes.Buffer
+	err = dir.ArchiveTo(&b)
+	c.Assert(err, jc.ErrorIsNil)
+
+	archive, err := charm.ReadCharmArchiveBytes(b.Bytes())
+	c.Assert(err, jc.ErrorIsNil)
+
+	// Based on the .jujuignore rules, we should retain "foo/bar" and
+	// "tox/keep" but nothing else
+	retained := []string{"foo", "tox", "tox/keep"}
+	expContents := set.NewStrings(append(retained, dummyManifest...)...)
+
+	manifest, err := archive.Manifest()
+	c.Log(manifest.Difference(expContents))
+	c.Log(expContents.Difference(manifest))
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(manifest, jc.DeepEquals, expContents)
+}
+
 func (s *CharmSuite) TestArchiveToWithVersionString(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
