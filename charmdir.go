@@ -41,14 +41,13 @@ var defaultJujuIgnore = `
 // The CharmDir type encapsulates access to data and operations
 // on a charm directory.
 type CharmDir struct {
-	Path        string
-	meta        *Meta
-	config      *Config
-	metrics     *Metrics
-	actions     *Actions
-	lxdProfile  *LXDProfile
-	revision    int
-	ignoreRules ignoreRuleset
+	Path       string
+	meta       *Meta
+	config     *Config
+	metrics    *Metrics
+	actions    *Actions
+	lxdProfile *LXDProfile
+	revision   int
 }
 
 // Trick to ensure *CharmDir implements the Charm interface.
@@ -65,9 +64,6 @@ func IsCharmDir(path string) bool {
 // ReadCharmDir returns a CharmDir representing an expanded charm directory.
 func ReadCharmDir(path string) (dir *CharmDir, err error) {
 	dir = &CharmDir{Path: path}
-	if err := dir.setupIgnoreRules(); err != nil {
-		return nil, err
-	}
 	file, err := os.Open(dir.join("metadata.yaml"))
 	if err != nil {
 		return nil, err
@@ -139,34 +135,34 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 	return dir, nil
 }
 
-// setupIgnoreRules parses the contents of the charm's .jujuignore file and
+// buildIgnoreRules parses the contents of the charm's .jujuignore file and
 // compiles a set of rules that are used to decide which files should be
 // archived.
-func (dir *CharmDir) setupIgnoreRules() error {
+func (dir *CharmDir) buildIgnoreRules() (ignoreRuleset, error) {
 	// Start with a set of sane defaults to ensure backwards-compatibility
 	// for charms that do not use a .jujuignore file.
-	var err error
-	if dir.ignoreRules, err = newIgnoreRuleset(strings.NewReader(defaultJujuIgnore)); err != nil {
-		return err
+	rules, err := newIgnoreRuleset(strings.NewReader(defaultJujuIgnore))
+	if err != nil {
+		return nil, err
 	}
 
 	pathToJujuignore := dir.join(".jujuignore")
 	if _, err := os.Stat(pathToJujuignore); err == nil {
 		file, err := os.Open(dir.join(".jujuignore"))
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer func() { _ = file.Close() }()
 
 		jujuignoreRules, err := newIgnoreRuleset(file)
 		if err != nil {
-			return errors.Annotate(err, ".jujuignore")
+			return nil, errors.Annotate(err, ".jujuignore")
 		}
 
-		dir.ignoreRules = append(dir.ignoreRules, jujuignoreRules...)
+		rules = append(rules, jujuignoreRules...)
 	}
 
-	return nil
+	return rules, nil
 }
 
 // join builds a path rooted at the charm's expanded directory
@@ -257,7 +253,13 @@ func (dir *CharmDir) ArchiveTo(w io.Writer) error {
 			"%q version string generation failed : %v\nThis means that the charm version won't show in juju status.",
 			vcsType, err)
 	}
-	return writeArchive(w, dir.Path, dir.revision, versionString, dir.Meta().Hooks(), dir.ignoreRules)
+
+	ignoreRules, err := dir.buildIgnoreRules()
+	if err != nil {
+		return err
+	}
+
+	return writeArchive(w, dir.Path, dir.revision, versionString, dir.Meta().Hooks(), ignoreRules)
 }
 
 func writeArchive(w io.Writer, path string, revision int, versionString string, hooks map[string]bool, ignoreRules ignoreRuleset) error {
