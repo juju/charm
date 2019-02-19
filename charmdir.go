@@ -5,7 +5,6 @@ package charm
 
 import (
 	"archive/zip"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,28 +13,42 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/juju/errors"
 )
 
-// defaultIgnoreDirectories defines all directories (currently common vcs)
-// that should be ignored when archiving
-var defaultIgnoreDirectories = []string{
-	".git",
-	".svn",
-	".hg",
-	".bzr",
-}
+// defaultJujuIgnore contains jujuignore directives for excluding VCS- and
+// build-related directories when archiving. The following set of directives
+// will be prepended to the contents of the charm's .jujuignore file if one is
+// provided.
+//
+// NOTE: writeArchive auto-generates its own revision and version files so they
+// need to be excluded here to prevent anyone from overriding their contents by
+// adding files with the same name to their charm repo.
+var defaultJujuIgnore = `
+.git
+.svn
+.hg
+.bzr
+
+/build/
+/revision
+/version
+
+.jujuignore
+`
 
 // The CharmDir type encapsulates access to data and operations
 // on a charm directory.
 type CharmDir struct {
-	Path       string
-	meta       *Meta
-	config     *Config
-	metrics    *Metrics
-	actions    *Actions
-	lxdProfile *LXDProfile
-	revision   int
-	ignoreDirs []string
+	Path        string
+	meta        *Meta
+	config      *Config
+	metrics     *Metrics
+	actions     *Actions
+	lxdProfile  *LXDProfile
+	revision    int
+	ignoreRules ignoreRuleset
 }
 
 // Trick to ensure *CharmDir implements the Charm interface.
@@ -44,14 +57,17 @@ var _ Charm = (*CharmDir)(nil)
 // IsCharmDir report whether the path is likely to represent
 // a charm, even it may be incomplete.
 func IsCharmDir(path string) bool {
-	dir := &CharmDir{Path: path, ignoreDirs: defaultIgnoreDirectories}
+	dir := &CharmDir{Path: path}
 	_, err := os.Stat(dir.join("metadata.yaml"))
 	return err == nil
 }
 
 // ReadCharmDir returns a CharmDir representing an expanded charm directory.
 func ReadCharmDir(path string) (dir *CharmDir, err error) {
-	dir = &CharmDir{Path: path, ignoreDirs: defaultIgnoreDirectories}
+	dir = &CharmDir{Path: path}
+	if err := dir.setupIgnoreRules(); err != nil {
+		return nil, err
+	}
 	file, err := os.Open(dir.join("metadata.yaml"))
 	if err != nil {
 		return nil, err
@@ -121,6 +137,36 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 	}
 
 	return dir, nil
+}
+
+// setupIgnoreRules parses the contents of the charm's .jujuignore file and
+// compiles a set of rules that are used to decide which files should be
+// archived.
+func (dir *CharmDir) setupIgnoreRules() error {
+	// Start with a set of sane defaults to ensure backwards-compatibility
+	// for charms that do not use a .jujuignore file.
+	var err error
+	if dir.ignoreRules, err = newIgnoreRuleset(strings.NewReader(defaultJujuIgnore)); err != nil {
+		return err
+	}
+
+	pathToJujuignore := dir.join(".jujuignore")
+	if _, err := os.Stat(pathToJujuignore); err == nil {
+		file, err := os.Open(dir.join(".jujuignore"))
+		if err != nil {
+			return err
+		}
+		defer func() { _ = file.Close() }()
+
+		jujuignoreRules, err := newIgnoreRuleset(file)
+		if err != nil {
+			return errors.Annotate(err, ".jujuignore")
+		}
+
+		dir.ignoreRules = append(dir.ignoreRules, jujuignoreRules...)
+	}
+
+	return nil
 }
 
 // join builds a path rooted at the charm's expanded directory
@@ -211,10 +257,10 @@ func (dir *CharmDir) ArchiveTo(w io.Writer) error {
 			"%q version string generation failed : %v\nThis means that the charm version won't show in juju status.",
 			vcsType, err)
 	}
-	return writeArchive(w, dir.Path, dir.revision, versionString, dir.Meta().Hooks(), dir.ignoreDirs)
+	return writeArchive(w, dir.Path, dir.revision, versionString, dir.Meta().Hooks(), dir.ignoreRules)
 }
 
-func writeArchive(w io.Writer, path string, revision int, versionString string, hooks map[string]bool, ignore []string) error {
+func writeArchive(w io.Writer, path string, revision int, versionString string, hooks map[string]bool, ignoreRules ignoreRuleset) error {
 	zipw := zip.NewWriter(w)
 	defer zipw.Close()
 
@@ -224,7 +270,7 @@ func writeArchive(w io.Writer, path string, revision int, versionString string, 
 	if err != nil {
 		return err
 	}
-	zp := zipPacker{zipw, rootPath, hooks, ignore}
+	zp := zipPacker{zipw, rootPath, hooks, ignoreRules}
 	if revision != -1 {
 		zp.AddFile("revision", strconv.Itoa(revision))
 	}
@@ -236,9 +282,9 @@ func writeArchive(w io.Writer, path string, revision int, versionString string, 
 
 type zipPacker struct {
 	*zip.Writer
-	root       string
-	hooks      map[string]bool
-	ignoreDirs []string
+	root        string
+	hooks       map[string]bool
+	ignoreRules ignoreRuleset
 }
 
 func (zp *zipPacker) WalkFunc() filepath.WalkFunc {
@@ -261,22 +307,27 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 	if err != nil {
 		return err
 	}
+
 	relpath, err := filepath.Rel(zp.root, path)
 	if err != nil {
 		return err
 	}
+
 	// Replace any Windows path separators with "/".
 	// zip file spec 4.4.17.1 says that separators are always "/" even on Windows.
 	relpath = filepath.ToSlash(relpath)
 
+	// Check if this file or dir needs to be ignored
+	if zp.ignoreRules.Match(relpath, fi.IsDir()) {
+		if fi.IsDir() {
+			return filepath.SkipDir
+		}
+
+		return nil
+	}
+
 	method := zip.Deflate
 	if fi.IsDir() {
-		if relpath == "build" {
-			return filepath.SkipDir
-		}
-		if zp.shouldIgnoreDir(relpath) {
-			return filepath.SkipDir
-		}
 		relpath += "/"
 		method = zip.Store
 	}
@@ -287,9 +338,6 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 	}
 	if mode&os.ModeSymlink != 0 {
 		method = zip.Store
-	}
-	if relpath == "revision" {
-		return nil
 	}
 	h := &zip.FileHeader{
 		Name:   relpath,
@@ -335,17 +383,6 @@ func (zp *zipPacker) visit(path string, fi os.FileInfo, err error) error {
 		_, err = io.Copy(w, file)
 	}
 	return err
-}
-
-// shouldIgnoreDir takes a path and returns true if the directory should be ignored
-// when creating a zip
-func (zp zipPacker) shouldIgnoreDir(path string) bool {
-	for _, p := range zp.ignoreDirs {
-		if p == path {
-			return true
-		}
-	}
-	return false
 }
 
 func checkSymlinkTarget(basedir, symlink, target string) error {

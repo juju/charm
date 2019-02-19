@@ -3,6 +3,7 @@ module gopkg.in/juju/charm.v6
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gabriel-samfira/sys v0.0.0-20150608132119-9ddc60d56b51 // indirect
+	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/juju/collections v0.0.0-20180516022642-90152009b5f3
 	github.com/juju/errors v0.0.0-20150916125642-1b5e39b83d18
 	github.com/juju/gojsonpointer v0.0.0-20150204194629-afe8b77aa08f // indirect
@@ -17,6 +18,7 @@ require (
 	github.com/stretchr/testify v1.2.2 // indirect
 	golang.org/x/crypto v0.0.0-20150830180642-aedad9a179ec // indirect
 	gopkg.in/check.v1 v1.0.0-20160105164936-4f90aeace3a2
+	gopkg.in/gobwas/glob.v0 v0.2.3 // indirect
 	gopkg.in/juju/names.v2 v2.0.0-20160525230723-e38bc90539f2
 	gopkg.in/mgo.v2 v2.0.0-20151026163453-4d04138ffef2
 	gopkg.in/yaml.v2 v2.0.0-20160301204022-a83829b6f129
