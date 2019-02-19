@@ -19,7 +19,7 @@ import (
 
 // defaultJujuIgnore contains jujuignore directives for excluding VCS- and
 // build-related directories when archiving. The following set of directives
-// will be appended to the contents of the charm's .jujuignore file if one is
+// will be prepended to the contents of the charm's .jujuignore file if one is
 // provided.
 //
 // NOTE: writeArchive auto-generates its own revision and version files so they
@@ -143,6 +143,13 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 // compiles a set of rules that are used to decide which files should be
 // archived.
 func (dir *CharmDir) setupIgnoreRules() error {
+	// Start with a set of sane defaults to ensure backwards-compatibility
+	// for charms that do not use a .jujuignore file.
+	var err error
+	if dir.ignoreRules, err = newIgnoreRuleset(strings.NewReader(defaultJujuIgnore)); err != nil {
+		return err
+	}
+
 	pathToJujuignore := dir.join(".jujuignore")
 	if _, err := os.Stat(pathToJujuignore); err == nil {
 		file, err := os.Open(dir.join(".jujuignore"))
@@ -151,18 +158,14 @@ func (dir *CharmDir) setupIgnoreRules() error {
 		}
 		defer func() { _ = file.Close() }()
 
-		dir.ignoreRules, err = newIgnoreRuleset(file)
+		jujuignoreRules, err := newIgnoreRuleset(file)
 		if err != nil {
 			return errors.Annotate(err, ".jujuignore")
 		}
+
+		dir.ignoreRules = append(dir.ignoreRules, jujuignoreRules...)
 	}
 
-	defaultRules, err := newIgnoreRuleset(strings.NewReader(defaultJujuIgnore))
-	if err != nil {
-		return err
-	}
-
-	dir.ignoreRules = append(dir.ignoreRules, defaultRules...)
 	return nil
 }
 
