@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/juju/errors"
+	"github.com/juju/os"
+	"github.com/juju/os/series"
 	"github.com/juju/schema"
 	"github.com/juju/utils"
 	"github.com/juju/version"
@@ -147,6 +149,34 @@ type Device struct {
 	CountMax int64 `bson:"countmax"`
 }
 
+// DeploymentType defines a deployment type.
+type DeploymentType string
+
+const (
+	DeploymentStateless DeploymentType = "stateless"
+	DeploymentStateful  DeploymentType = "stateful"
+)
+
+// ServiceType defines a service type.
+type ServiceType string
+
+const (
+	ServiceCluster      ServiceType = "cluster"
+	ServiceLoadBalancer ServiceType = "loadbalancer"
+	ServiceExternal     ServiceType = "external"
+)
+
+var validServiceTypes = map[os.OSType][]ServiceType{
+	os.Kubernetes: {ServiceCluster, ServiceLoadBalancer, ServiceExternal},
+}
+
+// Deployment represents a charm's deployment requirements in the charm
+// metadata.yaml file.
+type Deployment struct {
+	DeploymentType DeploymentType `bson:"type"`
+	ServiceType    ServiceType    `bson:"service"`
+}
+
 // Relation represents a single relation defined in the charm
 // metadata.yaml file.
 type Relation struct {
@@ -221,6 +251,7 @@ type Meta struct {
 	Series         []string                 `bson:"series,omitempty" json:"SupportedSeries,omitempty"`
 	Storage        map[string]Storage       `bson:"storage,omitempty" json:"Storage,omitempty"`
 	Devices        map[string]Device        `bson:"devices,omitempty" json:"Devices,omitempty"`
+	Deployment     *Deployment              `bson:"deployment,omitempty" json:"Deployment,omitempty"`
 	PayloadClasses map[string]PayloadClass  `bson:"payloadclasses,omitempty" json:"PayloadClasses,omitempty"`
 	Resources      map[string]resource.Meta `bson:"resources,omitempty" json:"Resources,omitempty"`
 	Terms          []string                 `bson:"terms,omitempty" json:"Terms,omitempty"`
@@ -459,6 +490,11 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
 	meta.Devices = parseDevices(m["devices"])
+	deployment, err := parseDeployment(m["deployment"], meta.Series, meta.Storage)
+	if err != nil {
+		return nil, err
+	}
+	meta.Deployment = deployment
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
 
 	if ver := m["min-juju-version"]; ver != nil {
@@ -500,6 +536,7 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 		Series         []string                         `yaml:"series,omitempty"`
 		Storage        map[string]Storage               `yaml:"storage,omitempty"`
 		Devices        map[string]Device                `yaml:"devices,omitempty"`
+		Deployment     *Deployment                      `yaml:"deployment,omitempty"`
 		Terms          []string                         `yaml:"terms,omitempty"`
 		MinJujuVersion string                           `yaml:"min-juju-version,omitempty"`
 		Resources      map[string]marshaledResourceMeta `yaml:"resources,omitempty"`
@@ -517,6 +554,7 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 		Series:         m.Series,
 		Storage:        m.Storage,
 		Devices:        m.Devices,
+		Deployment:     m.Deployment,
 		Terms:          m.Terms,
 		MinJujuVersion: minver,
 		Resources:      marshaledResources(m.Resources),
@@ -905,6 +943,50 @@ func parseDevices(devices interface{}) map[string]Device {
 	return result
 }
 
+func parseDeployment(deployment interface{}, charmSeries []string, storage map[string]Storage) (*Deployment, error) {
+	if deployment == nil {
+		return nil, nil
+	}
+	if len(charmSeries) == 0 {
+		return nil, errors.New("charm with deployment metadata must declare at least one series")
+	}
+	if charmSeries[0] != kubernetes {
+		return nil, errors.Errorf("charms with deployment metadata only supported for %q", kubernetes)
+	}
+	deploymentMap := deployment.(map[string]interface{})
+	var result Deployment
+	if deploymentType, ok := deploymentMap["type"].(string); ok {
+		result.DeploymentType = DeploymentType(deploymentType)
+	}
+	if serviceType, ok := deploymentMap["service"].(string); ok {
+		result.ServiceType = ServiceType(serviceType)
+	}
+	if result.DeploymentType == "" && result.ServiceType == "" {
+		return nil, errors.NotValidf("empty deployment metadata")
+	}
+	if result.ServiceType != "" {
+		osForSeries, err := series.GetOSFromSeries(charmSeries[0])
+		if err != nil {
+			return nil, errors.NotValidf("series %q", charmSeries[0])
+		}
+		valid := false
+		allowed := validServiceTypes[osForSeries]
+		for _, st := range allowed {
+			if st == result.ServiceType {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return nil, errors.NotValidf("service type %q for OS %q", result.ServiceType, osForSeries)
+		}
+	}
+	if result.DeploymentType == DeploymentStateless && len(storage) > 0 {
+		return nil, errors.NotValidf("specifying a stateless service when a charm has storage")
+	}
+	return &result, nil
+}
+
 var storageSchema = schema.FieldMap(
 	schema.Fields{
 		"type":      schema.OneOf(schema.Const(string(StorageBlock)), schema.Const(string(StorageFilesystem))),
@@ -1014,6 +1096,21 @@ func (c propertiesC) Coerce(v interface{}, path []string) (newv interface{}, err
 	return schema.OneOf(schema.Const("transient")).Coerce(v, path)
 }
 
+var deploymentSchema = schema.FieldMap(
+	schema.Fields{
+		"type": schema.OneOf(
+			schema.Const(string(DeploymentStateful)), schema.Const(string(DeploymentStateless))),
+		"service": schema.OneOf(
+			schema.Const(string(ServiceCluster)),
+			schema.Const(string(ServiceLoadBalancer)),
+			schema.Const(string(ServiceExternal)),
+		),
+	}, schema.Defaults{
+		"type":    schema.Omit,
+		"service": schema.Omit,
+	},
+)
+
 var charmSchema = schema.FieldMap(
 	schema.Fields{
 		"name":             schema.String(),
@@ -1031,6 +1128,7 @@ var charmSchema = schema.FieldMap(
 		"series":           schema.List(schema.String()),
 		"storage":          schema.StringMap(storageSchema),
 		"devices":          schema.StringMap(deviceSchema),
+		"deployment":       deploymentSchema,
 		"payloads":         schema.StringMap(payloadClassSchema),
 		"resources":        schema.StringMap(resourceSchema),
 		"terms":            schema.List(schema.String()),
@@ -1049,6 +1147,7 @@ var charmSchema = schema.FieldMap(
 		"series":           schema.Omit,
 		"storage":          schema.Omit,
 		"devices":          schema.Omit,
+		"deployment":       schema.Omit,
 		"payloads":         schema.Omit,
 		"resources":        schema.Omit,
 		"terms":            schema.Omit,
