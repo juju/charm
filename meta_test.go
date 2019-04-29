@@ -1036,6 +1036,57 @@ devices:
 	}, gc.Commentf("meta: %+v", meta))
 }
 
+func (s *MetaSuite) TestDeployment(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+series:
+    - kubernetes
+deployment:
+    type: stateless
+    service: loadbalancer
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.Deployment, gc.DeepEquals, &charm.Deployment{
+		DeploymentType: "stateless",
+		ServiceType:    "loadbalancer",
+	}, gc.Commentf("meta: %+v", meta))
+}
+
+func (s *MetaSuite) TestDeploymentErrors(c *gc.C) {
+	prefix := `
+name: a
+summary: b
+description: c
+deployment:
+`[1:]
+
+	tests := []testErrorPayload{{
+		desc: "invalid deployment type",
+		yaml: "        type: foo",
+		err:  `metadata: deployment.type: unexpected value "foo"`,
+	}, {
+		desc: "invalid service type",
+		yaml: "        service: foo",
+		err:  `metadata: deployment.service: unexpected value "foo"`,
+	}, {
+		desc: "invalid service type for series",
+		yaml: "        service: cluster\nseries:\n        - xenial",
+		err:  `charms with deployment metadata only supported for "kubernetes"`,
+	}, {
+		desc: "missing series",
+		yaml: "        service: cluster",
+		err:  `charm with deployment metadata must declare at least one series`,
+	}, {
+		desc: "stateless deployment type with storage",
+		yaml: "        type: stateless\nseries:\n        - kubernetes\nstorage:\n        foo:\n                type: filesystem",
+		err:  `specifying a stateless service when a charm has storage not valid`,
+	}}
+
+	testErrors(c, prefix, tests)
+}
+
 type testErrorPayload struct {
 	desc string
 	yaml string
