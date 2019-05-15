@@ -30,6 +30,7 @@ var defaultJujuIgnore = `
 .svn
 .hg
 .bzr
+.tox
 
 /build/
 /revision
