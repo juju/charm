@@ -230,6 +230,24 @@ applications:
 			},
 		},
 	},
+}, {
+	about: "application requiring explicit trust",
+	data: `
+applications:
+    aws-integrator:
+        charm: cs:~containers/aws-integrator
+        num_units: 1
+        trust: true
+`,
+	expectedBD: &charm.BundleData{
+		Applications: map[string]*charm.ApplicationSpec{
+			"aws-integrator": {
+				Charm:         "cs:~containers/aws-integrator",
+				NumUnits:      1,
+				RequiresTrust: true,
+			},
+		},
+	},
 }}
 
 func (*bundleDataSuite) TestParse(c *gc.C) {
