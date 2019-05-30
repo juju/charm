@@ -300,6 +300,11 @@ type ApplicationSpec struct {
 	// Plan specifies the plan under which the application is to be deployed.
 	// If "default", the default plan will be used for the charm
 	Plan string `bson:"plan,omitempty" json:"plan,omitempty" yaml:"plan,omitempty"`
+
+	// RequiresTrust indicates that the application requires access to
+	// cloud credentials and must therefore be explicitly trusted by the
+	// operator before it can be deployed.
+	RequiresTrust bool `bson:"trust,omitempty" json:"trust,omitempty" yaml:"trust,omitempty"`
 }
 
 // ReadBundleData reads bundle data from the given reader.
