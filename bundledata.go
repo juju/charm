@@ -297,6 +297,10 @@ type ApplicationSpec struct {
 	// EndpointBindings maps how endpoints are bound to spaces
 	EndpointBindings map[string]string `bson:"bindings,omitempty" json:"bindings,omitempty" yaml:"bindings,omitempty"`
 
+	// Offers holds one entry for each exported offer for this application
+	// where the key is the offer name.
+	Offers map[string]*OfferSpec `bson:"offers,omitempty" json:"offers,omitempty" yaml:"offers,omitempty"`
+
 	// Plan specifies the plan under which the application is to be deployed.
 	// If "default", the default plan will be used for the charm
 	Plan string `bson:"plan,omitempty" json:"plan,omitempty" yaml:"plan,omitempty"`
@@ -305,6 +309,14 @@ type ApplicationSpec struct {
 	// cloud credentials and must therefore be explicitly trusted by the
 	// operator before it can be deployed.
 	RequiresTrust bool `bson:"trust,omitempty" json:"trust,omitempty" yaml:"trust,omitempty"`
+}
+
+// OfferSpec describes an offer for a particular application. It currently only
+// holds information about the offered endpoint but we may opt to expand it in
+// the future to additional information (e.g. the ACL that can interact with
+// this offer).
+type OfferSpec struct {
+	Endpoint string `bson:"endpoint" json:"endpoint", yaml:"endpoint"`
 }
 
 // ReadBundleData reads bundle data from the given reader.
@@ -504,6 +516,13 @@ var (
 	validMachineId   = regexp.MustCompile("^" + names.NumberSnippet + "$")
 	validStorageName = regexp.MustCompile("^" + names.StorageNameSnippet + "$")
 	validDeviceName  = regexp.MustCompile("^" + "(?:[a-z][a-z0-9]*(?:-[a-z0-9]*[a-z][a-z0-9]*)*)" + "$")
+
+	// When the operator consumes the offer a pseudo-application with the
+	// offer name will be created by the controller. So using the application
+	// name regex makes sense here. Likewise we can use the relation regex
+	// to validate the endpoint name.
+	validOfferName         = regexp.MustCompile("^" + names.ApplicationSnippet + "$")
+	validOfferEndpointName = regexp.MustCompile("^" + names.RelationSnippet + "$")
 )
 
 func (verifier *bundleDataVerifier) verifyMachines() {
@@ -586,6 +605,16 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 			}
 			if err := verifier.verifyDevices(deviceConstraints); err != nil {
 				verifier.addErrorf("invalid device %q in application %q: %v", deviceName, name, err)
+			}
+		}
+		// Check the offers.
+		for offerName, oSpec := range app.Offers {
+			if !validOfferName.MatchString(offerName) {
+				verifier.addErrorf("invalid offer name %q in application %q", offerName, name)
+			}
+
+			if !validOfferEndpointName.MatchString(oSpec.Endpoint) {
+				verifier.addErrorf("invalid endpoint name %q for offer %q in application %q", oSpec.Endpoint, offerName, name)
 			}
 		}
 		if verifier.charms != nil {
