@@ -248,6 +248,35 @@ applications:
 			},
 		},
 	},
+}, {
+	about: "application defining offers",
+	data: `
+applications:
+    apache2:
+      charm: "cs:apache2-26"
+      num_units: 1
+      offers:
+        offer1:
+          endpoint: "apache-website"
+        offer2:
+          endpoint: "apache-website"
+`,
+	expectedBD: &charm.BundleData{
+		Applications: map[string]*charm.ApplicationSpec{
+			"apache2": {
+				Charm:    "cs:apache2-26",
+				NumUnits: 1,
+				Offers: map[string]*charm.OfferSpec{
+					"offer1": &charm.OfferSpec{
+						Endpoint: "apache-website",
+					},
+					"offer2": &charm.OfferSpec{
+						Endpoint: "apache-website",
+					},
+				},
+			},
+		},
+	},
 }}
 
 func (*bundleDataSuite) TestParse(c *gc.C) {
@@ -454,6 +483,22 @@ relations:
 }, {
 	about: "mediawiki should be ok",
 	data:  mediawikiBundle,
+}, {
+	about: "malformed offer and endpoint names",
+	data: `
+applications:
+    aws-integrator:
+        charm: cs:~containers/aws-integrator
+        num_units: 1
+        trust: true
+        offers:
+          $bad-name:
+            endpoint: "nope!"
+`,
+	errors: []string{
+		`invalid offer name "$bad-name" in application "aws-integrator"`,
+		`invalid endpoint name "nope!" for offer "$bad-name" in application "aws-integrator"`,
+	},
 }}
 
 func (*bundleDataSuite) TestVerifyErrors(c *gc.C) {
