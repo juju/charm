@@ -312,11 +312,11 @@ type ApplicationSpec struct {
 }
 
 // OfferSpec describes an offer for a particular application. It currently only
-// holds information about the offered endpoint but we may opt to expand it in
+// holds information about the offered endpoints but we may opt to expand it in
 // the future to additional information (e.g. the ACL that can interact with
 // this offer).
 type OfferSpec struct {
-	Endpoint string `bson:"endpoint" json:"endpoint", yaml:"endpoint"`
+	Endpoints []string `bson:"endpoints" json:"endpoints", yaml:"endpoints"`
 }
 
 // ReadBundleData reads bundle data from the given reader.
@@ -613,8 +613,10 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 				verifier.addErrorf("invalid offer name %q in application %q", offerName, name)
 			}
 
-			if !validOfferEndpointName.MatchString(oSpec.Endpoint) {
-				verifier.addErrorf("invalid endpoint name %q for offer %q in application %q", oSpec.Endpoint, offerName, name)
+			for _, endpoint := range oSpec.Endpoints {
+				if !validOfferEndpointName.MatchString(endpoint) {
+					verifier.addErrorf("invalid endpoint name %q for offer %q in application %q", endpoint, offerName, name)
+				}
 			}
 		}
 		if verifier.charms != nil {

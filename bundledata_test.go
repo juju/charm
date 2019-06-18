@@ -257,9 +257,12 @@ applications:
       num_units: 1
       offers:
         offer1:
-          endpoint: "apache-website"
+          endpoints: 
+            - "apache-website"
+            - "apache-proxy"
         offer2:
-          endpoint: "apache-website"
+          endpoints: 
+            - "apache-website"
 `,
 	expectedBD: &charm.BundleData{
 		Applications: map[string]*charm.ApplicationSpec{
@@ -268,10 +271,15 @@ applications:
 				NumUnits: 1,
 				Offers: map[string]*charm.OfferSpec{
 					"offer1": &charm.OfferSpec{
-						Endpoint: "apache-website",
+						Endpoints: []string{
+							"apache-website",
+							"apache-proxy",
+						},
 					},
 					"offer2": &charm.OfferSpec{
-						Endpoint: "apache-website",
+						Endpoints: []string{
+							"apache-website",
+						},
 					},
 				},
 			},
@@ -493,7 +501,8 @@ applications:
         trust: true
         offers:
           $bad-name:
-            endpoint: "nope!"
+            endpoints:
+              - "nope!"
 `,
 	errors: []string{
 		`invalid offer name "$bad-name" in application "aws-integrator"`,
