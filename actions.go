@@ -94,7 +94,7 @@ func (spec *ActionSpec) InsertDefaults(target map[string]interface{}) (map[strin
 	return schema.InsertDefaults(target)
 }
 
-// ReadActions builds an Actions spec from a charm's actions.yaml.
+// ReadActionsYaml builds an Actions spec from a charm's actions.yaml.
 func ReadActionsYaml(r io.Reader) (*Actions, error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
