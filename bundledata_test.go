@@ -260,6 +260,9 @@ applications:
           endpoints: 
             - "apache-website"
             - "apache-proxy"
+          acl: 
+            admin: "admin"
+            foo: "consume"
         offer2:
           endpoints: 
             - "apache-website"
@@ -274,6 +277,10 @@ applications:
 						Endpoints: []string{
 							"apache-website",
 							"apache-proxy",
+						},
+						ACL: map[string]string{
+							"admin": "admin",
+							"foo":   "consume",
 						},
 					},
 					"offer2": &charm.OfferSpec{

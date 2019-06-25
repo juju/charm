@@ -311,12 +311,14 @@ type ApplicationSpec struct {
 	RequiresTrust bool `bson:"trust,omitempty" json:"trust,omitempty" yaml:"trust,omitempty"`
 }
 
-// OfferSpec describes an offer for a particular application. It currently only
-// holds information about the offered endpoints but we may opt to expand it in
-// the future to additional information (e.g. the ACL that can interact with
-// this offer).
+// OfferSpec describes an offer for a particular application.
 type OfferSpec struct {
-	Endpoints []string `bson:"endpoints" json:"endpoints", yaml:"endpoints"`
+	// The list of endpoints exposed via the offer.
+	Endpoints []string `bson:"endpoints" json:"endpoints" yaml:"endpoints"`
+
+	// The access control list for this offer. The keys are users and the
+	// values are access permissions.
+	ACL map[string]string `bson:"acl,omitempty" json:"acl,omitempty" yaml:"acl,omitempty"`
 }
 
 // ReadBundleData reads bundle data from the given reader.
