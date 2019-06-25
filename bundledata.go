@@ -192,7 +192,7 @@ type MachineSpec struct {
 type ApplicationSpec struct {
 	// Charm holds the charm URL of the charm to
 	// use for the given application.
-	Charm string
+	Charm string `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
 
 	// Series is the series to use when deploying a local charm,
 	// if the charm does not specify a default or the default
@@ -310,7 +310,7 @@ type ApplicationSpec struct {
 
 	// Offers holds one entry for each exported offer for this application
 	// where the key is the offer name.
-	Offers map[string]*OfferSpec `bson:"offers,omitempty" json:"offers,omitempty" yaml:"offers,omitempty"`
+	Offers map[string]*OfferSpec `bson:"offers,omitempty" json:"offers,omitempty" yaml:"offers,omitempty" source:"overlay-only"`
 
 	// Plan specifies the plan under which the application is to be deployed.
 	// If "default", the default plan will be used for the charm
@@ -325,11 +325,11 @@ type ApplicationSpec struct {
 // OfferSpec describes an offer for a particular application.
 type OfferSpec struct {
 	// The list of endpoints exposed via the offer.
-	Endpoints []string `bson:"endpoints" json:"endpoints" yaml:"endpoints"`
+	Endpoints []string `bson:"endpoints" json:"endpoints" yaml:"endpoints" source:"overlay-only"`
 
 	// The access control list for this offer. The keys are users and the
 	// values are access permissions.
-	ACL map[string]string `bson:"acl,omitempty" json:"acl,omitempty" yaml:"acl,omitempty"`
+	ACL map[string]string `bson:"acl,omitempty" json:"acl,omitempty" yaml:"acl,omitempty" source:"overlay-only"`
 }
 
 // ReadBundleData reads bundle data from the given reader.
