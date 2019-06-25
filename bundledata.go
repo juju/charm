@@ -136,6 +136,11 @@ type BundleData struct {
 	// not referred to by a unit placement directive.
 	Machines map[string]*MachineSpec `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 
+	// Saas holds one entry for each software as a service (SAAS) for cross
+	// model relation (CMR). These will be mapped to the consuming side when
+	// deploying a bundle.
+	Saas map[string]*SaasSpec `bson:"saas,omitempty" json:"saas,omitempty" yaml:"saas,omitempty"`
+
 	// Series holds the default series to use when
 	// the bundle chooses charms.
 	Series string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
@@ -166,6 +171,12 @@ type BundleData struct {
 // field rather than the "applications" field.
 func (d *BundleData) UnmarshaledWithServices() bool {
 	return d.unmarshaledWithServices
+}
+
+// SaasSpec represents a single software as a service (SAAS) node.
+// This will be mapped to consuming of offers from a bundle deployment.
+type SaasSpec struct {
+	URL string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 }
 
 // MachineSpec represents a notional machine that will be mapped
@@ -500,6 +511,7 @@ func (bd *BundleData) verifyBundle(
 	if bd.Series != "" && !IsValidSeries(bd.Series) {
 		verifier.addErrorf("bundle declares an invalid series %q", bd.Series)
 	}
+	verifier.verifySaas()
 	verifier.verifyMachines()
 	verifier.verifyApplications()
 	verifier.verifyRelations()
@@ -526,6 +538,20 @@ var (
 	validOfferName         = regexp.MustCompile("^" + names.ApplicationSnippet + "$")
 	validOfferEndpointName = regexp.MustCompile("^" + names.RelationSnippet + "$")
 )
+
+func (verifier *bundleDataVerifier) verifySaas() {
+	for name, saas := range verifier.bd.Saas {
+		if !validOfferName.MatchString(name) {
+			verifier.addErrorf("invalid SAAS name %q found", name)
+		}
+		if saas == nil {
+			continue
+		}
+		if saas.URL != "" && !IsValidOfferURL(saas.URL) {
+			verifier.addErrorf("invalid offer URL %q for SAAS %s", saas.URL, name)
+		}
+	}
+}
 
 func (verifier *bundleDataVerifier) verifyMachines() {
 	for id, m := range verifier.bd.Machines {

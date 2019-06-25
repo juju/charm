@@ -257,14 +257,14 @@ applications:
       num_units: 1
       offers:
         offer1:
-          endpoints: 
+          endpoints:
             - "apache-website"
             - "apache-proxy"
-          acl: 
+          acl:
             admin: "admin"
             foo: "consume"
         offer2:
-          endpoints: 
+          endpoints:
             - "apache-website"
 `,
 	expectedBD: &charm.BundleData{
@@ -289,6 +289,30 @@ applications:
 						},
 					},
 				},
+			},
+		},
+	},
+}, {
+	about: "saas offerings",
+	data: `
+saas:
+    apache2:
+        url: production:admin/info.apache
+applications:
+    apache2:
+      charm: "cs:apache2-26"
+      num_units: 1
+`,
+	expectedBD: &charm.BundleData{
+		Saas: map[string]*charm.SaasSpec{
+			"apache2": {
+				URL: "production:admin/info.apache",
+			},
+		},
+		Applications: map[string]*charm.ApplicationSpec{
+			"apache2": {
+				Charm:    "cs:apache2-26",
+				NumUnits: 1,
 			},
 		},
 	},
@@ -401,12 +425,15 @@ var verifyErrorsTests = []struct {
 	data: `
 series: "9wrong"
 
+saas:
+    apache2:
+        url: '!some-bogus/url'
 machines:
     0:
-         constraints: 'bad constraints'
-         annotations:
-             foo: bar
-         series: 'bad series'
+        constraints: 'bad constraints'
+        annotations:
+            foo: bar
+        series: 'bad series'
     bogus:
     3:
 applications:
@@ -470,6 +497,7 @@ relations:
 `,
 	errors: []string{
 		`bundle declares an invalid series "9wrong"`,
+		`invalid offer URL "!some-bogus/url" for SAAS apache2`,
 		`invalid storage name "no_underscores" in application "ceph"`,
 		`invalid storage "invalid-storage" in application "ceph-osd": bad storage constraint`,
 		`machine "3" is not referred to by a placement directive`,
