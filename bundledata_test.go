@@ -297,7 +297,6 @@ applications:
 	data: `
 saas:
     apache2:
-        source: local
         url: production:admin/info.apache
 applications:
     apache2:
@@ -307,8 +306,7 @@ applications:
 	expectedBD: &charm.BundleData{
 		Saas: map[string]*charm.SaasSpec{
 			"apache2": {
-				Source: "local",
-				URL:    "production:admin/info.apache",
+				URL: "production:admin/info.apache",
 			},
 		},
 		Applications: map[string]*charm.ApplicationSpec{
@@ -429,7 +427,6 @@ series: "9wrong"
 
 saas:
     apache2:
-        source: Bogus
         url: '!some-bogus/url'
 machines:
     0:
@@ -500,7 +497,6 @@ relations:
 `,
 	errors: []string{
 		`bundle declares an invalid series "9wrong"`,
-		`invalid source "Bogus" for SAAS apache2`,
 		`invalid offer URL "!some-bogus/url" for SAAS apache2`,
 		`invalid storage name "no_underscores" in application "ceph"`,
 		`invalid storage "invalid-storage" in application "ceph-osd": bad storage constraint`,

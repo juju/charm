@@ -176,8 +176,7 @@ func (d *BundleData) UnmarshaledWithServices() bool {
 // SaasSpec represents a single software as a service (SAAS) node.
 // This will be mapped to consuming of offers from a bundle deployment.
 type SaasSpec struct {
-	Source string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
-	URL    string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+	URL string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 }
 
 // MachineSpec represents a notional machine that will be mapped
@@ -547,10 +546,6 @@ func (verifier *bundleDataVerifier) verifySaas() {
 		}
 		if saas == nil {
 			continue
-		}
-		if saas.Source != "" && !names.IsValidControllerName(saas.Source) {
-			// source here could be "local" or a controller name
-			verifier.addErrorf("invalid source %q for SAAS %s", saas.Source, name)
 		}
 		if saas.URL != "" && !IsValidOfferURL(saas.URL) {
 			verifier.addErrorf("invalid offer URL %q for SAAS %s", saas.URL, name)
