@@ -458,6 +458,8 @@ series: "9wrong"
 saas:
     apache2:
         url: '!some-bogus/url'
+    riak:
+        url: production:admin/info.riak
 machines:
     0:
         constraints: 'bad constraints'
@@ -524,6 +526,7 @@ relations:
     - ["mysql:db", "mediawiki:db"]
     - ["mediawiki/db", "mysql:db"]
     - ["wordpress", "mysql"]
+    - ["wordpress:db", "riak:db"]
 `,
 	errors: []string{
 		`bundle declares an invalid series "9wrong"`,
@@ -552,6 +555,7 @@ relations:
 		`invalid placement syntax "bad placement"`,
 		`invalid relation syntax "mediawiki/db"`,
 		`invalid series bad series for machine "0"`,
+		`ambiguous relation "riak" refers to a application and a SAAS in this bundle`,
 	},
 }, {
 	about: "mediawiki should be ok",

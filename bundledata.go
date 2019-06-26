@@ -764,6 +764,9 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 			if !foundApp && !foundSaas {
 				verifier.addErrorf("relation %q refers to application %q not defined in this bundle", relPair, ep.application)
 			}
+			if foundApp && foundSaas {
+				verifier.addErrorf("ambiguous relation %q refers to a application and a SAAS in this bundle", ep.application)
+			}
 			epPair[i] = ep
 		}
 		if relParseErr {
