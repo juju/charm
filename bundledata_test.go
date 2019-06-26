@@ -316,6 +316,36 @@ applications:
 			},
 		},
 	},
+}, {
+	about: "saas offerings with relations",
+	data: `
+saas:
+    mysql:
+        url: production:admin/info.mysql
+applications:
+    wordpress:
+      charm: "cs:trusty/wordpress-5"
+      num_units: 1
+relations:
+- - wordpress:db
+  - mysql:db
+`,
+	expectedBD: &charm.BundleData{
+		Saas: map[string]*charm.SaasSpec{
+			"mysql": {
+				URL: "production:admin/info.mysql",
+			},
+		},
+		Applications: map[string]*charm.ApplicationSpec{
+			"wordpress": {
+				Charm:    "cs:trusty/wordpress-5",
+				NumUnits: 1,
+			},
+		},
+		Relations: [][]string{
+			{"wordpress:db", "mysql:db"},
+		},
+	},
 }}
 
 func (*bundleDataSuite) TestParse(c *gc.C) {
@@ -428,6 +458,8 @@ series: "9wrong"
 saas:
     apache2:
         url: '!some-bogus/url'
+    riak:
+        url: production:admin/info.riak
 machines:
     0:
         constraints: 'bad constraints'
@@ -494,6 +526,7 @@ relations:
     - ["mysql:db", "mediawiki:db"]
     - ["mediawiki/db", "mysql:db"]
     - ["wordpress", "mysql"]
+    - ["wordpress:db", "riak:db"]
 `,
 	errors: []string{
 		`bundle declares an invalid series "9wrong"`,
@@ -522,6 +555,7 @@ relations:
 		`invalid placement syntax "bad placement"`,
 		`invalid relation syntax "mediawiki/db"`,
 		`invalid series bad series for machine "0"`,
+		`ambiguous relation "riak" refers to a application and a SAAS in this bundle`,
 	},
 }, {
 	about: "mediawiki should be ok",
