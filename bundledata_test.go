@@ -316,6 +316,36 @@ applications:
 			},
 		},
 	},
+}, {
+	about: "saas offerings with relations",
+	data: `
+saas:
+    mysql:
+        url: production:admin/info.mysql
+applications:
+    wordpress:
+      charm: "cs:trusty/wordpress-5"
+      num_units: 1
+relations:
+- - wordpress:db
+  - mysql:db
+`,
+	expectedBD: &charm.BundleData{
+		Saas: map[string]*charm.SaasSpec{
+			"mysql": {
+				URL: "production:admin/info.mysql",
+			},
+		},
+		Applications: map[string]*charm.ApplicationSpec{
+			"wordpress": {
+				Charm:    "cs:trusty/wordpress-5",
+				NumUnits: 1,
+			},
+		},
+		Relations: [][]string{
+			{"wordpress:db", "mysql:db"},
+		},
+	},
 }}
 
 func (*bundleDataSuite) TestParse(c *gc.C) {

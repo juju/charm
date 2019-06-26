@@ -756,7 +756,12 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 				relParseErr = true
 				continue
 			}
-			if _, ok := verifier.bd.Applications[ep.application]; !ok {
+			// with the introduction of the SAAS block to bundles, we should
+			// test that not only is the expected application is in the
+			// applications block, but if it's not, is it in the SAAS offering.
+			_, foundApp := verifier.bd.Applications[ep.application]
+			_, foundSaas := verifier.bd.Saas[ep.application]
+			if !foundApp && !foundSaas {
 				verifier.addErrorf("relation %q refers to application %q not defined in this bundle", relPair, ep.application)
 			}
 			epPair[i] = ep
