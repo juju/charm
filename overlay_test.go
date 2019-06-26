@@ -4,6 +4,7 @@
 package charm_test
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/juju/testing"
@@ -81,4 +82,52 @@ applications:
 	overlayYaml, err := yaml.Marshal(overlay)
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert("\n"+string(overlayYaml), gc.Equals, expOverlay)
+}
+
+func (*bundleDataOverlaySuite) TestVerifyNoOverlayFieldsPresent(c *gc.C) {
+	data := `
+applications:
+  apache2:
+    charm: cs:apache2-26
+    offers:
+      my-offer:
+        endpoints:
+        - apache-website
+        - website-cache
+        acl:
+          admin: admin
+          foo: consume
+      my-other-offer:
+        endpoints:
+        - apache-website
+saas:
+    apache2:
+        url: production:admin/info.apache
+series: bionic
+`
+
+	bd, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.IsNil)
+
+	static, overlay, err := charm.ExtractBaseAndOverlayParts(bd)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Assert(charm.VerifyNoOverlayFieldsPresent(static), gc.Equals, nil)
+
+	expErrors := []string{
+		"applications.apache2.offers can only appear in an overlay section",
+		"applications.apache2.offers.my-offer.endpoints can only appear in an overlay section",
+		"applications.apache2.offers.my-offer.acl can only appear in an overlay section",
+		"applications.apache2.offers.my-other-offer.endpoints can only appear in an overlay section",
+	}
+	err = charm.VerifyNoOverlayFieldsPresent(overlay)
+	c.Assert(err, gc.FitsTypeOf, (*charm.VerificationError)(nil))
+	errors := err.(*charm.VerificationError).Errors
+	errStrings := make([]string, len(errors))
+	for i, err := range errors {
+		errStrings[i] = err.Error()
+	}
+	sort.Strings(errStrings)
+	sort.Strings(expErrors)
+	c.Assert(errStrings, jc.DeepEquals, expErrors)
 }

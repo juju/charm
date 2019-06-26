@@ -6,7 +6,10 @@ package charm
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
+	"math"
 	"reflect"
+	"strings"
 )
 
 // ExtractBaseAndOverlayParts splits the bundle data into a base and
@@ -91,6 +94,70 @@ func cloneBundleData(bd *BundleData) (*BundleData, error) {
 
 	clone.unmarshaledWithServices = bd.unmarshaledWithServices
 	return clone, nil
+}
+
+// VerifyNoOverlayFieldsPresent scans the contents of bd and returns an error
+// if the bundle contains any overlay-specific values.
+func VerifyNoOverlayFieldsPresent(bd *BundleData) error {
+	var (
+		errList   []error
+		pathStack []string
+	)
+
+	ctx := &visitorContext{
+		structVisitor: func(ctx *visitorContext, val reflect.Value, typ reflect.Type) (foundOverlay bool) {
+			for i := 0; i < typ.NumField(); i++ {
+				structField := typ.Field(i)
+
+				// Skip non-exportable and empty fields
+				v := val.Field(i)
+				if !v.CanInterface() || isZero(v) {
+					continue
+				}
+
+				if isOverlayField(structField) {
+					errList = append(
+						errList,
+						fmt.Errorf(
+							"%s.%s can only appear in an overlay section",
+							strings.Join(pathStack, "."),
+							yamlName(structField),
+						),
+					)
+					foundOverlay = true
+				}
+
+				pathStack = append(pathStack, yamlName(structField))
+				if visitField(ctx, v.Interface()) {
+					foundOverlay = true
+				}
+				pathStack = pathStack[:len(pathStack)-1]
+			}
+			return foundOverlay
+		},
+		indexedElemPreVisitor: func(index interface{}) {
+			pathStack = append(pathStack, fmt.Sprint(index))
+		},
+		indexedElemPostVisitor: func(_ interface{}) {
+			pathStack = pathStack[:len(pathStack)-1]
+		},
+	}
+
+	_ = visitField(ctx, bd)
+	if len(errList) == 0 {
+		return nil
+	}
+
+	return &VerificationError{errList}
+}
+
+func yamlName(structField reflect.StructField) string {
+	fields := strings.Split(structField.Tag.Get("yaml"), ",")
+	if len(fields) == 0 || fields[0] == "" {
+		return strings.ToLower(structField.Name)
+	}
+
+	return fields[0]
 }
 
 type visitorContext struct {
@@ -235,4 +302,45 @@ func clearNonOverlayFields(ctx *visitorContext, val reflect.Value, typ reflect.T
 // isOverlayField returns true if a struct field is tagged as overlay-only.
 func isOverlayField(structField reflect.StructField) bool {
 	return structField.Tag.Get("source") == "overlay-only"
+}
+
+// isZero reports whether v is the zero value for its type. It panics if the
+// argument is invalid. The implementation has been copied from the upstream Go
+// repo as it has not made its way to a stable Go release yet.
+func isZero(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Bool:
+		return !v.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return math.Float64bits(v.Float()) == 0
+	case reflect.Complex64, reflect.Complex128:
+		c := v.Complex()
+		return math.Float64bits(real(c)) == 0 && math.Float64bits(imag(c)) == 0
+	case reflect.Array:
+		for i := 0; i < v.Len(); i++ {
+			if !isZero(v.Index(i)) {
+				return false
+			}
+		}
+		return true
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice, reflect.UnsafePointer:
+		return v.IsNil()
+	case reflect.String:
+		return v.Len() == 0
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			if !isZero(v.Field(i)) {
+				return false
+			}
+		}
+		return true
+	default:
+		// This should never happens, but will act as a safeguard for
+		// later, as a default value doesn't makes sense here.
+		panic(fmt.Sprintf("unexpected value of type %s passed to isZero", v.Kind().String()))
+	}
 }
