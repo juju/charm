@@ -249,9 +249,9 @@ func clearOverlayFields(ctx *visitorContext, val reflect.Value, typ reflect.Type
 	for i := 0; i < typ.NumField(); i++ {
 		structField := typ.Field(i)
 
-		// Skip non-exportable fields
+		// Skip non-exportable and empty fields
 		v := val.Field(i)
-		if !v.CanInterface() {
+		if !v.CanInterface() || isZero(v) {
 			continue
 		}
 
@@ -274,9 +274,9 @@ func clearNonOverlayFields(ctx *visitorContext, val reflect.Value, typ reflect.T
 	for i := 0; i < typ.NumField(); i++ {
 		structField := typ.Field(i)
 
-		// Skip non-exportable fields
+		// Skip non-exportable and empty fields
 		v := val.Field(i)
-		if !v.CanInterface() {
+		if !v.CanInterface() || isZero(v) {
 			continue
 		}
 

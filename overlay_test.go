@@ -84,6 +84,56 @@ applications:
 	c.Assert("\n"+string(overlayYaml), gc.Equals, expOverlay)
 }
 
+func (*bundleDataOverlaySuite) TestExtractBaseAndOverlayPartsWithNoOverlayFields(c *gc.C) {
+	data := `
+bundle: kubernetes
+applications:
+  mysql:
+    charm: cs:mysql
+    scale: 1
+  wordpress:
+    charm: cs:wordpress
+    scale: 2
+relations:
+- - wordpress:db
+  - mysql:mysql
+`
+
+	expBase := `
+bundle: kubernetes
+applications:
+  mysql:
+    charm: cs:mysql
+    series: kubernetes
+    num_units: 1
+  wordpress:
+    charm: cs:wordpress
+    series: kubernetes
+    num_units: 2
+relations:
+- - wordpress:db
+  - mysql:mysql
+`
+
+	expOverlay := `
+{}
+`
+
+	bd, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.IsNil)
+
+	base, overlay, err := charm.ExtractBaseAndOverlayParts(bd)
+	c.Assert(err, jc.ErrorIsNil)
+
+	baseYaml, err := yaml.Marshal(base)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert("\n"+string(baseYaml), gc.Equals, expBase)
+
+	overlayYaml, err := yaml.Marshal(overlay)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert("\n"+string(overlayYaml), gc.Equals, expOverlay)
+}
+
 func (*bundleDataOverlaySuite) TestVerifyNoOverlayFieldsPresent(c *gc.C) {
 	data := `
 applications:
