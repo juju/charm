@@ -541,6 +541,9 @@ var (
 
 func (verifier *bundleDataVerifier) verifySaas() {
 	for name, saas := range verifier.bd.Saas {
+		if _, ok := verifier.bd.Applications[name]; ok {
+			verifier.addErrorf("application %[1]q already exists with SAAS %[1]q name", name)
+		}
 		if !validOfferName.MatchString(name) {
 			verifier.addErrorf("invalid SAAS name %q found", name)
 		}
@@ -580,6 +583,9 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 	for name, app := range verifier.bd.Applications {
 		if app.Charm == "" {
 			verifier.addErrorf("empty charm path")
+		}
+		if _, ok := verifier.bd.Saas[name]; ok {
+			verifier.addErrorf("SAAS %[1]q already exists with application %[1]q name", name)
 		}
 		// Charm may be a local directory or a charm URL.
 		var curl *URL
