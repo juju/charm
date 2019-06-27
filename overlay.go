@@ -4,12 +4,12 @@
 package charm
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	"math"
 	"reflect"
 	"strings"
+
+	"github.com/mohae/deepcopy"
 )
 
 // ExtractBaseAndOverlayParts splits the bundle data into a base and
@@ -67,33 +67,20 @@ import (
 // The two bundles returned by this method are copies of the original bundle
 // data and can thus be safely manipulated by the caller.
 func ExtractBaseAndOverlayParts(bd *BundleData) (base, overlay *BundleData, err error) {
-	if base, err = cloneBundleData(bd); err != nil {
-		return nil, nil, err
-	}
-
-	if overlay, err = cloneBundleData(bd); err != nil {
-		return nil, nil, err
-	}
-
+	base = cloneBundleData(bd)
 	_ = visitField(&visitorContext{structVisitor: clearOverlayFields}, base)
+
+	overlay = cloneBundleData(bd)
 	_ = visitField(&visitorContext{structVisitor: clearNonOverlayFields}, overlay)
+
 	return base, overlay, nil
 }
 
 // cloneBundleData uses the gob package to perform a deep copy of bd.
-func cloneBundleData(bd *BundleData) (*BundleData, error) {
-	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(bd); err != nil {
-		return nil, err
-	}
-
-	var clone *BundleData
-	if err := gob.NewDecoder(&buf).Decode(&clone); err != nil {
-		return nil, err
-	}
-
+func cloneBundleData(bd *BundleData) *BundleData {
+	clone := deepcopy.Copy(bd).(*BundleData)
 	clone.unmarshaledWithServices = bd.unmarshaledWithServices
-	return clone, nil
+	return clone
 }
 
 // VerifyNoOverlayFieldsPresent scans the contents of bd and returns an error
