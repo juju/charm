@@ -556,6 +556,8 @@ relations:
 		`invalid relation syntax "mediawiki/db"`,
 		`invalid series bad series for machine "0"`,
 		`ambiguous relation "riak" refers to a application and a SAAS in this bundle`,
+		`SAAS "riak" already exists with application "riak" name`,
+		`application "riak" already exists with SAAS "riak" name`,
 	},
 }, {
 	about: "mediawiki should be ok",
