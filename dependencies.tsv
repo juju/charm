@@ -14,6 +14,7 @@ github.com/juju/utils	git	bf9cc5bdd62dabc40b7f634b39a5e2dc44d44c45	2018-08-20T21
 github.com/juju/version	git	b64dbd566305c836274f0268fa59183a52906b36	2018-01-08T02:23:36Z
 github.com/kr/pretty	git	73f6ac0b30a98e433b289500d779f50c1a6f0712	2018-05-06T08:33:45Z
 github.com/kr/text	git	e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f	2018-05-06T08:24:08Z
+github.com/mohae/deepcopy	git	c48cc78d482608239f6c4c92a4abd87eb8761c90	2017-09-29T03:49:55Z
 golang.org/x/crypto	git	b8fe1690c61389d7d2a8074a507d1d40c5d30448	2019-01-31T18:25:04Z
 golang.org/x/net	git	d26f9f9a57f3fab6a695bec0d84433c2c50f8bbf	2019-01-25T09:10:13Z
 gopkg.in/check.v1	git	788fd78401277ebd861206a03c884797c6ec5541	2018-06-28T17:31:08Z
