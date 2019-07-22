@@ -5,6 +5,7 @@ package charm
 
 import (
 	"archive/zip"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -95,6 +96,72 @@ func assertFieldPresent(c *gc.C, part *BundleDataPart, path string) {
 		default:
 			c.Fatalf("unexpected type %T at path: %s", typ, strings.Join(segments[:segIndex], "."))
 		}
+	}
+}
+
+func (s *BundleDataSourceSuite) TestResolveAbsoluteFileInclude(c *gc.C) {
+	target, err := filepath.Abs(filepath.Join(c.MkDir(), "example"))
+	c.Assert(err, gc.IsNil)
+
+	expContent := "example content\n"
+	c.Assert(ioutil.WriteFile(target, []byte(expContent), os.ModePerm), gc.IsNil)
+
+	ds := new(resolvedBundleDataSource)
+
+	got, err := ds.ResolveInclude(target)
+	c.Assert(err, gc.IsNil)
+	c.Assert(string(got), gc.Equals, expContent)
+}
+
+func (s *BundleDataSourceSuite) TestResolveRelativeFileInclude(c *gc.C) {
+	relTo := c.MkDir()
+	target, err := filepath.Abs(filepath.Join(relTo, "example"))
+	c.Assert(err, gc.IsNil)
+
+	expContent := "example content\n"
+	c.Assert(ioutil.WriteFile(target, []byte(expContent), os.ModePerm), gc.IsNil)
+
+	ds := &resolvedBundleDataSource{
+		basePath: relTo,
+	}
+
+	got, err := ds.ResolveInclude("./example")
+	c.Assert(err, gc.IsNil)
+	c.Assert(string(got), gc.Equals, expContent)
+}
+
+func (s *BundleDataSourceSuite) TestResolveIncludeErrors(c *gc.C) {
+	tmpDir := c.MkDir()
+	specs := []struct {
+		descr   string
+		incPath string
+		exp     string
+	}{
+		{
+			descr:   "abs path does not exist",
+			incPath: "/some/invalid/path",
+			exp:     `include file "/some/invalid/path" not found`,
+		},
+		{
+			descr:   "rel path does not exist",
+			incPath: "./missing",
+			exp:     `include file "./missing" not found`,
+		},
+		{
+			descr:   "path points to directory",
+			incPath: tmpDir,
+			exp:     fmt.Sprintf("include path %q resolves to a folder", tmpDir),
+		},
+	}
+
+	ds := new(resolvedBundleDataSource)
+	for specIndex, spec := range specs {
+		c.Logf("[test %d] %s", specIndex, spec.descr)
+
+		_, err := ds.ResolveInclude(spec.incPath)
+		c.Assert(err, gc.Not(gc.IsNil))
+
+		c.Assert(err.Error(), gc.Equals, spec.exp)
 	}
 }
 

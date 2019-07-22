@@ -4,6 +4,7 @@
 package charm
 
 import (
+	"encoding/base64"
 	"fmt"
 	"math"
 	"reflect"
@@ -402,8 +403,52 @@ func ReadAndMergeBundleData(sources ...BundleDataSource) (*BundleData, error) {
 
 	// Merge parts and resolve include directives
 	for index, part := range allParts {
-		if err := applyOverlay(base, part); err != nil {
-			return nil, err
+		if index != 0 {
+			if err := applyOverlay(base, part); err != nil {
+				return nil, err
+			}
+		}
+
+		// Relative include directives are resolved using the base path
+		// of the datasource that yielded this part
+		incResolver := sources[partSrcIndex[index]].ResolveInclude
+
+		for app, appData := range base.Data.Applications {
+			for k, v := range appData.Options {
+				newV, changed, err := resolveIncludes(incResolver, v)
+				if err != nil {
+					return nil, errors.Annotatef(err, "processing option %q for application %q", k, app)
+				}
+				if changed {
+					appData.Options[k] = newV
+				}
+			}
+
+			for k, v := range appData.Annotations {
+				newV, changed, err := resolveIncludes(incResolver, v)
+				if err != nil {
+					return nil, errors.Annotatef(err, "processing annotation %q for application %q", k, app)
+				}
+				if changed {
+					appData.Annotations[k] = newV
+				}
+			}
+		}
+
+		for machine, machineData := range base.Data.Machines {
+			if machineData == nil {
+				continue
+			}
+
+			for k, v := range machineData.Annotations {
+				newV, changed, err := resolveIncludes(incResolver, v)
+				if err != nil {
+					return nil, errors.Annotatef(err, "processing annotation %q for machine %q", k, machine)
+				}
+				if changed {
+					machineData.Annotations[k] = newV
+				}
+			}
 		}
 	}
 
@@ -597,4 +642,47 @@ func isNonScalar(val reflect.Value) bool {
 	default:
 		return false
 	}
+}
+
+// resolveIncludes operates on v which is expected to be string. It checks the
+// value for the presense of an include directive. If such a directive is
+// located, resolveIncludes invokes the provided includeResolver and returns
+// back its output after applying the appropriate encoding for the directive.
+func resolveIncludes(includeResolver func(path string) ([]byte, error), v interface{}) (string, bool, error) {
+	directives := []struct {
+		directive string
+		encoder   func([]byte) string
+	}{
+		{
+			directive: "include-file://",
+			encoder: func(d []byte) string {
+				return string(d)
+			},
+		},
+		{
+			directive: "include-base64://",
+			encoder:   base64.StdEncoding.EncodeToString,
+		},
+	}
+
+	val, isString := v.(string)
+	if !isString {
+		return "", false, nil
+	}
+
+	for _, dir := range directives {
+		if !strings.HasPrefix(val, dir.directive) {
+			continue
+		}
+
+		path := val[len(dir.directive):]
+		data, err := includeResolver(path)
+		if err != nil {
+			return "", false, errors.Annotatef(err, "resolving include %q", path)
+		}
+
+		return dir.encoder(data), true, nil
+	}
+
+	return val, false, nil
 }

@@ -50,6 +50,8 @@ type BundleDataPart struct {
 // list of composable parts.
 type BundleDataSource interface {
 	Parts() []*BundleDataPart
+	BasePath() string
+	ResolveInclude(path string) ([]byte, error)
 }
 
 type resolvedBundleDataSource struct {
@@ -59,6 +61,41 @@ type resolvedBundleDataSource struct {
 
 func (s *resolvedBundleDataSource) Parts() []*BundleDataPart {
 	return s.parts
+}
+
+func (s *resolvedBundleDataSource) BasePath() string {
+	return s.basePath
+}
+
+func (s *resolvedBundleDataSource) ResolveInclude(path string) ([]byte, error) {
+	absPath := path
+	if !filepath.IsAbs(absPath) {
+		var err error
+		absPath, err = filepath.Abs(filepath.Clean(filepath.Join(s.basePath, absPath)))
+		if err != nil {
+			return nil, errors.Annotatef(err, "resolving relative include %q", path)
+		}
+	}
+
+	info, err := os.Stat(absPath)
+	if err != nil {
+		if isNotExistsError(err) {
+			return nil, errors.NotFoundf("include file %q", path)
+		}
+
+		return nil, errors.Annotatef(err, "stat failed for %q", path)
+	}
+
+	if info.IsDir() {
+		return nil, errors.Errorf("include path %q resolves to a folder", path)
+	}
+
+	data, err := ioutil.ReadFile(absPath)
+	if err != nil {
+		return nil, errors.Annotatef(err, "reading include file at %q", path)
+	}
+
+	return data, nil
 }
 
 // LocalBundleDataSource reads a (potentially multi-part) bundle from path and

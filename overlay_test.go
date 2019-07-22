@@ -6,9 +6,11 @@ package charm_test
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/juju/errors"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
@@ -518,6 +520,148 @@ relations:
 `
 
 	c.Assert("\n"+string(merged), gc.Equals, exp)
+}
+
+func (*bundleDataOverlaySuite) TestReadAndMergeBundleDataWithIncludes(c *gc.C) {
+	data := `
+applications:
+  apache2:
+    options:
+      opt-raw: include-file://foo
+      opt-b64: include-base64://foo
+      opt-other:
+        some: value
+    annotations:
+      anno-raw: include-file://foo
+      anno-b64: include-base64://foo
+      anno-other: value
+machines:
+  "0": {}
+  "1":
+    annotations:
+      anno-raw: include-file://foo
+      anno-b64: include-base64://foo
+      anno-other: value
+`
+
+	ds := srcWithFakeIncludeResolver{
+		src: mustCreateStringDataSource(c, data),
+		resolveMap: map[string][]byte{
+			"foo": []byte("lorem$ipsum$"),
+		},
+	}
+
+	bd, err := charm.ReadAndMergeBundleData(ds)
+	c.Assert(err, gc.IsNil)
+
+	merged, err := yaml.Marshal(bd)
+	c.Assert(err, gc.IsNil)
+
+	exp := `
+applications:
+  apache2:
+    options:
+      opt-b64: bG9yZW0kaXBzdW0k
+      opt-other:
+        some: value
+      opt-raw: lorem$ipsum$
+    annotations:
+      anno-b64: bG9yZW0kaXBzdW0k
+      anno-other: value
+      anno-raw: lorem$ipsum$
+machines:
+  "0": {}
+  "1":
+    annotations:
+      anno-b64: bG9yZW0kaXBzdW0k
+      anno-other: value
+      anno-raw: lorem$ipsum$
+`
+
+	c.Assert("\n"+string(merged), gc.Equals, exp)
+}
+
+func (*bundleDataOverlaySuite) TestBundleDataSourceRelativeIncludes(c *gc.C) {
+	base := `
+applications:
+  django:
+    charm: cs:django
+    options:
+      opt1: include-file://relative-to-base.txt
+`
+
+	overlays := `
+applications:
+  django:
+    charm: cs:django
+    options:
+      opt2: include-file://relative-to-overlay.txt
+---
+applications:
+  django:
+    charm: cs:django
+    options:
+      opt3: include-file://relative-to-overlay.txt
+`
+
+	baseDir := c.MkDir()
+	mustWriteFile(c, filepath.Join(baseDir, "bundle.yaml"), base)
+	mustWriteFile(c, filepath.Join(baseDir, "relative-to-base.txt"), "lorem ipsum")
+
+	ovlDir := c.MkDir()
+	mustWriteFile(c, filepath.Join(ovlDir, "overlays.yaml"), overlays)
+	mustWriteFile(c, filepath.Join(ovlDir, "relative-to-overlay.txt"), "dolor")
+
+	bd, err := charm.ReadAndMergeBundleData(
+		mustCreateLocalDataSource(c, filepath.Join(baseDir, "bundle.yaml")),
+		mustCreateLocalDataSource(c, filepath.Join(ovlDir, "overlays.yaml")),
+	)
+	c.Assert(err, gc.IsNil)
+
+	merged, err := yaml.Marshal(bd)
+	c.Assert(err, gc.IsNil)
+
+	exp := `
+applications:
+  django:
+    charm: cs:django
+    options:
+      opt1: lorem ipsum
+      opt2: dolor
+      opt3: dolor
+`
+
+	c.Assert("\n"+string(merged), gc.Equals, exp)
+}
+
+type srcWithFakeIncludeResolver struct {
+	src        charm.BundleDataSource
+	resolveMap map[string][]byte
+}
+
+func (s srcWithFakeIncludeResolver) Parts() []*charm.BundleDataPart {
+	return s.src.Parts()
+}
+
+func (s srcWithFakeIncludeResolver) BasePath() string {
+	return s.src.BasePath()
+}
+
+func (s srcWithFakeIncludeResolver) ResolveInclude(path string) ([]byte, error) {
+	var (
+		data  []byte
+		found bool
+	)
+
+	if s.resolveMap != nil {
+		data, found = s.resolveMap[path]
+	}
+
+	if !found {
+		return nil, errors.NotFoundf(path)
+	}
+
+	return data, nil
 }
 
 // testBundleMergeResult reads and merges the bundle and any overlays in src,
