@@ -1,0 +1,186 @@
+// Copyright 2019 Canonical Ltd.
+// Licensed under the LGPLv3, see LICENCE file for details.
+
+package charm
+
+import (
+	"bytes"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
+	"github.com/juju/errors"
+	"gopkg.in/yaml.v2"
+)
+
+// FieldPresenseMap indicates which keys of a parsed bundle yaml document were
+// present when the document was parsed. This map is used by the overlay merge
+// code to figure out whether empty/nil field values were actually specified as
+// such in the yaml document.
+type FieldPresenseMap map[interface{}]interface{}
+
+func (fpm FieldPresenseMap) fieldPresent(fieldName string) bool {
+	_, exists := fpm[fieldName]
+	return exists
+}
+
+func (fpm FieldPresenseMap) forField(fieldName string) FieldPresenseMap {
+	v, exists := fpm[fieldName]
+	if !exists {
+		return nil
+	}
+
+	asMap, valid := v.(FieldPresenseMap)
+	if !valid {
+		panic(errors.Errorf("field map entry %q does not point to a nested field presense map", fieldName))
+	}
+	return asMap
+}
+
+// BundleDataPart combines a parsed BundleData instance with a nested map that
+// can be used to discriminate between fields that are missing from the data
+// and those that are present but defined to be empty.
+type BundleDataPart struct {
+	Data        *BundleData
+	PresenseMap FieldPresenseMap
+}
+
+// BundleDataSource is implemented by types that can parse bundle data into a
+// list of composable parts.
+type BundleDataSource interface {
+	Parts() []*BundleDataPart
+}
+
+type resolvedBundleDataSource struct {
+	basePath string
+	parts    []*BundleDataPart
+}
+
+func (s *resolvedBundleDataSource) Parts() []*BundleDataPart {
+	return s.parts
+}
+
+// LocalBundleDataSource reads a (potentially multi-part) bundle from path and
+// returns a BundleDataSource for it. Path may point to a yaml file, a bundle
+// directory or a bundle archive.
+func LocalBundleDataSource(path string) (BundleDataSource, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if isNotExistsError(err) {
+			return nil, errors.NotFoundf("%q", path)
+		}
+
+		return nil, errors.Annotatef(err, "stat failed for %q", path)
+	}
+
+	// Treat as an exploded bundle archive directory
+	if info.IsDir() {
+		path = filepath.Join(path, "bundle.yaml")
+	}
+
+	// Try parsing as a yaml file first
+	f, err := os.Open(path)
+	if err != nil {
+		if isNotExistsError(err) {
+			return nil, errors.NotFoundf("%q", path)
+		}
+		return nil, errors.Annotatef(err, "access bundle data at %q", path)
+	}
+	defer func() { _ = f.Close() }()
+
+	parts, pErr := parseBundleParts(f)
+	if pErr == nil {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return nil, errors.Annotatef(err, "resolve absolute path to %s", path)
+		}
+		return &resolvedBundleDataSource{
+			basePath: filepath.Dir(absPath),
+			parts:    parts,
+		}, nil
+	}
+
+	// As a fallback, try to parse as a bundle archive
+	zo := newZipOpenerFromPath(path)
+	zrc, err := zo.openZip()
+	if err != nil {
+		// Not a zip file; return the original parse error
+		return nil, errors.NewNotValid(pErr, "cannot unmarshal bundle contents")
+	}
+	defer func() { _ = zrc.Close() }()
+
+	r, err := zipOpenFile(zrc, "bundle.yaml")
+	if err != nil {
+		// It is a zip file but not one that contains a bundle.yaml
+		return nil, errors.NotFoundf("interpret bundle contents as a bundle archive: %v", err)
+	}
+	defer func() { _ = r.Close() }()
+
+	if parts, pErr = parseBundleParts(r); pErr == nil {
+		return &resolvedBundleDataSource{
+			basePath: "", // use empty base path for archives
+			parts:    parts,
+		}, nil
+	}
+
+	return nil, errors.NewNotValid(pErr, "cannot unmarshal bundle contents")
+}
+
+func isNotExistsError(err error) bool {
+	if os.IsNotExist(err) {
+		return true
+	}
+	// On Windows, we get a path error due to a GetFileAttributesEx syscall.
+	// To avoid being too proscriptive, we'll simply check for the error
+	// type and not any content.
+	if _, ok := err.(*os.PathError); ok {
+		return true
+	}
+	return false
+}
+
+// StreamBundleDataSource reads a (potentially multi-part) bundle from r and
+// returns a BundleDataSource for it.
+func StreamBundleDataSource(r io.Reader, basePath string) (BundleDataSource, error) {
+	parts, err := parseBundleParts(r)
+	if err != nil {
+		return nil, errors.NotValidf("cannot unmarshal bundle contents: %v", err)
+	}
+
+	return &resolvedBundleDataSource{parts: parts, basePath: basePath}, nil
+}
+
+func parseBundleParts(r io.Reader) ([]*BundleDataPart, error) {
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		// Ideally, we would be using a single reader and we would
+		// rewind it to read each block in structured and raw mode.
+		// Unfortunately, the yaml parser seems to parse all documents
+		// at once so we need to use two decoders.
+		structDec = yaml.NewDecoder(bytes.NewReader(b))
+		rawDec    = yaml.NewDecoder(bytes.NewReader(b))
+		parts     []*BundleDataPart
+	)
+
+	for docIdx := 0; ; docIdx++ {
+		var part BundleDataPart
+
+		err = structDec.Decode(&part.Data)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, errors.Annotatef(err, "unmarshal document %d", docIdx)
+		}
+
+		// We have already checked for errors for the previous unmarshal attempt
+		_ = rawDec.Decode(&part.PresenseMap)
+		parts = append(parts, &part)
+	}
+
+	return parts, nil
+}
