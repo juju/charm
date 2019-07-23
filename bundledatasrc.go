@@ -14,26 +14,26 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// FieldPresenseMap indicates which keys of a parsed bundle yaml document were
+// FieldPresenceMap indicates which keys of a parsed bundle yaml document were
 // present when the document was parsed. This map is used by the overlay merge
 // code to figure out whether empty/nil field values were actually specified as
 // such in the yaml document.
-type FieldPresenseMap map[interface{}]interface{}
+type FieldPresenceMap map[interface{}]interface{}
 
-func (fpm FieldPresenseMap) fieldPresent(fieldName string) bool {
+func (fpm FieldPresenceMap) fieldPresent(fieldName string) bool {
 	_, exists := fpm[fieldName]
 	return exists
 }
 
-func (fpm FieldPresenseMap) forField(fieldName string) FieldPresenseMap {
+func (fpm FieldPresenceMap) forField(fieldName string) FieldPresenceMap {
 	v, exists := fpm[fieldName]
 	if !exists {
 		return nil
 	}
 
-	asMap, valid := v.(FieldPresenseMap)
+	asMap, valid := v.(FieldPresenceMap)
 	if !valid {
-		panic(errors.Errorf("field map entry %q does not point to a nested field presense map", fieldName))
+		panic(errors.Errorf("field map entry %q does not point to a nested field presence map", fieldName))
 	}
 	return asMap
 }
@@ -43,7 +43,7 @@ func (fpm FieldPresenseMap) forField(fieldName string) FieldPresenseMap {
 // and those that are present but defined to be empty.
 type BundleDataPart struct {
 	Data        *BundleData
-	PresenseMap FieldPresenseMap
+	PresenceMap FieldPresenceMap
 }
 
 // BundleDataSource is implemented by types that can parse bundle data into a
@@ -215,7 +215,7 @@ func parseBundleParts(r io.Reader) ([]*BundleDataPart, error) {
 		}
 
 		// We have already checked for errors for the previous unmarshal attempt
-		_ = rawDec.Decode(&part.PresenseMap)
+		_ = rawDec.Decode(&part.PresenceMap)
 		parts = append(parts, &part)
 	}
 

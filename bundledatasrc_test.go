@@ -84,13 +84,13 @@ func assertBundleSourceProcessed(c *gc.C, src BundleDataSource) {
 func assertFieldPresent(c *gc.C, part *BundleDataPart, path string) {
 	var (
 		segments             = strings.Split(path, ".")
-		next     interface{} = part.PresenseMap
+		next     interface{} = part.PresenceMap
 	)
 
 	for segIndex, segment := range segments {
 		c.Assert(next, gc.NotNil, gc.Commentf("incomplete path: %s", strings.Join(segments[:segIndex], ".")))
 		switch typ := next.(type) {
-		case FieldPresenseMap:
+		case FieldPresenceMap:
 			next = typ[segment]
 			c.Assert(next, gc.NotNil, gc.Commentf("incomplete path: %s", strings.Join(segments[:segIndex+1], ".")))
 		default:
