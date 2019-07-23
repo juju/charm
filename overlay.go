@@ -456,7 +456,7 @@ func ReadAndMergeBundleData(sources ...BundleDataSource) (*BundleData, error) {
 }
 
 func applyOverlay(base, overlay *BundleDataPart) error {
-	if !overlay.PresenseMap.fieldPresent("applications") && len(overlay.Data.Applications) > 0 {
+	if !overlay.PresenceMap.fieldPresent("applications") && len(overlay.Data.Applications) > 0 {
 		return errors.Errorf("bundle overlay file used deprecated 'services' key, this is not valid for bundle overlay files")
 	}
 
@@ -465,7 +465,7 @@ func applyOverlay(base, overlay *BundleDataPart) error {
 		if base.Data.Applications == nil {
 			base.Data.Applications = make(map[string]*ApplicationSpec, len(overlay.Data.Applications))
 		}
-		fpm := overlay.PresenseMap.forField("applications")
+		fpm := overlay.PresenceMap.forField("applications")
 		for srcAppName, srcAppSpec := range overlay.Data.Applications {
 			// If the overlay map points to an empty object, delete
 			// it from the base bundle
@@ -493,7 +493,7 @@ func applyOverlay(base, overlay *BundleDataPart) error {
 			base.Data.Saas = make(map[string]*SaasSpec, len(overlay.Data.Saas))
 		}
 
-		fpm := overlay.PresenseMap.forField("saas")
+		fpm := overlay.PresenceMap.forField("saas")
 		for srcSaasName, srcSaasSpec := range overlay.Data.Saas {
 			// If the overlay map points to an empty object, delete
 			// it from the base bundle
@@ -562,7 +562,7 @@ func removeRelations(data [][]string, appName string) [][]string {
 //   - if the value is nil/zero and non-scalar, it is deleted from the dst map.
 //   - otherwise, the key/value is inserted into the dst map overwriting any
 //     existing entries.
-func mergeStructs(dstStruct, srcStruct interface{}, fpm FieldPresenseMap) {
+func mergeStructs(dstStruct, srcStruct interface{}, fpm FieldPresenceMap) {
 	dst := reflect.ValueOf(dstStruct)
 	src := reflect.ValueOf(srcStruct)
 	typ := src.Type()
@@ -645,7 +645,7 @@ func isNonScalar(val reflect.Value) bool {
 }
 
 // resolveIncludes operates on v which is expected to be string. It checks the
-// value for the presense of an include directive. If such a directive is
+// value for the presence of an include directive. If such a directive is
 // located, resolveIncludes invokes the provided includeResolver and returns
 // back its output after applying the appropriate encoding for the directive.
 func resolveIncludes(includeResolver func(path string) ([]byte, error), v interface{}) (string, bool, error) {
