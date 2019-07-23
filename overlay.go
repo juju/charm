@@ -4,11 +4,13 @@
 package charm
 
 import (
+	"encoding/base64"
 	"fmt"
 	"math"
 	"reflect"
 	"strings"
 
+	"github.com/juju/errors"
 	"github.com/mohae/deepcopy"
 )
 
@@ -165,6 +167,9 @@ func visitField(ctx *visitorContext, val interface{}) bool {
 	// De-reference pointers
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
+		if v.Kind() == reflect.Invalid {
+			return false
+		}
 		typ = v.Type()
 	}
 
@@ -296,6 +301,8 @@ func isOverlayField(structField reflect.StructField) bool {
 // repo as it has not made its way to a stable Go release yet.
 func isZero(v reflect.Value) bool {
 	switch v.Kind() {
+	case reflect.Invalid:
+		return true
 	case reflect.Bool:
 		return !v.Bool()
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -330,4 +337,352 @@ func isZero(v reflect.Value) bool {
 		// later, as a default value doesn't makes sense here.
 		panic(fmt.Sprintf("unexpected value of type %s passed to isZero", v.Kind().String()))
 	}
+}
+
+// ReadAndMergeBundleData reads N bundle data sources, composes their contents
+// together and returns the result. The first bundle data source is treated as
+// a base bundle while subsequent bundle data sources are treated as overlays
+// which are sequentially merged onto the base bundle.
+//
+// Before returning the merged bundle, ReadAndMergeBundleData will also attempt
+// to resolve any include directives present in the machine annotations,
+// application options and annotations.
+//
+// When merging an overlay into a base bundle the following rules apply for the
+// BundleData struct fields:
+// - if an overlay specifies a bundle-level series, it overrides the base bundle
+//   series.
+// - overlay-defined relations are appended to the base bundle relations
+// - overlay-defined machines overwrite the base bundle machines.
+// - if an overlay defines an application that is not present in the base bundle,
+//   it will get appended to the application list.
+// - if an overlay defines an empty application or saas value, it will be removed
+//   from the base bundle together with any associated relations. For example, to
+//   remove an application named "mysql" the following overlay snippet can be
+//   provided:
+//     applications:
+//       mysql:
+//
+// - if an overlay defines an application that is also present in the base bundle
+//   the two application specs are merged together (see following rules)
+//
+// ApplicationSpec merge rules:
+// - if the overlay defines a value for a scalar or slice field, it will overwrite
+//   the value from the base spec (e.g. trust, series etc).
+// - if the overlay specifies a nil/empty value for a map field, then the map
+//   field of the base spec will be cleared.
+// - if the overlay specifies a non-empty value for a map field, its key/value
+//   tuples are iterated and:
+//   - if the value is nil/zero and the value is non-scalar, it is deleted from
+//     the base spec.
+//   - otherwise, the key/value is inserted into the base spec overwriting any
+//     existing entries.
+func ReadAndMergeBundleData(sources ...BundleDataSource) (*BundleData, error) {
+	var allParts []*BundleDataPart
+	var partSrcIndex []int
+	for srcIndex, src := range sources {
+		if src == nil {
+			continue
+		}
+
+		for _, part := range src.Parts() {
+			allParts = append(allParts, part)
+			partSrcIndex = append(partSrcIndex, srcIndex)
+		}
+	}
+
+	if len(allParts) == 0 {
+		return nil, errors.NotValidf("malformed bundle: bundle is empty")
+	}
+
+	// Treat the first part as the base bundle
+	base := allParts[0]
+	if err := VerifyNoOverlayFieldsPresent(base.Data); err != nil {
+		return nil, err
+	}
+
+	// Merge parts and resolve include directives
+	for index, part := range allParts {
+		if index != 0 {
+			if err := applyOverlay(base, part); err != nil {
+				return nil, err
+			}
+		}
+
+		// Relative include directives are resolved using the base path
+		// of the datasource that yielded this part
+		incResolver := sources[partSrcIndex[index]].ResolveInclude
+
+		for app, appData := range base.Data.Applications {
+			for k, v := range appData.Options {
+				newV, changed, err := resolveIncludes(incResolver, v)
+				if err != nil {
+					return nil, errors.Annotatef(err, "processing option %q for application %q", k, app)
+				}
+				if changed {
+					appData.Options[k] = newV
+				}
+			}
+
+			for k, v := range appData.Annotations {
+				newV, changed, err := resolveIncludes(incResolver, v)
+				if err != nil {
+					return nil, errors.Annotatef(err, "processing annotation %q for application %q", k, app)
+				}
+				if changed {
+					appData.Annotations[k] = newV
+				}
+			}
+		}
+
+		for machine, machineData := range base.Data.Machines {
+			if machineData == nil {
+				continue
+			}
+
+			for k, v := range machineData.Annotations {
+				newV, changed, err := resolveIncludes(incResolver, v)
+				if err != nil {
+					return nil, errors.Annotatef(err, "processing annotation %q for machine %q", k, machine)
+				}
+				if changed {
+					machineData.Annotations[k] = newV
+				}
+			}
+		}
+	}
+
+	return base.Data, nil
+}
+
+func applyOverlay(base, overlay *BundleDataPart) error {
+	if !overlay.PresenseMap.fieldPresent("applications") && len(overlay.Data.Applications) > 0 {
+		return errors.Errorf("bundle overlay file used deprecated 'services' key, this is not valid for bundle overlay files")
+	}
+
+	// Merge applications
+	if len(overlay.Data.Applications) != 0 {
+		if base.Data.Applications == nil {
+			base.Data.Applications = make(map[string]*ApplicationSpec, len(overlay.Data.Applications))
+		}
+		fpm := overlay.PresenseMap.forField("applications")
+		for srcAppName, srcAppSpec := range overlay.Data.Applications {
+			// If the overlay map points to an empty object, delete
+			// it from the base bundle
+			if isZero(reflect.ValueOf(srcAppSpec)) {
+				delete(base.Data.Applications, srcAppName)
+				base.Data.Relations = removeRelations(base.Data.Relations, srcAppName)
+				continue
+			}
+
+			// if this is a new application just append it; otherwise
+			// recursively merge the two application specs.
+			dstAppSpec, defined := base.Data.Applications[srcAppName]
+			if !defined {
+				base.Data.Applications[srcAppName] = srcAppSpec
+				continue
+			}
+
+			mergeStructs(dstAppSpec, srcAppSpec, fpm.forField(srcAppName))
+		}
+	}
+
+	// Merge SAAS blocks
+	if len(overlay.Data.Saas) != 0 {
+		if base.Data.Saas == nil {
+			base.Data.Saas = make(map[string]*SaasSpec, len(overlay.Data.Saas))
+		}
+
+		fpm := overlay.PresenseMap.forField("saas")
+		for srcSaasName, srcSaasSpec := range overlay.Data.Saas {
+			// If the overlay map points to an empty object, delete
+			// it from the base bundle
+			if isZero(reflect.ValueOf(srcSaasSpec)) {
+				delete(base.Data.Saas, srcSaasName)
+				base.Data.Relations = removeRelations(base.Data.Relations, srcSaasName)
+				continue
+			}
+
+			// if this is a new saas block just append it; otherwise
+			// recursively merge the two saas specs.
+			dstSaasSpec, defined := base.Data.Saas[srcSaasName]
+			if !defined {
+				base.Data.Saas[srcSaasName] = srcSaasSpec
+				continue
+			}
+
+			mergeStructs(dstSaasSpec, srcSaasSpec, fpm.forField(srcSaasName))
+		}
+	}
+
+	// If series is set in the config, it overrides the bundle.
+	if series := overlay.Data.Series; series != "" {
+		base.Data.Series = series
+	}
+
+	// Append any additional relations.
+	base.Data.Relations = append(base.Data.Relations, overlay.Data.Relations...)
+
+	// Override machine definitions.
+	if machines := overlay.Data.Machines; machines != nil {
+		base.Data.Machines = machines
+	}
+
+	return nil
+}
+
+// removeRelations removes any relation defined in data that references
+// the application appName.
+func removeRelations(data [][]string, appName string) [][]string {
+	var result [][]string
+	for _, relation := range data {
+		// Keep the dud relation in the set, it will be caught by the bundle
+		// verify code.
+		if len(relation) == 2 {
+			left, right := relation[0], relation[1]
+			if left == appName || strings.HasPrefix(left, appName+":") ||
+				right == appName || strings.HasPrefix(right, appName+":") {
+				continue
+			}
+		}
+		result = append(result, relation)
+	}
+	return result
+}
+
+// mergeStructs iterates the fields of srcStruct and merges them into the
+// equivalent fields of dstStruct using the following rules:
+//
+// - if src defines a value for a scalar or slice field, it will overwrite
+//   the value from the dst (e.g. trust, series etc).
+// - if the src specifies a nil/empty value for a map field, then the map
+//   field of dst will be cleared.
+// - if the src specifies a non-empty value for a map field, its key/value
+//   tuples are iterated and:
+//   - if the value is nil/zero and non-scalar, it is deleted from the dst map.
+//   - otherwise, the key/value is inserted into the dst map overwriting any
+//     existing entries.
+func mergeStructs(dstStruct, srcStruct interface{}, fpm FieldPresenseMap) {
+	dst := reflect.ValueOf(dstStruct)
+	src := reflect.ValueOf(srcStruct)
+	typ := src.Type()
+
+	// Dereference pointers
+	if src.Kind() == reflect.Ptr {
+		src = src.Elem()
+		typ = src.Type()
+	}
+	if dst.Kind() == reflect.Ptr {
+		dst = dst.Elem()
+	}
+	dstTyp := dst.Type()
+
+	// Sanity check
+	if typ.Kind() != reflect.Struct || typ != dstTyp {
+		panic(errors.Errorf("BUG: source/destination type mismatch; expected destination to be a %q; got %q", typ.Name(), dstTyp.Name()))
+	}
+
+	for i := 0; i < typ.NumField(); i++ {
+		// Skip non-exportable fields
+		structField := typ.Field(i)
+		srcVal := src.Field(i)
+		if !srcVal.CanInterface() {
+			continue
+		}
+
+		fieldName := yamlName(structField)
+		if !fpm.fieldPresent(fieldName) {
+			continue
+		}
+
+		switch srcVal.Kind() {
+		case reflect.Map:
+			// If a nil/empty map is provided then clear the destination map.
+			if isZero(srcVal) {
+				dst.Field(i).Set(reflect.MakeMap(srcVal.Type()))
+				continue
+			}
+
+			dstMap := dst.Field(i)
+			if dstMap.IsNil() {
+				dstMap.Set(reflect.MakeMap(srcVal.Type()))
+			}
+			for _, srcKey := range srcVal.MapKeys() {
+				// If the key points to an empty non-scalar value delete it from the dst map
+				srcMapVal := srcVal.MapIndex(srcKey)
+				if isZero(srcMapVal) && isNonScalar(srcMapVal) {
+					// Setting an empty value effectively deletes the key from the map
+					dstMap.SetMapIndex(srcKey, reflect.Value{})
+					continue
+				}
+
+				dstMap.SetMapIndex(srcKey, srcMapVal)
+			}
+		case reflect.Slice:
+			dst.Field(i).Set(srcVal)
+		default:
+			dst.Field(i).Set(srcVal)
+		}
+	}
+}
+
+// isNonScalar returns true if val is a non-scalar value such as a pointer,
+// struct, map or slice.
+func isNonScalar(val reflect.Value) bool {
+	kind := val.Kind()
+
+	if kind == reflect.Interface {
+		kind = reflect.TypeOf(val).Kind()
+	}
+
+	switch kind {
+	case reflect.Ptr, reflect.Struct,
+		reflect.Map, reflect.Slice, reflect.Array:
+		return true
+	default:
+		return false
+	}
+}
+
+// resolveIncludes operates on v which is expected to be string. It checks the
+// value for the presense of an include directive. If such a directive is
+// located, resolveIncludes invokes the provided includeResolver and returns
+// back its output after applying the appropriate encoding for the directive.
+func resolveIncludes(includeResolver func(path string) ([]byte, error), v interface{}) (string, bool, error) {
+	directives := []struct {
+		directive string
+		encoder   func([]byte) string
+	}{
+		{
+			directive: "include-file://",
+			encoder: func(d []byte) string {
+				return string(d)
+			},
+		},
+		{
+			directive: "include-base64://",
+			encoder:   base64.StdEncoding.EncodeToString,
+		},
+	}
+
+	val, isString := v.(string)
+	if !isString {
+		return "", false, nil
+	}
+
+	for _, dir := range directives {
+		if !strings.HasPrefix(val, dir.directive) {
+			continue
+		}
+
+		path := val[len(dir.directive):]
+		data, err := includeResolver(path)
+		if err != nil {
+			return "", false, errors.Annotatef(err, "resolving include %q", path)
+		}
+
+		return dir.encoder(data), true, nil
+	}
+
+	return val, false, nil
 }

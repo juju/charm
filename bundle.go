@@ -3,7 +3,11 @@
 
 package charm
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+)
 
 // The Bundle interface is implemented by any type that
 // may be handled as a bundle. It encapsulates all
@@ -26,4 +30,10 @@ func ReadBundle(path string) (Bundle, error) {
 		return ReadBundleDir(path)
 	}
 	return ReadBundleArchive(path)
+}
+
+// IsValidLocalCharmOrBundlePath returns true if path is valid for reading a
+// local charm or bundle.
+func IsValidLocalCharmOrBundlePath(path string) bool {
+	return strings.HasPrefix(path, ".") || filepath.IsAbs(path)
 }
