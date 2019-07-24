@@ -17,6 +17,8 @@ type BundleArchive struct {
 	Path   string
 	data   *BundleData
 	readMe string
+
+	containsOverlays bool
 }
 
 // ReadBundleArchive reads a bundle archive from the given file path.
@@ -59,7 +61,7 @@ func readBundleArchive(zopen zipOpener) (*BundleArchive, error) {
 	if err != nil {
 		return nil, err
 	}
-	a.data, err = ReadBundleData(reader)
+	a.data, a.containsOverlays, err = readBaseFromMultidocBundle(reader)
 	reader.Close()
 	if err != nil {
 		return nil, err
@@ -84,6 +86,11 @@ func (a *BundleArchive) Data() *BundleData {
 // ReadMe implements Bundle.ReadMe.
 func (a *BundleArchive) ReadMe() string {
 	return a.readMe
+}
+
+// ContainsOverlays implements Bundle.ReadMe.
+func (a *BundleArchive) ContainsOverlays() bool {
+	return a.containsOverlays
 }
 
 // ExpandTo expands the bundle archive into dir, creating it if necessary.

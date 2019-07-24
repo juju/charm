@@ -36,6 +36,18 @@ func (s *BundleArchiveSuite) TestReadBundleArchiveBytes(c *gc.C) {
 
 	archive, err := charm.ReadBundleArchiveBytes(data)
 	c.Assert(err, gc.IsNil)
+	c.Assert(archive.ContainsOverlays(), gc.Equals, false)
+	checkWordpressBundle(c, archive, "")
+}
+
+func (s *BundleArchiveSuite) TestReadMultiDocBundleArchiveBytes(c *gc.C) {
+	path := archivePath(c, readBundleDir(c, "wordpress-simple-multidoc"))
+	data, err := ioutil.ReadFile(path)
+	c.Assert(err, gc.IsNil)
+
+	archive, err := charm.ReadBundleArchiveBytes(data)
+	c.Assert(err, gc.IsNil)
+	c.Assert(archive.ContainsOverlays(), gc.Equals, true)
 	checkWordpressBundle(c, archive, "")
 }
 

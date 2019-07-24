@@ -15,6 +15,8 @@ type BundleDir struct {
 	Path   string
 	data   *BundleData
 	readMe string
+
+	containsOverlays bool
 }
 
 // Trick to ensure *BundleDir implements the Bundle interface.
@@ -28,7 +30,7 @@ func ReadBundleDir(path string) (dir *BundleDir, err error) {
 	if err != nil {
 		return nil, err
 	}
-	dir.data, err = ReadBundleData(file)
+	dir.data, dir.containsOverlays, err = readBaseFromMultidocBundle(file)
 	file.Close()
 	if err != nil {
 		return nil, err
@@ -47,6 +49,10 @@ func (dir *BundleDir) Data() *BundleData {
 
 func (dir *BundleDir) ReadMe() string {
 	return dir.readMe
+}
+
+func (dir *BundleDir) ContainsOverlays() bool {
+	return dir.containsOverlays
 }
 
 func (dir *BundleDir) ArchiveTo(w io.Writer) error {
