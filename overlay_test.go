@@ -45,7 +45,7 @@ saas:
     apache2:
         url: production:admin/info.apache
 series: bionic
-`
+`[1:]
 
 	expBase := `
 applications:
@@ -55,7 +55,7 @@ saas:
   apache2:
     url: production:admin/info.apache
 series: bionic
-`
+`[1:]
 
 	expOverlay := `
 applications:
@@ -71,7 +71,7 @@ applications:
       my-other-offer:
         endpoints:
         - apache-website
-`
+`[1:]
 
 	bd, err := charm.ReadBundleData(strings.NewReader(data))
 	c.Assert(err, gc.IsNil)
@@ -81,11 +81,11 @@ applications:
 
 	baseYaml, err := yaml.Marshal(base)
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert("\n"+string(baseYaml), gc.Equals, expBase)
+	c.Assert(string(baseYaml), gc.Equals, expBase)
 
 	overlayYaml, err := yaml.Marshal(overlay)
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert("\n"+string(overlayYaml), gc.Equals, expOverlay)
+	c.Assert(string(overlayYaml), gc.Equals, expOverlay)
 }
 
 func (*bundleDataOverlaySuite) TestExtractBaseAndOverlayPartsWithNoOverlayFields(c *gc.C) {
@@ -101,7 +101,7 @@ applications:
 relations:
 - - wordpress:db
   - mysql:mysql
-`
+`[1:]
 
 	expBase := `
 bundle: kubernetes
@@ -117,11 +117,11 @@ applications:
 relations:
 - - wordpress:db
   - mysql:mysql
-`
+`[1:]
 
 	expOverlay := `
 {}
-`
+`[1:]
 
 	bd, err := charm.ReadBundleData(strings.NewReader(data))
 	c.Assert(err, gc.IsNil)
@@ -131,11 +131,101 @@ relations:
 
 	baseYaml, err := yaml.Marshal(base)
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert("\n"+string(baseYaml), gc.Equals, expBase)
+	c.Assert(string(baseYaml), gc.Equals, expBase)
 
 	overlayYaml, err := yaml.Marshal(overlay)
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert("\n"+string(overlayYaml), gc.Equals, expOverlay)
+	c.Assert(string(overlayYaml), gc.Equals, expOverlay)
+}
+
+func (*bundleDataOverlaySuite) TestExtractAndMergeWithMixedOverlayBits(c *gc.C) {
+	// In this example, mysql defines an offer whereas wordpress does not.
+	//
+	// When the visitor code examines the application map, it should report
+	// back that the filtered "mysql" application key should be retained
+	// but the "wordpress" application key should NOT be retained. The
+	// applications map should be retained because at least one of its keys
+	// has to be retained. However, the "wordpress" entry must be removed.
+	// If not, it would be encoded as an empty object which the overlay
+	// merge code would mis-interpret as a request to delete the "wordpress"
+	// application from the base bundle!
+	data := `
+bundle: kubernetes
+applications:
+  mysql:
+    charm: cs:mysql
+    scale: 1
+    offers:
+      my-offer:
+        endpoints:
+        - apache-website
+        - website-cache
+        acl:
+          admin: admin
+          foo: consume
+  wordpress:
+    charm: cs:wordpress
+    scale: 2
+    options:
+      foo: bar
+relations:
+- - wordpress:db
+  - mysql:mysql
+`[1:]
+
+	expBase := `
+bundle: kubernetes
+applications:
+  mysql:
+    charm: cs:mysql
+    series: kubernetes
+    num_units: 1
+  wordpress:
+    charm: cs:wordpress
+    series: kubernetes
+    num_units: 2
+    options:
+      foo: bar
+relations:
+- - wordpress:db
+  - mysql:mysql
+`[1:]
+
+	expOverlay := `
+applications:
+  mysql:
+    offers:
+      my-offer:
+        endpoints:
+        - apache-website
+        - website-cache
+        acl:
+          admin: admin
+          foo: consume
+`[1:]
+
+	bd, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.IsNil)
+
+	base, overlay, err := charm.ExtractBaseAndOverlayParts(bd)
+	c.Assert(err, jc.ErrorIsNil)
+
+	baseYaml, err := yaml.Marshal(base)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(string(baseYaml), gc.Equals, expBase)
+
+	overlayYaml, err := yaml.Marshal(overlay)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(string(overlayYaml), gc.Equals, expOverlay)
+
+	// Check that merging the output back into a bundle yields the original
+	r := strings.NewReader(string(baseYaml) + "\n---\n" + string(overlayYaml))
+	ds, err := charm.StreamBundleDataSource(r, "")
+	c.Assert(err, jc.ErrorIsNil)
+
+	newBd, err := charm.ReadAndMergeBundleData(ds)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(newBd, gc.DeepEquals, bd)
 }
 
 func (*bundleDataOverlaySuite) TestVerifyNoOverlayFieldsPresent(c *gc.C) {
