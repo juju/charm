@@ -70,10 +70,16 @@ import (
 // data and can thus be safely manipulated by the caller.
 func ExtractBaseAndOverlayParts(bd *BundleData) (base, overlay *BundleData, err error) {
 	base = cloneBundleData(bd)
-	_ = visitField(&visitorContext{structVisitor: clearOverlayFields}, base)
+	_ = visitField(&visitorContext{
+		structVisitor:          clearOverlayFields,
+		dropNonRequiredMapKeys: false,
+	}, base)
 
 	overlay = cloneBundleData(bd)
-	_ = visitField(&visitorContext{structVisitor: clearNonOverlayFields}, overlay)
+	_ = visitField(&visitorContext{
+		structVisitor:          clearNonOverlayFields,
+		dropNonRequiredMapKeys: true,
+	}, overlay)
 
 	return base, overlay, nil
 }
@@ -155,6 +161,8 @@ type visitorContext struct {
 	// An optional pre/post visitor for indexable items (slices, maps)
 	indexedElemPreVisitor  func(index interface{})
 	indexedElemPostVisitor func(index interface{})
+
+	dropNonRequiredMapKeys bool
 }
 
 // visitField invokes ctx.structVisitor(val) if v is a struct and returns back
@@ -200,7 +208,19 @@ func visitFieldsInMap(ctx *visitorContext, val reflect.Value) (result bool) {
 			ctx.indexedElemPreVisitor(key)
 		}
 
-		result = visitField(ctx, v.Interface()) || result
+		visRes := visitField(ctx, v.Interface())
+		result = visRes || result
+
+		// If the map value is a non-scalar value and the visitor
+		// returned false (don't retain), consult the dropNonRequiredMapKeys
+		// hint to decide whether we need to delete the key from the map.
+		//
+		// This is required when splitting bundles into base/overlay
+		// bits as empty map values would be encoded as empty objects
+		// that the overlay merge code would mis-interpret as deletions.
+		if !visRes && isNonScalar(v) && ctx.dropNonRequiredMapKeys {
+			val.SetMapIndex(key, reflect.Value{})
+		}
 
 		if ctx.indexedElemPostVisitor != nil {
 			ctx.indexedElemPostVisitor(key)
@@ -281,7 +301,8 @@ func clearNonOverlayFields(ctx *visitorContext, val reflect.Value, typ reflect.T
 			retainAncestors = true
 		}
 
-		if retain := visitField(ctx, v.Interface()); !isOverlayField && !retain {
+		target := v.Interface()
+		if retain := visitField(ctx, target); !isOverlayField && !retain {
 			v.Set(reflect.Zero(v.Type()))
 			continue
 		}
