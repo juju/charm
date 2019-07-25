@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/juju/charm.v6"
@@ -36,6 +37,18 @@ func (s *BundleArchiveSuite) TestReadBundleArchiveBytes(c *gc.C) {
 
 	archive, err := charm.ReadBundleArchiveBytes(data)
 	c.Assert(err, gc.IsNil)
+	c.Assert(archive.ContainsOverlays(), jc.IsFalse)
+	checkWordpressBundle(c, archive, "")
+}
+
+func (s *BundleArchiveSuite) TestReadMultiDocBundleArchiveBytes(c *gc.C) {
+	path := archivePath(c, readBundleDir(c, "wordpress-simple-multidoc"))
+	data, err := ioutil.ReadFile(path)
+	c.Assert(err, gc.IsNil)
+
+	archive, err := charm.ReadBundleArchiveBytes(data)
+	c.Assert(err, gc.IsNil)
+	c.Assert(archive.ContainsOverlays(), jc.IsTrue)
 	checkWordpressBundle(c, archive, "")
 }
 

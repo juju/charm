@@ -21,6 +21,16 @@ func (*BundleSuite) TestReadBundleDir(c *gc.C) {
 	path := bundleDirPath(c, "wordpress-simple")
 	b, err := charm.ReadBundle(path)
 	c.Assert(err, gc.IsNil)
+	c.Assert(b.ContainsOverlays(), jc.IsFalse)
+	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
+	checkWordpressBundle(c, b, path)
+}
+
+func (*BundleSuite) TestReadMultiDocBundleDir(c *gc.C) {
+	path := bundleDirPath(c, "wordpress-simple-multidoc")
+	b, err := charm.ReadBundle(path)
+	c.Assert(err, gc.IsNil)
+	c.Assert(b.ContainsOverlays(), jc.IsTrue)
 	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
 	checkWordpressBundle(c, b, path)
 }
@@ -29,6 +39,16 @@ func (*BundleSuite) TestReadBundleArchive(c *gc.C) {
 	path := bundleDirPath(c, "wordpress-simple")
 	b, err := charm.ReadBundle(path)
 	c.Assert(err, gc.IsNil)
+	c.Assert(b.ContainsOverlays(), jc.IsFalse)
+	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
+	checkWordpressBundle(c, b, path)
+}
+
+func (*BundleSuite) TestReadMultiDocBundleArchive(c *gc.C) {
+	path := bundleDirPath(c, "wordpress-simple-multidoc")
+	b, err := charm.ReadBundle(path)
+	c.Assert(err, gc.IsNil)
+	c.Assert(b.ContainsOverlays(), jc.IsTrue)
 	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
 	checkWordpressBundle(c, b, path)
 }
@@ -37,6 +57,7 @@ func (*BundleSuite) TestReadBundleArchiveWithLegacyServices(c *gc.C) {
 	path := bundleDirPath(c, "wordpress-legacy")
 	b, err := charm.ReadBundle(path)
 	c.Assert(err, gc.IsNil)
+	c.Assert(b.ContainsOverlays(), jc.IsFalse)
 	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
 	checkWordpressBundle(c, b, path)
 }

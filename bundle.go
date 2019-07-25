@@ -15,8 +15,10 @@ import (
 type Bundle interface {
 	// Data returns the contents of the bundle's bundle.yaml file.
 	Data() *BundleData
-	// Data returns the contents of the bundle's README.md file.
+	// ReadMe returns the contents of the bundle's README.md file.
 	ReadMe() string
+	// ContainsOverlays returns true if the bundle contains any overlays.
+	ContainsOverlays() bool
 }
 
 // ReadBundle reads a Bundle from path, which can point to either a
