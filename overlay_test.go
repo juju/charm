@@ -165,6 +165,7 @@ applications:
           foo: consume
   wordpress:
     charm: cs:wordpress
+    channel: edge
     scale: 2
     options:
       foo: bar
@@ -182,6 +183,7 @@ applications:
     num_units: 1
   wordpress:
     charm: cs:wordpress
+    channel: edge
     series: kubernetes
     num_units: 2
     options:

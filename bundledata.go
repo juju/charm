@@ -193,6 +193,10 @@ type ApplicationSpec struct {
 	// use for the given application.
 	Charm string `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
 
+	// Channel describes the preferred channel to use when deploying a
+	// remote charm.
+	Channel string `bson:"channel,omitempty" yaml:"channel,omitempty" json:"channel,omitempty"`
+
 	// Series is the series to use when deploying a local charm,
 	// if the charm does not specify a default or the default
 	// is not the desired value.

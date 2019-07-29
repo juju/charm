@@ -346,6 +346,24 @@ relations:
 			{"wordpress:db", "mysql:db"},
 		},
 	},
+}, {
+	about: "charm channel",
+	data: `
+applications:
+    wordpress:
+      charm: "cs:trusty/wordpress-5"
+      channel: edge
+      num_units: 1
+`,
+	expectedBD: &charm.BundleData{
+		Applications: map[string]*charm.ApplicationSpec{
+			"wordpress": {
+				Charm:    "cs:trusty/wordpress-5",
+				Channel:  "edge",
+				NumUnits: 1,
+			},
+		},
+	},
 }}
 
 func (*bundleDataSuite) TestParse(c *gc.C) {
