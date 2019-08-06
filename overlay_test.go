@@ -726,6 +726,46 @@ applications:
 	c.Assert("\n"+string(merged), gc.Equals, exp)
 }
 
+func (*bundleDataOverlaySuite) TestReadAndMergeBundleDataWithRelativeCharmPaths(c *gc.C) {
+	base := `
+applications:
+  apache2:
+    charm: ./apache
+  mysql:
+    charm: cs:mysql
+  varnish:
+    charm: /some/absolute/path
+`
+
+	overlay := `
+applications:
+  wordpress:
+    charm: ./wordpress
+`
+	bd, err := charm.ReadAndMergeBundleData(
+		mustCreateStringDataSourceWithBasePath(c, base, "/tmp/base"),
+		mustCreateStringDataSourceWithBasePath(c, overlay, "/overlay"),
+	)
+	c.Assert(err, gc.IsNil)
+
+	merged, err := yaml.Marshal(bd)
+	c.Assert(err, gc.IsNil)
+
+	exp := `
+applications:
+  apache2:
+    charm: /tmp/base/apache
+  mysql:
+    charm: cs:mysql
+  varnish:
+    charm: /some/absolute/path
+  wordpress:
+    charm: /overlay/wordpress
+`[1:]
+
+	c.Assert(string(merged), gc.Equals, exp)
+}
+
 type srcWithFakeIncludeResolver struct {
 	src        charm.BundleDataSource
 	resolveMap map[string][]byte
@@ -780,6 +820,12 @@ func mustCreateLocalDataSource(c *gc.C, path string) charm.BundleDataSource {
 
 func mustCreateStringDataSource(c *gc.C, data string) charm.BundleDataSource {
 	ds, err := charm.StreamBundleDataSource(strings.NewReader(data), "")
+	c.Assert(err, gc.IsNil)
+	return ds
+}
+
+func mustCreateStringDataSourceWithBasePath(c *gc.C, data, basePath string) charm.BundleDataSource {
+	ds, err := charm.StreamBundleDataSource(strings.NewReader(data), basePath)
 	c.Assert(err, gc.IsNil)
 	return ds
 }

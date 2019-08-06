@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -432,9 +433,16 @@ func ReadAndMergeBundleData(sources ...BundleDataSource) (*BundleData, error) {
 
 		// Relative include directives are resolved using the base path
 		// of the datasource that yielded this part
-		incResolver := sources[partSrcIndex[index]].ResolveInclude
-
+		srcIndex := partSrcIndex[index]
+		incResolver := sources[srcIndex].ResolveInclude
+		basePath := sources[srcIndex].BasePath()
 		for app, appData := range base.Data.Applications {
+			resolvedCharm, err := resolveRelativeCharmPath(basePath, appData.Charm)
+			if err != nil {
+				return nil, errors.Annotatef(err, "resolving relative charm path %q for application %q", appData.Charm, app)
+			}
+			appData.Charm = resolvedCharm
+
 			for k, v := range appData.Options {
 				newV, changed, err := resolveIncludes(incResolver, v)
 				if err != nil {
@@ -706,4 +714,20 @@ func resolveIncludes(includeResolver func(path string) ([]byte, error), v interf
 	}
 
 	return val, false, nil
+}
+
+// resolveRelativeCharmPath resolves charmURL into an absolute path relative
+// to basePath if charmURL contains a relative path. Otherwise, the function
+// returns back the original charmURL.
+//
+// Note: this function will only resolve paths. It will not check whether the
+// referenced charm path actually exists. That is the job of the bundle
+// validator.
+func resolveRelativeCharmPath(basePath, charmURL string) (string, error) {
+	// We don't need to do anything for non-relative paths.
+	if !strings.HasPrefix(charmURL, ".") {
+		return charmURL, nil
+	}
+
+	return filepath.Abs(filepath.Join(basePath, charmURL))
 }
