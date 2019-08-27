@@ -170,6 +170,9 @@ type visitorContext struct {
 // the visitor's result. On the other hand, if val is a slice or a map,
 // visitField invoke specialized functions that support iterating such types.
 func visitField(ctx *visitorContext, val interface{}) bool {
+	if val == nil {
+		return false
+	}
 	typ := reflect.TypeOf(val)
 	v := reflect.ValueOf(val)
 
