@@ -278,6 +278,28 @@ series: bionic
 	c.Assert(errStrings, jc.DeepEquals, expErrors)
 }
 
+func (*bundleDataOverlaySuite) TestVerifyNoOverlayFieldsPresentOnNilOptionValue(c *gc.C) {
+	data := `
+# ssl_ca is left uninitialized so it resolves to nil
+ssl_ca: &ssl_ca
+
+applications:
+  apache2:
+    options:
+      foo: bar
+      ssl_ca: *ssl_ca
+series: bionic
+`
+
+	bd, err := charm.ReadBundleData(strings.NewReader(data))
+	c.Assert(err, gc.IsNil)
+
+	static, _, err := charm.ExtractBaseAndOverlayParts(bd)
+	c.Assert(err, jc.ErrorIsNil)
+
+	c.Assert(charm.VerifyNoOverlayFieldsPresent(static), gc.Equals, nil)
+}
+
 func (*bundleDataOverlaySuite) TestOverrideCharmAndSeries(c *gc.C) {
 	testBundleMergeResult(c, `
 applications:
