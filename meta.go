@@ -164,10 +164,16 @@ const (
 	ServiceCluster      ServiceType = "cluster"
 	ServiceLoadBalancer ServiceType = "loadbalancer"
 	ServiceExternal     ServiceType = "external"
+	ServiceOmit         ServiceType = "omit"
 )
 
 var validServiceTypes = map[os.OSType][]ServiceType{
-	os.Kubernetes: {ServiceCluster, ServiceLoadBalancer, ServiceExternal},
+	os.Kubernetes: {
+		ServiceCluster,
+		ServiceLoadBalancer,
+		ServiceExternal,
+		ServiceOmit,
+	},
 }
 
 // Deployment represents a charm's deployment requirements in the charm
@@ -175,6 +181,8 @@ var validServiceTypes = map[os.OSType][]ServiceType{
 type Deployment struct {
 	DeploymentType DeploymentType `bson:"type"`
 	ServiceType    ServiceType    `bson:"service"`
+	Daemonset      bool           `bson:"daemonset"`
+	MinVersion     string         `bson:"min-version"`
 }
 
 // Relation represents a single relation defined in the charm
@@ -511,7 +519,6 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 		return nil, err
 	}
 	meta.Resources = resources
-
 	return &meta, nil
 }
 
@@ -961,6 +968,12 @@ func parseDeployment(deployment interface{}, charmSeries []string, storage map[s
 	if serviceType, ok := deploymentMap["service"].(string); ok {
 		result.ServiceType = ServiceType(serviceType)
 	}
+	if daemonset, ok := deploymentMap["daemonset"].(bool); ok {
+		result.Daemonset = daemonset
+	}
+	if minVersion, ok := deploymentMap["min-version"].(string); ok {
+		result.MinVersion = minVersion
+	}
 	if result.DeploymentType == "" && result.ServiceType == "" {
 		return nil, errors.NotValidf("empty deployment metadata")
 	}
@@ -1104,10 +1117,15 @@ var deploymentSchema = schema.FieldMap(
 			schema.Const(string(ServiceCluster)),
 			schema.Const(string(ServiceLoadBalancer)),
 			schema.Const(string(ServiceExternal)),
+			schema.Const(string(ServiceOmit)),
 		),
+		"daemonset":   schema.Bool(),
+		"min-version": schema.String(),
 	}, schema.Defaults{
-		"type":    schema.Omit,
-		"service": schema.Omit,
+		"type":        schema.Omit,
+		"service":     schema.Omit,
+		"daemonset":   schema.Omit,
+		"min-version": schema.Omit,
 	},
 )
 
