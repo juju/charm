@@ -1046,11 +1046,15 @@ series:
 deployment:
     type: stateless
     service: loadbalancer
+    daemonset: true
+    min-version: "1.15"
 `))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Deployment, gc.DeepEquals, &charm.Deployment{
 		DeploymentType: "stateless",
 		ServiceType:    "loadbalancer",
+		Daemonset:      true,
+		MinVersion:     "1.15",
 	}, gc.Commentf("meta: %+v", meta))
 }
 
