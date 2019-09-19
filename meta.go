@@ -155,6 +155,7 @@ type DeploymentType string
 const (
 	DeploymentStateless DeploymentType = "stateless"
 	DeploymentStateful  DeploymentType = "stateful"
+	DeploymentDaemon    DeploymentType = "daemon"
 )
 
 // ServiceType defines a service type.
@@ -181,7 +182,6 @@ var validServiceTypes = map[os.OSType][]ServiceType{
 type Deployment struct {
 	DeploymentType DeploymentType `bson:"type"`
 	ServiceType    ServiceType    `bson:"service"`
-	Daemonset      bool           `bson:"daemonset"`
 	MinVersion     string         `bson:"min-version"`
 }
 
@@ -968,9 +968,6 @@ func parseDeployment(deployment interface{}, charmSeries []string, storage map[s
 	if serviceType, ok := deploymentMap["service"].(string); ok {
 		result.ServiceType = ServiceType(serviceType)
 	}
-	if daemonset, ok := deploymentMap["daemonset"].(bool); ok {
-		result.Daemonset = daemonset
-	}
 	if minVersion, ok := deploymentMap["min-version"].(string); ok {
 		result.MinVersion = minVersion
 	}
@@ -1112,19 +1109,20 @@ func (c propertiesC) Coerce(v interface{}, path []string) (newv interface{}, err
 var deploymentSchema = schema.FieldMap(
 	schema.Fields{
 		"type": schema.OneOf(
-			schema.Const(string(DeploymentStateful)), schema.Const(string(DeploymentStateless))),
+			schema.Const(string(DeploymentStateful)),
+			schema.Const(string(DeploymentStateless)),
+			schema.Const(string(DeploymentDaemon)),
+		),
 		"service": schema.OneOf(
 			schema.Const(string(ServiceCluster)),
 			schema.Const(string(ServiceLoadBalancer)),
 			schema.Const(string(ServiceExternal)),
 			schema.Const(string(ServiceOmit)),
 		),
-		"daemonset":   schema.Bool(),
 		"min-version": schema.String(),
 	}, schema.Defaults{
 		"type":        schema.Omit,
 		"service":     schema.Omit,
-		"daemonset":   schema.Omit,
 		"min-version": schema.Omit,
 	},
 )
