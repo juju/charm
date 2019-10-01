@@ -433,7 +433,7 @@ func (dir *CharmDir) MaybeGenerateVersionString() (string, string, error) {
 
 	vcsType := cmdArgs[0]
 	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	// We need to make sure that the wd will be the one we call the commands from.
+	// We need to make sure that the working directory will be the one we execute the commands from.
 	cmd.Dir = dir.Path
 	// version string value is written to stdout if successful.
 	out, err := cmd.Output()
