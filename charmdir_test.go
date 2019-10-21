@@ -193,23 +193,22 @@ tox/**
 func (s *CharmSuite) TestArchiveToWithVersionString(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+	testing.PatchExecutableAsEchoArgs(c, s, "git")
+
+	// create an empty .execName file inside tempDir
+	vcsPath := filepath.Join(charmDir, ".git")
+	_, err := os.Create(vcsPath)
+	c.Assert(err, jc.ErrorIsNil)
 
 	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
-
-	// create an empty .execName file inside tempDir
-	vcsPath := filepath.Join(dir.Path, ".git")
-	_, err = os.Create(vcsPath)
-	c.Assert(err, jc.ErrorIsNil)
 
 	path := filepath.Join(baseDir, "archive.charm")
 	file, err := os.Create(path)
 	c.Assert(err, gc.IsNil)
 
-	testing.PatchExecutableAsEchoArgs(c, s, "git")
-
 	err = dir.ArchiveTo(file)
-	file.Close()
+	_ = file.Close()
 	c.Assert(err, gc.IsNil)
 
 	args := []string{"describe", "--dirty", "--always"}
@@ -230,7 +229,7 @@ func (s *CharmSuite) TestArchiveToWithVersionString(c *gc.C) {
 	reader, err := verf.Open()
 	c.Assert(err, gc.IsNil)
 	data, err := ioutil.ReadAll(reader)
-	reader.Close()
+	_ = reader.Close()
 	c.Assert(err, gc.IsNil)
 
 	obtainedData := string(data)
@@ -243,17 +242,56 @@ func (s *CharmSuite) TestArchiveToWithVersionString(c *gc.C) {
 	c.Assert(obtainedData, gc.Equals, expectedArg)
 }
 
+func (s *CharmSuite) TestMaybeGenerateVersionStringHasAVersionFile(c *gc.C) {
+	var tw loggo.TestWriter
+	err := loggo.RegisterWriter("versionstring-test", &tw)
+	defer loggo.RemoveWriter("versionstring-test")
+	c.Assert(err, jc.ErrorIsNil)
+
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+	versionFile := filepath.Join(charmDir, "version")
+	f, err := os.Create(versionFile)
+	defer f.Close()
+	c.Assert(err, jc.ErrorIsNil)
+
+	expectedVersionNumber := "123456789abc"
+	_, err = f.WriteString(expectedVersionNumber)
+	c.Assert(err, jc.ErrorIsNil)
+
+	dir, err := charm.ReadCharmDir(charmDir)
+
+	c.Assert(err, gc.IsNil)
+	c.Assert(dir.Version(), gc.Equals, expectedVersionNumber)
+
+}
+
+func (s *CharmSuite) TestMaybeGenerateVersionStringHasNoVersion(c *gc.C) {
+	var tw loggo.TestWriter
+	err := loggo.RegisterWriter("versionstring-test", &tw)
+	c.Assert(err, jc.ErrorIsNil)
+	defer loggo.RemoveWriter("versionstring-test")
+
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+	dir, err := charm.ReadCharmDir(charmDir)
+	c.Assert(err, gc.IsNil)
+	c.Assert(dir.Version(), gc.Equals, "")
+
+	expectedMsg := "charm is not versioned"
+
+	c.Assert(tw.Log(), jc.LogMatches, jc.SimpleMessages{{loggo.WARNING, expectedMsg}})
+}
+
 func (s *CharmSuite) TestArchiveToWithVersionStringError(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
 
+	// create an empty .execName file inside tempDir
+	vcsPath := filepath.Join(charmDir, ".git")
+	_, err := os.Create(vcsPath)
+	c.Assert(err, jc.ErrorIsNil)
+
 	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
-
-	// create an empty .execName file inside tempDir
-	vcsPath := filepath.Join(dir.Path, ".git")
-	_, err = os.Create(vcsPath)
-	c.Assert(err, jc.ErrorIsNil)
 
 	path := filepath.Join(baseDir, "archive.charm")
 	file, err := os.Create(path)
@@ -265,8 +303,11 @@ func (s *CharmSuite) TestArchiveToWithVersionStringError(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 	defer loggo.RemoveWriter("versionstring-test")
 
+	_, _, err = dir.MaybeGenerateVersionString(loggo.Logger{})
+	c.Assert(err, gc.ErrorMatches, "exit status 128")
+
 	err = dir.ArchiveTo(file)
-	file.Close()
+	_ = file.Close()
 	c.Assert(err, jc.ErrorIsNil)
 
 	msg := `
@@ -533,7 +574,7 @@ func (s *CharmSuite) TestMaybeGenerateVersionStringError(c *gc.C) {
 	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
-	version, vcsType, err := dir.MaybeGenerateVersionString()
+	version, vcsType, err := dir.MaybeGenerateVersionString(loggo.Logger{})
 	c.Assert(err, gc.ErrorMatches, "exit status 128")
 	c.Assert(version, gc.Equals, "")
 	c.Assert(vcsType, gc.Equals, "git")
@@ -553,7 +594,7 @@ func (s *CharmSuite) assertGenerateVersionString(c *gc.C, execName string, args 
 	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
-	version, vcsType, err := dir.MaybeGenerateVersionString()
+	version, vcsType, err := dir.MaybeGenerateVersionString(loggo.Logger{})
 	c.Assert(err, jc.ErrorIsNil)
 
 	version = strings.Trim(version, "\n")
@@ -592,7 +633,7 @@ func (s *CharmSuite) TestNoVCSMaybeGenerateVersionString(c *gc.C) {
 	dir, err := charm.ReadCharmDir(charmDir)
 	c.Assert(err, gc.IsNil)
 
-	versionString, vcsType, err := dir.MaybeGenerateVersionString()
+	versionString, vcsType, err := dir.MaybeGenerateVersionString(loggo.Logger{})
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(versionString, gc.Equals, "")
 	c.Assert(vcsType, gc.Equals, "")

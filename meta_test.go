@@ -1548,6 +1548,10 @@ func (s *MetaSuite) TestParseResourceMetaNil(c *gc.C) {
 
 type dummyCharm struct{}
 
+func (c *dummyCharm) Version() string {
+	panic("unused")
+}
+
 func (c *dummyCharm) Config() *charm.Config {
 	panic("unused")
 }
