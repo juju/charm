@@ -263,9 +263,16 @@ func (s *CharmSuite) TestMaybeGenerateVersionStringHasAVersionFile(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Version(), gc.Equals, expectedVersionNumber)
 
+	version, vcsType, err := dir.MaybeGenerateVersionString(loggo.Logger{})
+	c.Assert(version, gc.Equals, expectedVersionNumber)
+
+	VersionFileType := "versionFile"
+	c.Assert(vcsType, gc.Equals, VersionFileType)
+
+	c.Assert(err, gc.IsNil)
 }
 
-func (s *CharmSuite) TestMaybeGenerateVersionStringHasNoVersion(c *gc.C) {
+func (s *CharmSuite) TestReadCharmDirNoLogging(c *gc.C) {
 	var tw loggo.TestWriter
 	err := loggo.RegisterWriter("versionstring-test", &tw)
 	c.Assert(err, jc.ErrorIsNil)
@@ -276,9 +283,8 @@ func (s *CharmSuite) TestMaybeGenerateVersionStringHasNoVersion(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Version(), gc.Equals, "")
 
-	expectedMsg := "charm is not versioned"
-
-	c.Assert(tw.Log(), jc.LogMatches, jc.SimpleMessages{{loggo.WARNING, expectedMsg}})
+	noLogging := jc.SimpleMessages{}
+	c.Assert(tw.Log(), jc.LogMatches, noLogging)
 }
 
 func (s *CharmSuite) TestArchiveToWithVersionStringError(c *gc.C) {

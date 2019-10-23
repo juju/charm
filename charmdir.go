@@ -120,11 +120,9 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 			return nil, errors.New("invalid revision file")
 		}
 	}
-	version, _, err := dir.MaybeGenerateVersionString(logger)
-	if err != nil {
-		// We don't want to stop, even if the version cannot be generated
-		logger.Errorf("unexpected problem trying to generate version string: %q", err)
-	}
+
+	var dummyLogger = NopLogger{}
+	version, _, err := dir.MaybeGenerateVersionString(dummyLogger)
 	dir.version = version
 
 	file, err = os.Open(dir.join("lxd-profile.yaml"))
@@ -262,9 +260,12 @@ func (dir *CharmDir) ArchiveTo(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	var dummyLogger = NopLogger{}
 	// We update the version to make sure we don't lag behind
-	dir.version, _, _ = dir.MaybeGenerateVersionString(dummyLogger)
+	dir.version, _, err = dir.MaybeGenerateVersionString(logger)
+	if err != nil {
+		// We don't want to stop, even if the version cannot be generated
+		logger.Errorf("unexpected problem trying to generate version string: %q", err)
+	}
 
 	return writeArchive(w, dir.Path, dir.revision, dir.version, dir.Meta().Hooks(), ignoreRules)
 }
@@ -426,6 +427,7 @@ type Logger interface {
 	Debugf(message string, args ...interface{})
 	Errorf(message string, args ...interface{})
 	Tracef(message string, args ...interface{})
+	Infof(message string, args ...interface{})
 }
 
 // NopLogger is used to stop our logger from logging
@@ -448,10 +450,15 @@ func (m NopLogger) Tracef(message string, args ...interface{}) {
 
 }
 
+func (m NopLogger) Infof(message string, args ...interface{}) {
+
+}
+
 // MaybeGenerateVersionString generates charm version string.
 // The second return value is the detected vcs type.
 func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, error) {
 	var cmdArgs []string
+	versionFileVersionType := "versionFile"
 	// Verify that it is revision control directory.
 	if _, err := os.Stat(filepath.Join(dir.Path, ".hg")); err == nil {
 		cmdArgs = []string{"hg", "id", "-n"}
@@ -460,21 +467,21 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 	} else if _, err = os.Stat(filepath.Join(dir.Path, ".git")); err == nil {
 		cmdArgs = []string{"git", "describe", "--dirty", "--always"}
 	} else if file, err := os.Open(dir.join("version")); err == nil {
-		logger.Debugf("charm is not in version control, but uses a version file")
+		logger.Debugf("charm is not in version control, but uses a version file, charm path %q", dir.Path)
 		var versionNumber string
 		n, err := fmt.Fscan(file, &versionNumber)
 		if n != 1 {
-			return "", "versionFile", errors.Errorf("invalid version file")
+			return "", versionFileVersionType, errors.Errorf("invalid version file, charm path: %q", dir.Path)
 		}
 		if err != nil {
-			return "", "versionFile", err
+			return "", versionFileVersionType, err
 		}
 		if err = file.Close(); err != nil {
-			return "", "versionFile", err
+			return "", versionFileVersionType, err
 		}
-		return versionNumber, "versionFile", nil
+		return versionNumber, versionFileVersionType, nil
 	} else {
-		logger.Warningf("charm is not versioned")
+		logger.Infof("charm is not versioned, charm path %q", dir.Path)
 		return "", "", nil
 	}
 
@@ -486,8 +493,8 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 	out, err := cmd.Output()
 	if err != nil {
 		logger.Warningf(
-			"%q version string generation failed : %v\nThis means that the charm version won't show in juju status.",
-			vcsType, err)
+			"%q version string generation failed : %v\nThis means that the charm version won't show in juju status. Charm path %q",
+			vcsType, err, dir.Path)
 		return "", vcsType, err
 	}
 	output := string(out)
