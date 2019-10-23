@@ -120,11 +120,9 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 			return nil, errors.New("invalid revision file")
 		}
 	}
-	version, _, err := dir.MaybeGenerateVersionString(logger)
-	if err != nil {
-		// We don't want to stop, even if the version cannot be generated
-		logger.Errorf("unexpected problem trying to generate version string: %q", err)
-	}
+
+	var dummyLogger = NopLogger{}
+	version, _, err := dir.MaybeGenerateVersionString(dummyLogger)
 	dir.version = version
 
 	file, err = os.Open(dir.join("lxd-profile.yaml"))
@@ -262,9 +260,12 @@ func (dir *CharmDir) ArchiveTo(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	var dummyLogger = NopLogger{}
 	// We update the version to make sure we don't lag behind
-	dir.version, _, _ = dir.MaybeGenerateVersionString(dummyLogger)
+	dir.version, _, err = dir.MaybeGenerateVersionString(logger)
+	if err != nil {
+		// We don't want to stop, even if the version cannot be generated
+		logger.Errorf("unexpected problem trying to generate version string: %q", err)
+	}
 
 	return writeArchive(w, dir.Path, dir.revision, dir.version, dir.Meta().Hooks(), ignoreRules)
 }
