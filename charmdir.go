@@ -6,6 +6,7 @@ package charm
 import (
 	"archive/zip"
 	"fmt"
+	"github.com/juju/errors"
 	"io"
 	"os"
 	"os/exec"
@@ -13,8 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-
-	"github.com/juju/errors"
 )
 
 // defaultJujuIgnore contains jujuignore directives for excluding VCS- and
@@ -454,28 +453,62 @@ func (m NopLogger) Infof(message string, args ...interface{}) {
 
 }
 
+type vcsCMD struct {
+	vcsType       string
+	args          []string
+	usesTypeCheck func() bool
+	errHandler    func(err error, vcsType string, path string)
+	charm         *CharmDir
+}
+
+// git is the most used vcs
+// we want to know whether the underlying system is using git
+func usesGit() bool {
+	args := []string{"rev-parse", "--is-inside-work-tree"}
+	cmd := exec.Command("git", args...)
+	if _, err := cmd.Output(); err == nil {
+		return true
+	}
+	return false
+}
+
+func handleErrGit(err error, vcsType string, charmPath string) {
+	logger.Debugf("%q version string generation failed : %v\nThis means that the charm version won't show in juju status. Charm path %q", vcsType, err, charmPath)
+}
+
+func notImplementedUsesCheck() bool {
+	return true
+}
+
+func notImplementedErrHandler(err error, vcsType string, charmPath string) {
+}
+
 // MaybeGenerateVersionString generates charm version string.
 // We want to know whether parent folders use one of these vcs, that's why we try to execute each one of them
 // The second return value is the detected vcs type.
 func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, error) {
-	vcsStrategies := make(map[string][]string)
+	vcsStrategies := make(map[string]vcsCMD)
 
 	versionFileVersionType := "versionFile"
-	mercurialStrategy := []string{"hg", "id", "-n"}
-	bazaarStrategy := []string{"bzr", "version-info"}
-	gitStrategy := []string{"git", "describe", "--dirty", "--always"}
+	mercurialStrategy := vcsCMD{"hg", []string{"id", "-n"}, notImplementedUsesCheck, notImplementedErrHandler, dir}
+	bazaarStrategy := vcsCMD{"bzr", []string{"version-info"}, notImplementedUsesCheck, notImplementedErrHandler, dir}
+	gitStrategy := vcsCMD{"git", []string{"describe", "--dirty", "--always"}, usesGit, handleErrGit, dir}
 
 	vcsStrategies["hg"] = mercurialStrategy
 	vcsStrategies["git"] = gitStrategy
 	vcsStrategies["bzr"] = bazaarStrategy
 
-	for vcsType, cmds := range vcsStrategies {
-		cmd := exec.Command(cmds[0], cmds[1:]...)
+	for vcsType, vcsCmd := range vcsStrategies {
+		if !vcsCmd.usesTypeCheck() {
+			continue
+		}
+		cmd := exec.Command(vcsCmd.vcsType, vcsCmd.args...)
 		// We need to make sure that the working directory will be the one we execute the commands from.
 		cmd.Dir = dir.Path
 		// version string value is written to stdout if successful.
 		out, err := cmd.Output()
 		if err != nil {
+			vcsCmd.errHandler(err, vcsType, dir.Path)
 			continue
 		}
 		output := string(out)
