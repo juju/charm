@@ -455,18 +455,34 @@ func (m NopLogger) Infof(message string, args ...interface{}) {
 }
 
 // MaybeGenerateVersionString generates charm version string.
+// We want to know whether parent folders use one of these vcs, that's why we try to execute each one of them
 // The second return value is the detected vcs type.
 func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, error) {
-	var cmdArgs []string
+	vcsStrategies := make(map[string][]string)
+
 	versionFileVersionType := "versionFile"
-	// Verify that it is revision control directory.
-	if _, err := os.Stat(filepath.Join(dir.Path, ".hg")); err == nil {
-		cmdArgs = []string{"hg", "id", "-n"}
-	} else if _, err = os.Stat(filepath.Join(dir.Path, ".bzr")); err == nil {
-		cmdArgs = []string{"bzr", "version-info"}
-	} else if _, err = os.Stat(filepath.Join(dir.Path, ".git")); err == nil {
-		cmdArgs = []string{"git", "describe", "--dirty", "--always"}
-	} else if file, err := os.Open(dir.join("version")); err == nil {
+	mercurialStrategy := []string{"hg", "id", "-n"}
+	bazaarStrategy := []string{"bzr", "version-info"}
+	gitStrategy := []string{"git", "describe", "--dirty", "--always"}
+
+	vcsStrategies["hg"] = mercurialStrategy
+	vcsStrategies["git"] = gitStrategy
+	vcsStrategies["bzr"] = bazaarStrategy
+
+	for vcsType, cmds := range vcsStrategies {
+		cmd := exec.Command(cmds[0], cmds[1:]...)
+		// We need to make sure that the working directory will be the one we execute the commands from.
+		cmd.Dir = dir.Path
+		// version string value is written to stdout if successful.
+		out, err := cmd.Output()
+		if err != nil {
+			continue
+		}
+		output := string(out)
+		return output, vcsType, nil
+	}
+
+	if file, err := os.Open(dir.join("version")); err == nil {
 		logger.Debugf("charm is not in version control, but uses a version file, charm path %q", dir.Path)
 		var versionNumber string
 		n, err := fmt.Fscan(file, &versionNumber)
@@ -484,19 +500,4 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 		logger.Infof("charm is not versioned, charm path %q", dir.Path)
 		return "", "", nil
 	}
-
-	vcsType := cmdArgs[0]
-	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	// We need to make sure that the working directory will be the one we execute the commands from.
-	cmd.Dir = dir.Path
-	// version string value is written to stdout if successful.
-	out, err := cmd.Output()
-	if err != nil {
-		logger.Warningf(
-			"%q version string generation failed : %v\nThis means that the charm version won't show in juju status. Charm path %q",
-			vcsType, err, dir.Path)
-		return "", vcsType, err
-	}
-	output := string(out)
-	return output, vcsType, nil
 }
