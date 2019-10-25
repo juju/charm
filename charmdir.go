@@ -6,7 +6,6 @@ package charm
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/juju/errors"
 	"io"
 	"os"
 	"os/exec"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/juju/errors"
 )
 
 // defaultJujuIgnore contains jujuignore directives for excluding VCS- and
@@ -121,7 +122,7 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 	}
 
 	var dummyLogger = NopLogger{}
-	version, _, err := dir.MaybeGenerateVersionString(dummyLogger)
+	version, _, _ := dir.MaybeGenerateVersionString(dummyLogger)
 	dir.version = version
 
 	file, err = os.Open(dir.join("lxd-profile.yaml"))
@@ -263,7 +264,7 @@ func (dir *CharmDir) ArchiveTo(w io.Writer) error {
 	dir.version, _, err = dir.MaybeGenerateVersionString(logger)
 	if err != nil {
 		// We don't want to stop, even if the version cannot be generated
-		logger.Errorf("unexpected problem trying to generate version string: %q", err)
+		logger.Warningf("%v", err)
 	}
 
 	return writeArchive(w, dir.Path, dir.revision, dir.version, dir.Meta().Hooks(), ignoreRules)
@@ -456,31 +457,42 @@ func (m NopLogger) Infof(message string, args ...interface{}) {
 type vcsCMD struct {
 	vcsType       string
 	args          []string
-	usesTypeCheck func() bool
-	errHandler    func(err error, vcsType string, path string)
-	charm         *CharmDir
+	usesTypeCheck func(charmPath string) bool
 }
 
-// git is the most used vcs
-// we want to know whether the underlying system is using git
-func usesGit() bool {
+func (v *vcsCMD) commonErrHandler(err error, charmPath string) error {
+	return errors.Errorf("%q version string generation failed : "+
+		"%v\nThis means that the charm version won't show in juju status. Charm path %q", v.vcsType, err, charmPath)
+}
+
+// The first check checks for the easy case of the current charmdir has a git folder.
+// There can be cases when the charmdir actually uses git and is just a subdir, thus the below check
+func usesGit(charmPath string) bool {
+	if _, err := os.Stat(filepath.Join(charmPath, ".git")); err == nil {
+		return true
+	}
 	args := []string{"rev-parse", "--is-inside-work-tree"}
-	cmd := exec.Command("git", args...)
-	if _, err := cmd.Output(); err == nil {
+	execCmd := exec.Command("git", args...)
+	execCmd.Dir = charmPath
+	if out, err := execCmd.Output(); err == nil {
+		logger.Errorf("%q", out)
 		return true
 	}
 	return false
 }
 
-func handleErrGit(err error, vcsType string, charmPath string) {
-	logger.Debugf("%q version string generation failed : %v\nThis means that the charm version won't show in juju status. Charm path %q", vcsType, err, charmPath)
+func usesBzr(charmPath string) bool {
+	if _, err := os.Stat(filepath.Join(charmPath, ".bzr")); err == nil {
+		return true
+	}
+	return false
 }
 
-func notImplementedUsesCheck() bool {
-	return true
-}
-
-func notImplementedErrHandler(err error, vcsType string, charmPath string) {
+func usesHg(charmPath string) bool {
+	if _, err := os.Stat(filepath.Join(charmPath, ".hg")); err == nil {
+		return true
+	}
+	return false
 }
 
 // MaybeGenerateVersionString generates charm version string.
@@ -490,31 +502,35 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 	vcsStrategies := make(map[string]vcsCMD)
 
 	versionFileVersionType := "versionFile"
-	mercurialStrategy := vcsCMD{"hg", []string{"id", "-n"}, notImplementedUsesCheck, notImplementedErrHandler, dir}
-	bazaarStrategy := vcsCMD{"bzr", []string{"version-info"}, notImplementedUsesCheck, notImplementedErrHandler, dir}
-	gitStrategy := vcsCMD{"git", []string{"describe", "--dirty", "--always"}, usesGit, handleErrGit, dir}
+	mercurialStrategy := vcsCMD{"hg", []string{"id", "-n"}, usesHg}
+	bazaarStrategy := vcsCMD{"bzr", []string{"version-info"}, usesBzr}
+	gitStrategy := vcsCMD{"git", []string{"describe", "--dirty", "--always"}, usesGit}
 
 	vcsStrategies["hg"] = mercurialStrategy
 	vcsStrategies["git"] = gitStrategy
 	vcsStrategies["bzr"] = bazaarStrategy
 
-	for vcsType, vcsCmd := range vcsStrategies {
-		if !vcsCmd.usesTypeCheck() {
-			continue
+	// Nowadays most vcs used are git, we want to make sure that git is the first one we test
+	vcsOrder := [...]string{"git", "hg", "bzr"}
+
+	for _, vcsType := range vcsOrder {
+		vcsCmd := vcsStrategies[vcsType]
+		if vcsCmd.usesTypeCheck(dir.Path) {
+			cmd := exec.Command(vcsCmd.vcsType, vcsCmd.args...)
+			// We need to make sure that the working directory will be the one we execute the commands from.
+			cmd.Dir = dir.Path
+			// Version string value is written to stdout if successful.
+			out, err := cmd.Output()
+			if err != nil {
+				// We had an error but we still know that we use a vcs thus we can stop here and handle it.
+				return "", vcsType, vcsCmd.commonErrHandler(err, dir.Path)
+			}
+			output := string(out)
+			return output, vcsType, nil
 		}
-		cmd := exec.Command(vcsCmd.vcsType, vcsCmd.args...)
-		// We need to make sure that the working directory will be the one we execute the commands from.
-		cmd.Dir = dir.Path
-		// version string value is written to stdout if successful.
-		out, err := cmd.Output()
-		if err != nil {
-			vcsCmd.errHandler(err, vcsType, dir.Path)
-			continue
-		}
-		output := string(out)
-		return output, vcsType, nil
 	}
 
+	// If all strategies fail we fallback to check the version below
 	if file, err := os.Open(dir.join("version")); err == nil {
 		logger.Debugf("charm is not in version control, but uses a version file, charm path %q", dir.Path)
 		var versionNumber string

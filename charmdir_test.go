@@ -309,16 +309,14 @@ func (s *CharmSuite) TestArchiveToWithVersionStringError(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 	defer loggo.RemoveWriter("versionstring-test")
 
+	msg := fmt.Sprintf("%q version string generation failed : exit status 128\nThis means that the charm version won't show in juju status. Charm path %q", "git", dir.Path)
+
 	_, _, err = dir.MaybeGenerateVersionString(loggo.Logger{})
-	c.Assert(err, gc.ErrorMatches, "exit status 128")
+	c.Assert(err, gc.ErrorMatches, msg)
 
 	err = dir.ArchiveTo(file)
 	_ = file.Close()
 	c.Assert(err, jc.ErrorIsNil)
-
-	msg := `
-"git" version string generation failed : exit status 128
-This means that the charm version won't show in juju status.`[1:]
 
 	c.Assert(tw.Log(), jc.LogMatches, jc.SimpleMessages{{
 		loggo.WARNING, msg,
@@ -581,7 +579,8 @@ func (s *CharmSuite) TestMaybeGenerateVersionStringError(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	version, vcsType, err := dir.MaybeGenerateVersionString(loggo.Logger{})
-	c.Assert(err, gc.ErrorMatches, "exit status 128")
+	msg := fmt.Sprintf("%q version string generation failed : exit status 128\nThis means that the charm version won't show in juju status. Charm path %q", "git", dir.Path)
+	c.Assert(err, gc.ErrorMatches, msg)
 	c.Assert(version, gc.Equals, "")
 	c.Assert(vcsType, gc.Equals, "git")
 }
