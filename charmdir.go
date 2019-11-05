@@ -5,6 +5,7 @@ package charm
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/juju/errors"
 )
@@ -466,16 +468,25 @@ func (v *vcsCMD) commonErrHandler(err error, charmPath string) error {
 }
 
 // The first check checks for the easy case of the current charmdir has a git folder.
-// There can be cases when the charmdir actually uses git and is just a subdir, thus the below check
+// There can be cases when the charmdir actually uses git and is just a subdir, hence the below check
 func usesGit(charmPath string) bool {
 	if _, err := os.Stat(filepath.Join(charmPath, ".git")); err == nil {
 		return true
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
 	args := []string{"rev-parse", "--is-inside-work-tree"}
-	execCmd := exec.Command("git", args...)
+	execCmd := exec.CommandContext(ctx, "git", args...)
 	execCmd.Dir = charmPath
-	if out, err := execCmd.Output(); err == nil {
-		logger.Errorf("%q", out)
+
+	_, err := execCmd.Output()
+
+	if ctx.Err() == context.DeadlineExceeded {
+		logger.Debugf("git command timed out for charm in path: %q", charmPath)
+		return false
+	}
+
+	if err == nil {
 		return true
 	}
 	return false
