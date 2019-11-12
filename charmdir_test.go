@@ -251,17 +251,15 @@ func (s *CharmSuite) TestMaybeGenerateVersionStringHasAVersionFile(c *gc.C) {
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
 	versionFile := filepath.Join(charmDir, "version")
 	f, err := os.Create(versionFile)
-	defer f.Close()
 	c.Assert(err, jc.ErrorIsNil)
+	defer f.Close()
 
 	expectedVersionNumber := "123456789abc"
 	_, err = f.WriteString(expectedVersionNumber)
 	c.Assert(err, jc.ErrorIsNil)
 
 	dir, err := charm.ReadCharmDir(charmDir)
-
 	c.Assert(err, gc.IsNil)
-	c.Assert(dir.Version(), gc.Equals, expectedVersionNumber)
 
 	version, vcsType, err := dir.MaybeGenerateVersionString(loggo.Logger{})
 	c.Assert(version, gc.Equals, expectedVersionNumber)

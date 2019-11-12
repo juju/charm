@@ -123,10 +123,6 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		}
 	}
 
-	var dummyLogger = NopLogger{}
-	version, _, _ := dir.MaybeGenerateVersionString(dummyLogger)
-	dir.version = version
-
 	file, err = os.Open(dir.join("lxd-profile.yaml"))
 	if _, ok := err.(*os.PathError); ok {
 		dir.lxdProfile = NewLXDProfile()
