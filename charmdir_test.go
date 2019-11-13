@@ -6,12 +6,14 @@ package charm_test
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/juju/collections/set"
 	"github.com/juju/loggo"
@@ -640,4 +642,24 @@ func (s *CharmSuite) TestNoVCSMaybeGenerateVersionString(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(versionString, gc.Equals, "")
 	c.Assert(vcsType, gc.Equals, "")
+}
+
+// We expect it to be successful because we set the timeout to be high and the executable "git" returns error code 0
+func (s *CharmSuite) TestCheckGitIsUsed(c *gc.C) {
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+	testing.PatchExecutableAsEchoArgs(c, s, "git")
+	cmdWaitTime := 100 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	isUsing := charm.UsesGit(charmDir, ctx, cancel)
+	c.Assert(isUsing, gc.Equals, true)
+}
+
+// We create the executable "git" and still expect it to "fail" because we set the timeout to be 0
+func (s *CharmSuite) TestCheckGitTimeout(c *gc.C) {
+	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
+	testing.PatchExecutableAsEchoArgs(c, s, "git")
+	cmdWaitTime := 0 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	isUsing := charm.UsesGit(charmDir, ctx, cancel)
+	c.Assert(isUsing, gc.Equals, false)
 }
