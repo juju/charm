@@ -5,6 +5,7 @@ package charm
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/juju/errors"
 )
@@ -120,10 +122,6 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 			return nil, errors.New("invalid revision file")
 		}
 	}
-
-	var dummyLogger = NopLogger{}
-	version, _, _ := dir.MaybeGenerateVersionString(dummyLogger)
-	dir.version = version
 
 	file, err = os.Open(dir.join("lxd-profile.yaml"))
 	if _, ok := err.(*os.PathError); ok {
@@ -457,7 +455,7 @@ func (m NopLogger) Infof(message string, args ...interface{}) {
 type vcsCMD struct {
 	vcsType       string
 	args          []string
-	usesTypeCheck func(charmPath string) bool
+	usesTypeCheck func(charmPath string, ctx context.Context, CancelFunc func()) bool
 }
 
 func (v *vcsCMD) commonErrHandler(err error, charmPath string) error {
@@ -466,29 +464,39 @@ func (v *vcsCMD) commonErrHandler(err error, charmPath string) error {
 }
 
 // The first check checks for the easy case of the current charmdir has a git folder.
-// There can be cases when the charmdir actually uses git and is just a subdir, thus the below check
-func usesGit(charmPath string) bool {
+// There can be cases when the charmdir actually uses git and is just a subdir, hence the below check
+func UsesGit(charmPath string, ctx context.Context, cancelFunc func()) bool {
+	defer cancelFunc()
 	if _, err := os.Stat(filepath.Join(charmPath, ".git")); err == nil {
 		return true
 	}
 	args := []string{"rev-parse", "--is-inside-work-tree"}
-	execCmd := exec.Command("git", args...)
+	execCmd := exec.CommandContext(ctx, "git", args...)
 	execCmd.Dir = charmPath
-	if out, err := execCmd.Output(); err == nil {
-		logger.Errorf("%q", out)
+
+	_, err := execCmd.Output()
+
+	if ctx.Err() == context.DeadlineExceeded {
+		logger.Debugf("git command timed out for charm in path: %q", charmPath)
+		return false
+	}
+
+	if err == nil {
 		return true
 	}
 	return false
 }
 
-func usesBzr(charmPath string) bool {
+func usesBzr(charmPath string, ctx context.Context, cancelFunc func()) bool {
+	defer cancelFunc()
 	if _, err := os.Stat(filepath.Join(charmPath, ".bzr")); err == nil {
 		return true
 	}
 	return false
 }
 
-func usesHg(charmPath string) bool {
+func usesHg(charmPath string, ctx context.Context, cancelFunc func()) bool {
+	defer cancelFunc()
 	if _, err := os.Stat(filepath.Join(charmPath, ".hg")); err == nil {
 		return true
 	}
@@ -504,7 +512,7 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 	versionFileVersionType := "versionFile"
 	mercurialStrategy := vcsCMD{"hg", []string{"id", "-n"}, usesHg}
 	bazaarStrategy := vcsCMD{"bzr", []string{"version-info"}, usesBzr}
-	gitStrategy := vcsCMD{"git", []string{"describe", "--dirty", "--always"}, usesGit}
+	gitStrategy := vcsCMD{"git", []string{"describe", "--dirty", "--always"}, UsesGit}
 
 	vcsStrategies["hg"] = mercurialStrategy
 	vcsStrategies["git"] = gitStrategy
@@ -512,10 +520,12 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 
 	// Nowadays most vcs used are git, we want to make sure that git is the first one we test
 	vcsOrder := [...]string{"git", "hg", "bzr"}
+	cmdWaitTime := 2 * time.Second
 
 	for _, vcsType := range vcsOrder {
 		vcsCmd := vcsStrategies[vcsType]
-		if vcsCmd.usesTypeCheck(dir.Path) {
+		ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+		if vcsCmd.usesTypeCheck(dir.Path, ctx, cancel) {
 			cmd := exec.Command(vcsCmd.vcsType, vcsCmd.args...)
 			// We need to make sure that the working directory will be the one we execute the commands from.
 			cmd.Dir = dir.Path
