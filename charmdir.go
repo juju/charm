@@ -102,17 +102,16 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		return nil, err
 	}
 
-	file, err = os.Open(dir.join("actions.yaml"))
-	if _, ok := err.(*os.PathError); ok {
-		dir.actions = NewActions()
-	} else if err != nil {
+	if dir.actions, err = getActionsOrFunctions(
+		func(file string) (io.ReadCloser, error) {
+			return os.Open(dir.join(file))
+		},
+		func(err error) bool {
+			_, ok := err.(*os.PathError)
+			return ok
+		},
+	); err != nil {
 		return nil, err
-	} else {
-		dir.actions, err = ReadActionsYaml(file)
-		file.Close()
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if file, err = os.Open(dir.join("revision")); err == nil {
@@ -205,7 +204,7 @@ func (dir *CharmDir) Metrics() *Metrics {
 	return dir.metrics
 }
 
-// Actions returns the Actions representing the actions.yaml file
+// Actions returns the Actions representing the actions.yaml/functions.yaml  file
 // for the charm expanded in dir.
 func (dir *CharmDir) Actions() *Actions {
 	return dir.actions

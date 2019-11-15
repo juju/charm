@@ -106,17 +106,16 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		return nil, err
 	}
 
-	reader, err = zipOpenFile(zipr, "actions.yaml")
-	if _, ok := err.(*noCharmArchiveFile); ok {
-		b.actions = NewActions()
-	} else if err != nil {
+	if b.actions, err = getActionsOrFunctions(
+		func(file string) (io.ReadCloser, error) {
+			return zipOpenFile(zipr, file)
+		},
+		func(err error) bool {
+			_, ok := err.(*noCharmArchiveFile)
+			return ok
+		},
+	); err != nil {
 		return nil, err
-	} else {
-		b.actions, err = ReadActionsYaml(reader)
-		reader.Close()
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	reader, err = zipOpenFile(zipr, "revision")
@@ -158,6 +157,30 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	}
 
 	return b, nil
+}
+
+type fileOpener func(string) (io.ReadCloser, error)
+
+func getActionsOrFunctions(open fileOpener, isNotFound func(error) bool) (actions *Actions, err error) {
+	defer func() {
+		if isNotFound(err) {
+			actions = NewActions()
+			err = nil
+		}
+	}()
+
+	for _, file := range []string{
+		"actions.yaml",
+		"functions.yaml",
+	} {
+		var reader io.ReadCloser
+		reader, err = open(file)
+		if err == nil {
+			defer reader.Close()
+			return ReadActionsYaml(reader)
+		}
+	}
+	return nil, err
 }
 
 func zipOpenFile(zipr *zipReadCloser, path string) (rc io.ReadCloser, err error) {
@@ -212,7 +235,7 @@ func (a *CharmArchive) Metrics() *Metrics {
 	return a.metrics
 }
 
-// Actions returns the Actions map for the actions.yaml file for the charm
+// Actions returns the Actions map for the actions.yaml/functions.yaml  file for the charm
 // archive.
 func (a *CharmArchive) Actions() *Actions {
 	return a.actions
