@@ -162,25 +162,20 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 type fileOpener func(string) (io.ReadCloser, error)
 
 func getActionsOrFunctions(open fileOpener, isNotFound func(error) bool) (actions *Actions, err error) {
-	defer func() {
-		if isNotFound(err) {
-			actions = NewActions()
-			err = nil
-		}
-	}()
-
 	for _, file := range []string{
-		"actions.yaml",
 		"functions.yaml",
+		"actions.yaml",
 	} {
 		var reader io.ReadCloser
 		reader, err = open(file)
 		if err == nil {
 			defer reader.Close()
 			return ReadActionsYaml(reader)
+		} else if !isNotFound(err) {
+			return nil, err
 		}
 	}
-	return nil, err
+	return NewActions(), nil
 }
 
 func zipOpenFile(zipr *zipReadCloser, path string) (rc io.ReadCloser, err error) {
