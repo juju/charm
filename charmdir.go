@@ -41,7 +41,7 @@ var defaultJujuIgnore = `
 .jujuignore
 `
 
-// The CharmDir type encapsulates access to data and operations
+// CharmDir encapsulates access to data and operations
 // on a charm directory.
 type CharmDir struct {
 	Path       string
@@ -129,6 +129,19 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		return nil, err
 	} else {
 		dir.lxdProfile, err = ReadLXDProfile(file)
+		file.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	file, err = os.Open(dir.join("version"))
+	if err != nil {
+		if _, ok := err.(*os.PathError); !ok {
+			return nil, err
+		}
+	} else {
+		dir.version, err = ReadVersion(file)
 		file.Close()
 		if err != nil {
 			return nil, err
@@ -534,7 +547,7 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 				// We had an error but we still know that we use a vcs thus we can stop here and handle it.
 				return "", vcsType, vcsCmd.commonErrHandler(err, dir.Path)
 			}
-			output := string(out)
+			output := strings.TrimSuffix(string(out), "\n")
 			return output, vcsType, nil
 		}
 	}
@@ -542,20 +555,13 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 	// If all strategies fail we fallback to check the version below
 	if file, err := os.Open(dir.join("version")); err == nil {
 		logger.Debugf("charm is not in version control, but uses a version file, charm path %q", dir.Path)
-		var versionNumber string
-		n, err := fmt.Fscan(file, &versionNumber)
-		if n != 1 {
-			return "", versionFileVersionType, errors.Errorf("invalid version file, charm path: %q", dir.Path)
-		}
+		ver, err := ReadVersion(file)
+		file.Close()
 		if err != nil {
 			return "", versionFileVersionType, err
 		}
-		if err = file.Close(); err != nil {
-			return "", versionFileVersionType, err
-		}
-		return versionNumber, versionFileVersionType, nil
-	} else {
-		logger.Infof("charm is not versioned, charm path %q", dir.Path)
-		return "", "", nil
+		return ver, versionFileVersionType, nil
 	}
+	logger.Infof("charm is not versioned, charm path %q", dir.Path)
+	return "", "", nil
 }
