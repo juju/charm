@@ -274,7 +274,7 @@ func (dir *CharmDir) ArchiveTo(w io.Writer) error {
 	dir.version, _, err = dir.MaybeGenerateVersionString(logger)
 	if err != nil {
 		// We don't want to stop, even if the version cannot be generated
-		logger.Warningf("%v", err)
+		logger.Warningf("trying to generate version string: %v", err)
 	}
 
 	return writeArchive(w, dir.Path, dir.revision, dir.version, dir.Meta().Hooks(), ignoreRules)
