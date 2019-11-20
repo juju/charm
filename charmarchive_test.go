@@ -36,8 +36,7 @@ func (s *CharmArchiveSuite) SetUpSuite(c *gc.C) {
 	s.archivePath = archivePath(c, readCharmDir(c, "dummy"))
 }
 
-var dummyManifest = []string{
-	"actions.yaml",
+var dummyManifestCommon = []string{
 	"config.yaml",
 	"empty",
 	"empty/.gitkeep",
@@ -50,6 +49,13 @@ var dummyManifest = []string{
 	"src/hello.c",
 	".notignored",
 }
+
+var dummyManifest = append(dummyManifestCommon, "actions.yaml")
+var dummyManifestFunctions = append(dummyManifestCommon, []string{
+	"functions.yaml",
+	"functions/snapshot",
+	"functions",
+}...)
 
 func (s *CharmArchiveSuite) TestReadCharmArchive(c *gc.C) {
 	archive, err := charm.ReadCharmArchive(s.archivePath)
@@ -106,6 +112,13 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutActions(c *gc.C) {
 	c.Assert(archive.Actions().ActionSpecs, gc.HasLen, 0)
 }
 
+func (s *CharmDirSuite) TestReadCharmArchiveWithFunctions(c *gc.C) {
+	path := archivePath(c, readCharmDir(c, "dummy-functions"))
+	archive, err := charm.ReadCharmArchive(path)
+	c.Assert(err, gc.IsNil)
+	c.Assert(archive.Actions().ActionSpecs, gc.HasLen, 1)
+}
+
 func (s *CharmArchiveSuite) TestReadCharmArchiveBytes(c *gc.C) {
 	data, err := ioutil.ReadFile(s.archivePath)
 	c.Assert(err, gc.IsNil)
@@ -133,6 +146,15 @@ func (s *CharmArchiveSuite) TestManifest(c *gc.C) {
 	manifest, err := archive.Manifest()
 	c.Assert(err, gc.IsNil)
 	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifest...))
+}
+
+func (s *CharmArchiveSuite) TestManifestFunctions(c *gc.C) {
+	path := archivePath(c, readCharmDir(c, "dummy-functions"))
+	archive, err := charm.ReadCharmArchive(path)
+	c.Assert(err, gc.IsNil)
+	manifest, err := archive.Manifest()
+	c.Assert(err, gc.IsNil)
+	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifestFunctions...))
 }
 
 func (s *CharmArchiveSuite) TestManifestNoRevision(c *gc.C) {

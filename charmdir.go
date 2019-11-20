@@ -41,7 +41,7 @@ var defaultJujuIgnore = `
 .jujuignore
 `
 
-// The CharmDir type encapsulates access to data and operations
+// CharmDir encapsulates access to data and operations
 // on a charm directory.
 type CharmDir struct {
 	Path       string
@@ -102,17 +102,16 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		return nil, err
 	}
 
-	file, err = os.Open(dir.join("actions.yaml"))
-	if _, ok := err.(*os.PathError); ok {
-		dir.actions = NewActions()
-	} else if err != nil {
+	if dir.actions, err = getActionsOrFunctions(
+		func(file string) (io.ReadCloser, error) {
+			return os.Open(dir.join(file))
+		},
+		func(err error) bool {
+			_, ok := err.(*os.PathError)
+			return ok
+		},
+	); err != nil {
 		return nil, err
-	} else {
-		dir.actions, err = ReadActionsYaml(file)
-		file.Close()
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if file, err = os.Open(dir.join("revision")); err == nil {
@@ -130,6 +129,19 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		return nil, err
 	} else {
 		dir.lxdProfile, err = ReadLXDProfile(file)
+		file.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	file, err = os.Open(dir.join("version"))
+	if err != nil {
+		if _, ok := err.(*os.PathError); !ok {
+			return nil, err
+		}
+	} else {
+		dir.version, err = ReadVersion(file)
 		file.Close()
 		if err != nil {
 			return nil, err
@@ -205,7 +217,7 @@ func (dir *CharmDir) Metrics() *Metrics {
 	return dir.metrics
 }
 
-// Actions returns the Actions representing the actions.yaml file
+// Actions returns the Actions representing the actions.yaml/functions.yaml  file
 // for the charm expanded in dir.
 func (dir *CharmDir) Actions() *Actions {
 	return dir.actions
@@ -262,7 +274,7 @@ func (dir *CharmDir) ArchiveTo(w io.Writer) error {
 	dir.version, _, err = dir.MaybeGenerateVersionString(logger)
 	if err != nil {
 		// We don't want to stop, even if the version cannot be generated
-		logger.Warningf("%v", err)
+		logger.Warningf("trying to generate version string: %v", err)
 	}
 
 	return writeArchive(w, dir.Path, dir.revision, dir.version, dir.Meta().Hooks(), ignoreRules)
@@ -535,7 +547,7 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 				// We had an error but we still know that we use a vcs thus we can stop here and handle it.
 				return "", vcsType, vcsCmd.commonErrHandler(err, dir.Path)
 			}
-			output := string(out)
+			output := strings.TrimSuffix(string(out), "\n")
 			return output, vcsType, nil
 		}
 	}
@@ -543,20 +555,13 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 	// If all strategies fail we fallback to check the version below
 	if file, err := os.Open(dir.join("version")); err == nil {
 		logger.Debugf("charm is not in version control, but uses a version file, charm path %q", dir.Path)
-		var versionNumber string
-		n, err := fmt.Fscan(file, &versionNumber)
-		if n != 1 {
-			return "", versionFileVersionType, errors.Errorf("invalid version file, charm path: %q", dir.Path)
-		}
+		ver, err := ReadVersion(file)
+		file.Close()
 		if err != nil {
 			return "", versionFileVersionType, err
 		}
-		if err = file.Close(); err != nil {
-			return "", versionFileVersionType, err
-		}
-		return versionNumber, versionFileVersionType, nil
-	} else {
-		logger.Infof("charm is not versioned, charm path %q", dir.Path)
-		return "", "", nil
+		return ver, versionFileVersionType, nil
 	}
+	logger.Infof("charm is not versioned, charm path %q", dir.Path)
+	return "", "", nil
 }

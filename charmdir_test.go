@@ -98,6 +98,13 @@ func (s *CharmDirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
 	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 0)
 }
 
+func (s *CharmDirSuite) TestReadCharmDirWithFunctions(c *gc.C) {
+	path := charmDirPath(c, "dummy-functions")
+	dir, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
+	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 1)
+}
+
 func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
