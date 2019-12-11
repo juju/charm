@@ -5,3 +5,4 @@ TAGS
 *.sw[nop]
 
 .vscode
+vendor

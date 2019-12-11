@@ -16,7 +16,7 @@ import (
 
 	"github.com/juju/errors"
 	"github.com/juju/utils/keyvalues"
-	"gopkg.in/juju/names.v2"
+	"gopkg.in/juju/names.v3"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -601,6 +601,10 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 		return
 	}
 	for name, app := range verifier.bd.Applications {
+		if app == nil {
+			verifier.addErrorf("bundle application for key %q is undefined", name)
+			continue
+		}
 		if app.Charm == "" {
 			verifier.addErrorf("empty charm path")
 		}

@@ -1449,6 +1449,34 @@ func (*bundleDataSuite) TestParsePlacement(c *gc.C) {
 	}
 }
 
+// Tests that empty/nil applications cause an error
+func (*bundleDataSuite) TestApplicationEmpty(c *gc.C) {
+	tstDatas := []string{
+		`
+applications:
+    application1:
+    application2:
+        charm: "test"
+        plan: "testisv/test2"
+`,
+		`
+applications:
+    application1:
+        charm: "test"
+        plan: "testisv/test2"
+    application2:
+`,
+	}
+
+	for _, d := range tstDatas {
+		bd, err := charm.ReadBundleData(strings.NewReader(d))
+		c.Assert(err, gc.IsNil)
+
+		err = bd.Verify(nil, nil, nil)
+		c.Assert(err, gc.ErrorMatches, "bundle application for key .+ is undefined")
+	}
+}
+
 func (*bundleDataSuite) TestApplicationPlans(c *gc.C) {
 	data := `
 applications:
