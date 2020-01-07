@@ -131,6 +131,9 @@ func (s *BundleDataSourceSuite) TestResolveRelativeFileInclude(c *gc.C) {
 }
 
 func (s *BundleDataSourceSuite) TestResolveIncludeErrors(c *gc.C) {
+	cwd, err := os.Getwd()
+	c.Assert(err, gc.IsNil)
+
 	tmpDir := c.MkDir()
 	specs := []struct {
 		descr   string
@@ -145,7 +148,7 @@ func (s *BundleDataSourceSuite) TestResolveIncludeErrors(c *gc.C) {
 		{
 			descr:   "rel path does not exist",
 			incPath: "./missing",
-			exp:     `include file "./missing" not found`,
+			exp:     `include file "` + cwd + `/missing" not found`,
 		},
 		{
 			descr:   "path points to directory",

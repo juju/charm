@@ -80,19 +80,19 @@ func (s *resolvedBundleDataSource) ResolveInclude(path string) ([]byte, error) {
 	info, err := os.Stat(absPath)
 	if err != nil {
 		if isNotExistsError(err) {
-			return nil, errors.NotFoundf("include file %q", path)
+			return nil, errors.NotFoundf("include file %q", absPath)
 		}
 
-		return nil, errors.Annotatef(err, "stat failed for %q", path)
+		return nil, errors.Annotatef(err, "stat failed for %q", absPath)
 	}
 
 	if info.IsDir() {
-		return nil, errors.Errorf("include path %q resolves to a folder", path)
+		return nil, errors.Errorf("include path %q resolves to a folder", absPath)
 	}
 
 	data, err := ioutil.ReadFile(absPath)
 	if err != nil {
-		return nil, errors.Annotatef(err, "reading include file at %q", path)
+		return nil, errors.Annotatef(err, "reading include file at %q", absPath)
 	}
 
 	return data, nil
