@@ -534,6 +534,15 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 	vcsOrder := [...]string{"git", "hg", "bzr"}
 	cmdWaitTime := 2 * time.Second
 
+	absPath := dir.Path
+	if !filepath.IsAbs(absPath) {
+		var err error
+		absPath, err = filepath.Abs(dir.Path)
+		if err != nil {
+			return "", "", errors.Annotatef(err, "failed resolving relative path %q", dir.Path)
+		}
+	}
+
 	for _, vcsType := range vcsOrder {
 		vcsCmd := vcsStrategies[vcsType]
 		ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
@@ -544,8 +553,8 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 			// Version string value is written to stdout if successful.
 			out, err := cmd.Output()
 			if err != nil {
-				// We had an error but we still know that we use a vcs thus we can stop here and handle it.
-				return "", vcsType, vcsCmd.commonErrHandler(err, dir.Path)
+				// We had an error but we still know that we use a vcs, hence we can stop here and handle it.
+				return "", vcsType, vcsCmd.commonErrHandler(err, absPath)
 			}
 			output := strings.TrimSuffix(string(out), "\n")
 			return output, vcsType, nil
@@ -554,7 +563,7 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 
 	// If all strategies fail we fallback to check the version below
 	if file, err := os.Open(dir.join("version")); err == nil {
-		logger.Debugf("charm is not in version control, but uses a version file, charm path %q", dir.Path)
+		logger.Debugf("charm is not in version control, but uses a version file, charm path %q", absPath)
 		ver, err := ReadVersion(file)
 		file.Close()
 		if err != nil {
@@ -562,6 +571,6 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 		}
 		return ver, versionFileVersionType, nil
 	}
-	logger.Infof("charm is not versioned, charm path %q", dir.Path)
+	logger.Infof("charm is not versioned, charm path %q", absPath)
 	return "", "", nil
 }

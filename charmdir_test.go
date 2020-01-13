@@ -252,11 +252,6 @@ func (s *CharmSuite) TestArchiveToWithVersionString(c *gc.C) {
 }
 
 func (s *CharmSuite) TestMaybeGenerateVersionStringHasAVersionFile(c *gc.C) {
-	var tw loggo.TestWriter
-	err := loggo.RegisterWriter("versionstring-test", &tw)
-	defer loggo.RemoveWriter("versionstring-test")
-	c.Assert(err, jc.ErrorIsNil)
-
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
 	versionFile := filepath.Join(charmDir, "version")
 	f, err := os.Create(versionFile)
@@ -648,6 +643,52 @@ func (s *CharmSuite) TestNoVCSMaybeGenerateVersionString(c *gc.C) {
 	versionString, vcsType, err := dir.MaybeGenerateVersionString(loggo.Logger{})
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(versionString, gc.Equals, "")
+	c.Assert(vcsType, gc.Equals, "")
+}
+
+// TestMaybeGenerateVersionStringUsesAbsolutePathGitVersion verifies that using a relative path still works.
+func (s *CharmSuite) TestMaybeGenerateVersionStringUsesAbsolutePathGitVersion(c *gc.C) {
+	// Read the relativePath from the testing folder.
+	relativePath := charmDirPath(c, "dummy")
+	dir, err := charm.ReadCharmDir(relativePath)
+	c.Assert(err, gc.IsNil)
+
+	versionString, vcsType, err := dir.MaybeGenerateVersionString(loggo.Logger{})
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(versionString, gc.Not(gc.Equals), "")
+	c.Assert(vcsType, gc.Equals, "git")
+}
+
+// TestMaybeGenerateVersionStringLogsAbsolutePath verifies that the absolute path gets logged.
+func (s *CharmSuite) TestMaybeGenerateVersionStringLogsAbsolutePath(c *gc.C) {
+	var tw loggo.TestWriter
+	ctx := loggo.DefaultContext()
+	err := ctx.AddWriter("versionstring-test", &tw)
+	c.Assert(err, jc.ErrorIsNil)
+
+	logger := ctx.GetLogger("juju.testing")
+	lvl, _ := loggo.ParseLevel("TRACE")
+	logger.SetLogLevel(lvl)
+	defer loggo.RemoveWriter("versionstring-test")
+	defer loggo.ResetLogging()
+
+	testing.PatchExecutableThrowError(c, s, "git", 128)
+
+	// Read the relativePath from the testing folder.
+	relativePath := charmDirPath(c, "dummy")
+	absPath, err := filepath.Abs(relativePath)
+	c.Assert(err, jc.ErrorIsNil)
+
+	dir, err := charm.ReadCharmDir(relativePath)
+	c.Assert(err, gc.IsNil)
+
+	expectedMsg := fmt.Sprintf("charm is not versioned, charm path %q", absPath)
+
+	versionString, vcsType, err := dir.MaybeGenerateVersionString(logger)
+	c.Assert(len(tw.Log()), gc.Equals, 1)
+	c.Assert(tw.Log()[0].Message, gc.Matches, expectedMsg)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(versionString, gc.Matches, "")
 	c.Assert(vcsType, gc.Equals, "")
 }
 
