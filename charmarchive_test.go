@@ -51,10 +51,10 @@ var dummyManifestCommon = []string{
 }
 
 var dummyManifest = append(dummyManifestCommon, "actions.yaml")
-var dummyManifestFunctions = append(dummyManifestCommon, []string{
-	"functions.yaml",
-	"functions/snapshot",
-	"functions",
+var dummyManifestActions = append(dummyManifestCommon, []string{
+	"actions.yaml",
+	"actions/snapshot",
+	"actions",
 }...)
 
 func (s *CharmArchiveSuite) TestReadCharmArchive(c *gc.C) {
@@ -112,8 +112,8 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutActions(c *gc.C) {
 	c.Assert(archive.Actions().ActionSpecs, gc.HasLen, 0)
 }
 
-func (s *CharmDirSuite) TestReadCharmArchiveWithFunctions(c *gc.C) {
-	path := archivePath(c, readCharmDir(c, "dummy-functions"))
+func (s *CharmDirSuite) TestReadCharmArchiveWithActions(c *gc.C) {
+	path := archivePath(c, readCharmDir(c, "dummy-actions"))
 	archive, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(archive.Actions().ActionSpecs, gc.HasLen, 1)
@@ -148,13 +148,13 @@ func (s *CharmArchiveSuite) TestManifest(c *gc.C) {
 	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifest...))
 }
 
-func (s *CharmArchiveSuite) TestManifestFunctions(c *gc.C) {
-	path := archivePath(c, readCharmDir(c, "dummy-functions"))
+func (s *CharmArchiveSuite) TestManifestActions(c *gc.C) {
+	path := archivePath(c, readCharmDir(c, "dummy-actions"))
 	archive, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
 	manifest, err := archive.Manifest()
 	c.Assert(err, gc.IsNil)
-	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifestFunctions...))
+	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifestActions...))
 }
 
 func (s *CharmArchiveSuite) TestManifestNoRevision(c *gc.C) {

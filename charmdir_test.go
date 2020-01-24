@@ -98,8 +98,8 @@ func (s *CharmDirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
 	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 0)
 }
 
-func (s *CharmDirSuite) TestReadCharmDirWithFunctions(c *gc.C) {
-	path := charmDirPath(c, "dummy-functions")
+func (s *CharmDirSuite) TestReadCharmDirWithActions(c *gc.C) {
+	path := charmDirPath(c, "dummy-actions")
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 1)
