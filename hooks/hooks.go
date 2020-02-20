@@ -16,6 +16,7 @@ const (
 	ConfigChanged         Kind = "config-changed"
 	UpgradeCharm          Kind = "upgrade-charm"
 	Stop                  Kind = "stop"
+	Remove                Kind = "remove"
 	Action                Kind = "action"
 	CollectMetrics        Kind = "collect-metrics"
 	MeterStatusChanged    Kind = "meter-status-changed"
@@ -52,6 +53,7 @@ var unitHooks = []Kind{
 	ConfigChanged,
 	UpgradeCharm,
 	Stop,
+	Remove,
 	CollectMetrics,
 	MeterStatusChanged,
 	LeaderElected,
