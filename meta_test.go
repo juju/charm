@@ -692,6 +692,7 @@ func (s *MetaSuite) TestMetaHooks(c *gc.C) {
 		"config-changed":                    true,
 		"upgrade-charm":                     true,
 		"stop":                              true,
+		"remove":                            true,
 		"collect-metrics":                   true,
 		"meter-status-changed":              true,
 		"leader-elected":                    true,
