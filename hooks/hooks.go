@@ -31,6 +31,7 @@ const (
 	// unit whose change triggered the hook. The hook file names that these
 	// kinds represent will be prefixed by the relation name; for example,
 	// "db-relation-joined".
+	RelationCreated  Kind = "relation-created"
 	RelationJoined   Kind = "relation-joined"
 	RelationChanged  Kind = "relation-changed"
 	RelationDeparted Kind = "relation-departed"
@@ -72,6 +73,7 @@ func UnitHooks() []Kind {
 }
 
 var relationHooks = []Kind{
+	RelationCreated,
 	RelationJoined,
 	RelationChanged,
 	RelationDeparted,
@@ -100,7 +102,7 @@ func StorageHooks() []Kind {
 // IsRelation returns whether the Kind represents a relation hook.
 func (kind Kind) IsRelation() bool {
 	switch kind {
-	case RelationJoined, RelationChanged, RelationDeparted, RelationBroken:
+	case RelationCreated, RelationJoined, RelationChanged, RelationDeparted, RelationBroken:
 		return true
 	}
 	return false
