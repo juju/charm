@@ -983,9 +983,6 @@ func parseDeployment(deployment interface{}, charmSeries []string, storage map[s
 	if minVersion, ok := deploymentMap["min-version"].(string); ok {
 		result.MinVersion = minVersion
 	}
-	if result.DeploymentType == "" && result.ServiceType == "" {
-		return nil, errors.NotValidf("empty deployment metadata")
-	}
 	if result.ServiceType != "" {
 		osForSeries, err := series.GetOSFromSeries(charmSeries[0])
 		if err != nil {
