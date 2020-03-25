@@ -1077,6 +1077,10 @@ deployment:
 		yaml: "        type: foo",
 		err:  `metadata: deployment.type: unexpected value "foo"`,
 	}, {
+		desc: "invalid deployment mode",
+		yaml: "        mode: foo",
+		err:  `metadata: deployment.mode: unexpected value "foo"`,
+	}, {
 		desc: "invalid service type",
 		yaml: "        service: foo",
 		err:  `metadata: deployment.service: unexpected value "foo"`,
