@@ -158,6 +158,14 @@ const (
 	DeploymentDaemon    DeploymentType = "daemon"
 )
 
+// DeploymentMode defines a deployment mode.
+type DeploymentMode string
+
+const (
+	ModeOperator DeploymentMode = "operator"
+	ModeWorkload DeploymentMode = "workload"
+)
+
 // ServiceType defines a service type.
 type ServiceType string
 
@@ -181,6 +189,7 @@ var validServiceTypes = map[os.OSType][]ServiceType{
 // metadata.yaml file.
 type Deployment struct {
 	DeploymentType DeploymentType `bson:"type"`
+	DeploymentMode DeploymentMode `bson:"mode"`
 	ServiceType    ServiceType    `bson:"service"`
 	MinVersion     string         `bson:"min-version"`
 }
@@ -965,6 +974,9 @@ func parseDeployment(deployment interface{}, charmSeries []string, storage map[s
 	if deploymentType, ok := deploymentMap["type"].(string); ok {
 		result.DeploymentType = DeploymentType(deploymentType)
 	}
+	if deploymentMode, ok := deploymentMap["mode"].(string); ok {
+		result.DeploymentMode = DeploymentMode(deploymentMode)
+	}
 	if serviceType, ok := deploymentMap["service"].(string); ok {
 		result.ServiceType = ServiceType(serviceType)
 	}
@@ -1113,6 +1125,10 @@ var deploymentSchema = schema.FieldMap(
 			schema.Const(string(DeploymentStateless)),
 			schema.Const(string(DeploymentDaemon)),
 		),
+		"mode": schema.OneOf(
+			schema.Const(string(ModeOperator)),
+			schema.Const(string(ModeWorkload)),
+		),
 		"service": schema.OneOf(
 			schema.Const(string(ServiceCluster)),
 			schema.Const(string(ServiceLoadBalancer)),
@@ -1122,6 +1138,7 @@ var deploymentSchema = schema.FieldMap(
 		"min-version": schema.String(),
 	}, schema.Defaults{
 		"type":        schema.Omit,
+		"mode":        string(ModeWorkload),
 		"service":     schema.Omit,
 		"min-version": schema.Omit,
 	},
