@@ -1051,12 +1051,14 @@ series:
     - kubernetes
 deployment:
     type: stateless
+    mode: operator
     service: loadbalancer
     min-version: "1.15"
 `))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Deployment, gc.DeepEquals, &charm.Deployment{
 		DeploymentType: "stateless",
+		DeploymentMode: "operator",
 		ServiceType:    "loadbalancer",
 		MinVersion:     "1.15",
 	}, gc.Commentf("meta: %+v", meta))
