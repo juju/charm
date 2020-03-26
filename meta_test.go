@@ -1092,10 +1092,6 @@ deployment:
 		desc: "missing series",
 		yaml: "        service: cluster",
 		err:  `charm with deployment metadata must declare at least one series`,
-	}, {
-		desc: "stateless deployment type with storage",
-		yaml: "        type: stateless\nseries:\n        - kubernetes\nstorage:\n        foo:\n                type: filesystem",
-		err:  `specifying a stateless service when a charm has storage not valid`,
 	}}
 
 	testErrors(c, prefix, tests)
