@@ -1000,9 +1000,6 @@ func parseDeployment(deployment interface{}, charmSeries []string, storage map[s
 			return nil, errors.NotValidf("service type %q for OS %q", result.ServiceType, osForSeries)
 		}
 	}
-	if result.DeploymentType == DeploymentStateless && len(storage) > 0 {
-		return nil, errors.NotValidf("specifying a stateless service when a charm has storage")
-	}
 	return &result, nil
 }
 
