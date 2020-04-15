@@ -610,11 +610,7 @@ type marshaledRelation Relation
 
 func (r marshaledRelation) MarshalYAML() (interface{}, error) {
 	// See calls to ifaceExpander in charmSchema.
-	noLimit := 1
-	if r.Role == RoleProvider {
-		noLimit = 0
-	}
-
+	var noLimit int
 	if !r.Optional && r.Limit == noLimit && r.Scope == ScopeGlobal {
 		// All attributes are default, so use the simple string form of the relation.
 		return r.Interface, nil
@@ -1143,9 +1139,9 @@ var charmSchema = schema.FieldMap(
 		"name":             schema.String(),
 		"summary":          schema.String(),
 		"description":      schema.String(),
-		"peers":            schema.StringMap(ifaceExpander(int64(1))),
+		"peers":            schema.StringMap(ifaceExpander(nil)),
 		"provides":         schema.StringMap(ifaceExpander(nil)),
-		"requires":         schema.StringMap(ifaceExpander(int64(1))),
+		"requires":         schema.StringMap(ifaceExpander(nil)),
 		"extra-bindings":   extraBindingsSchema,
 		"revision":         schema.Int(), // Obsolete
 		"format":           schema.Int(), // Obsolete

@@ -357,7 +357,6 @@ func (s *MetaSuite) TestParseMetaRelations(c *gc.C) {
 		Name:      "ring",
 		Role:      charm.RolePeer,
 		Interface: "riak",
-		Limit:     1,
 		Scope:     charm.ScopeGlobal,
 	})
 	c.Assert(meta.Requires, gc.IsNil)
@@ -375,7 +374,6 @@ func (s *MetaSuite) TestParseMetaRelations(c *gc.C) {
 		Name:      "server-array",
 		Role:      charm.RolePeer,
 		Interface: "terracotta-server",
-		Limit:     1,
 		Scope:     charm.ScopeGlobal,
 	})
 	c.Assert(meta.Requires, gc.IsNil)
@@ -404,6 +402,29 @@ func (s *MetaSuite) TestParseMetaRelations(c *gc.C) {
 		Scope:     charm.ScopeGlobal,
 	})
 	c.Assert(meta.Peers, gc.IsNil)
+
+	meta, err = charm.ReadMeta(repoMeta(c, "monitoring"))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.Provides["monitoring-client"], gc.Equals, charm.Relation{
+		Name:      "monitoring-client",
+		Role:      charm.RoleProvider,
+		Interface: "monitoring",
+		Scope:     charm.ScopeGlobal,
+	})
+	c.Assert(meta.Requires["monitoring-port"], gc.Equals, charm.Relation{
+		Name:      "monitoring-port",
+		Role:      charm.RoleRequirer,
+		Interface: "monitoring",
+		Scope:     charm.ScopeContainer,
+	})
+	c.Assert(meta.Requires["info"], gc.Equals, charm.Relation{
+		Name:      "info",
+		Role:      charm.RoleRequirer,
+		Interface: "juju-info",
+		Scope:     charm.ScopeContainer,
+	})
+
+	c.Assert(meta.Peers, gc.IsNil)
 }
 
 func (s *MetaSuite) TestCombinedRelations(c *gc.C) {
@@ -429,7 +450,6 @@ func (s *MetaSuite) TestCombinedRelations(c *gc.C) {
 			Name:      "ring",
 			Role:      charm.RolePeer,
 			Interface: "riak",
-			Limit:     1,
 			Scope:     charm.ScopeGlobal,
 		},
 	})
@@ -580,7 +600,6 @@ func (s *MetaSuite) TestCheckMismatchedRelationName(c *gc.C) {
 				Name:      "foo",
 				Role:      charm.RolePeer,
 				Interface: "x",
-				Limit:     1,
 				Scope:     charm.ScopeGlobal,
 			},
 		},
@@ -598,7 +617,6 @@ func (s *MetaSuite) TestCheckMismatchedRole(c *gc.C) {
 			"foo": {
 				Role:      charm.RolePeer,
 				Interface: "foo",
-				Limit:     1,
 				Scope:     charm.ScopeGlobal,
 			},
 		},
