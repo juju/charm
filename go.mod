@@ -15,7 +15,7 @@ require (
 	github.com/juju/retry v0.0.0-20180821225755-9058e192b216 // indirect
 	github.com/juju/schema v0.0.0-20160301111646-1e25943f8c6f
 	github.com/juju/testing v0.0.0-20191001232224-ce9dec17d28b
-	github.com/juju/utils v0.0.0-20180820210520-bf9cc5bdd62d
+	github.com/juju/utils v0.0.0-20180619112806-c746c6e86f4f
 	github.com/juju/version v0.0.0-20191106052214-a0f5311c2166
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826

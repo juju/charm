@@ -34,6 +34,8 @@ github.com/juju/testing v0.0.0-20191001232224-ce9dec17d28b h1:Rrp0ByJXEjhREMPGTt
 github.com/juju/testing v0.0.0-20191001232224-ce9dec17d28b/go.mod h1:63prj8cnj0tU0S9OHjGJn+b1h0ZghCndfnbQolrYTwA=
 github.com/juju/utils v0.0.0-20160526025251-ffea6ead0c37 h1:WdF0MJnVxVDHitoSsCNGnrgNUfJeTgB+0lgcc4iZbSQ=
 github.com/juju/utils v0.0.0-20160526025251-ffea6ead0c37/go.mod h1:6/KLg8Wz/y2KVGWEpkK9vMNGkOnu4k/cqs8Z1fKjTOk=
+github.com/juju/utils v0.0.0-20180619112806-c746c6e86f4f h1:ig+5pmJmjxPAf8bwQUDpo7Z0E5l6nh1xE8artIt+A/Y=
+github.com/juju/utils v0.0.0-20180619112806-c746c6e86f4f/go.mod h1:6/KLg8Wz/y2KVGWEpkK9vMNGkOnu4k/cqs8Z1fKjTOk=
 github.com/juju/utils v0.0.0-20180820210520-bf9cc5bdd62d h1:irPlN9z5VCe6BTsqVsxheCZH99OFSmqSVyTigW4mEoY=
 github.com/juju/utils v0.0.0-20180820210520-bf9cc5bdd62d/go.mod h1:6/KLg8Wz/y2KVGWEpkK9vMNGkOnu4k/cqs8Z1fKjTOk=
 github.com/juju/version v0.0.0-20151127203400-ef897ad7f130 h1:H70mW/mP6rnn8XMbjb5mOuxeUBhRJgWl3CGZ8xMuWvI=
