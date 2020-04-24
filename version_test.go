@@ -6,8 +6,8 @@ package charm_test
 import (
 	"strings"
 
+	"github.com/juju/charm/v7"
 	gc "gopkg.in/check.v1"
-	"gopkg.in/juju/charm.v6"
 )
 
 type VersionSuite struct{}

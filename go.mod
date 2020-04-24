@@ -1,4 +1,4 @@
-module gopkg.in/juju/charm.v6
+module github.com/juju/charm/v7
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -33,4 +33,4 @@ require (
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
-go 1.13
+go 1.14

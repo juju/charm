@@ -10,7 +10,7 @@ import (
 	"github.com/juju/testing"
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/juju/charm.v6"
+	"github.com/juju/charm/v7"
 )
 
 type BundleDirSuite struct {
