@@ -70,24 +70,24 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 	dir = &CharmDir{Path: path}
 	file, err := os.Open(dir.join("metadata.yaml"))
 	if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, `issue reading "metadata.yaml" file`)
 	}
 	dir.meta, err = ReadMeta(file)
 	file.Close()
 	if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, `issue parsing "metadata.yaml" file`)
 	}
 
 	file, err = os.Open(dir.join("config.yaml"))
 	if _, ok := err.(*os.PathError); ok {
 		dir.config = NewConfig()
 	} else if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, `issue reading "config.yaml" file`)
 	} else {
 		dir.config, err = ReadConfig(file)
 		file.Close()
 		if err != nil {
-			return nil, err
+			return nil, errors.Annotatef(err, `issue parsing "config.yaml" file`)
 		}
 	}
 
@@ -96,10 +96,10 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		dir.metrics, err = ReadMetrics(file)
 		file.Close()
 		if err != nil {
-			return nil, err
+			return nil, errors.Annotatef(err, `issue parsing "metrics.yaml" file`)
 		}
 	} else if !os.IsNotExist(err) {
-		return nil, err
+		return nil, errors.Annotatef(err, `issue reading "metrics.yaml" file`)
 	}
 
 	if dir.actions, err = getActions(
@@ -126,25 +126,25 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 	if _, ok := err.(*os.PathError); ok {
 		dir.lxdProfile = NewLXDProfile()
 	} else if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, `issue reading "lxd-profile.yaml" file`)
 	} else {
 		dir.lxdProfile, err = ReadLXDProfile(file)
 		file.Close()
 		if err != nil {
-			return nil, err
+			return nil, errors.Annotatef(err, `issue parsing "lxd-profile.yaml" file`)
 		}
 	}
 
 	file, err = os.Open(dir.join("version"))
 	if err != nil {
 		if _, ok := err.(*os.PathError); !ok {
-			return nil, err
+			return nil, errors.Annotatef(err, `issue reading "version" file`)
 		}
 	} else {
 		dir.version, err = ReadVersion(file)
 		file.Close()
 		if err != nil {
-			return nil, err
+			return nil, errors.Annotatef(err, `issue parsing "version" file`)
 		}
 	}
 
@@ -166,13 +166,13 @@ func (dir *CharmDir) buildIgnoreRules() (ignoreRuleset, error) {
 	if _, err := os.Stat(pathToJujuignore); err == nil {
 		file, err := os.Open(dir.join(".jujuignore"))
 		if err != nil {
-			return nil, err
+			return nil, errors.Annotatef(err, `issue reading ".jujuignore" file`)
 		}
 		defer func() { _ = file.Close() }()
 
 		jujuignoreRules, err := newIgnoreRuleset(file)
 		if err != nil {
-			return nil, errors.Annotate(err, ".jujuignore")
+			return nil, errors.Annotate(err, `issue parsing ".jujuignore" file`)
 		}
 
 		rules = append(rules, jujuignoreRules...)
