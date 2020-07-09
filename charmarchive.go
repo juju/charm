@@ -29,6 +29,7 @@ type CharmArchive struct {
 	metrics    *Metrics
 	actions    *Actions
 	lxdProfile *LXDProfile
+	origin     *Origin
 	revision   int
 	version    string
 }
@@ -224,8 +225,8 @@ func (a *CharmArchive) Metrics() *Metrics {
 	return a.metrics
 }
 
-// Actions returns the Actions map for the actions.yaml/functions.yaml  file for the charm
-// archive.
+// Actions returns the Actions map for the actions.yaml/functions.yaml
+// file for the charm archive.
 func (a *CharmArchive) Actions() *Actions {
 	return a.actions
 }
@@ -234,6 +235,17 @@ func (a *CharmArchive) Actions() *Actions {
 // for the charm expanded in dir.
 func (a *CharmArchive) LXDProfile() *LXDProfile {
 	return a.lxdProfile
+}
+
+// Origin returns the Origin of the charm. This is optional and doesn't require
+// a charm change on the operator or writer side.
+func (a *CharmArchive) Origin() *Origin {
+	return a.origin
+}
+
+// SetOrigin allows the modification of the Charms origin.
+func (a *CharmArchive) SetOrigin(origin *Origin) {
+	a.origin = origin
 }
 
 type zipReadCloser struct {

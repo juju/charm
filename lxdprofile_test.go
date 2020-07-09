@@ -104,7 +104,6 @@ func (s *ProfileSuite) TestValidate(c *gc.C) {
 		if err != nil {
 			c.Assert(err.Error(), gc.Equals, test.expectedError)
 		} else {
-
 			c.Assert(err, jc.ErrorIsNil)
 		}
 	}

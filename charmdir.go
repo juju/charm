@@ -50,6 +50,7 @@ type CharmDir struct {
 	metrics    *Metrics
 	actions    *Actions
 	lxdProfile *LXDProfile
+	origin     *Origin
 	revision   int
 	version    string
 }
@@ -227,6 +228,17 @@ func (dir *CharmDir) Actions() *Actions {
 // for the charm expanded in dir.
 func (dir *CharmDir) LXDProfile() *LXDProfile {
 	return dir.lxdProfile
+}
+
+// Origin returns the Origin of the charm. This is optional and doesn't require
+// a charm change on the operator or writer side.
+func (dir *CharmDir) Origin() *Origin {
+	return dir.origin
+}
+
+// SetOrigin allows the modification of the Charms origin.
+func (dir *CharmDir) SetOrigin(origin *Origin) {
+	dir.origin = origin
 }
 
 // SetRevision changes the charm revision number. This affects

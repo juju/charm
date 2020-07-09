@@ -1594,6 +1594,10 @@ func (c *dummyCharm) LXDProfile() *charm.LXDProfile {
 	panic("unused")
 }
 
+func (c *dummyCharm) Origin() *charm.Origin {
+	panic("unused")
+}
+
 func (c *dummyCharm) Revision() int {
 	panic("unused")
 }
