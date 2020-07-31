@@ -104,27 +104,6 @@ func MustParseURL(url string) *URL {
 // ParseURL parses the provided charm URL string into its respective
 // structure.
 //
-// Additionally, fully-qualified charmstore URLs are supported; note that this
-// currently assumes that they will map to jujucharms.com (that is,
-// fully-qualified URLs currently map to the 'cs' schema):
-//
-//    https://jujucharms.com/name
-//    https://jujucharms.com/name/series
-//    https://jujucharms.com/name/revision
-//    https://jujucharms.com/name/series/revision
-//    https://jujucharms.com/u/user/name
-//    https://jujucharms.com/u/user/name/series
-//    https://jujucharms.com/u/user/name/revision
-//    https://jujucharms.com/u/user/name/series/revision
-//    https://jujucharms.com/channel/name
-//    https://jujucharms.com/channel/name/series
-//    https://jujucharms.com/channel/name/revision
-//    https://jujucharms.com/channel/name/series/revision
-//    https://jujucharms.com/u/user/channel/name
-//    https://jujucharms.com/u/user/channel/name/series
-//    https://jujucharms.com/u/user/channel/name/revision
-//    https://jujucharms.com/u/user/channel/name/series/revision
-//
 // A missing schema is assumed to be 'cs'.
 func ParseURL(url string) (*URL, error) {
 	// Check if we're dealing with a v1 or v2 URL.
@@ -143,7 +122,7 @@ func ParseURL(url string) (*URL, error) {
 		curl, err = parseV1URL(u, url)
 	case u.Scheme == "http" || u.Scheme == "https":
 		// Shortcut new-style URLs.
-		curl, err = parseV2URL(u)
+		curl, err = parseHTTPURL(u)
 	default:
 		// TODO: for now, fall through to parsing v1 references; this will be
 		// expanded to be more robust in the future.
@@ -216,51 +195,6 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 	if r.User != "" {
 		if !names.IsValidUser(r.User) {
 			return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", originalURL)
-		}
-	}
-	if err := ValidateName(r.Name); err != nil {
-		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
-	}
-	return &r, nil
-}
-
-func parseV2URL(url *gourl.URL) (*URL, error) {
-	var r URL
-	r.Schema = "cs"
-	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
-	if parts[0] == "u" {
-		if len(parts) < 3 {
-			return nil, errors.Errorf(`charm or bundle URL %q malformed, expected "/u/<user>/<name>"`, url)
-		}
-		r.User, parts = parts[1], parts[2:]
-	}
-	r.Name, parts = parts[0], parts[1:]
-	r.Revision = -1
-	if len(parts) > 0 {
-		revision, err := strconv.Atoi(parts[0])
-		if err == nil {
-			r.Revision = revision
-		} else {
-			r.Series = parts[0]
-			if err := ValidateSeries(r.Series); err != nil {
-				return nil, errors.Annotatef(err, "cannot parse URL %q", url)
-			}
-			parts = parts[1:]
-			if len(parts) == 1 {
-				r.Revision, err = strconv.Atoi(parts[0])
-				if err != nil {
-					return nil, errors.Errorf("charm or bundle URL has malformed revision: %q in %q", parts[0], url)
-				}
-			} else {
-				if len(parts) != 0 {
-					return nil, errors.Errorf("charm or bundle URL has invalid form: %q", url)
-				}
-			}
-		}
-	}
-	if r.User != "" {
-		if !names.IsValidUser(r.User) {
-			return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", url)
 		}
 	}
 	if err := ValidateName(r.Name); err != nil {
@@ -399,4 +333,90 @@ func Quote(unsafe string) string {
 		}
 	}
 	return string(safe)
+}
+
+// RewriteURL turns a HTTP(s) URL into a charm URL.
+//
+// Additionally, fully-qualified charmstore URLs are supported; note that this
+// currently assumes that they will map to jujucharms.com (that is,
+// fully-qualified URLs currently map to the 'cs' schema):
+//
+//    https://jujucharms.com/name -> cs:name
+//    https://jujucharms.com/name/series -> cs:series/name
+//    https://jujucharms.com/name/revision -> cs:name-revision
+//    https://jujucharms.com/name/series/revision -> cs:series/name-revision
+//    https://jujucharms.com/u/user/name -> cs:~user/name
+//    https://jujucharms.com/u/user/name/series -> cs:~user/series/name
+//    https://jujucharms.com/u/user/name/revision -> cs:~user/name-revision
+//    https://jujucharms.com/u/user/name/series/revision -> cs:~user/series/name-revision
+//    https://jujucharms.com/channel/name
+//    https://jujucharms.com/channel/name/series
+//    https://jujucharms.com/channel/name/revision
+//    https://jujucharms.com/channel/name/series/revision
+//    https://jujucharms.com/u/user/channel/name
+//    https://jujucharms.com/u/user/channel/name/series
+//    https://jujucharms.com/u/user/channel/name/revision
+//    https://jujucharms.com/u/user/channel/name/series/revision
+//
+// A missing schema is assumed to be 'cs'.
+func RewriteURL(url string) (string, error) {
+	u, err := gourl.Parse(url)
+	if err != nil {
+		return "", errors.Errorf("cannot parse charm or bundle URL: %q", url)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", errors.Errorf("unexpected url schema %q", u.Scheme)
+	}
+	if u.RawQuery != "" || u.Fragment != "" || u.User != nil {
+		return "", errors.Errorf("charm or bundle URL %q has unrecognized parts", url)
+	}
+	httpURL, err := parseHTTPURL(u)
+	if err != nil {
+		return "", errors.Trace(err)
+	}
+	return httpURL.String(), nil
+}
+
+func parseHTTPURL(url *gourl.URL) (*URL, error) {
+	r := URL{
+		Schema: "cs",
+	}
+
+	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
+	if parts[0] == "u" {
+		if len(parts) < 3 {
+			return nil, errors.Errorf(`charm or bundle URL %q malformed, expected "/u/<user>/<name>"`, url)
+		}
+		r.User, parts = parts[1], parts[2:]
+	}
+
+	r.Name, parts = parts[0], parts[1:]
+	r.Revision = -1
+	if len(parts) > 0 {
+		revision, err := strconv.Atoi(parts[0])
+		if err == nil {
+			r.Revision = revision
+		} else {
+			r.Series, parts = parts[0], parts[1:]
+			if err := ValidateSeries(r.Series); err != nil {
+				return nil, errors.Annotatef(err, "cannot parse URL %q", url)
+			}
+			if len(parts) == 1 {
+				r.Revision, err = strconv.Atoi(parts[0])
+				if err != nil {
+					return nil, errors.Errorf("charm or bundle URL has malformed revision: %q in %q", parts[0], url)
+				}
+			} else if len(parts) != 0 {
+				return nil, errors.Errorf("charm or bundle URL has invalid form: %q", url)
+			}
+		}
+	}
+
+	if r.User != "" && !names.IsValidUser(r.User) {
+		return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", url)
+	}
+	if err := ValidateName(r.Name); err != nil {
+		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
+	}
+	return &r, nil
 }
