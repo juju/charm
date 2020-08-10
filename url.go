@@ -104,6 +104,27 @@ func MustParseURL(url string) *URL {
 // ParseURL parses the provided charm URL string into its respective
 // structure.
 //
+// Additionally, fully-qualified charmstore URLs are supported; note that this
+// currently assumes that they will map to jujucharms.com (that is,
+// fully-qualified URLs currently map to the 'cs' schema):
+//
+//    https://jujucharms.com/name
+//    https://jujucharms.com/name/series
+//    https://jujucharms.com/name/revision
+//    https://jujucharms.com/name/series/revision
+//    https://jujucharms.com/u/user/name
+//    https://jujucharms.com/u/user/name/series
+//    https://jujucharms.com/u/user/name/revision
+//    https://jujucharms.com/u/user/name/series/revision
+//    https://jujucharms.com/channel/name
+//    https://jujucharms.com/channel/name/series
+//    https://jujucharms.com/channel/name/revision
+//    https://jujucharms.com/channel/name/series/revision
+//    https://jujucharms.com/u/user/channel/name
+//    https://jujucharms.com/u/user/channel/name/series
+//    https://jujucharms.com/u/user/channel/name/revision
+//    https://jujucharms.com/u/user/channel/name/series/revision
+//
 // A missing schema is assumed to be 'cs'.
 func ParseURL(url string) (*URL, error) {
 	// Check if we're dealing with a v1 or v2 URL.
@@ -337,7 +358,7 @@ func Quote(unsafe string) string {
 
 // RewriteURL turns a HTTP(s) URL into a charm URL.
 //
-// Additionally, fully-qualified charmstore URLs are supported; note that this
+// Fully-qualified charmstore URLs are supported; note that this
 // currently assumes that they will map to jujucharms.com (that is,
 // fully-qualified URLs currently map to the 'cs' schema):
 //
