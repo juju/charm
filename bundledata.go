@@ -842,10 +842,21 @@ func (verifier *bundleDataVerifier) verifyRelations() {
 
 func (verifier *bundleDataVerifier) verifyEndpointBindings() {
 	for name, svc := range verifier.bd.Applications {
-		charm, ok := verifier.charms[name]
-		// Only test the ok path here because the !ok path is tested in verifyApplications
-		if !ok {
+		if svc == nil {
 			continue
+		}
+
+		// Verify the endpoint bindings from the fully qualified charm URL and
+		// not just the application name. Fallback to the charm name as the
+		// application name, but in reality this shouldn't be the case.
+		var (
+			charm Charm
+			ok    bool
+		)
+		if charm, ok = verifier.charms[svc.Charm]; !ok {
+			if charm, ok = verifier.charms[name]; !ok {
+				continue
+			}
 		}
 		for endpoint, space := range svc.EndpointBindings {
 			_, isInProvides := charm.Meta().Provides[endpoint]

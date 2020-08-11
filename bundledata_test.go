@@ -657,11 +657,9 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 	bd, err := charm.ReadBundleData(strings.NewReader(mediawikiBundle))
 	c.Assert(err, gc.IsNil)
 	for i, u := range []string{
-		"wordpress",
 		"cs:wordpress",
 		"cs:precise/wordpress",
-		"precise/wordpress",
-		"precise/wordpress-2",
+		"cs:precise/wordpress-2",
 		"local:foo",
 		"local:foo-45",
 	} {
@@ -680,11 +678,9 @@ func (*bundleDataSuite) TestVerifyLocalCharm(c *gc.C) {
 	err = os.MkdirAll(relativeCharmDir, 0700)
 	c.Assert(err, jc.ErrorIsNil)
 	for i, u := range []string{
-		"wordpress",
 		"cs:wordpress",
 		"cs:precise/wordpress",
-		"precise/wordpress",
-		"precise/wordpress-2",
+		"cs:precise/wordpress-2",
 		"local:foo",
 		"local:foo-45",
 		c.MkDir(),
@@ -707,9 +703,9 @@ func (s *bundleDataSuite) testPrepareAndMutateBeforeVerifyWithCharms(c *gc.C, mu
 	bd := b.Data()
 
 	charms := map[string]charm.Charm{
-		"wordpress": readCharmDir(c, "wordpress"),
-		"mysql":     readCharmDir(c, "mysql"),
-		"logging":   readCharmDir(c, "logging"),
+		"cs:wordpress": readCharmDir(c, "wordpress"),
+		"cs:mysql":     readCharmDir(c, "mysql"),
+		"cs:logging":   readCharmDir(c, "logging"),
 	}
 
 	if mutator != nil {
@@ -1456,13 +1452,13 @@ func (*bundleDataSuite) TestApplicationEmpty(c *gc.C) {
 applications:
     application1:
     application2:
-        charm: "test"
+        charm: "cs:test"
         plan: "testisv/test2"
 `,
 		`
 applications:
     application1:
-        charm: "test"
+        charm: "cs:test"
         plan: "testisv/test2"
     application2:
 `,
@@ -1481,13 +1477,13 @@ func (*bundleDataSuite) TestApplicationPlans(c *gc.C) {
 	data := `
 applications:
     application1:
-        charm: "test"
+        charm: "cs:test"
         plan: "testisv/test"
     application2:
-        charm: "test"
+        charm: "cs:test"
         plan: "testisv/test2"
     application3:
-        charm: "test"
+        charm: "cs:test"
         plan: "default"
 relations:
     - ["application1:prova", "application2:reqa"]
@@ -1500,15 +1496,15 @@ relations:
 
 	c.Assert(bd.Applications, jc.DeepEquals, map[string]*charm.ApplicationSpec{
 		"application1": &charm.ApplicationSpec{
-			Charm: "test",
+			Charm: "cs:test",
 			Plan:  "testisv/test",
 		},
 		"application2": &charm.ApplicationSpec{
-			Charm: "test",
+			Charm: "cs:test",
 			Plan:  "testisv/test2",
 		},
 		"application3": &charm.ApplicationSpec{
-			Charm: "test",
+			Charm: "cs:test",
 			Plan:  "default",
 		},
 	})

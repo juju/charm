@@ -17,8 +17,42 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// Schema represents the different types of valid schemas.
+type Schema string
+
+const (
+	// CharmStore schema represents the original schema for a charm URL
+	CharmStore Schema = "cs"
+
+	// Local represents a local charm URL, describes as a file system path.
+	Local Schema = "local"
+
+	// CharmHub schema represents the new schema for another unique charm store.
+	CharmHub Schema = "ch"
+
+	// HTTP refers to the HTTP schema that is used for the V2 of the charm URL.
+	HTTP Schema = "http"
+
+	// HTTPS refers to the HTTP schema that is used for the V2 of the charm URL.
+	HTTPS Schema = "https"
+)
+
+// Prefix creates a url with the given prefix, useful for typed schemas.
+func (s Schema) Prefix(url string) string {
+	return fmt.Sprintf("%s:%s", s, url)
+}
+
+// Matches attempts to compare if a schema string matches the schema.
+func (s Schema) Matches(other string) bool {
+	return string(s) == other
+}
+
+func (s Schema) String() string {
+	return string(s)
+}
+
 // Location represents a charm location, which must declare a path component
-// and a string representaion.
+// and a string representation.
 type Location interface {
 	Path() string
 	String() string
@@ -36,7 +70,7 @@ type Location interface {
 //     cs:~joe/development/wordpress
 //
 type URL struct {
-	Schema   string // "cs" or "local".
+	Schema   string // "cs", "ch" or "local".
 	User     string // "joe".
 	Name     string // "wordpress".
 	Revision int    // -1 if unset, N otherwise.
@@ -44,17 +78,25 @@ type URL struct {
 }
 
 var (
-	ErrUnresolvedUrl error = fmt.Errorf("charm or bundle url series is not resolved")
-	validSeries            = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
-	validName              = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
+	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
+	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
 
 // ValidateSchema returns an error if the schema is invalid.
+//
+// Valid schemas for the URL are:
+// - cs: charm store
+// - ch: charm hub
+// - local: local file
+//
+// http and https are not valid schemas, as they compiled to V1 charm URLs.
 func ValidateSchema(schema string) error {
-	if schema != "cs" && schema != "local" {
-		return errors.NotValidf("schema %q", schema)
+	switch schema {
+	// ignore http/https schemas.
+	case CharmStore.String(), CharmHub.String(), Local.String():
+		return nil
 	}
-	return nil
+	return errors.NotValidf("schema %q", schema)
 }
 
 // IsValidSeries reports whether series is a valid series in charm or bundle
@@ -129,11 +171,14 @@ func ParseURL(url string) (*URL, error) {
 	}
 	var curl *URL
 	switch {
+	case CharmHub.Matches(u.Scheme):
+		// Handle talking to the new style of the schema.
+		curl, err = parseIdentifierURL(u)
 	case u.Opaque != "":
 		// Shortcut old-style URLs.
 		u.Path = u.Opaque
 		curl, err = parseV1URL(u, url)
-	case u.Scheme == "http" || u.Scheme == "https":
+	case HTTP.Matches(u.Scheme) || HTTPS.Matches(u.Scheme):
 		// Shortcut new-style URLs.
 		curl, err = parseHTTPURL(u)
 	default:
@@ -145,28 +190,30 @@ func ParseURL(url string) (*URL, error) {
 		return nil, errors.Trace(err)
 	}
 	if curl.Schema == "" {
-		curl.Schema = "cs"
+		return nil, errors.Errorf("expected schema for charm or bundle URL: %q", url)
 	}
 	return curl, nil
 }
 
 func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
-	var r URL
+	r := URL{
+		Schema: CharmStore.String(),
+	}
 	if url.Scheme != "" {
 		r.Schema = url.Scheme
-		if err := ValidateSchema(r.Schema); err != nil {
-			return nil, errors.Annotatef(err, "cannot parse URL %q", url)
-		}
 	}
-	i := 0
-	parts := strings.Split(url.Path[i:], "/")
+	if err := ValidateSchema(r.Schema); err != nil {
+		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
+	}
+
+	parts := strings.Split(url.Path[0:], "/")
 	if len(parts) < 1 || len(parts) > 4 {
 		return nil, errors.Errorf("charm or bundle URL has invalid form: %q", originalURL)
 	}
 
 	// ~<username>
 	if strings.HasPrefix(parts[0], "~") {
-		if r.Schema == "local" {
+		if Local.Matches(r.Schema) {
 			return nil, errors.Errorf("local charm or bundle URL with user name: %q", originalURL)
 		}
 		r.User, parts = parts[0][1:], parts[1:]
@@ -205,10 +252,8 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 		}
 		break
 	}
-	if r.User != "" {
-		if !names.IsValidUser(r.User) {
-			return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", originalURL)
-		}
+	if r.User != "" && !names.IsValidUser(r.User) {
+		return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", originalURL)
 	}
 	if err := ValidateName(r.Name); err != nil {
 		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
@@ -260,6 +305,10 @@ func (u URL) String() string {
 
 // GetBSON turns u into a bson.Getter so it can be saved directly
 // on a MongoDB database with mgo.
+//
+// TODO (stickupkid): This should not be here, as this is purely for mongo
+// data stores and that should be implemented at the site of data store, not
+// dependant on the library.
 func (u *URL) GetBSON() (interface{}, error) {
 	if u == nil {
 		return nil, nil
@@ -269,6 +318,10 @@ func (u *URL) GetBSON() (interface{}, error) {
 
 // SetBSON turns u into a bson.Setter so it can be loaded directly
 // from a MongoDB database with mgo.
+//
+// TODO (stickupkid): This should not be here, as this is purely for mongo
+// data stores and that should be implemented at the site of data store, not
+// dependant on the library.
 func (u *URL) SetBSON(raw bson.Raw) error {
 	if raw.Kind == 10 {
 		return bson.SetZero
@@ -384,7 +437,7 @@ func RewriteURL(url string) (string, error) {
 
 func parseHTTPURL(url *gourl.URL) (*URL, error) {
 	r := URL{
-		Schema: "cs",
+		Schema: CharmStore.String(),
 	}
 
 	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
@@ -420,6 +473,24 @@ func parseHTTPURL(url *gourl.URL) (*URL, error) {
 	if r.User != "" && !names.IsValidUser(r.User) {
 		return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", url)
 	}
+	if err := ValidateName(r.Name); err != nil {
+		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
+	}
+	return &r, nil
+}
+
+func parseIdentifierURL(url *gourl.URL) (*URL, error) {
+	r := URL{
+		Schema: CharmHub.String(),
+	}
+
+	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
+	if len(parts) != 1 {
+		return nil, errors.Errorf(`charm or bundle URL %q malformed, expected "<name>"`, url)
+	}
+
+	r.Name = parts[0]
+
 	if err := ValidateName(r.Name); err != nil {
 		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
 	}
