@@ -264,6 +264,117 @@ func (s *URLSuite) TestParseURL(c *gc.C) {
 	}
 }
 
+var rewriteTests = []struct {
+	s, err string
+	exact  string
+}{{
+	s:   "cs:redis",
+	err: `unexpected url schema "cs"`,
+}, {
+	s:   "local:~user/name",
+	err: `unexpected url schema "local"`,
+}, {
+	s:     "http://jujucharms.com/u/user/name/series/1",
+	exact: "cs:~user/series/name-1",
+}, {
+	s:     "http://www.jujucharms.com/u/user/name/series/1",
+	exact: "cs:~user/series/name-1",
+}, {
+	s:     "https://www.jujucharms.com/u/user/name/series/1",
+	exact: "cs:~user/series/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name/series/1",
+	exact: "cs:~user/series/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name/series",
+	exact: "cs:~user/series/name",
+}, {
+	s:     "https://jujucharms.com/u/user/name/1",
+	exact: "cs:~user/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name",
+	exact: "cs:~user/name",
+}, {
+	s:     "https://jujucharms.com/name",
+	exact: "cs:name",
+}, {
+	s:     "https://jujucharms.com/name/series",
+	exact: "cs:series/name",
+}, {
+	s:     "https://jujucharms.com/name/1",
+	exact: "cs:name-1",
+}, {
+	s:     "https://jujucharms.com/name/series/1",
+	exact: "cs:series/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name/series/1/",
+	exact: "cs:~user/series/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name/series/",
+	exact: "cs:~user/series/name",
+}, {
+	s:     "https://jujucharms.com/u/user/name/1/",
+	exact: "cs:~user/name-1",
+}, {
+	s:     "https://jujucharms.com/u/user/name/",
+	exact: "cs:~user/name",
+}, {
+	s:     "https://jujucharms.com/name/",
+	exact: "cs:name",
+}, {
+	s:     "https://jujucharms.com/name/series/",
+	exact: "cs:series/name",
+}, {
+	s:     "https://jujucharms.com/name/1/",
+	exact: "cs:name-1",
+}, {
+	s:     "https://jujucharms.com/name/series/1/",
+	exact: "cs:series/name-1",
+}, {
+	s:   "https://jujucharms.com/",
+	err: `cannot parse URL $URL: name "" not valid`,
+}, {
+	s:   "https://jujucharms.com/bad.wolf",
+	err: `cannot parse URL $URL: name "bad.wolf" not valid`,
+}, {
+	s:   "https://jujucharms.com/u/",
+	err: "charm or bundle URL $URL malformed, expected \"/u/<user>/<name>\"",
+}, {
+	s:   "https://jujucharms.com/u/badwolf",
+	err: "charm or bundle URL $URL malformed, expected \"/u/<user>/<name>\"",
+}, {
+	s:   "https://jujucharms.com/name/series/badwolf",
+	err: "charm or bundle URL has malformed revision: \"badwolf\" in $URL",
+}, {
+	s:   "https://jujucharms.com/name/bad.wolf/42",
+	err: `cannot parse URL $URL: series name "bad.wolf" not valid`,
+}, {
+	s:   "https://badwolf@jujucharms.com/name/series/42",
+	err: `charm or bundle URL $URL has unrecognized parts`,
+}, {
+	s:   "https://jujucharms.com/name/series/42#bad-wolf",
+	err: `charm or bundle URL $URL has unrecognized parts`,
+}, {
+	s:   "https://jujucharms.com/name/series/42?bad=wolf",
+	err: `charm or bundle URL $URL has unrecognized parts`,
+}}
+
+func (s *URLSuite) TestRewriteURL(c *gc.C) {
+	for i, t := range rewriteTests {
+		c.Logf("test %d: %q", i, t.s)
+
+		url, uerr := charm.RewriteURL(t.s)
+		if t.err != "" {
+			t.err = strings.Replace(t.err, "$URL", regexp.QuoteMeta(fmt.Sprintf("%q", t.s)), -1)
+			c.Check(uerr, gc.ErrorMatches, t.err)
+			c.Check(url, gc.Equals, "")
+			continue
+		}
+		c.Assert(uerr, gc.IsNil)
+		c.Check(url, gc.Equals, t.exact)
+	}
+}
+
 var inferTests = []struct {
 	vague, exact string
 }{
