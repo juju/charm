@@ -116,14 +116,6 @@ func MustParseURL(url string) *URL {
 //    https://jujucharms.com/u/user/name/series
 //    https://jujucharms.com/u/user/name/revision
 //    https://jujucharms.com/u/user/name/series/revision
-//    https://jujucharms.com/channel/name
-//    https://jujucharms.com/channel/name/series
-//    https://jujucharms.com/channel/name/revision
-//    https://jujucharms.com/channel/name/series/revision
-//    https://jujucharms.com/u/user/channel/name
-//    https://jujucharms.com/u/user/channel/name/series
-//    https://jujucharms.com/u/user/channel/name/revision
-//    https://jujucharms.com/u/user/channel/name/series/revision
 //
 // A missing schema is assumed to be 'cs'.
 func ParseURL(url string) (*URL, error) {
@@ -370,14 +362,6 @@ func Quote(unsafe string) string {
 //    https://jujucharms.com/u/user/name/series -> cs:~user/series/name
 //    https://jujucharms.com/u/user/name/revision -> cs:~user/name-revision
 //    https://jujucharms.com/u/user/name/series/revision -> cs:~user/series/name-revision
-//    https://jujucharms.com/channel/name
-//    https://jujucharms.com/channel/name/series
-//    https://jujucharms.com/channel/name/revision
-//    https://jujucharms.com/channel/name/series/revision
-//    https://jujucharms.com/u/user/channel/name
-//    https://jujucharms.com/u/user/channel/name/series
-//    https://jujucharms.com/u/user/channel/name/revision
-//    https://jujucharms.com/u/user/channel/name/series/revision
 //
 // A missing schema is assumed to be 'cs'.
 func RewriteURL(url string) (string, error) {
