@@ -241,7 +241,7 @@ var urlTests = []struct {
 	url: &charm.URL{"ch", "", "name-suffix", -1, ""},
 }, {
 	s:   "ch:name-1",
-	err: `cannot parse URL "ch:name-1": name "name-1" not valid`,
+	url: &charm.URL{"ch", "", "name", 1, ""},
 }, {
 	s:   "ch:name/foo",
 	err: `charm or bundle URL $URL malformed, expected "<name>"`,

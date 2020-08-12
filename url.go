@@ -241,23 +241,7 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 	}
 
 	// <name>[-<revision>]
-	r.Name = parts[0]
-	r.Revision = -1
-	for i := len(r.Name) - 1; i > 0; i-- {
-		c := r.Name[i]
-		if c >= '0' && c <= '9' {
-			continue
-		}
-		if c == '-' && i != len(r.Name)-1 {
-			var err error
-			r.Revision, err = strconv.Atoi(r.Name[i+1:])
-			if err != nil {
-				panic(err) // We just checked it was right.
-			}
-			r.Name = r.Name[:i]
-		}
-		break
-	}
+	r.Name, r.Revision = extractRevision(parts[0])
 	if r.User != "" && !names.IsValidUser(r.User) {
 		return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", originalURL)
 	}
@@ -483,7 +467,7 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 		return nil, errors.Errorf(`charm or bundle URL %q malformed, expected "<name>"`, url)
 	}
 
-	r.Name = parts[0]
+	r.Name, r.Revision = extractRevision(parts[0])
 	if err := ValidateName(r.Name); err != nil {
 		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
 	}
@@ -506,4 +490,24 @@ func EnsureSchema(url string) (string, error) {
 	default:
 		return "", errors.NotValidf("schema %q", u.Scheme)
 	}
+}
+
+func extractRevision(name string) (string, int) {
+	revision := -1
+	for i := len(name) - 1; i > 0; i-- {
+		c := name[i]
+		if c >= '0' && c <= '9' {
+			continue
+		}
+		if c == '-' && i != len(name)-1 {
+			var err error
+			revision, err = strconv.Atoi(name[i+1:])
+			if err != nil {
+				panic(err) // We just checked it was right.
+			}
+			name = name[:i]
+		}
+		break
+	}
+	return name, revision
 }
