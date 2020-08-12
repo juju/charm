@@ -481,16 +481,21 @@ func parseHTTPURL(url *gourl.URL) (*URL, error) {
 
 func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	r := URL{
-		Schema: CharmHub.String(),
+		Schema:   CharmHub.String(),
+		Revision: -1,
 	}
 
-	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
+	path := url.Path
+	if url.Opaque != "" {
+		path = url.Opaque
+	}
+
+	parts := strings.Split(strings.Trim(path, "/"), "/")
 	if len(parts) != 1 {
 		return nil, errors.Errorf(`charm or bundle URL %q malformed, expected "<name>"`, url)
 	}
 
 	r.Name = parts[0]
-
 	if err := ValidateName(r.Name); err != nil {
 		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
 	}

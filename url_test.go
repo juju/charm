@@ -233,6 +233,27 @@ var urlTests = []struct {
 }, {
 	s:   "cs:foo/~blah",
 	err: `cannot parse URL $URL: name "~blah" not valid`,
+}, {
+	s:   "ch:name",
+	url: &charm.URL{"ch", "", "name", -1, ""},
+}, {
+	s:   "ch:name-suffix",
+	url: &charm.URL{"ch", "", "name-suffix", -1, ""},
+}, {
+	s:   "ch:name-1",
+	err: `cannot parse URL "ch:name-1": name "name-1" not valid`,
+}, {
+	s:   "ch:name/foo",
+	err: `charm or bundle URL $URL malformed, expected "<name>"`,
+}, {
+	s:   "ch:~user/name",
+	err: `charm or bundle URL $URL malformed, expected "<name>"`,
+}, {
+	s:   "ch:~user/series/name-0",
+	err: `charm or bundle URL $URL malformed, expected "<name>"`,
+}, {
+	s:   "ch:nam-!e",
+	err: `cannot parse URL "ch:nam-!e": name "nam-!e" not valid`,
 }}
 
 func (s *URLSuite) TestParseURL(c *gc.C) {
