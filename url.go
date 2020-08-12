@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/juju/errors"
-
 	"gopkg.in/juju/names.v3"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -51,6 +50,12 @@ func (s Schema) String() string {
 	return string(s)
 }
 
+var (
+	// DefaultSchema for the charm package.
+	// It's used as the fallback for the absence of a schema in a URL.
+	DefaultSchema = CharmHub
+)
+
 // Location represents a charm location, which must declare a path component
 // and a string representation.
 type Location interface {
@@ -68,6 +73,7 @@ type Location interface {
 //     cs:precise/wordpress-20
 //     cs:development/precise/wordpress-20
 //     cs:~joe/development/wordpress
+//     ch:wordpress
 //
 type URL struct {
 	Schema   string // "cs", "ch" or "local".
@@ -281,24 +287,6 @@ func (r URL) Path() string {
 	return r.path()
 }
 
-// InferURL parses src as a reference, fills out the series in the
-// returned URL using defaultSeries if necessary.
-//
-// This function is deprecated. New code should use ParseURL instead.
-func InferURL(src, defaultSeries string) (*URL, error) {
-	u, err := ParseURL(src)
-	if err != nil {
-		return nil, err
-	}
-	if u.Series == "" {
-		if defaultSeries == "" {
-			return nil, errors.Errorf("cannot infer charm or bundle URL for %q: charm or bundle url series is not resolved", src)
-		}
-		u.Series = defaultSeries
-	}
-	return u, nil
-}
-
 func (u URL) String() string {
 	return fmt.Sprintf("%s:%s", u.Schema, u.Path())
 }
@@ -500,4 +488,20 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
 	}
 	return &r, nil
+}
+
+// EnsureSchema will ensure that the scheme for a given URL is correct and
+// valid.
+func EnsureSchema(url string) (string, error) {
+	u, err := gourl.Parse(url)
+	if err != nil {
+		return "", errors.Errorf("cannot parse charm or bundle URL: %q", url)
+	}
+	switch Schema(u.Scheme) {
+	case CharmStore, CharmHub, Local, HTTP, HTTPS:
+		return url, nil
+	default:
+		// If the schema is empty, we fall back to the default schema.
+		return DefaultSchema.Prefix(url), nil
+	}
 }

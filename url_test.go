@@ -396,73 +396,25 @@ func (s *URLSuite) TestRewriteURL(c *gc.C) {
 	}
 }
 
-var inferTests = []struct {
+var ensureSchemaTests = []struct {
 	vague, exact string
 }{
-	{"foo", "cs:defseries/foo"},
-	{"foo-1", "cs:defseries/foo-1"},
-	{"n0-n0-n0", "cs:defseries/n0-n0-n0"},
-	{"cs:foo", "cs:defseries/foo"},
-	{"local:foo", "local:defseries/foo"},
-	{"series/foo", "cs:series/foo"},
-	{"cs:series/foo", "cs:series/foo"},
-	{"local:series/foo", "local:series/foo"},
-	{"cs:~user/foo", "cs:~user/defseries/foo"},
-	{"cs:~user/series/foo", "cs:~user/series/foo"},
-	{"local:~user/series/foo", "local:~user/series/foo"},
-	{"bs:foo", "bs:defseries/foo"},
-	{"cs:~1/foo", "cs:~1/defseries/foo"},
-	{"cs:foo-1-2", "cs:defseries/foo-1-2"},
-}
-
-func (s *URLSuite) TestInferURL(c *gc.C) {
-	for i, t := range inferTests {
-		c.Logf("test %d", i)
-		comment := gc.Commentf("InferURL(%q, %q)", t.vague, "defseries")
-		inferred, ierr := charm.InferURL(t.vague, "defseries")
-		parsed, perr := charm.ParseURL(t.exact)
-		if perr == nil {
-			c.Check(inferred, gc.DeepEquals, parsed, comment)
-			c.Check(ierr, gc.IsNil)
-		} else {
-			expect := perr.Error()
-			if t.vague != t.exact {
-				if colIdx := strings.Index(expect, ":"); colIdx > 0 {
-					expect = expect[:colIdx]
-				}
-			}
-			c.Check(ierr.Error(), gc.Matches, expect+".*", comment)
-		}
-	}
-	u, err := charm.InferURL("~blah", "defseries")
-	c.Assert(u, gc.IsNil)
-	c.Assert(err, gc.ErrorMatches, "URL without charm or bundle name: .*")
-}
-
-var inferNoDefaultSeriesTests = []struct {
-	vague, exact string
-	resolved     bool
-}{
-	{"foo", "", false},
-	{"foo-1", "", false},
-	{"cs:foo", "", false},
-	{"cs:~user/foo", "", false},
-	{"series/foo", "cs:series/foo", true},
-	{"cs:series/foo", "cs:series/foo", true},
-	{"cs:~user/series/foo", "cs:~user/series/foo", true},
+	{"foo", "ch:foo"},
+	{"foo-1", "ch:foo-1"},
+	{"~user/foo", "ch:~user/foo"},
+	{"series/foo", "ch:series/foo"},
+	{"cs:foo", "cs:foo"},
+	{"local:foo", "local:foo"},
+	{"http:foo", "http:foo"},
+	{"https:foo", "https:foo"},
 }
 
 func (s *URLSuite) TestInferURLNoDefaultSeries(c *gc.C) {
-	for i, t := range inferNoDefaultSeriesTests {
+	for i, t := range ensureSchemaTests {
 		c.Logf("%d: %s", i, t.vague)
-		inferred, err := charm.InferURL(t.vague, "")
-		if t.exact == "" {
-			c.Assert(err, gc.ErrorMatches, fmt.Sprintf("cannot infer charm or bundle URL for %q: charm or bundle url series is not resolved", t.vague))
-		} else {
-			parsed, err := charm.ParseURL(t.exact)
-			c.Assert(err, gc.IsNil)
-			c.Assert(inferred, gc.DeepEquals, parsed, gc.Commentf(`InferURL(%q, "")`, t.vague))
-		}
+		inferred, err := charm.EnsureSchema(t.vague)
+		c.Assert(err, gc.IsNil)
+		c.Assert(inferred, gc.Equals, t.exact)
 	}
 }
 
