@@ -397,24 +397,33 @@ func (s *URLSuite) TestRewriteURL(c *gc.C) {
 }
 
 var ensureSchemaTests = []struct {
-	vague, exact string
+	input, expected, err string
 }{
-	{"foo", "ch:foo"},
-	{"foo-1", "ch:foo-1"},
-	{"~user/foo", "ch:~user/foo"},
-	{"series/foo", "ch:series/foo"},
-	{"cs:foo", "cs:foo"},
-	{"local:foo", "local:foo"},
-	{"http:foo", "http:foo"},
-	{"https:foo", "https:foo"},
+	{input: "foo", expected: "ch:foo"},
+	{input: "foo-1", expected: "ch:foo-1"},
+	{input: "~user/foo", expected: "ch:~user/foo"},
+	{input: "series/foo", expected: "ch:series/foo"},
+	{input: "cs:foo", expected: "cs:foo"},
+	{input: "local:foo", expected: "local:foo"},
+	{input: "http:foo", expected: "http:foo"},
+	{input: "https:foo", expected: "https:foo"},
+	{
+		input: "unknown:foo",
+		err:   `schema "unknown" not valid`,
+	},
 }
 
 func (s *URLSuite) TestInferURLNoDefaultSeries(c *gc.C) {
 	for i, t := range ensureSchemaTests {
-		c.Logf("%d: %s", i, t.vague)
-		inferred, err := charm.EnsureSchema(t.vague)
+		c.Logf("%d: %s", i, t.input)
+		inferred, err := charm.EnsureSchema(t.input)
+		if t.err != "" {
+			c.Assert(err, gc.ErrorMatches, t.err)
+			continue
+		}
+
 		c.Assert(err, gc.IsNil)
-		c.Assert(inferred, gc.Equals, t.exact)
+		c.Assert(inferred, gc.Equals, t.expected)
 	}
 }
 

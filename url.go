@@ -500,8 +500,10 @@ func EnsureSchema(url string) (string, error) {
 	switch Schema(u.Scheme) {
 	case CharmStore, CharmHub, Local, HTTP, HTTPS:
 		return url, nil
-	default:
+	case Schema(""):
 		// If the schema is empty, we fall back to the default schema.
 		return DefaultSchema.Prefix(url), nil
+	default:
+		return "", errors.NotValidf("schema %q", u.Scheme)
 	}
 }
