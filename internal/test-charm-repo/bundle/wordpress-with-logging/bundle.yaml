@@ -1,6 +1,6 @@
 applications:
     wordpress:
-        charm: wordpress
+        charm: cs:wordpress
         num_units: 1
         bindings:
             db: db
@@ -8,12 +8,12 @@ applications:
             db-client: db
             admin-api: public
     mysql:
-        charm: mysql
+        charm: cs:mysql
         num_units: 1
         bindings:
             server: db
     logging:
-        charm: logging
+        charm: cs:logging
 relations:
     - ["wordpress:db", "mysql:server"]
     - ["wordpress:juju-info", "logging:info"]
