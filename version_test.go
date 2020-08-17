@@ -6,7 +6,7 @@ package charm_test
 import (
 	"strings"
 
-	"github.com/juju/charm/v7"
+	"github.com/juju/charm/v8"
 	gc "gopkg.in/check.v1"
 )
 

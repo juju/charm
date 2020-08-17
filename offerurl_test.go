@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	charm "github.com/juju/charm/v7"
+	charm "github.com/juju/charm/v8"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 )

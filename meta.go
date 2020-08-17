@@ -20,8 +20,8 @@ import (
 	"gopkg.in/juju/names.v3"
 	"gopkg.in/yaml.v2"
 
-	"github.com/juju/charm/v7/hooks"
-	"github.com/juju/charm/v7/resource"
+	"github.com/juju/charm/v8/hooks"
+	"github.com/juju/charm/v8/resource"
 )
 
 // RelationScope describes the scope of a relation.
