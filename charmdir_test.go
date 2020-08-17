@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/juju/charm/v7"
+	"github.com/juju/charm/v8"
 	"github.com/juju/collections/set"
 	"github.com/juju/loggo"
 	"github.com/juju/testing"

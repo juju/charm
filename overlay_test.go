@@ -16,7 +16,7 @@ import (
 	gc "gopkg.in/check.v1"
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/juju/charm/v7"
+	"github.com/juju/charm/v8"
 )
 
 type bundleDataOverlaySuite struct {

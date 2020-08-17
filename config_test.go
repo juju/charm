@@ -12,7 +12,7 @@ import (
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
 
-	"github.com/juju/charm/v7"
+	"github.com/juju/charm/v8"
 )
 
 type ConfigSuite struct {
