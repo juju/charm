@@ -30,6 +30,13 @@ func (*bundleDataOverlaySuite) TestExtractBaseAndOverlayParts(c *gc.C) {
 applications:
   apache2:
     charm: cs:apache2-26
+    expose: true
+    exposed-endpoints:
+      - www
+    expose-to-spaces:
+      - dmz
+    expose-to-cidrs:
+      - 13.37.0.016
     offers:
       my-offer:
         endpoints:
@@ -51,6 +58,9 @@ series: bionic
 applications:
   apache2:
     charm: cs:apache2-26
+    expose: true
+    exposed-endpoints:
+    - www
 saas:
   apache2:
     url: production:admin/info.apache
@@ -60,6 +70,10 @@ series: bionic
 	expOverlay := `
 applications:
   apache2:
+    expose-to-spaces:
+    - dmz
+    expose-to-cidrs:
+    - 13.37.0.016
     offers:
       my-offer:
         endpoints:

@@ -295,11 +295,11 @@ type ApplicationSpec struct {
 
 	// ExposeToSpaces contains a list of spaces that should be able to
 	// access the application ports if the application is exposed.
-	ExposeToSpaces []string `bson:"expose-to-spaces,omitempty" json:"expose-to-spaces,omitempty" yaml:"expose-to-spaces,omitempty"`
+	ExposeToSpaces []string `bson:"expose-to-spaces,omitempty" json:"expose-to-spaces,omitempty" yaml:"expose-to-spaces,omitempty" source:"overlay-only"`
 
 	// ExposeToCIDRs contains a list of CIDRs that should be able to
 	// access the application ports if the application is exposed.
-	ExposeToCIDRs []string `bson:"expose-to-cidrs,omitempty" json:"expose-to-cidrs,omitempty" yaml:"expose-to-cidrs,omitempty"`
+	ExposeToCIDRs []string `bson:"expose-to-cidrs,omitempty" json:"expose-to-cidrs,omitempty" yaml:"expose-to-cidrs,omitempty" source:"overlay-only"`
 
 	// Options holds the configuration values
 	// to apply to the new application. They should
