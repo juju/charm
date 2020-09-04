@@ -597,6 +597,44 @@ applications:
 		`invalid offer name "$bad-name" in application "aws-integrator"`,
 		`invalid endpoint name "nope!" for offer "$bad-name" in application "aws-integrator"`,
 	},
+}, {
+	about: "expose parameters provided when the application is not exposed",
+	data: `
+applications:
+    aws-integrator:
+        charm: cs:~containers/aws-integrator
+        num_units: 1
+        expose: false
+        exposed-endpoints:
+          - admin
+        expose-to-spaces:
+          - alpha
+        expose-to-cidrs:
+          - 13.37.0.0/16
+`,
+	errors: []string{
+		`exposed endpoints parameter in application "aws-integrator" cannot be specified when the application is not exposed`,
+		`expose to spaces parameter in application "aws-integrator" cannot be specified when the application is not exposed`,
+		`expose to CIDRs parameter in application "aws-integrator" cannot be specified when the application is not exposed`,
+	},
+}, {
+	about: "invalid CIDR in expose-to-cidrs parameter when the app is exposed",
+	data: `
+applications:
+    aws-integrator:
+        charm: cs:~containers/aws-integrator
+        num_units: 1
+        expose: true
+        exposed-endpoints:
+          - admin
+        expose-to-spaces:
+          - alpha
+        expose-to-cidrs:
+          - not-a-cidr
+`,
+	errors: []string{
+		`invalid CIDR "not-a-cidr" for expose to CIDRs parameter in application "aws-integrator"`,
+	},
 }}
 
 func (*bundleDataSuite) TestVerifyErrors(c *gc.C) {

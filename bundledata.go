@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -285,6 +286,20 @@ type ApplicationSpec struct {
 
 	// Expose holds whether the application must be exposed.
 	Expose bool `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+
+	// ExposedEndpoints stores a subset of the application endpoints that
+	// are used to select the set of open ports that should be accessible
+	// if the application is exposed. An empty value indicates that all
+	// open ports should be made accessible.
+	ExposedEndpoints []string `bson:"exposed-endpoints,omitempty" json:"exposed-endpoints,omitempty" yaml:"exposed-endpoints,omitempty"`
+
+	// ExposeToSpaces contains a list of spaces that should be able to
+	// access the application ports if the application is exposed.
+	ExposeToSpaces []string `bson:"expose-to-spaces,omitempty" json:"expose-to-spaces,omitempty" yaml:"expose-to-spaces,omitempty"`
+
+	// ExposeToCIDRs contains a list of CIDRs that should be able to
+	// access the application ports if the application is exposed.
+	ExposeToCIDRs []string `bson:"expose-to-cidrs,omitempty" json:"expose-to-cidrs,omitempty" yaml:"expose-to-cidrs,omitempty"`
 
 	// Options holds the configuration values
 	// to apply to the new application. They should
@@ -708,6 +723,24 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 			verifier.verifyKubernetesPlacement(name, app.To)
 		} else {
 			verifier.verifyPlacement(name, app.NumUnits, app.To)
+		}
+		// Check expose parameters
+		if app.Expose {
+			for _, cidr := range app.ExposeToCIDRs {
+				if _, _, err := net.ParseCIDR(cidr); err != nil {
+					verifier.addErrorf("invalid CIDR %q for expose to CIDRs parameter in application %q", cidr, name)
+				}
+			}
+		} else {
+			if len(app.ExposedEndpoints) != 0 {
+				verifier.addErrorf("exposed endpoints parameter in application %q cannot be specified when the application is not exposed", name)
+			}
+			if len(app.ExposeToSpaces) != 0 {
+				verifier.addErrorf("expose to spaces parameter in application %q cannot be specified when the application is not exposed", name)
+			}
+			if len(app.ExposeToCIDRs) != 0 {
+				verifier.addErrorf("expose to CIDRs parameter in application %q cannot be specified when the application is not exposed", name)
+			}
 		}
 	}
 }
