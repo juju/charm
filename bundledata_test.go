@@ -598,42 +598,39 @@ applications:
 		`invalid endpoint name "nope!" for offer "$bad-name" in application "aws-integrator"`,
 	},
 }, {
-	about: "expose parameters provided when the application is not exposed",
+	about: "expose parameters provided together with expose:true",
 	data: `
-applications:
-    aws-integrator:
-        charm: cs:~containers/aws-integrator
-        num_units: 1
-        expose: false
-        exposed-endpoints:
-          - admin
+applications: 
+  aws-integrator: 
+    charm: "cs:~containers/aws-integrator"
+    expose: true
+    exposed-endpoints:
+      admin:
         expose-to-spaces:
           - alpha
         expose-to-cidrs:
           - 13.37.0.0/16
+    num_units: 1
 `,
 	errors: []string{
-		`exposed endpoints parameter in application "aws-integrator" cannot be specified when the application is not exposed`,
-		`expose to spaces parameter in application "aws-integrator" cannot be specified when the application is not exposed`,
-		`expose to CIDRs parameter in application "aws-integrator" cannot be specified when the application is not exposed`,
+		`exposed-endpoints cannot be specified together with "exposed:true" in application "aws-integrator" as this poses a security risk when deploying bundles to older controllers`,
 	},
 }, {
 	about: "invalid CIDR in expose-to-cidrs parameter when the app is exposed",
 	data: `
-applications:
-    aws-integrator:
-        charm: cs:~containers/aws-integrator
-        num_units: 1
-        expose: true
-        exposed-endpoints:
-          - admin
+applications: 
+  aws-integrator: 
+    charm: "cs:~containers/aws-integrator"
+    exposed-endpoints:
+      admin:
         expose-to-spaces:
           - alpha
         expose-to-cidrs:
           - not-a-cidr
+    num_units: 1
 `,
 	errors: []string{
-		`invalid CIDR "not-a-cidr" for expose to CIDRs parameter in application "aws-integrator"`,
+		`invalid CIDR "not-a-cidr" for expose to CIDRs field for endpoint "admin" in application "aws-integrator"`,
 	},
 }}
 
