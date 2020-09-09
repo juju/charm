@@ -134,8 +134,8 @@ func ValidateName(name string) error {
 
 // WithRevision returns a URL equivalent to url but with Revision set
 // to revision.
-func (url *URL) WithRevision(revision int) *URL {
-	urlCopy := *url
+func (u *URL) WithRevision(revision int) *URL {
+	urlCopy := *u
 	urlCopy.Revision = revision
 	return &urlCopy
 }
@@ -181,16 +181,16 @@ func ParseURL(url string) (*URL, error) {
 		// Handle talking to the new style of the schema.
 		curl, err = parseIdentifierURL(u)
 	case u.Opaque != "":
-		// Shortcut old-style URLs.
 		u.Path = u.Opaque
 		curl, err = parseV1URL(u, url)
+	case CharmStore.Matches(u.Scheme):
+		curl, err = parseV1URL(u, url)
 	case HTTP.Matches(u.Scheme) || HTTPS.Matches(u.Scheme):
-		// Shortcut new-style URLs.
 		curl, err = parseHTTPURL(u)
 	default:
-		// TODO: for now, fall through to parsing v1 references; this will be
-		// expanded to be more robust in the future.
-		curl, err = parseV1URL(u, url)
+		// Handle the fact that anything without a prefix is now a CharmHub
+		// charm URL.
+		curl, err = parseIdentifierURL(u)
 	}
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -251,28 +251,42 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 	return &r, nil
 }
 
-func (r *URL) path() string {
+func (u *URL) path() string {
 	var parts []string
-	if r.User != "" {
-		parts = append(parts, fmt.Sprintf("~%s", r.User))
+	if u.User != "" {
+		parts = append(parts, fmt.Sprintf("~%s", u.User))
 	}
-	if r.Series != "" {
-		parts = append(parts, r.Series)
+	if u.Series != "" {
+		parts = append(parts, u.Series)
 	}
-	if r.Revision >= 0 {
-		parts = append(parts, fmt.Sprintf("%s-%d", r.Name, r.Revision))
+	if u.Revision >= 0 {
+		parts = append(parts, fmt.Sprintf("%s-%d", u.Name, u.Revision))
 	} else {
-		parts = append(parts, r.Name)
+		parts = append(parts, u.Name)
 	}
 	return strings.Join(parts, "/")
 }
 
-func (r URL) Path() string {
-	return r.path()
+// FullPath returns the full path of a URL path including the schema.
+func (u *URL) FullPath() string {
+	return fmt.Sprintf("%s:%s", u.Schema, u.Path())
 }
 
-func (u URL) String() string {
-	return fmt.Sprintf("%s:%s", u.Schema, u.Path())
+// Path returns the path of the URL without the schema.
+func (u *URL) Path() string {
+	return u.path()
+}
+
+// String returns the string representation of the URL.
+// To keep backwards compatibility with older schema versions (CharmStore), we
+// output the FullPath of the URL.
+// For new CharmHub integrations, we only want the Path.
+// That way we can hide the schema from the user.
+func (u *URL) String() string {
+	if CharmHub.Matches(u.Schema) {
+		return u.Path()
+	}
+	return u.FullPath()
 }
 
 // GetBSON turns u into a bson.Getter so it can be saved directly
@@ -311,13 +325,16 @@ func (u *URL) SetBSON(raw bson.Raw) error {
 	return nil
 }
 
+// MarshalJSON will marshal the URL into a slice of bytes in a JSON
+// representation.
 func (u *URL) MarshalJSON() ([]byte, error) {
 	if u == nil {
 		panic("cannot marshal nil *charm.URL")
 	}
-	return json.Marshal(u.String())
+	return json.Marshal(u.FullPath())
 }
 
+// UnmarshalJSON will unmarshal the URL from a JSON representation.
 func (u *URL) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
@@ -332,12 +349,12 @@ func (u *URL) UnmarshalJSON(b []byte) error {
 }
 
 // MarshalText implements encoding.TextMarshaler by
-// returning u.String()
+// returning u.FullPath()
 func (u *URL) MarshalText() ([]byte, error) {
 	if u == nil {
 		return nil, nil
 	}
-	return []byte(u.String()), nil
+	return []byte(u.FullPath()), nil
 }
 
 // UnmarshalText implements encoding.TestUnmarshaler by

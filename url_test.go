@@ -200,21 +200,20 @@ var urlTests = []struct {
 	s:   "local:~user/name",
 	err: `local charm or bundle URL with user name: $URL`,
 }, {
-	s:     "precise/wordpress",
-	exact: "cs:precise/wordpress",
-	url:   &charm.URL{"cs", "", "wordpress", -1, "precise"},
+	s:   "precise/wordpress",
+	err: `charm or bundle URL $URL malformed, expected "<name>"`,
 }, {
 	s:     "foo",
-	exact: "cs:foo",
-	url:   &charm.URL{"cs", "", "foo", -1, ""},
+	exact: "foo",
+	url:   &charm.URL{"ch", "", "foo", -1, ""},
 }, {
 	s:     "foo-1",
-	exact: "cs:foo-1",
-	url:   &charm.URL{"cs", "", "foo", 1, ""},
+	exact: "foo-1",
+	url:   &charm.URL{"ch", "", "foo", 1, ""},
 }, {
 	s:     "n0-n0-n0",
-	exact: "cs:n0-n0-n0",
-	url:   &charm.URL{"cs", "", "n0-n0-n0", -1, ""},
+	exact: "n0-n0-n0",
+	url:   &charm.URL{"ch", "", "n0-n0-n0", -1, ""},
 }, {
 	s:     "cs:foo",
 	exact: "cs:foo",
@@ -224,24 +223,23 @@ var urlTests = []struct {
 	exact: "local:foo",
 	url:   &charm.URL{"local", "", "foo", -1, ""},
 }, {
-	s:     "series/foo",
-	exact: "cs:series/foo",
-	url:   &charm.URL{"cs", "", "foo", -1, "series"},
-}, {
 	s:   "series/foo/bar",
-	err: `charm or bundle URL has invalid form: "series/foo/bar"`,
+	err: `charm or bundle URL $URL malformed, expected "<name>"`,
 }, {
 	s:   "cs:foo/~blah",
 	err: `cannot parse URL $URL: name "~blah" not valid`,
 }, {
-	s:   "ch:name",
-	url: &charm.URL{"ch", "", "name", -1, ""},
+	s:     "ch:name",
+	exact: "name",
+	url:   &charm.URL{"ch", "", "name", -1, ""},
 }, {
-	s:   "ch:name-suffix",
-	url: &charm.URL{"ch", "", "name-suffix", -1, ""},
+	s:     "ch:name-suffix",
+	exact: "name-suffix",
+	url:   &charm.URL{"ch", "", "name-suffix", -1, ""},
 }, {
-	s:   "ch:name-1",
-	url: &charm.URL{"ch", "", "name", 1, ""},
+	s:     "ch:name-1",
+	exact: "name-1",
+	url:   &charm.URL{"ch", "", "name", 1, ""},
 }, {
 	s:   "ch:name/foo",
 	err: `charm or bundle URL $URL malformed, expected "<name>"`,
