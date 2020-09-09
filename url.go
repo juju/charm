@@ -278,9 +278,10 @@ func (u *URL) Path() string {
 }
 
 // String returns the string representation of the URL.
-// To keep backwards with older schema versions (CharmStore), we output the
-// FullPath of the URL. For new CharmHub integrations, we only want the Path.
-// That way we can hide the schema to the user.
+// To keep backwards compatibility with older schema versions (CharmStore), we
+// output the FullPath of the URL.
+// For new CharmHub integrations, we only want the Path.
+// That way we can hide the schema from the user.
 func (u *URL) String() string {
 	if CharmHub.Matches(u.Schema) {
 		return u.Path()
