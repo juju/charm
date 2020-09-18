@@ -488,6 +488,9 @@ func ReadAndMergeBundleData(sources ...BundleDataSource) (*BundleData, error) {
 }
 
 func applyOverlay(base, overlay *BundleDataPart) error {
+	if overlay == nil || len(overlay.PresenceMap) == 0 {
+		return nil
+	}
 	if !overlay.PresenceMap.fieldPresent("applications") && len(overlay.Data.Applications) > 0 {
 		return errors.Errorf("bundle overlay file used deprecated 'services' key, this is not valid for bundle overlay files")
 	}
