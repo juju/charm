@@ -760,6 +760,41 @@ applications:
 	c.Assert("\n"+string(merged), gc.Equals, exp)
 }
 
+func (*bundleDataOverlaySuite) TestBundleDataSourceWithEmptyOverlay(c *gc.C) {
+	base := `
+applications:
+  django:
+    charm: cs:django
+`
+
+	overlays := `
+---
+`
+
+	baseDir := c.MkDir()
+	mustWriteFile(c, filepath.Join(baseDir, "bundle.yaml"), base)
+
+	ovlDir := c.MkDir()
+	mustWriteFile(c, filepath.Join(ovlDir, "overlays.yaml"), overlays)
+
+	bd, err := charm.ReadAndMergeBundleData(
+		mustCreateLocalDataSource(c, filepath.Join(baseDir, "bundle.yaml")),
+		mustCreateLocalDataSource(c, filepath.Join(ovlDir, "overlays.yaml")),
+	)
+	c.Assert(err, gc.IsNil)
+
+	merged, err := yaml.Marshal(bd)
+	c.Assert(err, gc.IsNil)
+
+	exp := `
+applications:
+  django:
+    charm: cs:django
+`
+
+	c.Assert("\n"+string(merged), gc.Equals, exp)
+}
+
 func (*bundleDataOverlaySuite) TestReadAndMergeBundleDataWithRelativeCharmPaths(c *gc.C) {
 	base := `
 applications:
