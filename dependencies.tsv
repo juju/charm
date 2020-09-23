@@ -10,7 +10,7 @@ github.com/juju/os	git	0ffd1641ec10b98d99eabb23729a2156244da119	2018-11-02T05:00
 github.com/juju/retry	git	9058e192b216b21e4741c2eeb20ac798ba1ea80a	2018-08-21T22:57:55Z
 github.com/juju/schema	git	64a6158e90710d0a16c6bd3cf0a6be6b2e80193c	2018-12-10T14:06:54Z
 github.com/juju/testing	git	472a3e8b2073fb3cd67c12d2bc5f3cd28e5f4116	2018-09-20T08:48:28Z
-github.com/juju/utils	git	bf9cc5bdd62dabc40b7f634b39a5e2dc44d44c45	2018-08-20T21:05:20Z
+github.com/juju/utils/v2	git	bf9cc5bdd62dabc40b7f634b39a5e2dc44d44c45	2018-08-20T21:05:20Z
 github.com/juju/version	git	b64dbd566305c836274f0268fa59183a52906b36	2018-01-08T02:23:36Z
 github.com/kr/pretty	git	73f6ac0b30a98e433b289500d779f50c1a6f0712	2018-05-06T08:33:45Z
 github.com/kr/text	git	e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f	2018-05-06T08:24:08Z

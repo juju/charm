@@ -9,8 +9,8 @@ import (
 	"io/ioutil"
 	"strings"
 
+	"github.com/juju/collections/set"
 	"github.com/juju/errors"
-	"github.com/juju/utils/set"
 	"gopkg.in/yaml.v2"
 )
 

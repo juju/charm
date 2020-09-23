@@ -8,7 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	ziputil "github.com/juju/utils/zip"
+	ziputil "github.com/juju/utils/v2/zip"
 )
 
 type BundleArchive struct {

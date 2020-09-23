@@ -15,7 +15,7 @@ import (
 	"strconv"
 
 	"github.com/juju/collections/set"
-	ziputil "github.com/juju/utils/zip"
+	ziputil "github.com/juju/utils/v2/zip"
 )
 
 // The CharmArchive type encapsulates access to data and operations

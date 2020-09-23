@@ -2,32 +2,26 @@ module github.com/juju/charm/v8
 
 require (
 	github.com/gobwas/glob v0.2.3 // indirect
-	github.com/juju/clock v0.0.0-20190205081909-9c5c9712527c // indirect
-	github.com/juju/collections v0.0.0-20180516022642-90152009b5f3
-	github.com/juju/errors v0.0.0-20190930114154-d42613fe1ab9
+	github.com/juju/collections v0.0.0-20200605021417-0d0ec82b7271
+	github.com/juju/errors v0.0.0-20200330140219-3fe23663418f
 	github.com/juju/gojsonpointer v0.0.0-20150204194629-afe8b77aa08f // indirect
 	github.com/juju/gojsonreference v0.0.0-20150204194633-f0d24ac5ee33 // indirect
 	github.com/juju/gojsonschema v0.0.0-20150312170016-e1ad140384f2
-	github.com/juju/loggo v0.0.0-20190526231331-6e530bcce5d8
-	github.com/juju/os v0.0.0-20191022170002-da411304426c
-	github.com/juju/retry v0.0.0-20180821225755-9058e192b216 // indirect
+	github.com/juju/loggo v0.0.0-20200526014432-9ce3a2e09b5e
+	github.com/juju/names/v4 v4.0.0-20200923012352-008effd8611b
+	github.com/juju/os v0.0.0-20200701063157-8e6dd7a2b438
 	github.com/juju/schema v0.0.0-20160301111646-1e25943f8c6f
-	github.com/juju/testing v0.0.0-20191001232224-ce9dec17d28b
-	github.com/juju/utils v0.0.0-20180619112806-c746c6e86f4f
-	github.com/juju/version v0.0.0-20191106052214-a0f5311c2166
-	github.com/kr/pretty v0.2.1 // indirect
+	github.com/juju/systems v0.0.0-20200925032749-8c613192c759
+	github.com/juju/testing v0.0.0-20200923013621-75df6121fbb0
+	github.com/juju/utils/v2 v2.0.0-20200923005554-4646bfea2ef1
+	github.com/juju/version v0.0.0-20191219164919-81c1be00b9a6
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/stretchr/testify v1.6.1 // indirect
-	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de // indirect
-	golang.org/x/net v0.0.0-20200813134508-3edf25e44fcc // indirect
 	golang.org/x/sys v0.0.0-20200817085935-3ff754bf58a9 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
+	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b
 	gopkg.in/gobwas/glob.v0 v0.2.3
-	gopkg.in/juju/names.v2 v2.0.0-20190813004204-e057c73bd1be // indirect
-	gopkg.in/juju/names.v3 v3.0.0-20191210002836-39289f373765
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
-	gopkg.in/yaml.v2 v2.2.7
-	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
+	gopkg.in/yaml.v2 v2.3.0
 )
 
 go 1.14
