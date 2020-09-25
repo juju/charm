@@ -1777,6 +1777,189 @@ storage:
 	})
 }
 
+func (s *MetaSuite) TestContainersNotOnIAAS(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+platforms:
+  - machine
+systems:
+  - os: ubuntu
+    channel: 18.04/stable
+containers:
+  foo:
+    systems:
+      - resource: test-os
+    mounts:
+      - storage: a
+        location: /b/
+resources:
+  test-os:
+    type: oci-image
+storage:
+  a:
+    type: filesystem
+`))
+	c.Assert(err, gc.ErrorMatches, `parsing containers: containers are currently only supported on kubernetes platform`)
+}
+
+func (s *MetaSuite) TestCharmBaseResourceError(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+platforms:
+  - kubernetes
+systems:
+  - resource: test-os
+containers:
+  foo:
+    systems:
+      - resource: test-os
+    mounts:
+      - storage: a
+        location: /b/
+resources:
+  test-os:
+    type: oci-image
+storage:
+  a:
+    type: filesystem
+`))
+	c.Assert(err, gc.ErrorMatches, `parsing systems: resource not supported as charm base system`)
+}
+
+func (s *MetaSuite) TestSystemReferencesFileResource(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+platforms:
+  - kubernetes
+systems:
+  - os: ubuntu
+    channel: 18.04/stable
+containers:
+  foo:
+    systems:
+      - resource: test-os
+    mounts:
+      - storage: a
+        location: /b/
+resources:
+  test-os:
+    type: file
+storage:
+  a:
+    type: filesystem
+`))
+	c.Assert(err, gc.ErrorMatches, `parsing containers: container "foo": referenced resource "test-os" is not a oci-image`)
+}
+
+func (s *MetaSuite) TestSystemReferencedMissingResource(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+platforms:
+  - kubernetes
+systems:
+  - os: ubuntu
+    channel: 18.04/stable
+containers:
+  foo:
+    systems:
+      - resource: test-os
+    mounts:
+      - storage: a
+        location: /b/
+storage:
+  a:
+    type: filesystem
+`))
+	c.Assert(err, gc.ErrorMatches, `parsing containers: container "foo": referenced resource "test-os" not found`)
+}
+
+func (s *MetaSuite) TestMountMissingStorage(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+platforms:
+  - kubernetes
+systems:
+  - os: ubuntu
+    channel: 18.04/stable
+containers:
+  foo:
+    systems:
+      - resource: test-os
+    mounts:
+      - location: /b/
+resources:
+  test-os:
+    type: oci-image
+storage:
+  a:
+    type: filesystem
+`))
+	c.Assert(err, gc.ErrorMatches, `parsing containers: container "foo": storage must be specifed on mount`)
+}
+
+func (s *MetaSuite) TestMountMissingLocation(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+platforms:
+  - kubernetes
+systems:
+  - os: ubuntu
+    channel: 18.04/stable
+containers:
+  foo:
+    systems:
+      - resource: test-os
+    mounts:
+      - storage: a
+resources:
+  test-os:
+    type: oci-image
+storage:
+  a:
+    type: filesystem
+`))
+	c.Assert(err, gc.ErrorMatches, `parsing containers: container "foo": location must be specifed on mount`)
+}
+
+func (s *MetaSuite) TestMountIncorrectStorage(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+platforms:
+  - kubernetes
+systems:
+  - os: ubuntu
+    channel: 18.04/stable
+containers:
+  foo:
+    systems:
+      - resource: test-os
+    mounts:
+      - storage: b
+        location: /b/
+resources:
+  test-os:
+    type: oci-image
+storage:
+  a:
+    type: filesystem
+`))
+	c.Assert(err, gc.ErrorMatches, `parsing containers: container "foo": storage "b" not valid`)
+}
+
 type dummyCharm struct{}
 
 func (c *dummyCharm) Version() string {

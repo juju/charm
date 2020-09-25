@@ -283,15 +283,21 @@ type Meta struct {
 	Containers    map[string]Container `bson:"containers,omitempty" json:"containers,omitempty" yaml:"containers,omitempty"`
 }
 
+// Platform describes deployment plaforms charms can be deployed to.
+// NOTE: for v2 charms only.
 type Platform string
 
+// Platforms v2 charms support.
 const (
 	PlatformMachine    Platform = "machine"
 	PlatformKubernetes Platform = "kubernetes"
 )
 
+// Architecture describes architectures charms can be deployed to.
+// NOTE: for v2 charms only.
 type Architecture string
 
+// Architectures v2 charms support.
 const (
 	AMD64   Architecture = "amd64"
 	ARM64   Architecture = "arm64"
@@ -299,18 +305,22 @@ const (
 	S390X   Architecture = "s390x"
 )
 
+// Container specifies the possible systems it supports and mounts it wants.
 type Container struct {
 	Systems []systems.System `bson:"systems,omitempty" json:"systems,omitempty" yaml:"systems,omitempty"`
 	Mounts  []Mount          `bson:"mounts,omitempty" json:"mounts,omitempty" yaml:"mounts,omitempty"`
 }
 
+// Mount allows a container to mount a storage filesystem from the storage top-level directive.
 type Mount struct {
 	Storage  string `bson:"storage,omitempty" json:"storage,omitempty" yaml:"storage,omitempty"`
 	Location string `bson:"location,omitempty" json:"location,omitempty" yaml:"location,omitempty"`
 }
 
+// Format of the parsed charm.
 type Format int
 
+// Formats are the different versions of charm metadata supported.
 const (
 	FormatV1 = iota
 	FormatV2 = iota
@@ -601,19 +611,19 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	// v2 parsing
 	meta.Systems, err = parseSystems(m["systems"], meta.Resources, true)
 	if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, "parsing systems")
 	}
 	meta.Platforms, err = parsePlatforms(m["platforms"])
 	if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, "parsing platforms")
 	}
 	meta.Architectures, err = parseArchitectures(m["architectures"])
 	if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, "parsing architectures")
 	}
 	meta.Containers, err = parseContainers(m["containers"], meta.Resources, meta.Platforms, meta.Storage)
 	if err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, "parsing containers")
 	}
 	return &meta, nil
 }
@@ -1153,7 +1163,7 @@ func parseSystems(input interface{}, resources map[string]resource.Meta, disallo
 		if value, ok := systemMap["channel"]; ok {
 			system.Channel, err = channel.Parse(value.(string))
 			if err != nil {
-				return nil, errors.Trace(err)
+				return nil, errors.Annotatef(err, "parsing channel %q", value.(string))
 			}
 		}
 		if value, ok := systemMap["resource"]; ok {
