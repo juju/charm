@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/juju/errors"
-	names "gopkg.in/juju/names.v3"
+	names "github.com/juju/names/v4"
 )
 
 // OfferURL represents the location of an offered application and its

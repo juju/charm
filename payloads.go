@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/juju/schema"
-	"gopkg.in/juju/names.v3"
+	"github.com/juju/names/v4"
 )
 
 var payloadClassSchema = schema.FieldMap(

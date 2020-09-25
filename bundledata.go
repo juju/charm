@@ -16,8 +16,8 @@ import (
 	"strings"
 
 	"github.com/juju/errors"
-	"github.com/juju/utils/keyvalues"
-	"gopkg.in/juju/names.v3"
+	"github.com/juju/names/v4"
+	"github.com/juju/utils/v2/keyvalues"
 	"gopkg.in/mgo.v2/bson"
 )
 

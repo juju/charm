@@ -11,13 +11,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/juju/collections/set"
 	"github.com/juju/errors"
+	"github.com/juju/names/v4"
 	"github.com/juju/os"
 	"github.com/juju/os/series"
 	"github.com/juju/schema"
-	"github.com/juju/utils"
+	"github.com/juju/systems"
+	"github.com/juju/systems/channel"
+	"github.com/juju/utils/v2"
 	"github.com/juju/version"
-	"gopkg.in/juju/names.v3"
 	"gopkg.in/yaml.v2"
 
 	"github.com/juju/charm/v8/hooks"
@@ -273,7 +276,55 @@ type Meta struct {
 	Resources      map[string]resource.Meta `bson:"resources,omitempty" json:"Resources,omitempty"`
 	Terms          []string                 `bson:"terms,omitempty" json:"Terms,omitempty"`
 	MinJujuVersion version.Number           `bson:"min-juju-version,omitempty" json:"min-juju-version,omitempty"`
+
+	Systems       []systems.System     `bson:"systems,omitempty" json:"systems,omitempty" yaml:"systems,omitempty"`
+	Platforms     []Platform           `bson:"platforms,omitempty" json:"platforms,omitempty" yaml:"platforms,omitempty"`
+	Architectures []Architecture       `bson:"architectures,omitempty" json:"architectures,omitempty" yaml:"architectures,omitempty"`
+	Containers    map[string]Container `bson:"containers,omitempty" json:"containers,omitempty" yaml:"containers,omitempty"`
 }
+
+// Platform describes deployment plaforms charms can be deployed to.
+// NOTE: for v2 charms only.
+type Platform string
+
+// Platforms v2 charms support.
+const (
+	PlatformMachine    Platform = "machine"
+	PlatformKubernetes Platform = "kubernetes"
+)
+
+// Architecture describes architectures charms can be deployed to.
+// NOTE: for v2 charms only.
+type Architecture string
+
+// Architectures v2 charms support.
+const (
+	AMD64   Architecture = "amd64"
+	ARM64   Architecture = "arm64"
+	PPC64EL Architecture = "ppc64el"
+	S390X   Architecture = "s390x"
+)
+
+// Container specifies the possible systems it supports and mounts it wants.
+type Container struct {
+	Systems []systems.System `bson:"systems,omitempty" json:"systems,omitempty" yaml:"systems,omitempty"`
+	Mounts  []Mount          `bson:"mounts,omitempty" json:"mounts,omitempty" yaml:"mounts,omitempty"`
+}
+
+// Mount allows a container to mount a storage filesystem from the storage top-level directive.
+type Mount struct {
+	Storage  string `bson:"storage,omitempty" json:"storage,omitempty" yaml:"storage,omitempty"`
+	Location string `bson:"location,omitempty" json:"location,omitempty" yaml:"location,omitempty"`
+}
+
+// Format of the parsed charm.
+type Format int
+
+// Formats are the different versions of charm metadata supported.
+const (
+	FormatV1 = iota
+	FormatV2 = iota
+)
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
 	for _, hookName := range hooks.RelationHooks() {
@@ -301,6 +352,36 @@ func (m Meta) Hooks() map[string]bool {
 		generateRelationHooks(hookName, allHooks)
 	}
 	return allHooks
+}
+
+// Format returns the charm metadata format version.
+// Charms that specify systems are v2. Otherwise it
+// defaults to v1.
+func (m Meta) Format() Format {
+	if m.Systems != nil {
+		return FormatV2
+	}
+	return FormatV1
+}
+
+// ComputedSeries of a charm. This is to support legacy logic on new
+// charms that use Systems.
+func (m Meta) ComputedSeries() []string {
+	if m.Format() == FormatV1 {
+		return m.Series
+	}
+	// The slice must be ordered based on system appearance but
+	// have unique elements.
+	seriesSlice := []string(nil)
+	seriesSet := set.NewStrings()
+	for _, system := range m.Systems {
+		series := system.String()
+		if !seriesSet.Contains(series) {
+			seriesSet.Add(series)
+			seriesSlice = append(seriesSlice, series)
+		}
+	}
+	return seriesSlice
 }
 
 // Used for parsing Categories and Tags.
@@ -507,11 +588,10 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	meta.Series = parseStringList(m["series"])
 	meta.Storage = parseStorage(m["storage"])
 	meta.Devices = parseDevices(m["devices"])
-	deployment, err := parseDeployment(m["deployment"], meta.Series, meta.Storage)
+	meta.Deployment, err = parseDeployment(m["deployment"], meta.Series, meta.Storage)
 	if err != nil {
 		return nil, err
 	}
-	meta.Deployment = deployment
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
 
 	if ver := m["min-juju-version"]; ver != nil {
@@ -523,11 +603,28 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	}
 	meta.Terms = parseStringList(m["terms"])
 
-	resources, err := parseMetaResources(m["resources"])
+	meta.Resources, err = parseMetaResources(m["resources"])
 	if err != nil {
 		return nil, err
 	}
-	meta.Resources = resources
+
+	// v2 parsing
+	meta.Systems, err = parseSystems(m["systems"], meta.Resources, true)
+	if err != nil {
+		return nil, errors.Annotatef(err, "parsing systems")
+	}
+	meta.Platforms, err = parsePlatforms(m["platforms"])
+	if err != nil {
+		return nil, errors.Annotatef(err, "parsing platforms")
+	}
+	meta.Architectures, err = parseArchitectures(m["architectures"])
+	if err != nil {
+		return nil, errors.Annotatef(err, "parsing architectures")
+	}
+	meta.Containers, err = parseContainers(m["containers"], meta.Resources, meta.Platforms, meta.Storage)
+	if err != nil {
+		return nil, errors.Annotatef(err, "parsing containers")
+	}
 	return &meta, nil
 }
 
@@ -556,6 +653,10 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 		Terms          []string                         `yaml:"terms,omitempty"`
 		MinJujuVersion string                           `yaml:"min-juju-version,omitempty"`
 		Resources      map[string]marshaledResourceMeta `yaml:"resources,omitempty"`
+		Systems        []marshaledSystem                `yaml:"systems,omitempty"`
+		Platforms      []Platform                       `yaml:"platforms,omitempty"`
+		Architectures  []Architecture                   `yaml:"architectures,omitempty"`
+		Containers     map[string]marshaledContainer    `yaml:"containers,omitempty"`
 	}{
 		Name:           m.Name,
 		Summary:        m.Summary,
@@ -574,6 +675,10 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 		Terms:          m.Terms,
 		MinJujuVersion: minver,
 		Resources:      marshaledResources(m.Resources),
+		Systems:        marshaledSystems(m.Systems),
+		Platforms:      m.Platforms,
+		Architectures:  m.Architectures,
+		Containers:     marshaledContainers(m.Containers),
 	}, nil
 }
 
@@ -639,6 +744,50 @@ func marshaledExtraBindings(bindings map[string]ExtraBinding) map[string]interfa
 		marshaled[binding.Name] = nil
 	}
 	return marshaled
+}
+
+type marshaledSystem systems.System
+
+func marshaledSystems(s []systems.System) []marshaledSystem {
+	marshaled := []marshaledSystem(nil)
+	for _, v := range s {
+		marshaled = append(marshaled, marshaledSystem(v))
+	}
+	return marshaled
+}
+
+func (s marshaledSystem) MarshalYAML() (interface{}, error) {
+	ms := struct {
+		OS       string `yaml:"os,omitempty"`
+		Channel  string `yaml:"channel,omitempty"`
+		Resource string `yaml:"resource,omitempty"`
+	}{
+		OS:       s.OS,
+		Channel:  s.Channel.String(),
+		Resource: s.Resource,
+	}
+	return ms, nil
+}
+
+type marshaledContainer Container
+
+func marshaledContainers(c map[string]Container) map[string]marshaledContainer {
+	marshaled := make(map[string]marshaledContainer)
+	for k, v := range c {
+		marshaled[k] = marshaledContainer(v)
+	}
+	return marshaled
+}
+
+func (c marshaledContainer) MarshalYAML() (interface{}, error) {
+	mc := struct {
+		Systems []marshaledSystem `yaml:"systems,omitempty"`
+		Mounts  []Mount           `yaml:"mounts,omitempty"`
+	}{
+		Systems: marshaledSystems(c.Systems),
+		Mounts:  c.Mounts,
+	}
+	return mc, nil
 }
 
 // Check checks that the metadata is well-formed.
@@ -999,6 +1148,126 @@ func parseDeployment(deployment interface{}, charmSeries []string, storage map[s
 	return &result, nil
 }
 
+func parseSystems(input interface{}, resources map[string]resource.Meta, disallowResource bool) ([]systems.System, error) {
+	var err error
+	if input == nil {
+		return nil, nil
+	}
+	res := []systems.System(nil)
+	for _, v := range input.([]interface{}) {
+		system := systems.System{}
+		systemMap := v.(map[string]interface{})
+		if value, ok := systemMap["os"]; ok {
+			system.OS = value.(string)
+		}
+		if value, ok := systemMap["channel"]; ok {
+			system.Channel, err = channel.Parse(value.(string))
+			if err != nil {
+				return nil, errors.Annotatef(err, "parsing channel %q", value.(string))
+			}
+		}
+		if value, ok := systemMap["resource"]; ok {
+			system.Resource = value.(string)
+		}
+		err = system.Validate()
+		if err != nil {
+			return nil, errors.Trace(err)
+		}
+		if system.Resource != "" && disallowResource {
+			return nil, errors.Errorf("resource not supported as charm base system")
+		}
+		if system.Resource != "" {
+			if r, ok := resources[system.Resource]; !ok {
+				return nil, errors.NotFoundf("referenced resource %q", system.Resource)
+			} else if r.Type != resource.TypeContainerImage {
+				return nil, errors.Errorf("referenced resource %q is not a %s",
+					system.Resource,
+					resource.TypeContainerImage.String())
+			}
+		}
+		res = append(res, system)
+	}
+	return res, nil
+}
+
+func parsePlatforms(input interface{}) ([]Platform, error) {
+	if input == nil {
+		return nil, nil
+	}
+	platforms := []Platform(nil)
+	for _, v := range input.([]interface{}) {
+		platforms = append(platforms, Platform(v.(string)))
+	}
+	return platforms, nil
+}
+
+func parseArchitectures(input interface{}) ([]Architecture, error) {
+	if input == nil {
+		return nil, nil
+	}
+	architectures := []Architecture(nil)
+	for _, v := range input.([]interface{}) {
+		architectures = append(architectures, Architecture(v.(string)))
+	}
+	return architectures, nil
+}
+
+func parseContainers(input interface{}, resources map[string]resource.Meta, platforms []Platform, storage map[string]Storage) (map[string]Container, error) {
+	var err error
+	if input == nil {
+		return nil, nil
+	}
+	if len(platforms) != 1 || platforms[0] != PlatformKubernetes {
+		return nil, errors.Errorf("containers are currently only supported on kubernetes platform")
+	}
+	containers := map[string]Container{}
+	for name, v := range input.(map[string]interface{}) {
+		containerMap := v.(map[string]interface{})
+		container := Container{}
+		container.Systems, err = parseSystems(containerMap["systems"], resources, false)
+		if err != nil {
+			return nil, errors.Annotatef(err, "container %q", name)
+		}
+		container.Mounts, err = parseMounts(containerMap["mounts"], storage)
+		if err != nil {
+			return nil, errors.Annotatef(err, "container %q", name)
+		}
+		containers[name] = container
+	}
+	if len(containers) == 0 {
+		return nil, nil
+	}
+	return containers, nil
+}
+
+func parseMounts(input interface{}, storage map[string]Storage) ([]Mount, error) {
+	if input == nil {
+		return nil, nil
+	}
+	mounts := []Mount(nil)
+	for _, v := range input.([]interface{}) {
+		mount := Mount{}
+		mountMap := v.(map[string]interface{})
+		if value, ok := mountMap["storage"].(string); ok {
+			mount.Storage = value
+		}
+		if value, ok := mountMap["location"].(string); ok {
+			mount.Location = value
+		}
+		if mount.Storage == "" {
+			return nil, errors.Errorf("storage must be specifed on mount")
+		}
+		if mount.Location == "" {
+			return nil, errors.Errorf("location must be specifed on mount")
+		}
+		if _, ok := storage[mount.Storage]; !ok {
+			return nil, errors.NotValidf("storage %q", mount.Storage)
+		}
+		mounts = append(mounts, mount)
+	}
+	return mounts, nil
+}
+
 var storageSchema = schema.FieldMap(
 	schema.Fields{
 		"type":      schema.OneOf(schema.Const(string(StorageBlock)), schema.Const(string(StorageFilesystem))),
@@ -1134,6 +1403,42 @@ var deploymentSchema = schema.FieldMap(
 	},
 )
 
+var systemSchema = schema.FieldMap(
+	schema.Fields{
+		"os": schema.OneOf(
+			schema.Const(systems.Ubuntu),
+			schema.Const(systems.Windows),
+			schema.Const(systems.CentOS),
+			schema.Const(systems.OpenSUSE),
+			schema.Const(systems.GenericLinux),
+			schema.Const(systems.OSX),
+		),
+		"channel":  schema.String(),
+		"resource": schema.String(),
+	}, schema.Defaults{
+		"os":       schema.Omit,
+		"channel":  schema.Omit,
+		"resource": schema.Omit,
+	})
+
+var containerSchema = schema.FieldMap(
+	schema.Fields{
+		"systems": schema.List(systemSchema),
+		"mounts":  schema.List(mountSchema),
+	}, schema.Defaults{
+		"systems": schema.Omit,
+		"mounts":  schema.Omit,
+	})
+
+var mountSchema = schema.FieldMap(
+	schema.Fields{
+		"storage":  schema.String(),
+		"location": schema.String(),
+	}, schema.Defaults{
+		"storage":  schema.Omit,
+		"location": schema.Omit,
+	})
+
 var charmSchema = schema.FieldMap(
 	schema.Fields{
 		"name":             schema.String(),
@@ -1156,6 +1461,10 @@ var charmSchema = schema.FieldMap(
 		"resources":        schema.StringMap(resourceSchema),
 		"terms":            schema.List(schema.String()),
 		"min-juju-version": schema.String(),
+		"platforms":        schema.List(schema.String()),
+		"architectures":    schema.List(schema.String()),
+		"systems":          schema.List(systemSchema),
+		"containers":       schema.StringMap(containerSchema),
 	},
 	schema.Defaults{
 		"provides":         schema.Omit,
@@ -1175,5 +1484,9 @@ var charmSchema = schema.FieldMap(
 		"resources":        schema.Omit,
 		"terms":            schema.Omit,
 		"min-juju-version": schema.Omit,
+		"platforms":        schema.Omit,
+		"architectures":    schema.Omit,
+		"systems":          schema.Omit,
+		"containers":       schema.Omit,
 	},
 )
