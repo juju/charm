@@ -9,7 +9,7 @@ require (
 	github.com/juju/gojsonschema v0.0.0-20150312170016-e1ad140384f2
 	github.com/juju/loggo v0.0.0-20200526014432-9ce3a2e09b5e
 	github.com/juju/names/v4 v4.0.0-20200923012352-008effd8611b
-	github.com/juju/os v0.0.0-20200701063157-8e6dd7a2b438
+	github.com/juju/os/v2 v2.0.0
 	github.com/juju/schema v0.0.0-20160301111646-1e25943f8c6f
 	github.com/juju/systems v0.0.0-20200925032749-8c613192c759
 	github.com/juju/testing v0.0.0-20200923013621-75df6121fbb0

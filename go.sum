@@ -29,8 +29,8 @@ github.com/juju/loggo v0.0.0-20200526014432-9ce3a2e09b5e/go.mod h1:vgyd7OREkbtVE
 github.com/juju/mutex v0.0.0-20171110020013-1fe2a4bf0a3a/go.mod h1:Y3oOzHH8CQ0Ppt0oCKJ2JFO81/EsWenH5AEqigLH+yY=
 github.com/juju/names/v4 v4.0.0-20200923012352-008effd8611b h1:Di2nkRRNo2VA4exZvivFc9TdAgfpBxXElisMGeltnj4=
 github.com/juju/names/v4 v4.0.0-20200923012352-008effd8611b/go.mod h1:gdlBx0aNufAMkEx3GjT8Yz4MChs3oVjCp/nEz/PrTX4=
-github.com/juju/os v0.0.0-20200701063157-8e6dd7a2b438 h1:OJQkulSmv3WklByylSxQxsyQXD3ufLXa8pzcnj7JhLk=
-github.com/juju/os v0.0.0-20200701063157-8e6dd7a2b438/go.mod h1:aswA7dG+jFZC4cTmuTphPpWS9jm7NXP5dG6jEPvfQBY=
+github.com/juju/os/v2 v2.0.0 h1:Fy+tcT7NMPhqGRaV6JVOgTblp9yvk6ys/lcT9LAgNyM=
+github.com/juju/os/v2 v2.0.0/go.mod h1:S/AadPYIeAZtep7zu519c+eWGWV7dVR+Hb8RTGBR1+I=
 github.com/juju/retry v0.0.0-20151029024821-62c620325291/go.mod h1:OohPQGsr4pnxwD5YljhQ+TZnuVRYpa5irjugL1Yuif4=
 github.com/juju/retry v0.0.0-20180821225755-9058e192b216 h1:/eQL7EJQKFHByJe3DeE8Z36yqManj9UY5zppDoQi4FU=
 github.com/juju/retry v0.0.0-20180821225755-9058e192b216/go.mod h1:OohPQGsr4pnxwD5YljhQ+TZnuVRYpa5irjugL1Yuif4=

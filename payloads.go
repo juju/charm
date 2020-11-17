@@ -6,8 +6,8 @@ package charm
 import (
 	"fmt"
 
-	"github.com/juju/schema"
 	"github.com/juju/names/v4"
+	"github.com/juju/schema"
 )
 
 var payloadClassSchema = schema.FieldMap(
