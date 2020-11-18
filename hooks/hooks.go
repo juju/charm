@@ -46,6 +46,12 @@ const (
 	// "shared-fs-storage-attached".
 	StorageAttached  Kind = "storage-attached"
 	StorageDetaching Kind = "storage-detaching"
+
+	// These hooks require an associated container, and the name of the container
+	// whose change triggered the hook. The hook file names that these
+	// kinds represent will be prefixed by the container name; for example,
+	// "myapp-container-ready".
+	ContainerReady Kind = "container-ready"
 )
 
 var unitHooks = []Kind{
@@ -99,6 +105,17 @@ func StorageHooks() []Kind {
 	return hooks
 }
 
+var containerHooks = []Kind{
+	ContainerReady,
+}
+
+// ContainerHooks returns all known container hook kinds.
+func ContainerHooks() []Kind {
+	hooks := make([]Kind, len(containerHooks))
+	copy(hooks, containerHooks)
+	return hooks
+}
+
 // IsRelation returns whether the Kind represents a relation hook.
 func (kind Kind) IsRelation() bool {
 	switch kind {
@@ -112,6 +129,15 @@ func (kind Kind) IsRelation() bool {
 func (kind Kind) IsStorage() bool {
 	switch kind {
 	case StorageAttached, StorageDetaching:
+		return true
+	}
+	return false
+}
+
+// IsContainer returns whether the Kind represents a storage hook.
+func (kind Kind) IsContainer() bool {
+	switch kind {
+	case ContainerReady:
 		return true
 	}
 	return false

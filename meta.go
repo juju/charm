@@ -332,6 +332,18 @@ func generateRelationHooks(relName string, allHooks map[string]bool) {
 	}
 }
 
+func generateContainerHooks(containerName string, allHooks map[string]bool) {
+	for _, hookName := range hooks.ContainerHooks() {
+		allHooks[fmt.Sprintf("%s-%s", containerName, hookName)] = true
+	}
+}
+
+func generateStorageHooks(storageName string, allHooks map[string]bool) {
+	for _, hookName := range hooks.StorageHooks() {
+		allHooks[fmt.Sprintf("%s-%s", storageName, hookName)] = true
+	}
+}
+
 // Hooks returns a map of all possible valid hooks, taking relations
 // into account. It's a map to enable fast lookups, and the value is
 // always true.
@@ -350,6 +362,12 @@ func (m Meta) Hooks() map[string]bool {
 	}
 	for hookName := range m.Peers {
 		generateRelationHooks(hookName, allHooks)
+	}
+	for storageName := range m.Storage {
+		generateStorageHooks(storageName, allHooks)
+	}
+	for containerName := range m.Containers {
+		generateContainerHooks(containerName, allHooks)
 	}
 	return allHooks
 }
