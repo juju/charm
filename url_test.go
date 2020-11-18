@@ -204,15 +204,15 @@ var urlTests = []struct {
 	err: `charm or bundle URL $URL malformed, expected "<name>"`,
 }, {
 	s:     "foo",
-	exact: "foo",
+	exact: "ch:foo",
 	url:   &charm.URL{"ch", "", "foo", -1, ""},
 }, {
 	s:     "foo-1",
-	exact: "foo-1",
+	exact: "ch:foo-1",
 	url:   &charm.URL{"ch", "", "foo", 1, ""},
 }, {
 	s:     "n0-n0-n0",
-	exact: "n0-n0-n0",
+	exact: "ch:n0-n0-n0",
 	url:   &charm.URL{"ch", "", "n0-n0-n0", -1, ""},
 }, {
 	s:     "cs:foo",
@@ -229,17 +229,14 @@ var urlTests = []struct {
 	s:   "cs:foo/~blah",
 	err: `cannot parse URL $URL: name "~blah" not valid`,
 }, {
-	s:     "ch:name",
-	exact: "name",
-	url:   &charm.URL{"ch", "", "name", -1, ""},
+	s:   "ch:name",
+	url: &charm.URL{"ch", "", "name", -1, ""},
 }, {
-	s:     "ch:name-suffix",
-	exact: "name-suffix",
-	url:   &charm.URL{"ch", "", "name-suffix", -1, ""},
+	s:   "ch:name-suffix",
+	url: &charm.URL{"ch", "", "name-suffix", -1, ""},
 }, {
-	s:     "ch:name-1",
-	exact: "name-1",
-	url:   &charm.URL{"ch", "", "name", 1, ""},
+	s:   "ch:name-1",
+	url: &charm.URL{"ch", "", "name", 1, ""},
 }, {
 	s:   "ch:name/foo",
 	err: `charm or bundle URL $URL malformed, expected "<name>"`,
