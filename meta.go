@@ -333,7 +333,8 @@ func generateRelationHooks(relName string, allHooks map[string]bool) {
 }
 
 func generateContainerHooks(containerName string, allHooks map[string]bool) {
-	for _, hookName := range hooks.ContainerHooks() {
+	// Containers using pebble trigger workload hooks.
+	for _, hookName := range hooks.WorkloadHooks() {
 		allHooks[fmt.Sprintf("%s-%s", containerName, hookName)] = true
 	}
 }

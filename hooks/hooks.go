@@ -47,11 +47,11 @@ const (
 	StorageAttached  Kind = "storage-attached"
 	StorageDetaching Kind = "storage-detaching"
 
-	// These hooks require an associated container, and the name of the container
+	// These hooks require an associated workload/container, and the name of the workload/container
 	// whose change triggered the hook. The hook file names that these
-	// kinds represent will be prefixed by the container name; for example,
-	// "myapp-container-ready".
-	ContainerReady Kind = "container-ready"
+	// kinds represent will be prefixed by the workload/container name; for example,
+	// "mycontainer-workload-ready".
+	WorkloadReady Kind = "workload-ready"
 )
 
 var unitHooks = []Kind{
@@ -105,14 +105,14 @@ func StorageHooks() []Kind {
 	return hooks
 }
 
-var containerHooks = []Kind{
-	ContainerReady,
+var workloadkHooks = []Kind{
+	WorkloadReady,
 }
 
-// ContainerHooks returns all known container hook kinds.
-func ContainerHooks() []Kind {
-	hooks := make([]Kind, len(containerHooks))
-	copy(hooks, containerHooks)
+// WorkloadHooks returns all known container hook kinds.
+func WorkloadHooks() []Kind {
+	hooks := make([]Kind, len(workloadkHooks))
+	copy(hooks, workloadkHooks)
 	return hooks
 }
 
@@ -134,10 +134,10 @@ func (kind Kind) IsStorage() bool {
 	return false
 }
 
-// IsContainer returns whether the Kind represents a storage hook.
-func (kind Kind) IsContainer() bool {
+// IsWorkload returns whether the Kind represents a workload hook.
+func (kind Kind) IsWorkload() bool {
 	switch kind {
-	case ContainerReady:
+	case WorkloadReady:
 		return true
 	}
 	return false
