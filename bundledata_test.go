@@ -15,7 +15,7 @@ import (
 	gc "gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/juju/charm/v8"
+	"github.com/juju/charm/v9"
 )
 
 type bundleDataSuite struct {

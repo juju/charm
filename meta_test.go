@@ -20,8 +20,8 @@ import (
 	"gopkg.in/yaml.v2"
 	yamlv2 "gopkg.in/yaml.v2"
 
-	"github.com/juju/charm/v8"
-	"github.com/juju/charm/v8/resource"
+	"github.com/juju/charm/v9"
+	"github.com/juju/charm/v9/resource"
 )
 
 func repoMeta(c *gc.C, name string) io.Reader {
