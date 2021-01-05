@@ -87,9 +87,7 @@ func ExtractBaseAndOverlayParts(bd *BundleData) (base, overlay *BundleData, err 
 
 // cloneBundleData uses the gob package to perform a deep copy of bd.
 func cloneBundleData(bd *BundleData) *BundleData {
-	clone := deepcopy.Copy(bd).(*BundleData)
-	clone.unmarshaledWithServices = bd.unmarshaledWithServices
-	return clone
+	return deepcopy.Copy(bd).(*BundleData)
 }
 
 // VerifyNoOverlayFieldsPresent scans the contents of bd and returns an error

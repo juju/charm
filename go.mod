@@ -1,4 +1,4 @@
-module github.com/juju/charm/v8
+module github.com/juju/charm/v9
 
 require (
 	github.com/gobwas/glob v0.2.3 // indirect

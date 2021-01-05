@@ -15,7 +15,7 @@ import (
 	gc "gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/juju/charm/v8"
+	"github.com/juju/charm/v9"
 )
 
 type bundleDataSuite struct {
@@ -81,11 +81,10 @@ description: |
 `
 
 var parseTests = []struct {
-	about                         string
-	data                          string
-	expectedBD                    *charm.BundleData
-	expectedErr                   string
-	expectUnmarshaledWithServices bool
+	about       string
+	data        string
+	expectedBD  *charm.BundleData
+	expectedErr string
 }{{
 	about: "mediawiki",
 	data:  mediawikiBundle,
@@ -171,49 +170,6 @@ relations:
 			{"mysql:foo", "mediawiki:bar"},
 		},
 	},
-}, {
-	about: "legacy bundle with services instead of applications",
-	data: `
-services:
-    wordpress:
-        charm: wordpress
-    mysql:
-        charm: mysql
-        num_units: 1
-relations:
-    - ["wordpress:db", "mysql:db"]
-`,
-	expectedBD: &charm.BundleData{
-		Applications: map[string]*charm.ApplicationSpec{
-			"wordpress": {
-				Charm: "wordpress",
-			},
-			"mysql": {
-				Charm:    "mysql",
-				NumUnits: 1,
-			},
-		},
-		Relations: [][]string{
-			{"wordpress:db", "mysql:db"},
-		},
-	},
-	expectUnmarshaledWithServices: true,
-}, {
-	about: "bundle with services and applications",
-	data: `
-applications:
-    wordpress:
-        charm: wordpress
-services:
-    wordpress:
-        charm: wordpress
-    mysql:
-        charm: mysql
-        num_units: 1
-relations:
-    - ["wordpress:db", "mysql:db"]
-`,
-	expectedErr: ".*cannot specify both applications and services",
 }, {
 	about: "scale alias for num_units",
 	data: `
@@ -375,20 +331,21 @@ func (*bundleDataSuite) TestParse(c *gc.C) {
 			continue
 		}
 		c.Assert(err, gc.IsNil)
-		c.Assert(bd.UnmarshaledWithServices(), gc.Equals, test.expectUnmarshaledWithServices)
-		bd.ClearUnmarshaledWithServices()
 		c.Assert(bd, jc.DeepEquals, test.expectedBD)
 	}
 }
 
 func (*bundleDataSuite) TestCodecRoundTrip(c *gc.C) {
-	for _, test := range parseTests {
+	for i, test := range parseTests {
 		if test.expectedErr != "" {
 			continue
 		}
 		// Check that for all the known codecs, we can
 		// round-trip the bundle data through them.
 		for _, codec := range codecs {
+
+			c.Logf("Code Test %s for test %d: %s", codec.Name, i, test.about)
+
 			data, err := codec.Marshal(test.expectedBD)
 			c.Assert(err, gc.IsNil)
 			var bd charm.BundleData
@@ -427,29 +384,6 @@ func (*bundleDataSuite) TestParseLocalWithSeries(c *gc.C) {
 				NumUnits: 1,
 			},
 		}})
-}
-
-func (s *bundleDataSuite) TestUnmarshalWithServices(c *gc.C) {
-	obj := map[string]interface{}{
-		"services": map[string]interface{}{
-			"wordpress": map[string]interface{}{
-				"charm": "wordpress",
-			},
-		},
-	}
-	for i, codec := range codecs {
-		c.Logf("codec %d: %v", i, codec.Name)
-		data, err := codec.Marshal(obj)
-		c.Assert(err, gc.IsNil)
-		var bd charm.BundleData
-		err = codec.Unmarshal(data, &bd)
-		c.Assert(err, gc.IsNil)
-		c.Assert(bd.UnmarshaledWithServices(), gc.Equals, true)
-		bd.ClearUnmarshaledWithServices()
-		c.Assert(bd, jc.DeepEquals, charm.BundleData{
-			Applications: map[string]*charm.ApplicationSpec{"wordpress": {Charm: "wordpress"}}},
-		)
-	}
 }
 
 func (s *bundleDataSuite) TestBSONNilData(c *gc.C) {

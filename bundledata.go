@@ -23,101 +23,6 @@ import (
 
 const kubernetes = "kubernetes"
 
-type noMethodsBundleData BundleData
-
-type legacyBundleData struct {
-	noMethodsBundleData `bson:",inline" yaml:",inline" json:",inline"`
-
-	// LegacyServices holds application entries for older bundle files
-	// that have not been migrated to use the new "application" terminology.
-	LegacyServices map[string]*ApplicationSpec `json:"services" yaml:"services" bson:"services"`
-}
-
-func (lbd *legacyBundleData) setBundleData(bd *BundleData) error {
-	if len(lbd.Applications) > 0 && len(lbd.LegacyServices) > 0 {
-		return fmt.Errorf("cannot specify both applications and services")
-	}
-	if len(lbd.LegacyServices) > 0 {
-		// We account for the fact that the YAML may contain a legacy entry
-		// for "services" instead of "applications".
-		lbd.Applications = lbd.LegacyServices
-		lbd.unmarshaledWithServices = true
-	}
-	for appName, app := range lbd.Applications {
-		if app == nil {
-			continue
-		}
-		// Kubernetes bundles use "scale" instead of "num_units".
-		if app.Scale_ > 0 && app.NumUnits > 0 {
-			return fmt.Errorf("cannot specify both scale and num_units for application %q", appName)
-		}
-		if app.Scale_ > 0 && app.NumUnits == 0 {
-			app.NumUnits = app.Scale_
-			app.Scale_ = 0
-			lbd.Applications[appName] = app
-		}
-		// // Kubernetes bundles default to series "kubernetes".
-		if lbd.Type == kubernetes && app.Series == "" {
-			app.Series = kubernetes
-			lbd.Applications[appName] = app
-		}
-		// Non-Kubernetes bundles do not use the placement attribute.
-		if lbd.Type != kubernetes && app.Placement_ != "" {
-			return fmt.Errorf("placement (%s) not valid for non-Kubernetes application %q", app.Placement_, appName)
-		}
-		// Kubernetes bundles only use a single placement directive.
-		if app.Placement_ != "" {
-			if len(app.To) > 0 {
-				return fmt.Errorf("cannot specify both placement and to for application %q", appName)
-			}
-			app.To = []string{app.Placement_}
-			app.Placement_ = ""
-			lbd.Applications[appName] = app
-		}
-	}
-	*bd = BundleData(lbd.noMethodsBundleData)
-	return nil
-}
-
-// UnmarshalJSON implements the json.Unmarshaler interface.
-func (bd *BundleData) UnmarshalJSON(b []byte) error {
-	var bdc legacyBundleData
-	if err := json.Unmarshal(b, &bdc); err != nil {
-		return err
-	}
-	return bdc.setBundleData(bd)
-}
-
-// UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (bd *BundleData) UnmarshalYAML(f func(interface{}) error) error {
-	var bdc legacyBundleData
-	if err := f(&bdc); err != nil {
-		return err
-	}
-	return bdc.setBundleData(bd)
-}
-
-// SetBSON implements the bson.Setter interface.
-func (bd *BundleData) SetBSON(raw bson.Raw) error {
-	// TODO(wallyworld) - bson deserialisation is not handling the inline directive,
-	// so we need to unmarshal the bundle data manually.
-	var b *noMethodsBundleData
-	if err := raw.Unmarshal(&b); err != nil {
-		return err
-	}
-	if b == nil {
-		return bson.SetZero
-	}
-
-	var bdc legacyBundleData
-	if err := raw.Unmarshal(&bdc); err != nil {
-		return err
-	}
-	// As per the above TODO, we manually set the inline data.
-	bdc.noMethodsBundleData = *b
-	return bdc.setBundleData(bd)
-}
-
 // BundleData holds the contents of the bundle.
 type BundleData struct {
 	// Type is used to signify whether this bundle is for IAAS or Kubernetes deployments.
@@ -160,17 +65,6 @@ type BundleData struct {
 
 	// Short paragraph explaining what the bundle is useful for.
 	Description string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
-
-	// unmarshaledWithServices holds whether the original marshaled data held a
-	// legacy "services" field rather than the "applications" field.
-	unmarshaledWithServices bool
-}
-
-// UnmarshaledWithServices reports whether the bundle data was
-// unmarshaled from a representation that used the legacy "services"
-// field rather than the "applications" field.
-func (d *BundleData) UnmarshaledWithServices() bool {
-	return d.unmarshaledWithServices
 }
 
 // SaasSpec represents a single software as a service (SAAS) node.
@@ -336,7 +230,96 @@ type ApplicationSpec struct {
 	RequiresTrust bool `bson:"trust,omitempty" json:"trust,omitempty" yaml:"trust,omitempty"`
 }
 
-// ExpoExposedEndpointSpec describes the expose parameters for an application
+// maskedBundleData and bundleData are here to perform a way to normalize the
+// bundle data when unmarshalling via a codec.
+// By abusing the types we can prevent a recursive function call so that the
+// unmarshalling doesn't call itself.
+//
+// In reality this is so wrong in so many ways:
+//  1. Why has the model type got anything to do with how it's transferred over
+//     the wire to other consumables? The bundle data should have a package of
+//     wire protocols (DTOs) that can packed and unpacked into a bundle/charm
+//     model. That model should be pure!
+//  2. This should be a two step process, unmarshal and then normalize.
+type maskedBundleData BundleData
+
+type bundleData struct {
+	maskedBundleData `bson:",inline" yaml:",inline" json:",inline"`
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (bd *BundleData) UnmarshalJSON(b []byte) error {
+	var in bundleData
+	if err := json.Unmarshal(b, &in); err != nil {
+		return err
+	}
+	*bd = BundleData(in.maskedBundleData)
+	return bd.normalizeData()
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (bd *BundleData) UnmarshalYAML(f func(interface{}) error) error {
+	var in bundleData
+	if err := f(&in); err != nil {
+		return err
+	}
+	*bd = BundleData(in.maskedBundleData)
+	return bd.normalizeData()
+}
+
+// SetBSON implements the bson.Setter interface.
+func (bd *BundleData) SetBSON(raw bson.Raw) error {
+	// TODO(wallyworld) - bson deserialisation is not handling the inline directive,
+	// so we need to unmarshal the bundle data manually.
+	var in *bundleData
+	if err := raw.Unmarshal(&in); err != nil {
+		return err
+	}
+	if in == nil {
+		return bson.SetZero
+	}
+	*bd = BundleData(in.maskedBundleData)
+	return bd.normalizeData()
+}
+
+func (bd *BundleData) normalizeData() error {
+	if bd.Applications == nil {
+		return nil
+	}
+
+	for appName, app := range bd.Applications {
+		if app == nil {
+			continue
+		}
+		// Kubernetes bundles use "scale" instead of "num_units".
+		if app.Scale_ > 0 && app.NumUnits > 0 {
+			return fmt.Errorf("cannot specify both scale and num_units for application %q", appName)
+		}
+		if app.Scale_ > 0 && app.NumUnits == 0 {
+			app.NumUnits = app.Scale_
+			app.Scale_ = 0
+		}
+		// // Kubernetes bundles default to series "kubernetes".
+		if bd.Type == kubernetes && app.Series == "" {
+			app.Series = kubernetes
+		}
+		// Non-Kubernetes bundles do not use the placement attribute.
+		if bd.Type != kubernetes && app.Placement_ != "" {
+			return fmt.Errorf("placement (%s) not valid for non-Kubernetes application %q", app.Placement_, appName)
+		}
+		// Kubernetes bundles only use a single placement directive.
+		if app.Placement_ != "" {
+			if len(app.To) > 0 {
+				return fmt.Errorf("cannot specify both placement and to for application %q", appName)
+			}
+			app.To = []string{app.Placement_}
+			app.Placement_ = ""
+		}
+	}
+	return nil
+}
+
+// ExposedEndpointSpec describes the expose parameters for an application
 // endpoint.
 type ExposedEndpointSpec struct {
 	// ExposeToSpaces contains a list of spaces that should be able to
@@ -1032,11 +1015,11 @@ func (ep endpoint) String() string {
 	return fmt.Sprintf("%s:%s", ep.application, ep.relation)
 }
 
-func (ep1 endpoint) less(ep2 endpoint) bool {
-	if ep1.application == ep2.application {
-		return ep1.relation < ep2.relation
+func (ep endpoint) less(other endpoint) bool {
+	if ep.application == other.application {
+		return ep.relation < other.relation
 	}
-	return ep1.application < ep2.application
+	return ep.application < other.application
 }
 
 func parseEndpoint(ep string) (endpoint, error) {

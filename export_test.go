@@ -19,7 +19,3 @@ var (
 func MissingSeriesError() error {
 	return missingSeriesError
 }
-
-func (bd *BundleData) ClearUnmarshaledWithServices() {
-	bd.unmarshaledWithServices = false
-}

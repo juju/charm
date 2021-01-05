@@ -8,7 +8,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
-	"github.com/juju/charm/v8"
+	"github.com/juju/charm/v9"
 )
 
 var _ = gc.Suite(&BundleSuite{})
@@ -49,15 +49,6 @@ func (*BundleSuite) TestReadMultiDocBundleArchive(c *gc.C) {
 	b, err := charm.ReadBundle(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(b.ContainsOverlays(), jc.IsTrue)
-	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
-	checkWordpressBundle(c, b, path)
-}
-
-func (*BundleSuite) TestReadBundleArchiveWithLegacyServices(c *gc.C) {
-	path := bundleDirPath(c, "wordpress-legacy")
-	b, err := charm.ReadBundle(path)
-	c.Assert(err, gc.IsNil)
-	c.Assert(b.ContainsOverlays(), jc.IsFalse)
 	c.Assert(b, gc.FitsTypeOf, (*charm.BundleDir)(nil))
 	checkWordpressBundle(c, b, path)
 }

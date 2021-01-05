@@ -13,7 +13,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 
-	"github.com/juju/charm/v8"
+	"github.com/juju/charm/v9"
 )
 
 type URLSuite struct{}
