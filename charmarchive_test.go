@@ -119,6 +119,13 @@ func (s *CharmDirSuite) TestReadCharmArchiveWithActions(c *gc.C) {
 	c.Assert(archive.Actions().ActionSpecs, gc.HasLen, 1)
 }
 
+func (s *CharmDirSuite) TestReadCharmArchiveWithJujuActions(c *gc.C) {
+	path := archivePath(c, readCharmDir(c, "juju-charm"))
+	archive, err := charm.ReadCharmArchive(path)
+	c.Assert(err, gc.IsNil)
+	c.Assert(archive.Actions().ActionSpecs, gc.HasLen, 1)
+}
+
 func (s *CharmArchiveSuite) TestReadCharmArchiveBytes(c *gc.C) {
 	data, err := ioutil.ReadFile(s.archivePath)
 	c.Assert(err, gc.IsNil)
