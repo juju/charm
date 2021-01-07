@@ -105,6 +105,13 @@ func (s *CharmDirSuite) TestReadCharmDirWithActions(c *gc.C) {
 	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 1)
 }
 
+func (s *CharmDirSuite) TestReadCharmDirWithJujuActions(c *gc.C) {
+	path := charmDirPath(c, "juju-charm")
+	dir, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
+	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 1)
+}
+
 func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
