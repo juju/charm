@@ -459,6 +459,17 @@ func (s *MetaSuite) TestCombinedRelations(c *gc.C) {
 	})
 }
 
+func (s *MetaSuite) TestParseJujuRelations(c *gc.C) {
+	meta, err := charm.ReadMeta(repoMeta(c, "juju-charm"))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.Provides["dashboard"], gc.Equals, charm.Relation{
+		Name:      "dashboard",
+		Role:      charm.RoleProvider,
+		Interface: "juju-dashboard",
+		Scope:     charm.ScopeGlobal,
+	})
+}
+
 var relationsConstraintsTests = []struct {
 	rels string
 	err  string

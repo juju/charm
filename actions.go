@@ -95,7 +95,7 @@ func (spec *ActionSpec) InsertDefaults(target map[string]interface{}) (map[strin
 }
 
 // ReadActionsYaml builds an Actions spec from a charm's actions.yaml.
-func ReadActionsYaml(r io.Reader) (*Actions, error) {
+func ReadActionsYaml(charmName string, r io.Reader) (*Actions, error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func ReadActionsYaml(r io.Reader) (*Actions, error) {
 		if valid := actionNameRule.MatchString(name); !valid {
 			return nil, fmt.Errorf("bad action name %s", name)
 		}
-		if reserved, reason := reservedName(name); reserved {
+		if reserved, reason := reservedName(charmName, name); reserved {
 			return nil, fmt.Errorf(
 				"cannot use action name %s: %s",
 				name, reason,

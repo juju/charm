@@ -106,6 +106,13 @@ func (s *CharmDirSuite) TestReadCharmDirWithActions(c *gc.C) {
 	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 1)
 }
 
+func (s *CharmDirSuite) TestReadCharmDirWithJujuActions(c *gc.C) {
+	path := charmDirPath(c, "juju-charm")
+	dir, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
+	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 1)
+}
+
 func (s *CharmDirSuite) TestReadCharmDirManifest(c *gc.C) {
 	path := charmDirPath(c, "dummy")
 	dir, err := charm.ReadCharmDir(path)

@@ -756,12 +756,12 @@ func (m Meta) Check(format Format, reasons ...FormatSelectionReason) error {
 			// Container-scoped require relations on subordinates are allowed
 			// to use the otherwise-reserved juju-* namespace.
 			if !m.Subordinate || role != RoleRequirer || rel.Scope != ScopeContainer {
-				if reserved, _ := reservedName(name); reserved {
+				if reserved, _ := reservedName(m.Name, name); reserved {
 					return errors.Errorf("charm %q using a reserved relation name: %q", m.Name, name)
 				}
 			}
 			if role != RoleRequirer {
-				if reserved, _ := reservedName(rel.Interface); reserved {
+				if reserved, _ := reservedName(m.Name, rel.Interface); reserved {
 					return errors.Errorf("charm %q relation %q using a reserved interface: %q", m.Name, name, rel.Interface)
 				}
 			}
@@ -904,11 +904,14 @@ func hasReason(reasons []FormatSelectionReason, reason FormatSelectionReason) bo
 	return set.NewStrings(reasons...).Contains(reason)
 }
 
-func reservedName(name string) (reserved bool, reason string) {
-	if name == "juju" {
+func reservedName(charmName, endpointName string) (reserved bool, reason string) {
+	if strings.HasPrefix(charmName, "juju-") {
+		return false, ""
+	}
+	if endpointName == "juju" {
 		return true, `"juju" is a reserved name`
 	}
-	if strings.HasPrefix(name, "juju-") {
+	if strings.HasPrefix(endpointName, "juju-") {
 		return true, `the "juju-" prefix is reserved`
 	}
 	return false, ""
