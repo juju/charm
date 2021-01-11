@@ -39,8 +39,10 @@ func NewActions() *Actions {
 // The Params map is expected to conform to JSON-Schema Draft 4 as defined at
 // http://json-schema.org/draft-04/schema# (see http://json-schema.org/latest/json-schema-core.html)
 type ActionSpec struct {
-	Description string
-	Params      map[string]interface{}
+	Description    string
+	Parallel       bool
+	ExecutionGroup string
+	Params         map[string]interface{}
 }
 
 // ValidateParams validates the passed params map against the given ActionSpec
@@ -122,6 +124,8 @@ func ReadActionsYaml(charmName string, r io.Reader) (*Actions, error) {
 		}
 
 		desc := "No description"
+		parallel := false
+		executionGroup := ""
 		thisActionSchema := map[string]interface{}{
 			"description": desc,
 			"type":        "object",
@@ -152,6 +156,18 @@ func ReadActionsYaml(charmName string, r io.Reader) (*Actions, error) {
 					return nil, errors.Errorf("value for schema key %q must be a YAML list", key)
 				}
 				thisActionSchema[key] = typed
+			case "parallel":
+				typed, ok := value.(bool)
+				if !ok {
+					return nil, errors.Errorf("value for schema key %q must be a bool", key)
+				}
+				parallel = typed
+			case "execution-group":
+				typed, ok := value.(string)
+				if !ok {
+					return nil, errors.Errorf("value for schema key %q must be a string", key)
+				}
+				executionGroup = typed
 			case "params":
 				// Clean any map[interface{}]interface{}s out so they don't
 				// cause problems with BSON serialization later.
@@ -186,8 +202,10 @@ func ReadActionsYaml(charmName string, r io.Reader) (*Actions, error) {
 
 		// Now assign the resulting schema to the final entry for the result.
 		result.ActionSpecs[name] = ActionSpec{
-			Description: desc,
-			Params:      thisActionSchema,
+			Description:    desc,
+			Parallel:       parallel,
+			ExecutionGroup: executionGroup,
+			Params:         thisActionSchema,
 		}
 	}
 	return result, nil

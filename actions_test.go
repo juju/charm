@@ -571,6 +571,26 @@ snapshot-0-foo:
 							"description": "The file to write out to.",
 							"type":        "string"}},
 					"required": []interface{}{"outfile"}}}}},
+	}, {
+		description: "An action with parallel and execution group values set",
+		yaml: `
+snapshot:
+   description: "Take a snapshot of the database."
+   parallel: true
+   execution-group: "exec group"
+`,
+		expectedActions: &Actions{map[string]ActionSpec{
+			"snapshot": {
+				Description:    "Take a snapshot of the database.",
+				Parallel:       true,
+				ExecutionGroup: "exec group",
+				Params: map[string]interface{}{
+					"title":       "snapshot",
+					"description": "Take a snapshot of the database.",
+					"type":        "object",
+					"properties":  map[string]interface{}{}},
+			},
+		}},
 	}}
 
 	// Beginning of testing loop
@@ -708,6 +728,20 @@ snapshot:
    description: ["Take a snapshot of the database."]
 `,
 		expectedError: `value for schema key "description" must be a string`,
+	}, {
+		description: "A non-string execution-group fails to parse",
+		yaml: `
+snapshot:
+   execution-group: ["Exec group"]
+`,
+		expectedError: `value for schema key "execution-group" must be a string`,
+	}, {
+		description: "A non-bool parallel value fails to parse",
+		yaml: `
+snapshot:
+   parallel: "not a bool"
+`,
+		expectedError: `value for schema key "parallel" must be a bool`,
 	}, {
 		description: "A non-list \"required\" key",
 		yaml: `
