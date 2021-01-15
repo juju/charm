@@ -156,6 +156,22 @@ func (u *URL) WithRevision(revision int) *URL {
 	return &urlCopy
 }
 
+// WithArchitecture returns a URL equivalent to url but with Architecture set
+// to architecture.
+func (u *URL) WithArchitecture(arch string) *URL {
+	urlCopy := *u
+	urlCopy.Architecture = arch
+	return &urlCopy
+}
+
+// WithSeries returns a URL equivalent to url but with Series set
+// to series.
+func (u *URL) WithSeries(series string) *URL {
+	urlCopy := *u
+	urlCopy.Series = series
+	return &urlCopy
+}
+
 // MustParseURL works like ParseURL, but panics in case of errors.
 func MustParseURL(url string) *URL {
 	u, err := ParseURL(url)
