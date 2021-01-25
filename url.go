@@ -530,11 +530,12 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	}
 
 	var nameRev string
-	if num := len(parts); num == 3 {
+	switch len(parts) {
+	case 3:
 		r.Architecture, r.Series, nameRev = parts[0], parts[1], parts[2]
-	} else if num == 2 {
+	case 2:
 		r.Architecture, nameRev = parts[0], parts[1]
-	} else {
+	default:
 		nameRev = parts[0]
 	}
 
