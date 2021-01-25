@@ -76,14 +76,16 @@ type Location interface {
 //     ch:wordpress
 //
 type URL struct {
-	Schema   string // "cs", "ch" or "local".
-	User     string // "joe".
-	Name     string // "wordpress".
-	Revision int    // -1 if unset, N otherwise.
-	Series   string // "precise" or "" if unset; "bundle" if it's a bundle.
+	Schema       string // "cs", "ch" or "local".
+	User         string // "joe".
+	Name         string // "wordpress".
+	Revision     int    // -1 if unset, N otherwise.
+	Series       string // "precise" or "" if unset; "bundle" if it's a bundle.
+	Architecture string // "amd64" or "" if unset for charmstore (v1) URLs.
 }
 
 var (
+	validArch   = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
 	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
 	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
@@ -113,10 +115,24 @@ func IsValidSeries(series string) bool {
 
 // ValidateSeries returns an error if the given series is invalid.
 func ValidateSeries(series string) error {
-	if IsValidSeries(series) == false {
-		return errors.NotValidf("series name %q", series)
+	if IsValidSeries(series) {
+		return nil
 	}
-	return nil
+	return errors.NotValidf("series name %q", series)
+}
+
+// IsValidArchitecture reports whether the architecture is a valid architecture
+// in charm or bundle URLs.
+func IsValidArchitecture(arch string) bool {
+	return validArch.MatchString(arch)
+}
+
+// ValidateArchitecture returns an error if the given architecture is invalid.
+func ValidateArchitecture(arch string) error {
+	if IsValidArchitecture(arch) {
+		return nil
+	}
+	return errors.NotValidf("architecture name %q", arch)
 }
 
 // IsValidName reports whether name is a valid charm or bundle name.
@@ -126,10 +142,10 @@ func IsValidName(name string) bool {
 
 // ValidateName returns an error if the given name is invalid.
 func ValidateName(name string) error {
-	if IsValidName(name) == false {
-		return errors.NotValidf("name %q", name)
+	if IsValidName(name) {
+		return nil
 	}
-	return nil
+	return errors.NotValidf("name %q", name)
 }
 
 // WithRevision returns a URL equivalent to url but with Revision set
@@ -137,6 +153,22 @@ func ValidateName(name string) error {
 func (u *URL) WithRevision(revision int) *URL {
 	urlCopy := *u
 	urlCopy.Revision = revision
+	return &urlCopy
+}
+
+// WithArchitecture returns a URL equivalent to url but with Architecture set
+// to architecture.
+func (u *URL) WithArchitecture(arch string) *URL {
+	urlCopy := *u
+	urlCopy.Architecture = arch
+	return &urlCopy
+}
+
+// WithSeries returns a URL equivalent to url but with Series set
+// to series.
+func (u *URL) WithSeries(series string) *URL {
+	urlCopy := *u
+	urlCopy.Series = series
 	return &urlCopy
 }
 
@@ -255,6 +287,9 @@ func (u *URL) path() string {
 	var parts []string
 	if u.User != "" {
 		parts = append(parts, fmt.Sprintf("~%s", u.User))
+	}
+	if u.Architecture != "" {
+		parts = append(parts, u.Architecture)
 	}
 	if u.Series != "" {
 		parts = append(parts, u.Series)
@@ -461,6 +496,23 @@ func parseHTTPURL(url *gourl.URL) (*URL, error) {
 	return &r, nil
 }
 
+// parseIdentifierURL will attempt to parse an identifier URL. The identifier
+// URL is split up into 3 parts, some of which are optional and some are
+// mandatory.
+//
+//  - architecture (optional)
+//  - series (optional)
+//  - name
+//  - revision (optional)
+//
+// Examples are as follows:
+//
+//  - ch:amd64/foo-1
+//  - ch:amd64/focal/foo-1
+//  - ch:foo-1
+//  - ch:foo
+//  - ch:amd64/focal/foo
+//
 func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	r := URL{
 		Schema:   CharmHub.String(),
@@ -473,14 +525,38 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	}
 
 	parts := strings.Split(strings.Trim(path, "/"), "/")
-	if len(parts) != 1 {
-		return nil, errors.Errorf(`charm or bundle URL %q malformed, expected "<name>"`, url)
+	if len(parts) == 0 || len(parts) > 3 {
+		return nil, errors.Errorf(`charm or bundle URL %q malformed`, url)
 	}
 
-	r.Name, r.Revision = extractRevision(parts[0])
-	if err := ValidateName(r.Name); err != nil {
-		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
+	var nameRev string
+	switch len(parts) {
+	case 3:
+		r.Architecture, r.Series, nameRev = parts[0], parts[1], parts[2]
+	case 2:
+		r.Architecture, nameRev = parts[0], parts[1]
+	default:
+		nameRev = parts[0]
 	}
+
+	// Mandatory
+	r.Name, r.Revision = extractRevision(nameRev)
+	if err := ValidateName(r.Name); err != nil {
+		return nil, errors.Annotatef(err, "cannot parse name and/or revision in URL %q", url)
+	}
+
+	// Optional
+	if r.Architecture != "" {
+		if err := ValidateArchitecture(r.Architecture); err != nil {
+			return nil, errors.Annotatef(err, "cannot parse architecture in URL %q", url)
+		}
+	}
+	if r.Series != "" {
+		if err := ValidateSeries(r.Series); err != nil {
+			return nil, errors.Annotatef(err, "cannot parse series in URL %q", url)
+		}
+	}
+
 	return &r, nil
 }
 
