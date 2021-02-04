@@ -65,16 +65,18 @@ func checkWordpressBundle(c *gc.C, b charm.Bundle, path string) {
 		"cs:wordpress": wordpressCharm,
 		"cs:mysql":     mysqlCharm,
 	}
-	err := bd.VerifyWithCharms(verifyOk, nil, nil, charms)
+	warnings, err := bd.VerifyWithCharms(verifyOk, nil, nil, charms)
 	c.Assert(err, gc.IsNil)
+	c.Assert(len(warnings), gc.Equals, 0)
 
 	c.Assert(bd.Applications, jc.DeepEquals, map[string]*charm.ApplicationSpec{
 		"wordpress": {
-			Charm: "cs:wordpress",
+			Charm:    "cs:wordpress",
+			NumUnits: newInt(1),
 		},
 		"mysql": {
 			Charm:    "cs:mysql",
-			NumUnits: 1,
+			NumUnits: newInt(1),
 		},
 	})
 	c.Assert(bd.Relations, jc.DeepEquals, [][]string{

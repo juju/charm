@@ -92,7 +92,7 @@ var parseTests = []struct {
 		Applications: map[string]*charm.ApplicationSpec{
 			"mediawiki": {
 				Charm:    "cs:precise/mediawiki-10",
-				NumUnits: 1,
+				NumUnits: newInt(1),
 				Expose:   true,
 				Options: map[string]interface{}{
 					"debug": false,
@@ -116,7 +116,7 @@ var parseTests = []struct {
 			},
 			"mysql": {
 				Charm:    "cs:precise/mysql-28",
-				NumUnits: 2,
+				NumUnits: newInt(2),
 				To:       []string{"0", "mediawiki/0"},
 				Options: map[string]interface{}{
 					"binlog-format": "MIXED",
@@ -181,7 +181,7 @@ applications:
 		Applications: map[string]*charm.ApplicationSpec{
 			"mysql": {
 				Charm:    "mysql",
-				NumUnits: 1,
+				NumUnits: newInt(1),
 			},
 		},
 	},
@@ -198,7 +198,7 @@ applications:
 		Applications: map[string]*charm.ApplicationSpec{
 			"aws-integrator": {
 				Charm:         "cs:~containers/aws-integrator",
-				NumUnits:      1,
+				NumUnits:      newInt(1),
 				RequiresTrust: true,
 			},
 		},
@@ -226,7 +226,7 @@ applications:
 		Applications: map[string]*charm.ApplicationSpec{
 			"apache2": {
 				Charm:    "cs:apache2-26",
-				NumUnits: 1,
+				NumUnits: newInt(1),
 				Offers: map[string]*charm.OfferSpec{
 					"offer1": &charm.OfferSpec{
 						Endpoints: []string{
@@ -267,7 +267,7 @@ applications:
 		Applications: map[string]*charm.ApplicationSpec{
 			"apache2": {
 				Charm:    "cs:apache2-26",
-				NumUnits: 1,
+				NumUnits: newInt(1),
 			},
 		},
 	},
@@ -294,7 +294,7 @@ relations:
 		Applications: map[string]*charm.ApplicationSpec{
 			"wordpress": {
 				Charm:    "cs:trusty/wordpress-5",
-				NumUnits: 1,
+				NumUnits: newInt(1),
 			},
 		},
 		Relations: [][]string{
@@ -315,7 +315,7 @@ applications:
 			"wordpress": {
 				Charm:    "cs:trusty/wordpress-5",
 				Channel:  "edge",
-				NumUnits: 1,
+				NumUnits: newInt(1),
 			},
 		},
 	},
@@ -380,7 +380,7 @@ func (*bundleDataSuite) TestParseLocalWithSeries(c *gc.C) {
 			"dummy": {
 				Charm:    path,
 				Series:   "xenial",
-				NumUnits: 1,
+				NumUnits: newInt(1),
 			},
 		}})
 }
@@ -570,11 +570,11 @@ applications:
 func (*bundleDataSuite) TestVerifyErrors(c *gc.C) {
 	for i, test := range verifyErrorsTests {
 		c.Logf("test %d: %s", i, test.about)
-		assertVerifyErrors(c, test.data, nil, test.errors)
+		assertVerifyErrors(c, test.data, nil, test.errors, nil)
 	}
 }
 
-func assertVerifyErrors(c *gc.C, bundleData string, charms map[string]charm.Charm, expectErrors []string) {
+func assertVerifyErrors(c *gc.C, bundleData string, charms map[string]charm.Charm, expectErrors []string, expectWarnings map[string][]string) {
 	bd, err := charm.ReadBundleData(strings.NewReader(bundleData))
 	c.Assert(err, gc.IsNil)
 
@@ -596,10 +596,11 @@ func assertVerifyErrors(c *gc.C, bundleData string, charms map[string]charm.Char
 		}
 		return nil
 	}
+	var warnings map[string][]string
 	if charms != nil {
-		err = bd.VerifyWithCharms(validateConstraints, validateStorage, validateDevices, charms)
+		warnings, err = bd.VerifyWithCharms(validateConstraints, validateStorage, validateDevices, charms)
 	} else {
-		err = bd.VerifyLocal("internal/test-charm-repo/bundle", validateConstraints, validateStorage, validateDevices)
+		warnings, err = bd.VerifyLocal("internal/test-charm-repo/bundle", validateConstraints, validateStorage, validateDevices)
 	}
 
 	if len(expectErrors) == 0 {
@@ -619,6 +620,9 @@ func assertVerifyErrors(c *gc.C, bundleData string, charms map[string]charm.Char
 	sort.Strings(errStrings)
 	sort.Strings(expectErrors)
 	c.Assert(errStrings, jc.DeepEquals, expectErrors)
+	if len(warnings) > 0 && expectWarnings == nil || expectWarnings != nil {
+		c.Assert(warnings, jc.DeepEquals, expectWarnings)
+	}
 }
 
 func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
@@ -633,8 +637,9 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 	} {
 		c.Logf("test %d: %s", i, u)
 		bd.Applications["mediawiki"].Charm = u
-		err := bd.Verify(nil, nil, nil)
+		warnings, err := bd.Verify(nil, nil, nil)
 		c.Check(err, gc.IsNil, gc.Commentf("charm url %q", u))
+		c.Check(len(warnings), gc.Equals, 0, gc.Commentf("charm url %q", u))
 	}
 }
 
@@ -656,17 +661,19 @@ func (*bundleDataSuite) TestVerifyLocalCharm(c *gc.C) {
 	} {
 		c.Logf("test %d: %s", i, u)
 		bd.Applications["mediawiki"].Charm = u
-		err := bd.VerifyLocal(bundleDir, nil, nil, nil)
+		warnings, err := bd.VerifyLocal(bundleDir, nil, nil, nil)
 		c.Check(err, gc.IsNil, gc.Commentf("charm url %q", u))
+		c.Check(len(warnings), gc.Equals, 0, gc.Commentf("charm url %q", u))
 	}
 }
 
 func (s *bundleDataSuite) TestVerifyBundleUsingJujuInfoRelation(c *gc.C) {
-	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, nil)
+	warnings, err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, nil)
 	c.Assert(err, gc.IsNil)
+	c.Assert(warnings, gc.DeepEquals, map[string][]string{"logging": []string{`application "logging" is subordinate but has non-zero num_units`}})
 }
 
-func (s *bundleDataSuite) testPrepareAndMutateBeforeVerifyWithCharms(c *gc.C, mutator func(bd *charm.BundleData)) error {
+func (s *bundleDataSuite) testPrepareAndMutateBeforeVerifyWithCharms(c *gc.C, mutator func(bd *charm.BundleData)) (map[string][]string, error) {
 	b := readBundleDir(c, "wordpress-with-logging")
 	bd := b.Data()
 
@@ -684,31 +691,34 @@ func (s *bundleDataSuite) testPrepareAndMutateBeforeVerifyWithCharms(c *gc.C, mu
 }
 
 func (s *bundleDataSuite) TestVerifyBundleWithUnknownEndpointBindingGiven(c *gc.C) {
-	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
+	warnings, err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
 		bd.Applications["wordpress"].EndpointBindings["foo"] = "bar"
 	})
 	c.Assert(err, gc.ErrorMatches,
 		`application "wordpress" wants to bind endpoint "foo" to space "bar", `+
 			`but the endpoint is not defined by the charm`,
 	)
+	c.Assert(warnings, gc.DeepEquals, map[string][]string{"logging": []string{`application "logging" is subordinate but has non-zero num_units`}})
 }
 
 func (s *bundleDataSuite) TestVerifyBundleWithExtraBindingsSuccess(c *gc.C) {
-	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
+	warnings, err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
 		// Both of these are specified in extra-bindings.
 		bd.Applications["wordpress"].EndpointBindings["admin-api"] = "internal"
 		bd.Applications["wordpress"].EndpointBindings["foo-bar"] = "test"
 	})
 	c.Assert(err, gc.IsNil)
+	c.Assert(warnings, gc.DeepEquals, map[string][]string{"logging": []string{`application "logging" is subordinate but has non-zero num_units`}})
 }
 
 func (s *bundleDataSuite) TestVerifyBundleWithRelationNameBindingSuccess(c *gc.C) {
-	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
+	warnings, err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
 		// Both of these are specified in as relations.
 		bd.Applications["wordpress"].EndpointBindings["cache"] = "foo"
 		bd.Applications["wordpress"].EndpointBindings["monitoring-port"] = "bar"
 	})
 	c.Assert(err, gc.IsNil)
+	c.Assert(warnings, gc.DeepEquals, map[string][]string{"logging": []string{`application "logging" is subordinate but has non-zero num_units`}})
 }
 
 func (s *bundleDataSuite) TestParseKubernetesBundleType(c *gc.C) {
@@ -732,8 +742,9 @@ applications:
 `
 	bd, err := charm.ReadBundleData(strings.NewReader(data))
 	c.Assert(err, gc.IsNil)
-	err = bd.Verify(nil, nil, nil)
+	warnings, err := bd.Verify(nil, nil, nil)
 	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(len(warnings), gc.Equals, 0)
 	c.Assert(bd, jc.DeepEquals, &charm.BundleData{
 		Type: "kubernetes",
 		Applications: map[string]*charm.ApplicationSpec{
@@ -741,19 +752,19 @@ applications:
 				Charm:    "cs:mariadb-k8s-10",
 				Series:   "kubernetes",
 				To:       []string{"foo=bar"},
-				NumUnits: 2,
+				NumUnits: newInt(2),
 			},
 			"gitlab": {
 				Charm:    "cs:gitlab-k8s-10",
 				Series:   "kubernetes",
 				To:       []string{"foo=baz"},
-				NumUnits: 3,
+				NumUnits: newInt(3),
 			},
 			"redis": {
 				Charm:    "cs:redis-k8s-10",
 				Series:   "kubernetes",
 				To:       []string{"foo=baz"},
-				NumUnits: 3,
+				NumUnits: newInt(3),
 			}},
 	})
 }
@@ -769,8 +780,9 @@ applications:
 `
 	bd, err := charm.ReadBundleData(strings.NewReader(data))
 	c.Assert(err, gc.IsNil)
-	err = bd.Verify(nil, nil, nil)
+	warnings, err := bd.Verify(nil, nil, nil)
 	c.Assert(err, gc.ErrorMatches, `bundle has an invalid type "foo"`)
+	c.Assert(len(warnings), gc.Equals, 0)
 }
 
 func (s *bundleDataSuite) TestInvalidScaleAndNumUnits(c *gc.C) {
@@ -840,7 +852,7 @@ applications:
 		`too many placement directives for application "casandra"`,
 	}
 
-	assertVerifyErrors(c, data, nil, errors)
+	assertVerifyErrors(c, data, nil, errors, nil)
 }
 
 func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
@@ -950,7 +962,8 @@ var verifyWithCharmsErrorsTests = []struct {
 	data   string
 	charms map[string]charm.Charm
 
-	errors []string
+	errors   []string
+	warnings map[string][]string
 }{{
 	about:  "no charms",
 	data:   mediawikiBundle,
@@ -1270,8 +1283,8 @@ applications:
 	charms: map[string]charm.Charm{
 		"testsub": testCharm("test-sub", ""),
 	},
-	errors: []string{
-		`application "testsub" is subordinate but has non-zero num_units`,
+	warnings: map[string][]string{
+		"testsub": []string{`application "testsub" is subordinate but has non-zero num_units`},
 	},
 }, {
 	about: "subordinate charm with more than one unit",
@@ -1284,8 +1297,8 @@ applications:
 	charms: map[string]charm.Charm{
 		"testsub": testCharm("test-sub", ""),
 	},
-	errors: []string{
-		`application "testsub" is subordinate but has non-zero num_units`,
+	warnings: map[string][]string{
+		"testsub": []string{`application "testsub" is subordinate but has non-zero num_units`},
 	},
 }, {
 	about: "subordinate charm with to-clause",
@@ -1302,7 +1315,9 @@ machines:
 	},
 	errors: []string{
 		`application "testsub" is subordinate but specifies unit placement`,
-		`too many units specified in unit placement for application "testsub"`,
+	},
+	warnings: map[string][]string{
+		"testsub": []string{`application "testsub" is subordinate but has non-zero num_units`},
 	},
 }, {
 	about: "charm with unspecified units and more than one to: entry",
@@ -1323,7 +1338,7 @@ machines:
 func (*bundleDataSuite) TestVerifyWithCharmsErrors(c *gc.C) {
 	for i, test := range verifyWithCharmsErrorsTests {
 		c.Logf("test %d: %s", i, test.about)
-		assertVerifyErrors(c, test.data, test.charms, test.errors)
+		assertVerifyErrors(c, test.data, test.charms, test.errors, test.warnings)
 	}
 }
 
@@ -1436,8 +1451,67 @@ applications:
 		bd, err := charm.ReadBundleData(strings.NewReader(d))
 		c.Assert(err, gc.IsNil)
 
-		err = bd.Verify(nil, nil, nil)
+		warnings, err := bd.Verify(nil, nil, nil)
 		c.Assert(err, gc.ErrorMatches, "bundle application for key .+ is undefined")
+		c.Assert(len(warnings), gc.Equals, 0)
+	}
+}
+
+// Tests that empty/nil applications cause an error
+func (*bundleDataSuite) TestApplicationShortSyntax(c *gc.C) {
+	tstDatas := []struct {
+		bundleData string
+		expected   *charm.BundleData
+	}{{
+		bundleData: `
+applications:
+    application1: {}
+    application2:
+        charm: "cs:test"
+        series: "focal"
+`,
+		expected: &charm.BundleData{
+			Applications: map[string]*charm.ApplicationSpec{
+				"application1": {
+					Charm:    "application1",
+					NumUnits: newInt(1),
+				},
+				"application2": {
+					Charm:    "cs:test",
+					Series:   "focal",
+					NumUnits: newInt(1),
+				},
+			},
+		}}, {
+		bundleData: `
+applications:
+    application1:
+        charm: "cs:test"
+        series: "focal"
+    application2: {}
+`,
+		expected: &charm.BundleData{
+			Applications: map[string]*charm.ApplicationSpec{
+				"application1": {
+					Charm:    "cs:test",
+					Series:   "focal",
+					NumUnits: newInt(1),
+				},
+				"application2": {
+					Charm:    "application2",
+					NumUnits: newInt(1),
+				},
+			},
+		}}}
+
+	for _, d := range tstDatas {
+		bd, err := charm.ReadBundleData(strings.NewReader(d.bundleData))
+		c.Assert(err, gc.IsNil)
+
+		warnings, err := bd.Verify(nil, nil, nil)
+		c.Assert(err, jc.ErrorIsNil)
+		c.Assert(len(warnings), gc.Equals, 0)
+		c.Assert(bd, jc.DeepEquals, d.expected)
 	}
 }
 
@@ -1464,17 +1538,24 @@ relations:
 
 	c.Assert(bd.Applications, jc.DeepEquals, map[string]*charm.ApplicationSpec{
 		"application1": &charm.ApplicationSpec{
-			Charm: "cs:test",
-			Plan:  "testisv/test",
+			Charm:    "cs:test",
+			Plan:     "testisv/test",
+			NumUnits: newInt(1),
 		},
 		"application2": &charm.ApplicationSpec{
-			Charm: "cs:test",
-			Plan:  "testisv/test2",
+			Charm:    "cs:test",
+			Plan:     "testisv/test2",
+			NumUnits: newInt(1),
 		},
 		"application3": &charm.ApplicationSpec{
-			Charm: "cs:test",
-			Plan:  "default",
+			Charm:    "cs:test",
+			Plan:     "default",
+			NumUnits: newInt(1),
 		},
 	})
 
+}
+
+func newInt(i int) *int {
+	return &i
 }

@@ -57,6 +57,7 @@ series: bionic
 applications:
   apache2:
     charm: cs:apache2-26
+    num_units: 1
 saas:
   apache2:
     url: production:admin/info.apache
@@ -367,6 +368,7 @@ applications:
     resources:
       res1: bar
       res2: new
+    num_units: 1
     storage:
       dsk0: vol0
       dsk1: new
@@ -402,6 +404,7 @@ applications:
 applications:
   apache2:
     charm: cs:apache2-26
+    num_units: 1
     options:
       opt1: foo
       opt2: ""
@@ -465,8 +468,10 @@ relations:
 applications:
   apache2:
     charm: cs:apache2-42
+    num_units: 1
   dummy:
     charm: cs:dummy
+    num_units: 1
 relations:
 - - dummy:www
   - apache2:www
@@ -494,6 +499,7 @@ saas:
 applications:
   wordpress:
     charm: cs:wordpress-2
+    num_units: 1
 saas:
   cockroachdb:
     url: jaas:admin/default.cockroachdb
@@ -529,6 +535,7 @@ applications:
 applications:
   apache2:
     charm: cs:apache2-26
+    num_units: 1
     offers:
       my-offer:
         endpoints:
@@ -556,6 +563,7 @@ machines:
 applications:
   apache2:
     charm: cs:apache2-26
+    num_units: 1
 machines:
   "2": {}
 `,
@@ -686,6 +694,7 @@ machines:
 	exp := `
 applications:
   apache2:
+    num_units: 1
     options:
       opt-b64: bG9yZW0kaXBzdW0k
       opt-other:
@@ -751,6 +760,7 @@ applications:
 applications:
   django:
     charm: cs:django
+    num_units: 1
     options:
       opt1: lorem ipsum
       opt2: dolor
@@ -790,6 +800,7 @@ applications:
 applications:
   django:
     charm: cs:django
+    num_units: 1
 `
 
 	c.Assert("\n"+string(merged), gc.Equals, exp)
@@ -824,12 +835,16 @@ applications:
 applications:
   apache2:
     charm: /tmp/base/apache
+    num_units: 1
   mysql:
     charm: cs:mysql
+    num_units: 1
   varnish:
     charm: /some/absolute/path
+    num_units: 1
   wordpress:
     charm: /overlay/wordpress
+    num_units: 1
 `[1:]
 
 	c.Assert(string(merged), gc.Equals, exp)

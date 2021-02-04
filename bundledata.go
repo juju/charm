@@ -113,11 +113,11 @@ type ApplicationSpec struct {
 	// For a subordinate application, this actually represents
 	// an arbitrary number of units depending on
 	// the application it is related to.
-	NumUnits int `bson:",omitempty" yaml:"num_units,omitempty" json:",omitempty"`
+	NumUnits *int `bson:",omitempty" yaml:"num_units,omitempty" json:",omitempty"`
 
 	// Scale_ holds the number of pods required for the application.
 	// For IAAS bundles, this will be an alias for NumUnits.
-	Scale_ int `bson:"scale,omitempty" yaml:"scale,omitempty" json:"scale,omitempty"`
+	Scale_ *int `bson:"scale,omitempty" yaml:"scale,omitempty" json:"scale,omitempty"`
 
 	// To is interpreted according to whether this is an
 	// IAAS or Kubernetes bundle.
@@ -230,6 +230,17 @@ type ApplicationSpec struct {
 	RequiresTrust bool `bson:"trust,omitempty" json:"trust,omitempty" yaml:"trust,omitempty"`
 }
 
+func (s *ApplicationSpec) Empty() bool {
+	return s.Charm == "" && s.Channel == "" && s.Series == "" &&
+		len(s.Resources) == 0 && s.NumUnits == nil && s.Scale_ == nil &&
+		len(s.To) == 0 && s.Placement_ == "" && !s.Expose &&
+		len(s.ExposedEndpoints) == 0 && len(s.Options) == 0 &&
+		len(s.Annotations) == 0 && s.Constraints == "" &&
+		len(s.Storage) == 0 && len(s.Devices) == 0 &&
+		len(s.EndpointBindings) == 0 && len(s.Offers) == 0 &&
+		s.Plan == "" && !s.RequiresTrust
+}
+
 // maskedBundleData and bundleData are here to perform a way to normalize the
 // bundle data when unmarshalling via a codec.
 // By abusing the types we can prevent a recursive function call so that the
@@ -291,13 +302,20 @@ func (bd *BundleData) normalizeData() error {
 		if app == nil {
 			continue
 		}
+		if app.Empty() {
+			app.Charm = appName
+			app.NumUnits = newInt(1)
+		}
+		if app.Scale_ == nil && app.NumUnits == nil {
+			app.NumUnits = newInt(1)
+		}
 		// Kubernetes bundles use "scale" instead of "num_units".
-		if app.Scale_ > 0 && app.NumUnits > 0 {
+		if (app.Scale_ != nil && *app.Scale_ > 0) && (app.NumUnits != nil && *app.NumUnits > 0) {
 			return fmt.Errorf("cannot specify both scale and num_units for application %q", appName)
 		}
-		if app.Scale_ > 0 && app.NumUnits == 0 {
+		if (app.Scale_ != nil && *app.Scale_ > 0) && (app.NumUnits == nil || *app.NumUnits == 0) {
 			app.NumUnits = app.Scale_
-			app.Scale_ = 0
+			app.Scale_ = nil
 		}
 		// // Kubernetes bundles default to series "kubernetes".
 		if bd.Type == kubernetes && app.Series == "" {
@@ -403,6 +421,7 @@ type bundleDataVerifier struct {
 	charms map[string]Charm
 
 	errors            []error
+	warnings          map[string][]string
 	verifyConstraints func(c string) error
 	verifyStorage     func(s string) error
 	verifyDevices     func(s string) error
@@ -414,6 +433,14 @@ func (verifier *bundleDataVerifier) addErrorf(f string, a ...interface{}) {
 
 func (verifier *bundleDataVerifier) addError(err error) {
 	verifier.errors = append(verifier.errors, err)
+}
+
+func (verifier *bundleDataVerifier) addWarningf(name, f string, a ...interface{}) {
+	verifier.addWarning(name, fmt.Sprintf(f, a...))
+}
+
+func (verifier *bundleDataVerifier) addWarning(name, err string) {
+	verifier.warnings[name] = append(verifier.warnings[name], err)
 }
 
 func (verifier *bundleDataVerifier) err() error {
@@ -446,7 +473,7 @@ func (bd *BundleData) VerifyLocal(
 	verifyConstraints func(c string) error,
 	verifyStorage func(s string) error,
 	verifyDevices func(s string) error,
-) error {
+) (map[string][]string, error) {
 	return bd.verifyBundle(bundleDir, verifyConstraints, verifyStorage, verifyDevices, nil)
 }
 
@@ -456,7 +483,7 @@ func (bd *BundleData) Verify(
 	verifyConstraints func(c string) error,
 	verifyStorage func(s string) error,
 	verifyDevices func(s string) error,
-) error {
+) (map[string][]string, error) {
 	return bd.VerifyWithCharms(verifyConstraints, verifyStorage, verifyDevices, nil)
 }
 
@@ -486,7 +513,7 @@ func (bd *BundleData) VerifyWithCharms(
 	verifyStorage func(s string) error,
 	verifyDevices func(s string) error,
 	charms map[string]Charm,
-) error {
+) (map[string][]string, error) {
 	return bd.verifyBundle("", verifyConstraints, verifyStorage, verifyDevices, charms)
 }
 
@@ -496,7 +523,7 @@ func (bd *BundleData) verifyBundle(
 	verifyStorage func(s string) error,
 	verifyDevices func(s string) error,
 	charms map[string]Charm,
-) error {
+) (map[string][]string, error) {
 	if verifyConstraints == nil {
 		verifyConstraints = func(string) error {
 			return nil
@@ -520,6 +547,7 @@ func (bd *BundleData) verifyBundle(
 		bd:                bd,
 		machineRefCounts:  make(map[string]int),
 		charms:            charms,
+		warnings:          make(map[string][]string),
 	}
 	if bd.Type != "" && bd.Type != kubernetes {
 		verifier.addErrorf("bundle has an invalid type %q", bd.Type)
@@ -551,7 +579,7 @@ func (bd *BundleData) verifyBundle(
 			verifier.addErrorf("machine %q is not referred to by a placement directive", id)
 		}
 	}
-	return verifier.err()
+	return verifier.warnings, verifier.err()
 }
 
 var (
@@ -691,8 +719,8 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 					if len(app.To) > 0 {
 						verifier.addErrorf("application %q is subordinate but specifies unit placement", name)
 					}
-					if app.NumUnits > 0 {
-						verifier.addErrorf("application %q is subordinate but has non-zero num_units", name)
+					if app.NumUnits != nil && *app.NumUnits > 0 {
+						verifier.addWarningf(name, "application %q is subordinate but has non-zero num_units", name)
 					}
 				}
 			} else {
@@ -709,7 +737,7 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 				verifier.addErrorf("resource revision %q is not int or string", name)
 			}
 		}
-		if app.NumUnits < 0 {
+		if app.NumUnits != nil && *app.NumUnits < 0 {
 			verifier.addErrorf("negative number of units specified on application %q", name)
 		}
 		if verifier.bd.Type == kubernetes {
@@ -741,8 +769,8 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 	}
 }
 
-func (verifier *bundleDataVerifier) verifyPlacement(name string, numUnits int, to []string) {
-	if numUnits >= 0 && len(to) > numUnits {
+func (verifier *bundleDataVerifier) verifyPlacement(name string, numUnits *int, to []string) {
+	if numUnits != nil && (*numUnits >= 0 && len(to) > *numUnits) {
 		verifier.addErrorf("too many units specified in unit placement for application %q", name)
 	}
 	for _, p := range to {
@@ -758,8 +786,8 @@ func (verifier *bundleDataVerifier) verifyPlacement(name string, numUnits int, t
 				verifier.addErrorf("placement %q refers to an application not defined in this bundle", p)
 				continue
 			}
-			if up.Unit >= 0 && up.Unit >= spec.NumUnits {
-				verifier.addErrorf("placement %q specifies a unit greater than the %d unit(s) started by the target application", p, spec.NumUnits)
+			if up.Unit >= 0 && (spec.NumUnits != nil && up.Unit >= *spec.NumUnits) {
+				verifier.addErrorf("placement %q specifies a unit greater than the %d unit(s) started by the target application", p, *spec.NumUnits)
 			}
 		case up.Machine == "new":
 		default:
@@ -1248,4 +1276,8 @@ func possibleEndpoints(epSpec endpoint, get func(svc string) (*Meta, error)) ([]
 		Scope:     ScopeGlobal,
 	})
 	return eps, nil
+}
+
+func newInt(i int) *int {
+	return &i
 }
