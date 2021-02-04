@@ -596,11 +596,10 @@ func assertVerifyErrors(c *gc.C, bundleData string, charms map[string]charm.Char
 		}
 		return nil
 	}
-	var warnings map[string][]string
 	if charms != nil {
-		warnings, err = bd.VerifyWithCharms(validateConstraints, validateStorage, validateDevices, charms)
+		err = bd.VerifyWithCharms(validateConstraints, validateStorage, validateDevices, charms)
 	} else {
-		warnings, err = bd.VerifyLocal("internal/test-charm-repo/bundle", validateConstraints, validateStorage, validateDevices)
+		err = bd.VerifyLocal("internal/test-charm-repo/bundle", validateConstraints, validateStorage, validateDevices)
 	}
 
 	if len(expectErrors) == 0 {
@@ -620,9 +619,6 @@ func assertVerifyErrors(c *gc.C, bundleData string, charms map[string]charm.Char
 	sort.Strings(errStrings)
 	sort.Strings(expectErrors)
 	c.Assert(errStrings, jc.DeepEquals, expectErrors)
-	if len(warnings) > 0 && expectWarnings == nil || expectWarnings != nil {
-		c.Assert(warnings, jc.DeepEquals, expectWarnings)
-	}
 }
 
 func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
@@ -637,9 +633,8 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 	} {
 		c.Logf("test %d: %s", i, u)
 		bd.Applications["mediawiki"].Charm = u
-		warnings, err := bd.Verify(nil, nil, nil)
+		err := bd.Verify(nil, nil, nil)
 		c.Check(err, gc.IsNil, gc.Commentf("charm url %q", u))
-		c.Check(len(warnings), gc.Equals, 0, gc.Commentf("charm url %q", u))
 	}
 }
 
@@ -661,19 +656,17 @@ func (*bundleDataSuite) TestVerifyLocalCharm(c *gc.C) {
 	} {
 		c.Logf("test %d: %s", i, u)
 		bd.Applications["mediawiki"].Charm = u
-		warnings, err := bd.VerifyLocal(bundleDir, nil, nil, nil)
+		err := bd.VerifyLocal(bundleDir, nil, nil, nil)
 		c.Check(err, gc.IsNil, gc.Commentf("charm url %q", u))
-		c.Check(len(warnings), gc.Equals, 0, gc.Commentf("charm url %q", u))
 	}
 }
 
 func (s *bundleDataSuite) TestVerifyBundleUsingJujuInfoRelation(c *gc.C) {
-	warnings, err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, nil)
+	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, nil)
 	c.Assert(err, gc.IsNil)
-	c.Assert(warnings, gc.DeepEquals, map[string][]string{"logging": []string{`application "logging" is subordinate but has non-zero num_units`}})
 }
 
-func (s *bundleDataSuite) testPrepareAndMutateBeforeVerifyWithCharms(c *gc.C, mutator func(bd *charm.BundleData)) (map[string][]string, error) {
+func (s *bundleDataSuite) testPrepareAndMutateBeforeVerifyWithCharms(c *gc.C, mutator func(bd *charm.BundleData)) error {
 	b := readBundleDir(c, "wordpress-with-logging")
 	bd := b.Data()
 
@@ -691,34 +684,31 @@ func (s *bundleDataSuite) testPrepareAndMutateBeforeVerifyWithCharms(c *gc.C, mu
 }
 
 func (s *bundleDataSuite) TestVerifyBundleWithUnknownEndpointBindingGiven(c *gc.C) {
-	warnings, err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
+	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
 		bd.Applications["wordpress"].EndpointBindings["foo"] = "bar"
 	})
 	c.Assert(err, gc.ErrorMatches,
 		`application "wordpress" wants to bind endpoint "foo" to space "bar", `+
 			`but the endpoint is not defined by the charm`,
 	)
-	c.Assert(warnings, gc.DeepEquals, map[string][]string{"logging": []string{`application "logging" is subordinate but has non-zero num_units`}})
 }
 
 func (s *bundleDataSuite) TestVerifyBundleWithExtraBindingsSuccess(c *gc.C) {
-	warnings, err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
+	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
 		// Both of these are specified in extra-bindings.
 		bd.Applications["wordpress"].EndpointBindings["admin-api"] = "internal"
 		bd.Applications["wordpress"].EndpointBindings["foo-bar"] = "test"
 	})
 	c.Assert(err, gc.IsNil)
-	c.Assert(warnings, gc.DeepEquals, map[string][]string{"logging": []string{`application "logging" is subordinate but has non-zero num_units`}})
 }
 
 func (s *bundleDataSuite) TestVerifyBundleWithRelationNameBindingSuccess(c *gc.C) {
-	warnings, err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
+	err := s.testPrepareAndMutateBeforeVerifyWithCharms(c, func(bd *charm.BundleData) {
 		// Both of these are specified in as relations.
 		bd.Applications["wordpress"].EndpointBindings["cache"] = "foo"
 		bd.Applications["wordpress"].EndpointBindings["monitoring-port"] = "bar"
 	})
 	c.Assert(err, gc.IsNil)
-	c.Assert(warnings, gc.DeepEquals, map[string][]string{"logging": []string{`application "logging" is subordinate but has non-zero num_units`}})
 }
 
 func (s *bundleDataSuite) TestParseKubernetesBundleType(c *gc.C) {
@@ -742,9 +732,8 @@ applications:
 `
 	bd, err := charm.ReadBundleData(strings.NewReader(data))
 	c.Assert(err, gc.IsNil)
-	warnings, err := bd.Verify(nil, nil, nil)
+	err = bd.Verify(nil, nil, nil)
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(len(warnings), gc.Equals, 0)
 	c.Assert(bd, jc.DeepEquals, &charm.BundleData{
 		Type: "kubernetes",
 		Applications: map[string]*charm.ApplicationSpec{
@@ -780,9 +769,8 @@ applications:
 `
 	bd, err := charm.ReadBundleData(strings.NewReader(data))
 	c.Assert(err, gc.IsNil)
-	warnings, err := bd.Verify(nil, nil, nil)
+	err = bd.Verify(nil, nil, nil)
 	c.Assert(err, gc.ErrorMatches, `bundle has an invalid type "foo"`)
-	c.Assert(len(warnings), gc.Equals, 0)
 }
 
 func (s *bundleDataSuite) TestInvalidScaleAndNumUnits(c *gc.C) {
@@ -1283,8 +1271,8 @@ applications:
 	charms: map[string]charm.Charm{
 		"testsub": testCharm("test-sub", ""),
 	},
-	warnings: map[string][]string{
-		"testsub": []string{`application "testsub" is subordinate but has non-zero num_units`},
+	errors: []string{
+		`application "testsub" is subordinate but has non-zero num_units`,
 	},
 }, {
 	about: "subordinate charm with more than one unit",
@@ -1297,8 +1285,8 @@ applications:
 	charms: map[string]charm.Charm{
 		"testsub": testCharm("test-sub", ""),
 	},
-	warnings: map[string][]string{
-		"testsub": []string{`application "testsub" is subordinate but has non-zero num_units`},
+	errors: []string{
+		`application "testsub" is subordinate but has non-zero num_units`,
 	},
 }, {
 	about: "subordinate charm with to-clause",
@@ -1451,9 +1439,8 @@ applications:
 		bd, err := charm.ReadBundleData(strings.NewReader(d))
 		c.Assert(err, gc.IsNil)
 
-		warnings, err := bd.Verify(nil, nil, nil)
+		err = bd.Verify(nil, nil, nil)
 		c.Assert(err, gc.ErrorMatches, "bundle application for key .+ is undefined")
-		c.Assert(len(warnings), gc.Equals, 0)
 	}
 }
 
@@ -1508,10 +1495,9 @@ applications:
 		bd, err := charm.ReadBundleData(strings.NewReader(d.bundleData))
 		c.Assert(err, gc.IsNil)
 
-		warnings, err := bd.Verify(nil, nil, nil)
+		err = bd.Verify(nil, nil, nil)
 		c.Assert(err, jc.ErrorIsNil)
-		c.Assert(len(warnings), gc.Equals, 0)
-		c.Assert(bd, jc.DeepEquals, d.expected)
+		c.Assert(bd.Applications, jc.DeepEquals, d.expected.Applications)
 	}
 }
 

@@ -65,6 +65,10 @@ type BundleData struct {
 
 	// Short paragraph explaining what the bundle is useful for.
 	Description string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+
+	// alteredApplications reference applications that have been altered in
+	// normalization step.
+	alteredApplications map[string]struct{}
 }
 
 // SaasSpec represents a single software as a service (SAAS) node.
@@ -230,6 +234,9 @@ type ApplicationSpec struct {
 	RequiresTrust bool `bson:"trust,omitempty" json:"trust,omitempty" yaml:"trust,omitempty"`
 }
 
+// Empty works out if an ApplicationSpec is empty or not.
+// We can't use an equality check here because of maps with in the type and
+// using reflect.IsZero returns false because sometimes maps can be initialized.
 func (s *ApplicationSpec) Empty() bool {
 	return s.Charm == "" && s.Channel == "" && s.Series == "" &&
 		len(s.Resources) == 0 && s.NumUnits == nil && s.Scale_ == nil &&
@@ -305,9 +312,19 @@ func (bd *BundleData) normalizeData() error {
 		if app.Empty() {
 			app.Charm = appName
 			app.NumUnits = newInt(1)
+
+			if bd.alteredApplications == nil {
+				bd.alteredApplications = make(map[string]struct{})
+			}
+			bd.alteredApplications[appName] = struct{}{}
 		}
 		if app.Scale_ == nil && app.NumUnits == nil {
 			app.NumUnits = newInt(1)
+
+			if bd.alteredApplications == nil {
+				bd.alteredApplications = make(map[string]struct{})
+			}
+			bd.alteredApplications[appName] = struct{}{}
 		}
 		// Kubernetes bundles use "scale" instead of "num_units".
 		if (app.Scale_ != nil && *app.Scale_ > 0) && (app.NumUnits != nil && *app.NumUnits > 0) {
@@ -421,7 +438,6 @@ type bundleDataVerifier struct {
 	charms map[string]Charm
 
 	errors            []error
-	warnings          map[string][]string
 	verifyConstraints func(c string) error
 	verifyStorage     func(s string) error
 	verifyDevices     func(s string) error
@@ -433,14 +449,6 @@ func (verifier *bundleDataVerifier) addErrorf(f string, a ...interface{}) {
 
 func (verifier *bundleDataVerifier) addError(err error) {
 	verifier.errors = append(verifier.errors, err)
-}
-
-func (verifier *bundleDataVerifier) addWarningf(name, f string, a ...interface{}) {
-	verifier.addWarning(name, fmt.Sprintf(f, a...))
-}
-
-func (verifier *bundleDataVerifier) addWarning(name, err string) {
-	verifier.warnings[name] = append(verifier.warnings[name], err)
 }
 
 func (verifier *bundleDataVerifier) err() error {
@@ -473,7 +481,7 @@ func (bd *BundleData) VerifyLocal(
 	verifyConstraints func(c string) error,
 	verifyStorage func(s string) error,
 	verifyDevices func(s string) error,
-) (map[string][]string, error) {
+) error {
 	return bd.verifyBundle(bundleDir, verifyConstraints, verifyStorage, verifyDevices, nil)
 }
 
@@ -483,7 +491,7 @@ func (bd *BundleData) Verify(
 	verifyConstraints func(c string) error,
 	verifyStorage func(s string) error,
 	verifyDevices func(s string) error,
-) (map[string][]string, error) {
+) error {
 	return bd.VerifyWithCharms(verifyConstraints, verifyStorage, verifyDevices, nil)
 }
 
@@ -513,7 +521,7 @@ func (bd *BundleData) VerifyWithCharms(
 	verifyStorage func(s string) error,
 	verifyDevices func(s string) error,
 	charms map[string]Charm,
-) (map[string][]string, error) {
+) error {
 	return bd.verifyBundle("", verifyConstraints, verifyStorage, verifyDevices, charms)
 }
 
@@ -523,7 +531,7 @@ func (bd *BundleData) verifyBundle(
 	verifyStorage func(s string) error,
 	verifyDevices func(s string) error,
 	charms map[string]Charm,
-) (map[string][]string, error) {
+) error {
 	if verifyConstraints == nil {
 		verifyConstraints = func(string) error {
 			return nil
@@ -547,7 +555,6 @@ func (bd *BundleData) verifyBundle(
 		bd:                bd,
 		machineRefCounts:  make(map[string]int),
 		charms:            charms,
-		warnings:          make(map[string][]string),
 	}
 	if bd.Type != "" && bd.Type != kubernetes {
 		verifier.addErrorf("bundle has an invalid type %q", bd.Type)
@@ -579,7 +586,7 @@ func (bd *BundleData) verifyBundle(
 			verifier.addErrorf("machine %q is not referred to by a placement directive", id)
 		}
 	}
-	return verifier.warnings, verifier.err()
+	return verifier.err()
 }
 
 var (
@@ -720,7 +727,9 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 						verifier.addErrorf("application %q is subordinate but specifies unit placement", name)
 					}
 					if app.NumUnits != nil && *app.NumUnits > 0 {
-						verifier.addWarningf(name, "application %q is subordinate but has non-zero num_units", name)
+						if _, ok := verifier.bd.alteredApplications[name]; !ok {
+							verifier.addErrorf("application %q is subordinate but has non-zero num_units", name)
+						}
 					}
 				}
 			} else {
