@@ -13,7 +13,7 @@ import (
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/juju/mgo/v2/bson"
 
 	"github.com/juju/charm/v9"
 )

@@ -8,6 +8,7 @@ require (
 	github.com/juju/gojsonreference v0.0.0-20150204194633-f0d24ac5ee33 // indirect
 	github.com/juju/gojsonschema v0.0.0-20150312170016-e1ad140384f2
 	github.com/juju/loggo v0.0.0-20200526014432-9ce3a2e09b5e
+	github.com/juju/mgo/v2 v2.0.0-20210302023703-70d5d206e208
 	github.com/juju/names/v4 v4.0.0-20200923012352-008effd8611b
 	github.com/juju/os/v2 v2.0.0
 	github.com/juju/schema v0.0.0-20160301111646-1e25943f8c6f
@@ -17,11 +18,9 @@ require (
 	github.com/juju/version v0.0.0-20191219164919-81c1be00b9a6
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/stretchr/testify v1.6.1 // indirect
-	golang.org/x/sys v0.0.0-20200817085935-3ff754bf58a9 // indirect
-	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/gobwas/glob.v0 v0.2.3
-	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.4.0
 )
 
-go 1.14
+go 1.16
