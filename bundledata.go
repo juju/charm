@@ -16,9 +16,9 @@ import (
 	"strings"
 
 	"github.com/juju/errors"
+	"github.com/juju/mgo/v2/bson"
 	"github.com/juju/names/v4"
 	"github.com/juju/utils/v2/keyvalues"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const kubernetes = "kubernetes"
