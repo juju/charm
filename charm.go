@@ -49,7 +49,7 @@ func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, e
 	// Old charm with no supported series.
 	if len(supportedSeries) == 0 {
 		if requestedSeries == "" {
-			return "", missingSeriesError
+			return "", errMissingSeries
 		}
 		return requestedSeries, nil
 	}
@@ -65,13 +65,13 @@ func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, e
 	return "", &unsupportedSeriesError{requestedSeries, supportedSeries}
 }
 
-// missingSeriesError is used to denote that SeriesForCharm could not determine
+// errMissingSeries is used to denote that SeriesForCharm could not determine
 // a series because a legacy charm did not declare any.
-var missingSeriesError = fmt.Errorf("series not specified and charm does not define any")
+var errMissingSeries = fmt.Errorf("series not specified and charm does not define any")
 
-// IsMissingSeriesError returns true if err is an missingSeriesError.
+// IsMissingSeriesError returns true if err is an errMissingSeries.
 func IsMissingSeriesError(err error) bool {
-	return err == missingSeriesError
+	return err == errMissingSeries
 }
 
 // UnsupportedSeriesError represents an error indicating that the requested series

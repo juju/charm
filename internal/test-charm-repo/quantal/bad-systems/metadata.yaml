@@ -1,0 +1,21 @@
+name: a
+summary: b
+description: c
+platforms:
+  - kubernetes
+systems:
+  - os: ubuntu
+    channel: 18.04/stable
+containers:
+  foo:
+    systems:
+      - resource: test-os
+    mounts:
+      - storage: a
+        location: /b/
+resources:
+  test-os:
+    type: oci-image
+storage:
+  a:
+    type: filesystem
