@@ -704,7 +704,7 @@ func (s *CharmSuite) TestCheckGitIsUsed(c *gc.C) {
 	testing.PatchExecutableAsEchoArgs(c, s, "git")
 	cmdWaitTime := 100 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	isUsing := charm.UsesGit(charmDir, ctx, cancel)
+	isUsing := charm.UsesGit(ctx, charmDir, cancel)
 	c.Assert(isUsing, gc.Equals, true)
 }
 
@@ -714,6 +714,6 @@ func (s *CharmSuite) TestCheckGitTimeout(c *gc.C) {
 	testing.PatchExecutableAsEchoArgs(c, s, "git")
 	cmdWaitTime := 0 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	isUsing := charm.UsesGit(charmDir, ctx, cancel)
+	isUsing := charm.UsesGit(ctx, charmDir, cancel)
 	c.Assert(isUsing, gc.Equals, false)
 }

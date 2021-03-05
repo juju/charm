@@ -67,14 +67,16 @@ func IsCharmDir(path string) bool {
 }
 
 // ReadCharmDir returns a CharmDir representing an expanded charm directory.
-func ReadCharmDir(path string) (dir *CharmDir, err error) {
-	dir = &CharmDir{Path: path}
-	file, err := os.Open(dir.join("metadata.yaml"))
+func ReadCharmDir(path string) (*CharmDir, error) {
+	b := &CharmDir{
+		Path: path,
+	}
+	reader, err := os.Open(b.join("metadata.yaml"))
 	if err != nil {
 		return nil, errors.Annotatef(err, `issue reading "metadata.yaml" file`)
 	}
-	dir.meta, err = ReadMeta(file)
-	file.Close()
+	b.meta, err = ReadMeta(reader)
+	reader.Close()
 	if err != nil {
 		return nil, errors.Annotatef(err, `issue parsing "metadata.yaml" file`)
 	}
@@ -95,21 +97,21 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 
 	reader, err = os.Open(b.join("config.yaml"))
 	if _, ok := err.(*os.PathError); ok {
-		dir.config = NewConfig()
+		b.config = NewConfig()
 	} else if err != nil {
 		return nil, errors.Annotatef(err, `issue reading "config.yaml" file`)
 	} else {
-		dir.config, err = ReadConfig(file)
-		file.Close()
+		b.config, err = ReadConfig(reader)
+		reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `issue parsing "config.yaml" file`)
 		}
 	}
 
-	file, err = os.Open(dir.join("metrics.yaml"))
+	reader, err = os.Open(b.join("metrics.yaml"))
 	if err == nil {
-		dir.metrics, err = ReadMetrics(file)
-		file.Close()
+		b.metrics, err = ReadMetrics(reader)
+		reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `issue parsing "metrics.yaml" file`)
 		}
@@ -117,9 +119,9 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		return nil, errors.Annotatef(err, `issue reading "metrics.yaml" file`)
 	}
 
-	if dir.actions, err = getActions(
+	if b.actions, err = getActions(
 		func(file string) (io.ReadCloser, error) {
-			return os.Open(dir.join(file))
+			return os.Open(b.join(file))
 		},
 		func(err error) bool {
 			_, ok := err.(*os.PathError)
@@ -129,41 +131,41 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		return nil, err
 	}
 
-	if file, err = os.Open(dir.join("revision")); err == nil {
-		_, err = fmt.Fscan(file, &dir.revision)
-		file.Close()
+	if reader, err = os.Open(b.join("revision")); err == nil {
+		_, err = fmt.Fscan(reader, &b.revision)
+		reader.Close()
 		if err != nil {
 			return nil, errors.New("invalid revision file")
 		}
 	}
 
-	file, err = os.Open(dir.join("lxd-profile.yaml"))
+	reader, err = os.Open(b.join("lxd-profile.yaml"))
 	if _, ok := err.(*os.PathError); ok {
-		dir.lxdProfile = NewLXDProfile()
+		b.lxdProfile = NewLXDProfile()
 	} else if err != nil {
 		return nil, errors.Annotatef(err, `issue reading "lxd-profile.yaml" file`)
 	} else {
-		dir.lxdProfile, err = ReadLXDProfile(file)
-		file.Close()
+		b.lxdProfile, err = ReadLXDProfile(reader)
+		reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `issue parsing "lxd-profile.yaml" file`)
 		}
 	}
 
-	file, err = os.Open(dir.join("version"))
+	reader, err = os.Open(b.join("version"))
 	if err != nil {
 		if _, ok := err.(*os.PathError); !ok {
 			return nil, errors.Annotatef(err, `issue reading "version" file`)
 		}
 	} else {
-		dir.version, err = ReadVersion(file)
-		file.Close()
+		b.version, err = ReadVersion(reader)
+		reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `issue parsing "version" file`)
 		}
 	}
 
-	return dir, nil
+	return b, nil
 }
 
 // buildIgnoreRules parses the contents of the charm's .jujuignore file and
@@ -455,34 +457,10 @@ type Logger interface {
 	Infof(message string, args ...interface{})
 }
 
-// NopLogger is used to stop our logger from logging
-type NopLogger struct {
-}
-
-func (m NopLogger) Warningf(message string, args ...interface{}) {
-
-}
-
-func (m NopLogger) Debugf(message string, args ...interface{}) {
-
-}
-
-func (m NopLogger) Errorf(message string, args ...interface{}) {
-
-}
-
-func (m NopLogger) Tracef(message string, args ...interface{}) {
-
-}
-
-func (m NopLogger) Infof(message string, args ...interface{}) {
-
-}
-
 type vcsCMD struct {
 	vcsType       string
 	args          []string
-	usesTypeCheck func(charmPath string, ctx context.Context, CancelFunc func()) bool
+	usesTypeCheck func(ctx context.Context, charmPath string, CancelFunc func()) bool
 }
 
 func (v *vcsCMD) commonErrHandler(err error, charmPath string) error {
@@ -490,9 +468,11 @@ func (v *vcsCMD) commonErrHandler(err error, charmPath string) error {
 		"%v\nThis means that the charm version won't show in juju status. Charm path %q", v.vcsType, err, charmPath)
 }
 
-// The first check checks for the easy case of the current charmdir has a git folder.
-// There can be cases when the charmdir actually uses git and is just a subdir, hence the below check
-func UsesGit(charmPath string, ctx context.Context, cancelFunc func()) bool {
+// usesGit first check checks for the easy case of the current charmdir has a
+// git folder.
+// There can be cases when the charmdir actually uses git and is just a subdir,
+// hence the below check
+func usesGit(ctx context.Context, charmPath string, cancelFunc func()) bool {
 	defer cancelFunc()
 	if _, err := os.Stat(filepath.Join(charmPath, ".git")); err == nil {
 		return true
@@ -514,7 +494,7 @@ func UsesGit(charmPath string, ctx context.Context, cancelFunc func()) bool {
 	return false
 }
 
-func usesBzr(charmPath string, ctx context.Context, cancelFunc func()) bool {
+func usesBzr(ctx context.Context, charmPath string, cancelFunc func()) bool {
 	defer cancelFunc()
 	if _, err := os.Stat(filepath.Join(charmPath, ".bzr")); err == nil {
 		return true
@@ -522,7 +502,7 @@ func usesBzr(charmPath string, ctx context.Context, cancelFunc func()) bool {
 	return false
 }
 
-func usesHg(charmPath string, ctx context.Context, cancelFunc func()) bool {
+func usesHg(ctx context.Context, charmPath string, cancelFunc func()) bool {
 	defer cancelFunc()
 	if _, err := os.Stat(filepath.Join(charmPath, ".hg")); err == nil {
 		return true
@@ -530,20 +510,33 @@ func usesHg(charmPath string, ctx context.Context, cancelFunc func()) bool {
 	return false
 }
 
+// VersionFileVersionType holds the type of the versioned file type, either
+// git, hg, bzr or a raw version file.
+const versionFileVersionType = "versionFile"
+
 // MaybeGenerateVersionString generates charm version string.
-// We want to know whether parent folders use one of these vcs, that's why we try to execute each one of them
+// We want to know whether parent folders use one of these vcs, that's why we
+// try to execute each one of them
 // The second return value is the detected vcs type.
 func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, error) {
-	vcsStrategies := make(map[string]vcsCMD)
-
-	versionFileVersionType := "versionFile"
-	mercurialStrategy := vcsCMD{"hg", []string{"id", "-n"}, usesHg}
-	bazaarStrategy := vcsCMD{"bzr", []string{"version-info"}, usesBzr}
-	gitStrategy := vcsCMD{"git", []string{"describe", "--dirty", "--always"}, UsesGit}
-
-	vcsStrategies["hg"] = mercurialStrategy
-	vcsStrategies["git"] = gitStrategy
-	vcsStrategies["bzr"] = bazaarStrategy
+	// vcsStrategies is the strategies to use to access the version file content.
+	vcsStrategies := map[string]vcsCMD{
+		"hg": vcsCMD{
+			vcsType:       "hg",
+			args:          []string{"id", "-n"},
+			usesTypeCheck: usesHg,
+		},
+		"git": vcsCMD{
+			vcsType:       "git",
+			args:          []string{"describe", "--dirty", "--always"},
+			usesTypeCheck: usesGit,
+		},
+		"bzr": vcsCMD{
+			vcsType:       "bzr",
+			args:          []string{"version-info"},
+			usesTypeCheck: usesBzr,
+		},
+	}
 
 	// Nowadays most vcs used are git, we want to make sure that git is the first one we test
 	vcsOrder := [...]string{"git", "hg", "bzr"}
@@ -561,7 +554,7 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 	for _, vcsType := range vcsOrder {
 		vcsCmd := vcsStrategies[vcsType]
 		ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-		if vcsCmd.usesTypeCheck(dir.Path, ctx, cancel) {
+		if vcsCmd.usesTypeCheck(ctx, dir.Path, cancel) {
 			cmd := exec.Command(vcsCmd.vcsType, vcsCmd.args...)
 			// We need to make sure that the working directory will be the one we execute the commands from.
 			cmd.Dir = dir.Path
