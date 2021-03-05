@@ -1960,6 +1960,35 @@ storage:
 	c.Assert(err, gc.ErrorMatches, `parsing containers: container "foo": storage "b" not valid`)
 }
 
+func (s *MetaSuite) TestFormatV1AndV2Mixing(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+series:
+  - focal
+platforms:
+  - kubernetes
+systems:
+  - os: ubuntu
+    channel: 18.04/stable
+containers:
+  foo:
+    systems:
+      - resource: test-os
+    mounts:
+      - storage: a
+        location: /b/
+resources:
+  test-os:
+    type: oci-image
+storage:
+  a:
+    type: filesystem
+`))
+	c.Assert(err, gc.ErrorMatches, `charm "a" declares both series and systems`)
+}
+
 type dummyCharm struct{}
 
 func (c *dummyCharm) Version() string {

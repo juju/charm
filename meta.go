@@ -222,7 +222,7 @@ func (r Relation) ImplementedBy(ch Charm) bool {
 	case RolePeer:
 		m = ch.Meta().Peers
 	default:
-		panic(fmt.Errorf("unknown relation role %q", r.Role))
+		panic(errors.Errorf("unknown relation role %q", r.Role))
 	}
 	rel, found := m[r.Name]
 	if !found {
@@ -235,7 +235,7 @@ func (r Relation) ImplementedBy(ch Charm) bool {
 		case ScopeContainer:
 			return true
 		default:
-			panic(fmt.Errorf("unknown relation scope %q", r.Scope))
+			panic(errors.Errorf("unknown relation scope %q", r.Scope))
 		}
 	}
 	return false
@@ -433,17 +433,17 @@ type TermsId struct {
 func (t *TermsId) Validate() error {
 	if t.Tenant != "" && t.Tenant != "cs" {
 		if !validTermName.MatchString(t.Tenant) {
-			return fmt.Errorf("wrong term tenant format %q", t.Tenant)
+			return errors.Errorf("wrong term tenant format %q", t.Tenant)
 		}
 	}
 	if t.Owner != "" && !names.IsValidUser(t.Owner) {
-		return fmt.Errorf("wrong owner format %q", t.Owner)
+		return errors.Errorf("wrong owner format %q", t.Owner)
 	}
 	if !validTermName.MatchString(t.Name) {
-		return fmt.Errorf("wrong term name format %q", t.Name)
+		return errors.Errorf("wrong term name format %q", t.Name)
 	}
 	if t.Revision < 0 {
-		return fmt.Errorf("negative term revision")
+		return errors.Errorf("negative term revision")
 	}
 	return nil
 }
@@ -810,57 +810,57 @@ func (c marshaledContainer) MarshalYAML() (interface{}, error) {
 }
 
 // Check checks that the metadata is well-formed.
-func (meta Meta) Check() error {
+func (m Meta) Check() error {
 	// Check for duplicate or forbidden relation names or interfaces.
-	names := map[string]bool{}
+	names := make(map[string]bool)
 	checkRelations := func(src map[string]Relation, role RelationRole) error {
 		for name, rel := range src {
 			if rel.Name != name {
-				return fmt.Errorf("charm %q has mismatched relation name %q; expected %q", meta.Name, rel.Name, name)
+				return errors.Errorf("charm %q has mismatched relation name %q; expected %q", m.Name, rel.Name, name)
 			}
 			if rel.Role != role {
-				return fmt.Errorf("charm %q has mismatched role %q; expected %q", meta.Name, rel.Role, role)
+				return errors.Errorf("charm %q has mismatched role %q; expected %q", m.Name, rel.Role, role)
 			}
 			// Container-scoped require relations on subordinates are allowed
 			// to use the otherwise-reserved juju-* namespace.
-			if !meta.Subordinate || role != RoleRequirer || rel.Scope != ScopeContainer {
+			if !m.Subordinate || role != RoleRequirer || rel.Scope != ScopeContainer {
 				if reserved, _ := reservedName(name); reserved {
-					return fmt.Errorf("charm %q using a reserved relation name: %q", meta.Name, name)
+					return errors.Errorf("charm %q using a reserved relation name: %q", m.Name, name)
 				}
 			}
 			if role != RoleRequirer {
 				if reserved, _ := reservedName(rel.Interface); reserved {
-					return fmt.Errorf("charm %q relation %q using a reserved interface: %q", meta.Name, name, rel.Interface)
+					return errors.Errorf("charm %q relation %q using a reserved interface: %q", m.Name, name, rel.Interface)
 				}
 			}
 			if names[name] {
-				return fmt.Errorf("charm %q using a duplicated relation name: %q", meta.Name, name)
+				return errors.Errorf("charm %q using a duplicated relation name: %q", m.Name, name)
 			}
 			names[name] = true
 		}
 		return nil
 	}
-	if err := checkRelations(meta.Provides, RoleProvider); err != nil {
+	if err := checkRelations(m.Provides, RoleProvider); err != nil {
 		return err
 	}
-	if err := checkRelations(meta.Requires, RoleRequirer); err != nil {
+	if err := checkRelations(m.Requires, RoleRequirer); err != nil {
 		return err
 	}
-	if err := checkRelations(meta.Peers, RolePeer); err != nil {
+	if err := checkRelations(m.Peers, RolePeer); err != nil {
 		return err
 	}
 
-	if err := validateMetaExtraBindings(meta); err != nil {
-		return fmt.Errorf("charm %q has invalid extra bindings: %v", meta.Name, err)
+	if err := validateMetaExtraBindings(m); err != nil {
+		return errors.Errorf("charm %q has invalid extra bindings: %v", m.Name, err)
 	}
 
 	// Subordinate charms must have at least one relation that
 	// has container scope, otherwise they can't relate to the
 	// principal.
-	if meta.Subordinate {
+	if m.Subordinate {
 		valid := false
-		if meta.Requires != nil {
-			for _, relationData := range meta.Requires {
+		if m.Requires != nil {
+			for _, relationData := range m.Requires {
 				if relationData.Scope == ScopeContainer {
 					valid = true
 					break
@@ -868,66 +868,75 @@ func (meta Meta) Check() error {
 			}
 		}
 		if !valid {
-			return fmt.Errorf("subordinate charm %q lacks \"requires\" relation with container scope", meta.Name)
+			return errors.Errorf("subordinate charm %q lacks \"requires\" relation with container scope", m.Name)
 		}
 	}
 
-	for _, series := range meta.Series {
-		if !IsValidSeries(series) {
-			return fmt.Errorf("charm %q declares invalid series: %q", meta.Name, series)
+	if m.Format() == FormatV1 {
+		for _, series := range m.Series {
+			if !IsValidSeries(series) {
+				return errors.Errorf("charm %q declares invalid series: %q", m.Name, series)
+			}
+		}
+	} else {
+		// Version 2 of the metadata should not delcare a series.
+		if len(m.Series) > 0 {
+			// TODO (stickupkid): This will be replaced with bases in the
+			// future.
+			return errors.Errorf("charm %q declares both series and systems", m.Name)
 		}
 	}
 
 	names = make(map[string]bool)
-	for name, store := range meta.Storage {
+	for name, store := range m.Storage {
 		if store.Location != "" && store.Type != StorageFilesystem {
-			return fmt.Errorf(`charm %q storage %q: location may not be specified for "type: %s"`, meta.Name, name, store.Type)
+			return errors.Errorf(`charm %q storage %q: location may not be specified for "type: %s"`, m.Name, name, store.Type)
 		}
 		if store.Type == "" {
-			return fmt.Errorf("charm %q storage %q: type must be specified", meta.Name, name)
+			return errors.Errorf("charm %q storage %q: type must be specified", m.Name, name)
 		}
 		if store.CountMin < 0 {
-			return fmt.Errorf("charm %q storage %q: invalid minimum count %d", meta.Name, name, store.CountMin)
+			return errors.Errorf("charm %q storage %q: invalid minimum count %d", m.Name, name, store.CountMin)
 		}
 		if store.CountMax == 0 || store.CountMax < -1 {
-			return fmt.Errorf("charm %q storage %q: invalid maximum count %d", meta.Name, name, store.CountMax)
+			return errors.Errorf("charm %q storage %q: invalid maximum count %d", m.Name, name, store.CountMax)
 		}
 		if names[name] {
-			return fmt.Errorf("charm %q storage %q: duplicated storage name", meta.Name, name)
+			return errors.Errorf("charm %q storage %q: duplicated storage name", m.Name, name)
 		}
 		names[name] = true
 	}
 
 	names = make(map[string]bool)
-	for name, device := range meta.Devices {
+	for name, device := range m.Devices {
 		if device.Type == "" {
-			return fmt.Errorf("charm %q device %q: type must be specified", meta.Name, name)
+			return errors.Errorf("charm %q device %q: type must be specified", m.Name, name)
 		}
 		if device.CountMax >= 0 && device.CountMin >= 0 && device.CountMin > device.CountMax {
-			return fmt.Errorf(
+			return errors.Errorf(
 				"charm %q device %q: maximum count %d can not be smaller than minimum count %d",
-				meta.Name, name, device.CountMax, device.CountMin)
+				m.Name, name, device.CountMax, device.CountMin)
 		}
 		if names[name] {
-			return fmt.Errorf("charm %q device %q: duplicated device name", meta.Name, name)
+			return errors.Errorf("charm %q device %q: duplicated device name", m.Name, name)
 		}
 		names[name] = true
 	}
 
-	for name, payloadClass := range meta.PayloadClasses {
+	for name, payloadClass := range m.PayloadClasses {
 		if payloadClass.Name != name {
-			return fmt.Errorf("mismatch on payload class name (%q != %q)", payloadClass.Name, name)
+			return errors.Errorf("mismatch on payload class name (%q != %q)", payloadClass.Name, name)
 		}
 		if err := payloadClass.Validate(); err != nil {
 			return err
 		}
 	}
 
-	if err := validateMetaResources(meta.Resources); err != nil {
+	if err := validateMetaResources(m.Resources); err != nil {
 		return err
 	}
 
-	for _, term := range meta.Terms {
+	for _, term := range m.Terms {
 		if _, terr := ParseTerm(term); terr != nil {
 			return errors.Trace(terr)
 		}
@@ -1339,7 +1348,7 @@ func (c deviceCountC) Coerce(v interface{}, path []string) (interface{}, error) 
 			return m, nil
 		}
 	}
-	return 0, fmt.Errorf("invalid device count %d", s)
+	return 0, errors.Errorf("invalid device count %d", s)
 }
 
 type storageCountC struct{}
@@ -1355,13 +1364,13 @@ func (c storageCountC) Coerce(v interface{}, path []string) (newv interface{}, e
 		// We've got a count of the form "m": m represents
 		// both the minimum and maximum.
 		if m <= 0 {
-			return nil, fmt.Errorf("%s: invalid count %v", strings.Join(path[1:], ""), m)
+			return nil, errors.Errorf("%s: invalid count %v", strings.Join(path[1:], ""), m)
 		}
 		return [2]int{int(m), int(m)}, nil
 	}
 	match := storageCountRE.FindStringSubmatch(s.(string))
 	if match == nil {
-		return nil, fmt.Errorf("%s: value %q does not match 'm', 'm-n', or 'm+'", strings.Join(path[1:], ""), s)
+		return nil, errors.Errorf("%s: value %q does not match 'm', 'm-n', or 'm+'", strings.Join(path[1:], ""), s)
 	}
 	var m, n int
 	if m, err = strconv.Atoi(match[1]); err != nil {

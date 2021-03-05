@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 )
 
+// BundleDir defines a bundle from a given directory.
 type BundleDir struct {
 	Path   string
 	data   *BundleData
@@ -43,14 +44,17 @@ func ReadBundleDir(path string) (dir *BundleDir, err error) {
 	return dir, nil
 }
 
+// Data returns the contents of the bundle's bundle.yaml file.
 func (dir *BundleDir) Data() *BundleData {
 	return dir.data
 }
 
+// ReadMe returns the contents of the bundle's README.md file.
 func (dir *BundleDir) ReadMe() string {
 	return dir.readMe
 }
 
+// ContainsOverlays returns true if the bundle contains any overlays.
 func (dir *BundleDir) ContainsOverlays() bool {
 	return dir.containsOverlays
 }
