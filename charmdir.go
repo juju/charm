@@ -73,12 +73,12 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 	}
 	reader, err := os.Open(b.join("metadata.yaml"))
 	if err != nil {
-		return nil, errors.Annotatef(err, `issue reading "metadata.yaml" file`)
+		return nil, errors.Annotatef(err, `reading "metadata.yaml" file`)
 	}
 	b.meta, err = ReadMeta(reader)
 	reader.Close()
 	if err != nil {
-		return nil, errors.Annotatef(err, `issue parsing "metadata.yaml" file`)
+		return nil, errors.Annotatef(err, `parsing "metadata.yaml" file`)
 	}
 
 	// If the format is not the v1 format (this should take care of any
@@ -86,12 +86,12 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 	if b.meta.Format() != FormatV1 {
 		reader, err = os.Open(b.join("manifest.yaml"))
 		if err != nil {
-			return nil, errors.Annotatef(err, `issue reading "manifest.yaml" file`)
+			return nil, errors.Annotatef(err, `reading "manifest.yaml" file`)
 		}
 		b.manifest, err = ReadManifest(reader)
 		reader.Close()
 		if err != nil {
-			return nil, errors.Annotatef(err, `issue parsing "manifest.yaml" file`)
+			return nil, errors.Annotatef(err, `parsing "manifest.yaml" file`)
 		}
 	}
 
@@ -99,12 +99,12 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 	if _, ok := err.(*os.PathError); ok {
 		b.config = NewConfig()
 	} else if err != nil {
-		return nil, errors.Annotatef(err, `issue reading "config.yaml" file`)
+		return nil, errors.Annotatef(err, `reading "config.yaml" file`)
 	} else {
 		b.config, err = ReadConfig(reader)
 		reader.Close()
 		if err != nil {
-			return nil, errors.Annotatef(err, `issue parsing "config.yaml" file`)
+			return nil, errors.Annotatef(err, `parsing "config.yaml" file`)
 		}
 	}
 
@@ -113,10 +113,10 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 		b.metrics, err = ReadMetrics(reader)
 		reader.Close()
 		if err != nil {
-			return nil, errors.Annotatef(err, `issue parsing "metrics.yaml" file`)
+			return nil, errors.Annotatef(err, `parsing "metrics.yaml" file`)
 		}
 	} else if !os.IsNotExist(err) {
-		return nil, errors.Annotatef(err, `issue reading "metrics.yaml" file`)
+		return nil, errors.Annotatef(err, `reading "metrics.yaml" file`)
 	}
 
 	if b.actions, err = getActions(
@@ -143,25 +143,25 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 	if _, ok := err.(*os.PathError); ok {
 		b.lxdProfile = NewLXDProfile()
 	} else if err != nil {
-		return nil, errors.Annotatef(err, `issue reading "lxd-profile.yaml" file`)
+		return nil, errors.Annotatef(err, `reading "lxd-profile.yaml" file`)
 	} else {
 		b.lxdProfile, err = ReadLXDProfile(reader)
 		reader.Close()
 		if err != nil {
-			return nil, errors.Annotatef(err, `issue parsing "lxd-profile.yaml" file`)
+			return nil, errors.Annotatef(err, `parsing "lxd-profile.yaml" file`)
 		}
 	}
 
 	reader, err = os.Open(b.join("version"))
 	if err != nil {
 		if _, ok := err.(*os.PathError); !ok {
-			return nil, errors.Annotatef(err, `issue reading "version" file`)
+			return nil, errors.Annotatef(err, `reading "version" file`)
 		}
 	} else {
 		b.version, err = ReadVersion(reader)
 		reader.Close()
 		if err != nil {
-			return nil, errors.Annotatef(err, `issue parsing "version" file`)
+			return nil, errors.Annotatef(err, `parsing "version" file`)
 		}
 	}
 
@@ -183,13 +183,13 @@ func (dir *CharmDir) buildIgnoreRules() (ignoreRuleset, error) {
 	if _, err := os.Stat(pathToJujuignore); err == nil {
 		file, err := os.Open(dir.join(".jujuignore"))
 		if err != nil {
-			return nil, errors.Annotatef(err, `issue reading ".jujuignore" file`)
+			return nil, errors.Annotatef(err, `reading ".jujuignore" file`)
 		}
 		defer func() { _ = file.Close() }()
 
 		jujuignoreRules, err := newIgnoreRuleset(file)
 		if err != nil {
-			return nil, errors.Annotate(err, `issue parsing ".jujuignore" file`)
+			return nil, errors.Annotate(err, `parsing ".jujuignore" file`)
 		}
 
 		rules = append(rules, jujuignoreRules...)

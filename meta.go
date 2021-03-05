@@ -881,6 +881,8 @@ func (m Meta) Check() error {
 	} else {
 		// Version 2 of the metadata should not delcare a series.
 		if len(m.Series) > 0 {
+			// TODO (stickupkid): This will be replaced with bases in the
+			// future.
 			return errors.Errorf("charm %q declares both series and systems", m.Name)
 		}
 	}

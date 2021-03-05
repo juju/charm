@@ -88,7 +88,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	if b.meta.Format() != FormatV1 {
 		reader, err = zipOpenFile(zipr, "manifest.yaml")
 		if err != nil {
-			return nil, errors.Annotatef(err, "manifest file")
+			return nil, errors.Annotatef(err, "opening manifest file")
 		}
 		b.manifest, err = ReadManifest(reader)
 		reader.Close()
