@@ -45,6 +45,12 @@ func (s *CharmDirSuite) TestIsCharmDirNoMetadataYaml(c *gc.C) {
 	c.Assert(charm.IsCharmDir(path), jc.IsFalse)
 }
 
+func (s *CharmDirSuite) TestReadCharmDirNoManifest(c *gc.C) {
+	path := charmDirPath(c, "bad-systems")
+	_, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.ErrorMatches, `issue reading "manifest.yaml" file: open internal/test-charm-repo/quantal/bad-systems/manifest.yaml: no such file or directory`)
+}
+
 func (s *CharmDirSuite) TestReadCharmDir(c *gc.C) {
 	path := charmDirPath(c, "dummy")
 	dir, err := charm.ReadCharmDir(path)

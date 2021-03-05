@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// LXDProfiler defines a way to access a LXDProfile from a charm.
 type LXDProfiler interface {
 	// LXDProfile returns the LXDProfile found in lxd-profile.yaml of the charm
 	LXDProfile() *LXDProfile
@@ -26,6 +27,7 @@ type LXDProfile struct {
 	Devices     map[string]map[string]string `json:"devices" yaml:"devices"`
 }
 
+// NewLXDProfile creates a LXDProfile
 func NewLXDProfile() *LXDProfile {
 	return &LXDProfile{}
 }
@@ -58,7 +60,7 @@ func (profile *LXDProfile) ValidateConfigDevices() error {
 			}
 		}
 	}
-	for key, _ := range profile.Config {
+	for key := range profile.Config {
 		if strings.HasPrefix(key, "boot") ||
 			strings.HasPrefix(key, "limits") ||
 			strings.HasPrefix(key, "migration") {

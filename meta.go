@@ -872,9 +872,16 @@ func (meta Meta) Check() error {
 		}
 	}
 
-	for _, series := range meta.Series {
-		if !IsValidSeries(series) {
-			return fmt.Errorf("charm %q declares invalid series: %q", meta.Name, series)
+	if m.Format() == FormatV1 {
+		for _, series := range m.Series {
+			if !IsValidSeries(series) {
+				return errors.Errorf("charm %q declares invalid series: %q", m.Name, series)
+			}
+		}
+	} else {
+		// Version 2 of the metadata should not delcare a series.
+		if len(m.Series) > 0 {
+			return errors.Errorf("charm %q declares both series and systems", m.Name)
 		}
 	}
 

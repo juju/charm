@@ -50,6 +50,7 @@ type CharmDir struct {
 	metrics    *Metrics
 	actions    *Actions
 	lxdProfile *LXDProfile
+	manifest   *Manifest
 	revision   int
 	version    string
 }
@@ -78,7 +79,21 @@ func ReadCharmDir(path string) (dir *CharmDir, err error) {
 		return nil, errors.Annotatef(err, `issue parsing "metadata.yaml" file`)
 	}
 
-	file, err = os.Open(dir.join("config.yaml"))
+	// If the format is not the v1 format (this should take care of any
+	// potential N formats), ensure that we can read the manifest file.
+	if b.meta.Format() != FormatV1 {
+		reader, err = os.Open(b.join("manifest.yaml"))
+		if err != nil {
+			return nil, errors.Annotatef(err, `issue reading "manifest.yaml" file`)
+		}
+		b.manifest, err = ReadManifest(reader)
+		reader.Close()
+		if err != nil {
+			return nil, errors.Annotatef(err, `issue parsing "manifest.yaml" file`)
+		}
+	}
+
+	reader, err = os.Open(b.join("config.yaml"))
 	if _, ok := err.(*os.PathError); ok {
 		dir.config = NewConfig()
 	} else if err != nil {

@@ -6,7 +6,6 @@ package charm
 import (
 	"archive/zip"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,10 +14,11 @@ import (
 	"strconv"
 
 	"github.com/juju/collections/set"
+	"github.com/juju/errors"
 	ziputil "github.com/juju/utils/v2/zip"
 )
 
-// The CharmArchive type encapsulates access to data and operations
+// CharmArchive type encapsulates access to data and operations
 // on a charm archive.
 type CharmArchive struct {
 	zopen zipOpener
@@ -29,6 +29,7 @@ type CharmArchive struct {
 	metrics    *Metrics
 	actions    *Actions
 	lxdProfile *LXDProfile
+	manifest   *Manifest
 	revision   int
 	version    string
 }
@@ -80,6 +81,20 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	reader.Close()
 	if err != nil {
 		return nil, err
+	}
+
+	// If the format is not the v1 format (this should take care of any
+	// potential N formats), ensure that we can read the manifest file.
+	if b.meta.Format() != FormatV1 {
+		reader, err = zipOpenFile(zipr, "manifest.yaml")
+		if err != nil {
+			return nil, errors.Annotatef(err, "manifest file")
+		}
+		b.manifest, err = ReadManifest(reader)
+		reader.Close()
+		if err != nil {
+			return nil, errors.Trace(err)
+		}
 	}
 
 	reader, err = zipOpenFile(zipr, "config.yaml")
