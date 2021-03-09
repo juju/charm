@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	gc "gopkg.in/check.v1"
 	"github.com/juju/mgo/v2/bson"
+	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
 
 	"github.com/juju/charm/v9"

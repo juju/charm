@@ -45,6 +45,12 @@ func (s *CharmDirSuite) TestIsCharmDirNoMetadataYaml(c *gc.C) {
 	c.Assert(charm.IsCharmDir(path), jc.IsFalse)
 }
 
+func (s *CharmDirSuite) TestReadCharmDirNoManifest(c *gc.C) {
+	path := charmDirPath(c, "bad-systems")
+	_, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.ErrorMatches, `reading "manifest.yaml" file: open internal/test-charm-repo/quantal/bad-systems/manifest.yaml: no such file or directory`)
+}
+
 func (s *CharmDirSuite) TestReadCharmDir(c *gc.C) {
 	path := charmDirPath(c, "dummy")
 	dir, err := charm.ReadCharmDir(path)
@@ -705,7 +711,7 @@ func (s *CharmSuite) TestCheckGitIsUsed(c *gc.C) {
 	testing.PatchExecutableAsEchoArgs(c, s, "git")
 	cmdWaitTime := 100 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	isUsing := charm.UsesGit(charmDir, ctx, cancel)
+	isUsing := charm.UsesGit(ctx, charmDir, cancel)
 	c.Assert(isUsing, gc.Equals, true)
 }
 
@@ -715,6 +721,6 @@ func (s *CharmSuite) TestCheckGitTimeout(c *gc.C) {
 	testing.PatchExecutableAsEchoArgs(c, s, "git")
 	cmdWaitTime := 0 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	isUsing := charm.UsesGit(charmDir, ctx, cancel)
+	isUsing := charm.UsesGit(ctx, charmDir, cancel)
 	c.Assert(isUsing, gc.Equals, false)
 }

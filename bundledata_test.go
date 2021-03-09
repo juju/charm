@@ -10,12 +10,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/juju/charm/v9"
+	"github.com/juju/mgo/v2/bson"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
-	"github.com/juju/mgo/v2/bson"
-
-	"github.com/juju/charm/v9"
 )
 
 type bundleDataSuite struct {

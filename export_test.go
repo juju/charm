@@ -14,8 +14,10 @@ var (
 	ExtraBindingsSchema       = extraBindingsSchema
 	ValidateMetaExtraBindings = validateMetaExtraBindings
 	ParseResourceMeta         = parseResourceMeta
+
+	UsesGit = usesGit
 )
 
 func MissingSeriesError() error {
-	return missingSeriesError
+	return errMissingSeries
 }

@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/juju/errors"
-	"github.com/juju/names/v4"
 	"github.com/juju/mgo/v2/bson"
+	"github.com/juju/names/v4"
 )
 
 // Schema represents the different types of valid schemas.
