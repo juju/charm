@@ -1572,6 +1572,18 @@ func (s *MetaSuite) TestParseResourceMetaNil(c *gc.C) {
 	})
 }
 
+func (s *MetaSuite) TestMetadataV2Fails(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+bases:
+  - name: ubuntu
+    channel: 18.04/stable
+`))
+	c.Assert(err, gc.ErrorMatches, `metadata format v2 not supported`)
+}
+
 type dummyCharm struct{}
 
 func (c *dummyCharm) Version() string {
