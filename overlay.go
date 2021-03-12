@@ -440,6 +440,9 @@ func ReadAndMergeBundleData(sources ...BundleDataSource) (*BundleData, error) {
 		incResolver := sources[srcIndex].ResolveInclude
 		basePath := sources[srcIndex].BasePath()
 		for app, appData := range base.Data.Applications {
+			if appData == nil {
+				return nil, errors.Errorf("base application %q has no body", app)
+			}
 			resolvedCharm, err := resolveRelativeCharmPath(basePath, appData.Charm)
 			if err != nil {
 				return nil, errors.Annotatef(err, "resolving relative charm path %q for application %q", appData.Charm, app)
