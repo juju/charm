@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -275,6 +276,16 @@ type Meta struct {
 	MinJujuVersion version.Number           `bson:"min-juju-version,omitempty" json:"min-juju-version,omitempty"`
 }
 
+// Format of the parsed charm.
+type Format int
+
+// Formats are the different versions of charm metadata supported.
+const (
+	FormatUnknown Format = iota
+	FormatV1      Format = iota
+	FormatV2      Format = iota
+)
+
 func generateRelationHooks(relName string, allHooks map[string]bool) {
 	for _, hookName := range hooks.RelationHooks() {
 		allHooks[fmt.Sprintf("%s-%s", relName, hookName)] = true
@@ -465,6 +476,15 @@ func (meta *Meta) UnmarshalYAML(f func(interface{}) error) error {
 	if err != nil {
 		return err
 	}
+
+	format, err := identifyFormat(raw)
+	if err != nil {
+		return err
+	}
+	if format == FormatV2 {
+		return errors.NotSupportedf("metadata format v2")
+	}
+
 	v, err := charmSchema.Coerce(raw, nil)
 	if err != nil {
 		return errors.New("metadata: " + err.Error())
@@ -1177,3 +1197,50 @@ var charmSchema = schema.FieldMap(
 		"min-juju-version": schema.Omit,
 	},
 )
+
+func identifyFormat(raw map[interface{}]interface{}) (Format, error) {
+	format := FormatUnknown
+	matched := []string(nil)
+	mismatched := []string(nil)
+	keys := []string(nil)
+	for k, _ := range raw {
+		key, ok := k.(string)
+		if !ok {
+			// Non-string keys will be an error handled by the schema lib.
+			continue
+		}
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		detected := FormatUnknown
+		switch key {
+		case "bases", "containers", "assumes":
+			detected = FormatV2
+		case "series", "deployment", "min-juju-version":
+			detected = FormatV1
+		}
+		if detected == FormatUnknown {
+			continue
+		}
+		if format == FormatUnknown {
+			format = detected
+		}
+		if format == detected {
+			matched = append(matched, key)
+		} else {
+			mismatched = append(mismatched, key)
+		}
+	}
+	if format == FormatUnknown {
+		//return FormatUnknown, errors.Errorf("unknown metadata format")
+		// TODO: return FormatUnknown when unit tests are upgraded to both v1 and v1 metadata.
+		return FormatV1, nil
+	}
+	if mismatched != nil {
+		return FormatUnknown, errors.Errorf("ambigious metadata: keys %s cannot be used with %s",
+			`"`+strings.Join(mismatched, `", "`)+`"`,
+			`"`+strings.Join(matched, `", "`)+`"`)
+	}
+	return format, nil
+}
