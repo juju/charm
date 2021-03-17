@@ -50,8 +50,8 @@ const (
 	// These hooks require an associated workload/container, and the name of the workload/container
 	// whose change triggered the hook. The hook file names that these
 	// kinds represent will be prefixed by the workload/container name; for example,
-	// "mycontainer-workload-ready".
-	WorkloadReady Kind = "workload-ready"
+	// "mycontainer-pebble-ready".
+	PebbleReady Kind = "pebble-ready"
 )
 
 var unitHooks = []Kind{
@@ -106,7 +106,7 @@ func StorageHooks() []Kind {
 }
 
 var workloadkHooks = []Kind{
-	WorkloadReady,
+	PebbleReady,
 }
 
 // WorkloadHooks returns all known container hook kinds.
@@ -137,7 +137,7 @@ func (kind Kind) IsStorage() bool {
 // IsWorkload returns whether the Kind represents a workload hook.
 func (kind Kind) IsWorkload() bool {
 	switch kind {
-	case WorkloadReady:
+	case PebbleReady:
 		return true
 	}
 	return false
