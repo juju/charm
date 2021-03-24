@@ -25,6 +25,22 @@ type bundleDataOverlaySuite struct {
 
 var _ = gc.Suite(&bundleDataOverlaySuite{})
 
+func (*bundleDataOverlaySuite) TestEmptyBaseApplication(c *gc.C) {
+	data := `
+applications:
+  apache2:
+---
+series: trusty
+applications:
+  apache2:
+    charm: cs:apache2-42
+    series: bionic
+`[1:]
+
+	_, err := charm.ReadAndMergeBundleData(mustCreateStringDataSource(c, data))
+	c.Assert(err, gc.ErrorMatches, `base application "apache2" has no body`)
+}
+
 func (*bundleDataOverlaySuite) TestExtractBaseAndOverlayParts(c *gc.C) {
 	data := `
 applications:

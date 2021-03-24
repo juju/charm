@@ -1430,6 +1430,13 @@ applications:
         plan: "testisv/test2"
     application2:
 `,
+		`
+applications:
+    application1:
+        charm: "test"
+        plan: "testisv/test2"
+    application2: ~
+`,
 	}
 
 	for _, d := range tstDatas {

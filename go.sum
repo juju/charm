@@ -38,8 +38,8 @@ github.com/juju/retry v0.0.0-20180821225755-9058e192b216 h1:/eQL7EJQKFHByJe3DeE8
 github.com/juju/retry v0.0.0-20180821225755-9058e192b216/go.mod h1:OohPQGsr4pnxwD5YljhQ+TZnuVRYpa5irjugL1Yuif4=
 github.com/juju/schema v0.0.0-20160301111646-1e25943f8c6f h1:J6ARra8LkLbCoiL82CrKhom6Vc2Y9jgIW0FxD+S7+GA=
 github.com/juju/schema v0.0.0-20160301111646-1e25943f8c6f/go.mod h1:7dL+43wADDfx5rD9ibr5H9Dgr4iOM3uHOa1i4IVLak8=
-github.com/juju/systems v0.0.0-20200925032749-8c613192c759 h1:JhhlHeV1sXWIrtrr2IVKcWAD3819eUsRqw+001LjqMQ=
-github.com/juju/systems v0.0.0-20200925032749-8c613192c759/go.mod h1:FcXkVf5o+mosxneWzQsHQ7h9sU3lD2GDOttJClqgnuA=
+github.com/juju/systems v0.0.0-20210311041303-bc6b2f9677ca h1:KmPR6hTiZ8kDALV8YgFagYlRvyJCfJVvihwDvXgma6I=
+github.com/juju/systems v0.0.0-20210311041303-bc6b2f9677ca/go.mod h1:FcXkVf5o+mosxneWzQsHQ7h9sU3lD2GDOttJClqgnuA=
 github.com/juju/testing v0.0.0-20180402130637-44801989f0f7/go.mod h1:63prj8cnj0tU0S9OHjGJn+b1h0ZghCndfnbQolrYTwA=
 github.com/juju/testing v0.0.0-20190723135506-ce30eb24acd2/go.mod h1:63prj8cnj0tU0S9OHjGJn+b1h0ZghCndfnbQolrYTwA=
 github.com/juju/testing v0.0.0-20200923013621-75df6121fbb0 h1:ZNHhUeJYnc98o0ZpU7/c2TBuQokG5TBiDx8UvhDTIt0=

@@ -3,13 +3,12 @@ summary: b
 description: c
 platforms:
   - kubernetes
-systems:
-  - os: ubuntu
+bases:
+  - name: ubuntu
     channel: 18.04/stable
 containers:
   foo:
-    systems:
-      - resource: test-os
+    resource: test-os
     mounts:
       - storage: a
         location: /b/
