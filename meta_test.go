@@ -15,7 +15,7 @@ import (
 	"github.com/juju/systems"
 	"github.com/juju/systems/channel"
 	jc "github.com/juju/testing/checkers"
-	"github.com/juju/version"
+	"github.com/juju/version/v2"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
 	yamlv2 "gopkg.in/yaml.v2"
@@ -817,14 +817,8 @@ func (s *MetaSuite) TestCodecRoundTrip(c *gc.C) {
 		Categories: []string{"quxxxx", "quxxxxx"},
 		Tags:       []string{"openstack", "storage"},
 		Terms:      []string{"test-term/1", "test-term/2"},
-		Architectures: []charm.Architecture{
-			charm.AMD64,
-		},
-		Platforms: []charm.Platform{
-			charm.PlatformMachine,
-		},
-		Systems: []systems.System{{
-			OS:      "ubuntu",
+		Bases: []systems.Base{{
+			Name:    "ubuntu",
 			Channel: channel.MustParse("18.04/stable"),
 		}},
 	}
@@ -888,22 +882,11 @@ func (s *MetaSuite) TestCodecRoundTripKubernetes(c *gc.C) {
 					Storage:  "test",
 					Location: "/wow/",
 				}},
-				Systems: []systems.System{{
-					OS:      "ubuntu",
-					Channel: channel.MustParse("18.04/stable"),
-				}, {
-					Resource: "test",
-				}},
+				Resource: "test",
 			},
 		},
-		Architectures: []charm.Architecture{
-			charm.AMD64,
-		},
-		Platforms: []charm.Platform{
-			charm.PlatformKubernetes,
-		},
-		Systems: []systems.System{{
-			OS:      "ubuntu",
+		Bases: []systems.Base{{
+			Name:    "ubuntu",
 			Channel: channel.MustParse("18.04/stable"),
 		}},
 		Resources: map[string]resource.Meta{
@@ -1709,45 +1692,12 @@ func (s *MetaSuite) TestComputedSeries(c *gc.C) {
 name: a
 summary: b
 description: c
-systems:
-  - os: ubuntu
+bases:
+  - name: ubuntu
     channel: 18.04/stable
 `))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.ComputedSeries(), jc.DeepEquals, []string{"bionic"})
-}
-
-func (s *MetaSuite) TestPlatform(c *gc.C) {
-	meta, err := charm.ReadMeta(strings.NewReader(`
-name: a
-summary: b
-description: c
-platforms: ["kubernetes"]
-systems:
-  - os: ubuntu
-    channel: 18.04/stable
-`))
-	c.Assert(err, gc.IsNil)
-	c.Assert(meta.Platforms, jc.DeepEquals, []charm.Platform{charm.PlatformKubernetes})
-}
-
-func (s *MetaSuite) TestArchitectures(c *gc.C) {
-	meta, err := charm.ReadMeta(strings.NewReader(`
-name: a
-summary: b
-description: c
-platforms: ["kubernetes"]
-systems:
-  - os: ubuntu
-    channel: 18.04/stable
-architectures:
-  - amd64
-  - arm64
-  - ppc64el
-  - s390x
-`))
-	c.Assert(err, gc.IsNil)
-	c.Assert(meta.Architectures, jc.DeepEquals, []charm.Architecture{charm.AMD64, charm.ARM64, charm.PPC64EL, charm.S390X})
 }
 
 func (s *MetaSuite) TestContainers(c *gc.C) {
@@ -1755,15 +1705,12 @@ func (s *MetaSuite) TestContainers(c *gc.C) {
 name: a
 summary: b
 description: c
-platforms:
-  - kubernetes
-systems:
-  - os: ubuntu
+bases:
+  - name: ubuntu
     channel: 18.04/stable
 containers:
   foo:
-    systems:
-      - resource: test-os
+    resource: test-os
     mounts:
       - storage: a
         location: /b/
@@ -1777,9 +1724,7 @@ storage:
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Containers, jc.DeepEquals, map[string]charm.Container{
 		"foo": charm.Container{
-			Systems: []systems.System{{
-				Resource: "test-os",
-			}},
+			Resource: "test-os",
 			Mounts: []charm.Mount{{
 				Storage:  "a",
 				Location: "/b/",
@@ -1788,84 +1733,29 @@ storage:
 	})
 }
 
-func (s *MetaSuite) TestContainersNotOnIAAS(c *gc.C) {
-	_, err := charm.ReadMeta(strings.NewReader(`
-name: a
-summary: b
-description: c
-platforms:
-  - machine
-systems:
-  - os: ubuntu
-    channel: 18.04/stable
-containers:
-  foo:
-    systems:
-      - resource: test-os
-    mounts:
-      - storage: a
-        location: /b/
-resources:
-  test-os:
-    type: oci-image
-storage:
-  a:
-    type: filesystem
-`))
-	c.Assert(err, gc.ErrorMatches, `parsing containers: containers are currently only supported on kubernetes platform`)
-}
-
-func (s *MetaSuite) TestCharmBaseResourceError(c *gc.C) {
-	_, err := charm.ReadMeta(strings.NewReader(`
-name: a
-summary: b
-description: c
-platforms:
-  - kubernetes
-systems:
-  - resource: test-os
-containers:
-  foo:
-    systems:
-      - resource: test-os
-    mounts:
-      - storage: a
-        location: /b/
-resources:
-  test-os:
-    type: oci-image
-storage:
-  a:
-    type: filesystem
-`))
-	c.Assert(err, gc.ErrorMatches, `parsing systems: resource not supported as charm base system`)
-}
-
 func (s *MetaSuite) TestSystemReferencesFileResource(c *gc.C) {
 	_, err := charm.ReadMeta(strings.NewReader(`
 name: a
 summary: b
 description: c
-platforms:
-  - kubernetes
-systems:
-  - os: ubuntu
+bases:
+  - name: ubuntu
     channel: 18.04/stable
 containers:
   foo:
-    systems:
-      - resource: test-os
+    resource: test-os
     mounts:
       - storage: a
         location: /b/
 resources:
   test-os:
     type: file
+    filename: test.json
 storage:
   a:
     type: filesystem
 `))
-	c.Assert(err, gc.ErrorMatches, `parsing containers: container "foo": referenced resource "test-os" is not a oci-image`)
+	c.Assert(err, gc.ErrorMatches, `parsing containers: referenced resource "test-os" is not a oci-image`)
 }
 
 func (s *MetaSuite) TestSystemReferencedMissingResource(c *gc.C) {
@@ -1873,15 +1763,12 @@ func (s *MetaSuite) TestSystemReferencedMissingResource(c *gc.C) {
 name: a
 summary: b
 description: c
-platforms:
-  - kubernetes
-systems:
-  - os: ubuntu
+bases:
+  - name: ubuntu
     channel: 18.04/stable
 containers:
   foo:
-    systems:
-      - resource: test-os
+    resource: test-os
     mounts:
       - storage: a
         location: /b/
@@ -1889,7 +1776,7 @@ storage:
   a:
     type: filesystem
 `))
-	c.Assert(err, gc.ErrorMatches, `parsing containers: container "foo": referenced resource "test-os" not found`)
+	c.Assert(err, gc.ErrorMatches, `parsing containers: referenced resource "test-os" not found`)
 }
 
 func (s *MetaSuite) TestMountMissingStorage(c *gc.C) {
@@ -1897,15 +1784,12 @@ func (s *MetaSuite) TestMountMissingStorage(c *gc.C) {
 name: a
 summary: b
 description: c
-platforms:
-  - kubernetes
-systems:
-  - os: ubuntu
+bases:
+  - name: ubuntu
     channel: 18.04/stable
 containers:
   foo:
-    systems:
-      - resource: test-os
+    resource: test-os
     mounts:
       - location: /b/
 resources:
@@ -1923,15 +1807,12 @@ func (s *MetaSuite) TestMountMissingLocation(c *gc.C) {
 name: a
 summary: b
 description: c
-platforms:
-  - kubernetes
-systems:
-  - os: ubuntu
+bases:
+  - name: ubuntu
     channel: 18.04/stable
 containers:
   foo:
-    systems:
-      - resource: test-os
+    resource: test-os
     mounts:
       - storage: a
 resources:
@@ -1949,15 +1830,12 @@ func (s *MetaSuite) TestMountIncorrectStorage(c *gc.C) {
 name: a
 summary: b
 description: c
-platforms:
-  - kubernetes
-systems:
-  - os: ubuntu
+bases:
+  - name: ubuntu
     channel: 18.04/stable
 containers:
   foo:
-    systems:
-      - resource: test-os
+    resource: test-os
     mounts:
       - storage: b
         location: /b/
@@ -1978,15 +1856,12 @@ summary: b
 description: c
 series:
   - focal
-platforms:
-  - kubernetes
-systems:
-  - os: ubuntu
+bases:
+  - name: ubuntu
     channel: 18.04/stable
 containers:
   foo:
-    systems:
-      - resource: test-os
+    resource: test-os
     mounts:
       - storage: a
         location: /b/
@@ -1997,7 +1872,7 @@ storage:
   a:
     type: filesystem
 `))
-	c.Assert(err, gc.ErrorMatches, `charm "a" declares both series and systems`)
+	c.Assert(err, gc.ErrorMatches, `ambigious metadata: keys "series" cannot be used with "bases", "containers"`)
 }
 
 type dummyCharm struct{}
