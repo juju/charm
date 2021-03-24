@@ -15,7 +15,7 @@ import (
 	"github.com/juju/systems"
 	"github.com/juju/systems/channel"
 	jc "github.com/juju/testing/checkers"
-	"github.com/juju/version"
+	"github.com/juju/version/v2"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
 	yamlv2 "gopkg.in/yaml.v2"

@@ -21,7 +21,7 @@ import (
 	"github.com/juju/systems"
 	"github.com/juju/systems/channel"
 	"github.com/juju/utils/v2"
-	"github.com/juju/version"
+	"github.com/juju/version/v2"
 	"gopkg.in/yaml.v2"
 
 	"github.com/juju/charm/v9/hooks"
