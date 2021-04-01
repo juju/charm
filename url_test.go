@@ -224,32 +224,36 @@ var urlTests = []struct {
 	exact: "local:foo",
 	url:   makeURL("local", "", "foo", -1, "", ""),
 }, {
-	s:     "arch/channel/bar",
-	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Channel: "channel", Architecture: "arch"},
-	exact: "ch:arch/channel/bar",
+	s:     "arch/base:version/bar",
+	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "base:version", Architecture: "arch"},
+	exact: "ch:arch/base:version/bar",
 }, {
-	s:     "arch/20.04:stable:branch/bar",
-	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Channel: "20.04:stable:branch", Architecture: "arch"},
-	exact: "ch:arch/20.04:stable:branch/bar",
+	s:     "arch/ubuntu:20.04:stable:branch/bar",
+	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "ubuntu:20.04:stable:branch", Architecture: "arch"},
+	exact: "ch:arch/ubuntu:20.04:stable:branch/bar",
 }, {
-	s:     "arch/20.04:stable/bar",
-	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Channel: "20.04:stable", Architecture: "arch"},
-	exact: "ch:arch/20.04:stable/bar",
+	s:     "arch/ubuntu:20.04:stable/bar",
+	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "ubuntu:20.04:stable", Architecture: "arch"},
+	exact: "ch:arch/ubuntu:20.04:stable/bar",
 }, {
-	s:     "arch/20.04/bar",
-	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Channel: "20.04", Architecture: "arch"},
-	exact: "ch:arch/20.04/bar",
+	s:     "arch/ubuntu:20.04/bar",
+	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "ubuntu:20.04", Architecture: "arch"},
+	exact: "ch:arch/ubuntu:20.04/bar",
+}, {
+	s:   "arch/ubuntu/bar",
+	url: &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "ubuntu", Architecture: "arch"},
+	err: `cannot parse base in URL "arch/ubuntu/bar": base "ubuntu" not valid`,
 }, {
 	s:     "arch/windows:stable/bar",
-	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Channel: "windows:stable", Architecture: "arch"},
+	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "windows:stable", Architecture: "arch"},
 	exact: "ch:arch/windows:stable/bar",
 }, {
 	s:     "arch/windows:10/bar",
-	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Channel: "windows:10", Architecture: "arch"},
+	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "windows:10", Architecture: "arch"},
 	exact: "ch:arch/windows:10/bar",
 }, {
 	s:     "arch/centos:7/bar",
-	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Channel: "centos:7", Architecture: "arch"},
+	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "centos:7", Architecture: "arch"},
 	exact: "ch:arch/centos:7/bar",
 }, {
 	s:   "cs:foo/~blah",

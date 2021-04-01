@@ -81,15 +81,15 @@ type URL struct {
 	Name         string // "wordpress".
 	Revision     int    // -1 if unset, N otherwise.
 	Series       string // "precise" or "" if unset; "bundle" if it's a bundle.
-	Channel      string // "20.04:stable:branch" if channel is present, series is empty.
+	Base         string // "20.04:stable:branch" if base is present, series is empty.
 	Architecture string // "amd64" or "" if unset for charmstore (v1) URLs.
 }
 
 var (
-	validArch    = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
-	validSeries  = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
-	validChannel = regexp.MustCompile("^[a-zA-Z0-9.]+(:[a-zA-Z0-9]+(:[a-zA-Z0-9]+)?)?$")
-	validName    = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
+	validArch   = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
+	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
+	validBase   = regexp.MustCompile("^[a-zA-Z0-9]+:[a-zA-Z0-9.]+(:[a-zA-Z0-9]+(:[a-zA-Z0-9]+)?)?$")
+	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
 
 // ValidateSchema returns an error if the schema is invalid.
@@ -123,18 +123,18 @@ func ValidateSeries(series string) error {
 	return errors.NotValidf("series name %q", series)
 }
 
-// IsValidChannel reports whether series is a valid channel in charm or bundle
+// IsValidBase reports whether series is a valid base in charm or bundle
 // URLs.
-func IsValidChannel(channel string) bool {
-	return validChannel.MatchString(channel)
+func IsValidBase(base string) bool {
+	return validBase.MatchString(base)
 }
 
-// ValidateChannel returns an error if the given channel is invalid.
-func ValidateChannel(channel string) error {
-	if IsValidChannel(channel) {
+// ValidateBase returns an error if the given base is invalid.
+func ValidateBase(base string) error {
+	if IsValidBase(base) {
 		return nil
 	}
-	return errors.NotValidf("channel %q", channel)
+	return errors.NotValidf("base %q", base)
 }
 
 // IsValidArchitecture reports whether the architecture is a valid architecture
@@ -180,11 +180,11 @@ func (u *URL) WithArchitecture(arch string) *URL {
 	return &urlCopy
 }
 
-// WithChannel returns a URL equivalent to url but with Channel set
-// to channel.
-func (u *URL) WithChannel(channel string) *URL {
+// WithBase returns a URL equivalent to url but with Base set
+// to base.
+func (u *URL) WithBase(base string) *URL {
 	urlCopy := *u
-	urlCopy.Channel = channel
+	urlCopy.Base = base
 	return &urlCopy
 }
 
@@ -315,11 +315,11 @@ func (u *URL) path() string {
 	if u.Architecture != "" {
 		parts = append(parts, u.Architecture)
 	}
-	if u.Channel == "" && u.Series != "" {
+	if u.Base == "" && u.Series != "" {
 		parts = append(parts, u.Series)
 	}
-	if u.Channel != "" && u.Series == "" {
-		parts = append(parts, u.Channel)
+	if u.Base != "" && u.Series == "" {
+		parts = append(parts, u.Base)
 	}
 	if u.Revision >= 0 {
 		parts = append(parts, fmt.Sprintf("%s-%d", u.Name, u.Revision))
@@ -561,7 +561,7 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	var nameRev string
 	switch len(parts) {
 	case 3:
-		r.Architecture, r.Channel, nameRev = parts[0], parts[1], parts[2]
+		r.Architecture, r.Base, nameRev = parts[0], parts[1], parts[2]
 	case 2:
 		r.Architecture, nameRev = parts[0], parts[1]
 	default:
@@ -580,9 +580,9 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 			return nil, errors.Annotatef(err, "cannot parse architecture in URL %q", url)
 		}
 	}
-	if r.Channel != "" {
-		if err := ValidateChannel(r.Channel); err != nil {
-			return nil, errors.Annotatef(err, "cannot parse channel in URL %q", url)
+	if r.Base != "" {
+		if err := ValidateBase(r.Base); err != nil {
+			return nil, errors.Annotatef(err, "cannot parse base in URL %q", url)
 		}
 	}
 
