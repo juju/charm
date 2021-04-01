@@ -561,7 +561,17 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	var nameRev string
 	switch len(parts) {
 	case 3:
-		r.Architecture, r.Base, nameRev = parts[0], parts[1], parts[2]
+		var base string
+		r.Architecture, base, nameRev = parts[0], parts[1], parts[2]
+		// This handles the fact that we may have a V2 url with a series as the
+		// second part and not an actual base. In this case, we check for the
+		// existence of a seperator and if it has one, we know for a fact it's
+		// a base, otherwise it's a series.
+		if strings.Contains(base, ":") {
+			r.Base = base
+		} else {
+			r.Series = base
+		}
 	case 2:
 		r.Architecture, nameRev = parts[0], parts[1]
 	default:
@@ -583,6 +593,11 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	if r.Base != "" {
 		if err := ValidateBase(r.Base); err != nil {
 			return nil, errors.Annotatef(err, "cannot parse base in URL %q", url)
+		}
+	}
+	if r.Series != "" {
+		if err := ValidateSeries(r.Series); err != nil {
+			return nil, errors.Annotatef(err, "cannot parse series in URL %q", url)
 		}
 	}
 

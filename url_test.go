@@ -240,9 +240,9 @@ var urlTests = []struct {
 	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "ubuntu:20.04", Architecture: "arch"},
 	exact: "ch:arch/ubuntu:20.04/bar",
 }, {
-	s:   "arch/ubuntu/bar",
-	url: &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "ubuntu", Architecture: "arch"},
-	err: `cannot parse base in URL "arch/ubuntu/bar": base "ubuntu" not valid`,
+	s:     "arch/ubuntu/bar",
+	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Series: "ubuntu", Architecture: "arch"},
+	exact: "ch:arch/ubuntu/bar",
 }, {
 	s:     "arch/windows:stable/bar",
 	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "windows:stable", Architecture: "arch"},
