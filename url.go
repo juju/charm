@@ -535,12 +535,12 @@ func parseHTTPURL(url *gourl.URL) (*URL, error) {
 // Examples are as follows:
 //
 //  - ch:amd64/foo-1
-//  - ch:amd64/20.04/foo-1
-//  - ch:amd64/20.04:stable/foo-1
-//  - ch:amd64/20.04:stable:branch/foo-1
+//  - ch:amd64/ubuntu:20.04/foo-1
+//  - ch:amd64/ubuntu:20.04:stable/foo-1
+//  - ch:amd64/ubuntu:20.04:stable:branch/foo-1
 //  - ch:foo-1
 //  - ch:foo
-//  - ch:amd64/20.04/foo
+//  - ch:amd64/ubuntu:20.04/foo
 //
 func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	r := URL{

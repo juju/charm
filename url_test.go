@@ -26,109 +26,109 @@ var urlTests = []struct {
 	url    *charm.URL
 }{{
 	s:   "cs:~user/series/name",
-	url: makeURL("cs", "user", "name", -1, "series", ""),
+	url: makeV1URL("cs", "user", "name", -1, "series", ""),
 }, {
 	s:   "cs:~user/series/name-0",
-	url: makeURL("cs", "user", "name", 0, "series", ""),
+	url: makeV1URL("cs", "user", "name", 0, "series", ""),
 }, {
 	s:   "cs:series/name",
-	url: makeURL("cs", "", "name", -1, "series", ""),
+	url: makeV1URL("cs", "", "name", -1, "series", ""),
 }, {
 	s:   "cs:series/name-42",
-	url: makeURL("cs", "", "name", 42, "series", ""),
+	url: makeV1URL("cs", "", "name", 42, "series", ""),
 }, {
 	s:   "local:series/name-1",
-	url: makeURL("local", "", "name", 1, "series", ""),
+	url: makeV1URL("local", "", "name", 1, "series", ""),
 }, {
 	s:   "local:series/name",
-	url: makeURL("local", "", "name", -1, "series", ""),
+	url: makeV1URL("local", "", "name", -1, "series", ""),
 }, {
 	s:   "local:series/n0-0n-n0",
-	url: makeURL("local", "", "n0-0n-n0", -1, "series", ""),
+	url: makeV1URL("local", "", "n0-0n-n0", -1, "series", ""),
 }, {
 	s:   "cs:~user/name",
-	url: makeURL("cs", "user", "name", -1, "", ""),
+	url: makeV1URL("cs", "user", "name", -1, "", ""),
 }, {
 	s:   "cs:name",
-	url: makeURL("cs", "", "name", -1, "", ""),
+	url: makeV1URL("cs", "", "name", -1, "", ""),
 }, {
 	s:   "local:name",
-	url: makeURL("local", "", "name", -1, "", ""),
+	url: makeV1URL("local", "", "name", -1, "", ""),
 }, {
 	s:     "http://jujucharms.com/u/user/name/series/1",
-	url:   makeURL("cs", "user", "name", 1, "series", ""),
+	url:   makeV1URL("cs", "user", "name", 1, "series", ""),
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "http://www.jujucharms.com/u/user/name/series/1",
-	url:   makeURL("cs", "user", "name", 1, "series", ""),
+	url:   makeV1URL("cs", "user", "name", 1, "series", ""),
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://www.jujucharms.com/u/user/name/series/1",
-	url:   makeURL("cs", "user", "name", 1, "series", ""),
+	url:   makeV1URL("cs", "user", "name", 1, "series", ""),
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series/1",
-	url:   makeURL("cs", "user", "name", 1, "series", ""),
+	url:   makeV1URL("cs", "user", "name", 1, "series", ""),
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series",
-	url:   makeURL("cs", "user", "name", -1, "series", ""),
+	url:   makeV1URL("cs", "user", "name", -1, "series", ""),
 	exact: "cs:~user/series/name",
 }, {
 	s:     "https://jujucharms.com/u/user/name/1",
-	url:   makeURL("cs", "user", "name", 1, "", ""),
+	url:   makeV1URL("cs", "user", "name", 1, "", ""),
 	exact: "cs:~user/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name",
-	url:   makeURL("cs", "user", "name", -1, "", ""),
+	url:   makeV1URL("cs", "user", "name", -1, "", ""),
 	exact: "cs:~user/name",
 }, {
 	s:     "https://jujucharms.com/name",
-	url:   makeURL("cs", "", "name", -1, "", ""),
+	url:   makeV1URL("cs", "", "name", -1, "", ""),
 	exact: "cs:name",
 }, {
 	s:     "https://jujucharms.com/name/series",
-	url:   makeURL("cs", "", "name", -1, "series", ""),
+	url:   makeV1URL("cs", "", "name", -1, "series", ""),
 	exact: "cs:series/name",
 }, {
 	s:     "https://jujucharms.com/name/1",
-	url:   makeURL("cs", "", "name", 1, "", ""),
+	url:   makeV1URL("cs", "", "name", 1, "", ""),
 	exact: "cs:name-1",
 }, {
 	s:     "https://jujucharms.com/name/series/1",
-	url:   makeURL("cs", "", "name", 1, "series", ""),
+	url:   makeV1URL("cs", "", "name", 1, "series", ""),
 	exact: "cs:series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series/1/",
-	url:   makeURL("cs", "user", "name", 1, "series", ""),
+	url:   makeV1URL("cs", "user", "name", 1, "series", ""),
 	exact: "cs:~user/series/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/series/",
-	url:   makeURL("cs", "user", "name", -1, "series", ""),
+	url:   makeV1URL("cs", "user", "name", -1, "series", ""),
 	exact: "cs:~user/series/name",
 }, {
 	s:     "https://jujucharms.com/u/user/name/1/",
-	url:   makeURL("cs", "user", "name", 1, "", ""),
+	url:   makeV1URL("cs", "user", "name", 1, "", ""),
 	exact: "cs:~user/name-1",
 }, {
 	s:     "https://jujucharms.com/u/user/name/",
-	url:   makeURL("cs", "user", "name", -1, "", ""),
+	url:   makeV1URL("cs", "user", "name", -1, "", ""),
 	exact: "cs:~user/name",
 }, {
 	s:     "https://jujucharms.com/name/",
-	url:   makeURL("cs", "", "name", -1, "", ""),
+	url:   makeV1URL("cs", "", "name", -1, "", ""),
 	exact: "cs:name",
 }, {
 	s:     "https://jujucharms.com/name/series/",
-	url:   makeURL("cs", "", "name", -1, "series", ""),
+	url:   makeV1URL("cs", "", "name", -1, "series", ""),
 	exact: "cs:series/name",
 }, {
 	s:     "https://jujucharms.com/name/1/",
-	url:   makeURL("cs", "", "name", 1, "", ""),
+	url:   makeV1URL("cs", "", "name", 1, "", ""),
 	exact: "cs:name-1",
 }, {
 	s:     "https://jujucharms.com/name/series/1/",
-	url:   makeURL("cs", "", "name", 1, "series", ""),
+	url:   makeV1URL("cs", "", "name", 1, "series", ""),
 	exact: "cs:series/name-1",
 }, {
 	s:   "https://jujucharms.com/",
@@ -201,28 +201,28 @@ var urlTests = []struct {
 	err: `local charm or bundle URL with user name: $URL`,
 }, {
 	s:     "amd64/name",
-	url:   makeURL("ch", "", "name", -1, "", "amd64"),
+	url:   makeV1URL("ch", "", "name", -1, "", "amd64"),
 	exact: "ch:amd64/name",
 }, {
 	s:     "foo",
-	url:   makeURL("ch", "", "foo", -1, "", ""),
+	url:   makeV1URL("ch", "", "foo", -1, "", ""),
 	exact: "ch:foo",
 }, {
 	s:     "foo-1",
 	exact: "ch:foo-1",
-	url:   makeURL("ch", "", "foo", 1, "", ""),
+	url:   makeV1URL("ch", "", "foo", 1, "", ""),
 }, {
 	s:     "n0-n0-n0",
 	exact: "ch:n0-n0-n0",
-	url:   makeURL("ch", "", "n0-n0-n0", -1, "", ""),
+	url:   makeV1URL("ch", "", "n0-n0-n0", -1, "", ""),
 }, {
 	s:     "cs:foo",
 	exact: "cs:foo",
-	url:   makeURL("cs", "", "foo", -1, "", ""),
+	url:   makeV1URL("cs", "", "foo", -1, "", ""),
 }, {
 	s:     "local:foo",
 	exact: "local:foo",
-	url:   makeURL("local", "", "foo", -1, "", ""),
+	url:   makeV1URL("local", "", "foo", -1, "", ""),
 }, {
 	s:     "arch/base:version/bar",
 	url:   &charm.URL{Schema: "ch", Name: "bar", Revision: -1, Base: "base:version", Architecture: "arch"},
@@ -260,16 +260,16 @@ var urlTests = []struct {
 	err: `cannot parse URL $URL: name "~blah" not valid`,
 }, {
 	s:   "ch:name",
-	url: makeURL("ch", "", "name", -1, "", ""),
+	url: makeV1URL("ch", "", "name", -1, "", ""),
 }, {
 	s:   "ch:name-suffix",
-	url: makeURL("ch", "", "name-suffix", -1, "", ""),
+	url: makeV1URL("ch", "", "name-suffix", -1, "", ""),
 }, {
 	s:   "ch:name-1",
-	url: makeURL("ch", "", "name", 1, "", ""),
+	url: makeV1URL("ch", "", "name", 1, "", ""),
 }, {
 	s:     "ch:arch/name",
-	url:   makeURL("ch", "", "name", -1, "", "arch"),
+	url:   makeV1URL("ch", "", "name", -1, "", "arch"),
 	exact: "ch:arch/name",
 }, {
 	s:   "ch:~user/name",
@@ -494,7 +494,7 @@ func (s *URLSuite) TestValidCheckers(c *gc.C) {
 
 func (s *URLSuite) TestMustParseURL(c *gc.C) {
 	url := charm.MustParseURL("cs:series/name")
-	c.Assert(url, gc.DeepEquals, makeURL("cs", "", "name", -1, "series", ""))
+	c.Assert(url, gc.DeepEquals, makeV1URL("cs", "", "name", -1, "series", ""))
 	f := func() { charm.MustParseURL("local:@@/name") }
 	c.Assert(f, gc.PanicMatches, "cannot parse URL \"local:@@/name\": series name \"@@\" not valid")
 	f = func() { charm.MustParseURL("cs:~user") }
@@ -506,15 +506,15 @@ func (s *URLSuite) TestMustParseURL(c *gc.C) {
 func (s *URLSuite) TestWithRevision(c *gc.C) {
 	url := charm.MustParseURL("cs:series/name")
 	other := url.WithRevision(1)
-	c.Assert(url, gc.DeepEquals, makeURL("cs", "", "name", -1, "series", ""))
-	c.Assert(other, gc.DeepEquals, makeURL("cs", "", "name", 1, "series", ""))
+	c.Assert(url, gc.DeepEquals, makeV1URL("cs", "", "name", -1, "series", ""))
+	c.Assert(other, gc.DeepEquals, makeV1URL("cs", "", "name", 1, "series", ""))
 
 	// Should always copy. The opposite behavior is error prone.
 	c.Assert(other.WithRevision(1), gc.Not(gc.Equals), other)
 	c.Assert(other.WithRevision(1), gc.DeepEquals, other)
 }
 
-func makeURL(schema, user, name string, revision int, series, arch string) *charm.URL {
+func makeV1URL(schema, user, name string, revision int, series, arch string) *charm.URL {
 	return &charm.URL{
 		Schema:       schema,
 		User:         user,
