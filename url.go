@@ -81,7 +81,7 @@ type URL struct {
 	Name         string // "wordpress".
 	Revision     int    // -1 if unset, N otherwise.
 	Series       string // "precise" or "" if unset; "bundle" if it's a bundle.
-	Base         string // "20.04:stable:branch" if base is present, series is empty.
+	Base         string // "ubuntu:20.04:stable:branch" if base is present, series is empty.
 	Architecture string // "amd64" or "" if unset for charmstore (v1) URLs.
 }
 
