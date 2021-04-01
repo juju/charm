@@ -2,6 +2,7 @@ module github.com/juju/charm/v8
 
 require (
 	github.com/gobwas/glob v0.2.3 // indirect
+	github.com/juju/charm/v9 v9.0.0-20210324234318-1204b46e47ee
 	github.com/juju/collections v0.0.0-20200605021417-0d0ec82b7271
 	github.com/juju/errors v0.0.0-20200330140219-3fe23663418f
 	github.com/juju/gojsonpointer v0.0.0-20150204194629-afe8b77aa08f // indirect
@@ -13,7 +14,7 @@ require (
 	github.com/juju/os/v2 v2.0.0
 	github.com/juju/schema v0.0.0-20160301111646-1e25943f8c6f
 	github.com/juju/systems v0.0.0-20210311041303-bc6b2f9677ca
-	github.com/juju/testing v0.0.0-20200923013621-75df6121fbb0
+	github.com/juju/testing v0.0.0-20210302031854-2c7ee8570c07
 	github.com/juju/utils/v2 v2.0.0-20200923005554-4646bfea2ef1
 	github.com/juju/version v0.0.0-20191219164919-81c1be00b9a6
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826

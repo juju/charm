@@ -81,12 +81,14 @@ type URL struct {
 	Name         string // "wordpress".
 	Revision     int    // -1 if unset, N otherwise.
 	Series       string // "precise" or "" if unset; "bundle" if it's a bundle.
+	Base         string // "ubuntu:20.04:stable:branch" if base is present, series is empty.
 	Architecture string // "amd64" or "" if unset for charmstore (v1) URLs.
 }
 
 var (
 	validArch   = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
 	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
+	validBase   = regexp.MustCompile("^[a-zA-Z0-9]+:[a-zA-Z0-9.]+(:[a-zA-Z0-9]+(:[a-zA-Z0-9]+)?)?$")
 	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
 
@@ -119,6 +121,20 @@ func ValidateSeries(series string) error {
 		return nil
 	}
 	return errors.NotValidf("series name %q", series)
+}
+
+// IsValidBase reports whether series is a valid base in charm or bundle
+// URLs.
+func IsValidBase(base string) bool {
+	return validBase.MatchString(base)
+}
+
+// ValidateBase returns an error if the given base is invalid.
+func ValidateBase(base string) error {
+	if IsValidBase(base) {
+		return nil
+	}
+	return errors.NotValidf("base %q", base)
 }
 
 // IsValidArchitecture reports whether the architecture is a valid architecture
@@ -161,6 +177,14 @@ func (u *URL) WithRevision(revision int) *URL {
 func (u *URL) WithArchitecture(arch string) *URL {
 	urlCopy := *u
 	urlCopy.Architecture = arch
+	return &urlCopy
+}
+
+// WithBase returns a URL equivalent to url but with Base set
+// to base.
+func (u *URL) WithBase(base string) *URL {
+	urlCopy := *u
+	urlCopy.Base = base
 	return &urlCopy
 }
 
@@ -291,8 +315,11 @@ func (u *URL) path() string {
 	if u.Architecture != "" {
 		parts = append(parts, u.Architecture)
 	}
-	if u.Series != "" {
+	if u.Base == "" && u.Series != "" {
 		parts = append(parts, u.Series)
+	}
+	if u.Base != "" && u.Series == "" {
+		parts = append(parts, u.Base)
 	}
 	if u.Revision >= 0 {
 		parts = append(parts, fmt.Sprintf("%s-%d", u.Name, u.Revision))
@@ -508,10 +535,12 @@ func parseHTTPURL(url *gourl.URL) (*URL, error) {
 // Examples are as follows:
 //
 //  - ch:amd64/foo-1
-//  - ch:amd64/focal/foo-1
+//  - ch:amd64/ubuntu:20.04/foo-1
+//  - ch:amd64/ubuntu:20.04:stable/foo-1
+//  - ch:amd64/ubuntu:20.04:stable:branch/foo-1
 //  - ch:foo-1
 //  - ch:foo
-//  - ch:amd64/focal/foo
+//  - ch:amd64/ubuntu:20.04/foo
 //
 func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	r := URL{
@@ -530,11 +559,12 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	}
 
 	var nameRev string
-	if num := len(parts); num == 3 {
-		r.Architecture, r.Series, nameRev = parts[0], parts[1], parts[2]
-	} else if num == 2 {
+	switch len(parts) {
+	case 3:
+		r.Architecture, r.Base, nameRev = parts[0], parts[1], parts[2]
+	case 2:
 		r.Architecture, nameRev = parts[0], parts[1]
-	} else {
+	default:
 		nameRev = parts[0]
 	}
 
@@ -550,9 +580,9 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 			return nil, errors.Annotatef(err, "cannot parse architecture in URL %q", url)
 		}
 	}
-	if r.Series != "" {
-		if err := ValidateSeries(r.Series); err != nil {
-			return nil, errors.Annotatef(err, "cannot parse series in URL %q", url)
+	if r.Base != "" {
+		if err := ValidateBase(r.Base); err != nil {
+			return nil, errors.Annotatef(err, "cannot parse base in URL %q", url)
 		}
 	}
 
