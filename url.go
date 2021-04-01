@@ -81,13 +81,15 @@ type URL struct {
 	Name         string // "wordpress".
 	Revision     int    // -1 if unset, N otherwise.
 	Series       string // "precise" or "" if unset; "bundle" if it's a bundle.
+	Channel      string // "20.04:stable:branch" if channel is present, series is empty.
 	Architecture string // "amd64" or "" if unset for charmstore (v1) URLs.
 }
 
 var (
-	validArch   = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
-	validSeries = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
-	validName   = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
+	validArch    = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
+	validSeries  = regexp.MustCompile("^[a-z]+([a-z0-9]+)?$")
+	validChannel = regexp.MustCompile("^[a-zA-Z0-9.]+(:[a-zA-Z0-9]+(:[a-zA-Z0-9]+)?)?$")
+	validName    = regexp.MustCompile("^[a-z][a-z0-9]*(-[a-z0-9]*[a-z][a-z0-9]*)*$")
 )
 
 // ValidateSchema returns an error if the schema is invalid.
@@ -119,6 +121,20 @@ func ValidateSeries(series string) error {
 		return nil
 	}
 	return errors.NotValidf("series name %q", series)
+}
+
+// IsValidChannel reports whether series is a valid channel in charm or bundle
+// URLs.
+func IsValidChannel(channel string) bool {
+	return validChannel.MatchString(channel)
+}
+
+// ValidateChannel returns an error if the given channel is invalid.
+func ValidateChannel(channel string) error {
+	if IsValidChannel(channel) {
+		return nil
+	}
+	return errors.NotValidf("channel %q", channel)
 }
 
 // IsValidArchitecture reports whether the architecture is a valid architecture
@@ -161,6 +177,14 @@ func (u *URL) WithRevision(revision int) *URL {
 func (u *URL) WithArchitecture(arch string) *URL {
 	urlCopy := *u
 	urlCopy.Architecture = arch
+	return &urlCopy
+}
+
+// WithChannel returns a URL equivalent to url but with Channel set
+// to channel.
+func (u *URL) WithChannel(channel string) *URL {
+	urlCopy := *u
+	urlCopy.Channel = channel
 	return &urlCopy
 }
 
@@ -291,8 +315,11 @@ func (u *URL) path() string {
 	if u.Architecture != "" {
 		parts = append(parts, u.Architecture)
 	}
-	if u.Series != "" {
+	if u.Channel == "" && u.Series != "" {
 		parts = append(parts, u.Series)
+	}
+	if u.Channel != "" && u.Series == "" {
+		parts = append(parts, u.Channel)
 	}
 	if u.Revision >= 0 {
 		parts = append(parts, fmt.Sprintf("%s-%d", u.Name, u.Revision))
@@ -508,10 +535,12 @@ func parseHTTPURL(url *gourl.URL) (*URL, error) {
 // Examples are as follows:
 //
 //  - ch:amd64/foo-1
-//  - ch:amd64/focal/foo-1
+//  - ch:amd64/20.04/foo-1
+//  - ch:amd64/20.04:stable/foo-1
+//  - ch:amd64/20.04:stable:branch/foo-1
 //  - ch:foo-1
 //  - ch:foo
-//  - ch:amd64/focal/foo
+//  - ch:amd64/20.04/foo
 //
 func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	r := URL{
@@ -532,7 +561,7 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	var nameRev string
 	switch len(parts) {
 	case 3:
-		r.Architecture, r.Series, nameRev = parts[0], parts[1], parts[2]
+		r.Architecture, r.Channel, nameRev = parts[0], parts[1], parts[2]
 	case 2:
 		r.Architecture, nameRev = parts[0], parts[1]
 	default:
@@ -551,9 +580,9 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 			return nil, errors.Annotatef(err, "cannot parse architecture in URL %q", url)
 		}
 	}
-	if r.Series != "" {
-		if err := ValidateSeries(r.Series); err != nil {
-			return nil, errors.Annotatef(err, "cannot parse series in URL %q", url)
+	if r.Channel != "" {
+		if err := ValidateChannel(r.Channel); err != nil {
+			return nil, errors.Annotatef(err, "cannot parse channel in URL %q", url)
 		}
 	}
 
