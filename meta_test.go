@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/juju/systems"
-	"github.com/juju/systems/channel"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/version"
 	gc "gopkg.in/check.v1"
@@ -806,10 +804,6 @@ func (s *MetaSuite) TestCodecRoundTrip(c *gc.C) {
 		Categories: []string{"quxxxx", "quxxxxx"},
 		Tags:       []string{"openstack", "storage"},
 		Terms:      []string{"test-term/1", "test-term/2"},
-		Bases: []systems.Base{{
-			Name:    "ubuntu",
-			Channel: channel.MustParse("18.04/stable"),
-		}},
 	}
 	for _, codec := range codecs {
 		c.Logf("codec %s", codec.Name)
@@ -874,10 +868,6 @@ func (s *MetaSuite) TestCodecRoundTripKubernetes(c *gc.C) {
 				Resource: "test",
 			},
 		},
-		Bases: []systems.Base{{
-			Name:    "ubuntu",
-			Channel: channel.MustParse("18.04/stable"),
-		}},
 		Resources: map[string]resource.Meta{
 			"test": resource.Meta{
 				Name: "test",
@@ -1664,30 +1654,7 @@ func (s *MetaSuite) TestParseResourceMetaNil(c *gc.C) {
 	})
 }
 
-func (s *MetaSuite) TestComputedSeriesLegacy(c *gc.C) {
-	meta, err := charm.ReadMeta(strings.NewReader(`
-name: a
-summary: b
-description: c
-series:
-  - bionic
-`))
-	c.Assert(err, gc.IsNil)
-	c.Assert(meta.ComputedSeries(), jc.DeepEquals, []string{"bionic"})
-}
 
-func (s *MetaSuite) TestComputedSeries(c *gc.C) {
-	meta, err := charm.ReadMeta(strings.NewReader(`
-name: a
-summary: b
-description: c
-bases:
-  - name: ubuntu
-    channel: 18.04/stable
-`))
-	c.Assert(err, gc.IsNil)
-	c.Assert(meta.ComputedSeries(), jc.DeepEquals, []string{"bionic"})
-}
 
 func (s *MetaSuite) TestContainers(c *gc.C) {
 	meta, err := charm.ReadMeta(strings.NewReader(`
@@ -1887,6 +1854,18 @@ func (c *dummyCharm) LXDProfile() *charm.LXDProfile {
 }
 
 func (c *dummyCharm) Revision() int {
+	panic("unused")
+}
+
+func (c *dummyCharm) BasesManifest() *charm.Manifest {
+	panic("unused")
+}
+
+func (c *dummyCharm) ComputedSeries() []string {
+	panic("unused")
+}
+
+func (c *dummyCharm) Format() charm.Format {
 	panic("unused")
 }
 

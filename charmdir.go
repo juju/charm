@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/juju/errors"
+	"github.com/juju/collections/set"
 )
 
 // defaultJujuIgnore contains jujuignore directives for excluding VCS- and
@@ -83,7 +84,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 
 	// If the format is not the v1 format (this should take care of any
 	// potential N formats), ensure that we can read the manifest file.
-	if b.meta.Format() != FormatV1 {
+	if b.Format() != FormatV1 {
 		reader, err = os.Open(b.join("manifest.yaml"))
 		if err != nil {
 			return nil, errors.Annotatef(err, `reading "manifest.yaml" file`)
@@ -244,6 +245,12 @@ func (dir *CharmDir) Actions() *Actions {
 // for the charm expanded in dir.
 func (dir *CharmDir) LXDProfile() *LXDProfile {
 	return dir.lxdProfile
+}
+
+// BasesManifest returns the Manifest representing the manifest.yaml file
+// for the charm expanded in dir.
+func (dir *CharmDir) BasesManifest() *Manifest {
+	return dir.manifest
 }
 
 // SetRevision changes the charm revision number. This affects
@@ -582,3 +589,34 @@ func (dir *CharmDir) MaybeGenerateVersionString(logger Logger) (string, string, 
 	logger.Infof("charm is not versioned, charm path %q", absPath)
 	return "", "", nil
 }
+
+// Format returns the charm metadata format version.
+// Charms that specify bases are v2. Otherwise it
+// defaults to v1.
+func (m *CharmDir) Format() Format {
+	if m.manifest.Bases != nil {
+		return FormatV2
+	}
+	return FormatV1
+}
+
+// ComputedSeries of a charm. This is to support legacy logic on new
+// charms that use Systems.
+func (m *CharmDir) ComputedSeries() []string {
+	if m.Format() == FormatV1 {
+		return m.meta.Series
+	}
+	// The slice must be ordered based on system appearance but
+	// have unique elements.
+	seriesSlice := []string(nil)
+	seriesSet := set.NewStrings()
+	for _, base := range m.manifest.Bases {
+		series := base.String()
+		if !seriesSet.Contains(series) {
+			seriesSet.Add(series)
+			seriesSlice = append(seriesSlice, series)
+		}
+	}
+	return seriesSlice
+}
+

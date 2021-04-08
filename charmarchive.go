@@ -85,7 +85,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 
 	// If the format is not the v1 format (this should take care of any
 	// potential N formats), ensure that we can read the manifest file.
-	if b.meta.Format() != FormatV1 {
+	if b.Format() != FormatV1 {
 		reader, err = zipOpenFile(zipr, "manifest.yaml")
 		if err != nil {
 			return nil, errors.Annotatef(err, "opening manifest file")
@@ -239,16 +239,22 @@ func (a *CharmArchive) Metrics() *Metrics {
 	return a.metrics
 }
 
-// Actions returns the Actions map for the actions.yaml/functions.yaml  file for the charm
+// Actions returns the Actions map for the actions.yaml/functions.yaml file for the charm
 // archive.
 func (a *CharmArchive) Actions() *Actions {
 	return a.actions
 }
 
 // LXDProfile returns the LXDProfile representing the lxd-profile.yaml file
-// for the charm expanded in dir.
+// for the charm archive.
 func (a *CharmArchive) LXDProfile() *LXDProfile {
 	return a.lxdProfile
+}
+
+// BasesManifest returns the Manifest representing the manifest.yaml file
+// for the charm archive.
+func (a *CharmArchive) BasesManifest() *Manifest {
+	return a.manifest
 }
 
 type zipReadCloser struct {
@@ -384,4 +390,34 @@ func fixHookFunc(hooksDir string, hookNames map[string]bool) filepath.WalkFunc {
 		}
 		return nil
 	}
+}
+
+// Format returns the charm metadata format version.
+// Charms that specify bases are v2. Otherwise it
+// defaults to v1.
+func (a *CharmArchive) Format() Format {
+	if a.manifest.Bases != nil {
+		return FormatV2
+	}
+	return FormatV1
+}
+
+// ComputedSeries of a charm. This is to support legacy logic on new
+// charms that use Systems.
+func (a *CharmArchive) ComputedSeries() []string {
+	if a.Format() == FormatV1 {
+		return a.meta.Series
+	}
+	// The slice must be ordered based on system appearance but
+	// have unique elements.
+	seriesSlice := []string(nil)
+	seriesSet := set.NewStrings()
+	for _, base := range a.manifest.Bases {
+		series := base.String()
+		if !seriesSet.Contains(series) {
+			seriesSet.Add(series)
+			seriesSlice = append(seriesSlice, series)
+		}
+	}
+	return seriesSlice
 }

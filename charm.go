@@ -17,10 +17,13 @@ var logger = loggo.GetLogger("juju.charm")
 // may be handled as a charm.
 type Charm interface {
 	Meta() *Meta
+	BasesManifest() *Manifest
 	Config() *Config
 	Metrics() *Metrics
 	Actions() *Actions
 	Revision() int
+	Format() Format
+	ComputedSeries() []string
 }
 
 // ReadCharm reads a Charm from path, which can point to either a charm archive or a
@@ -99,3 +102,13 @@ func IsUnsupportedSeriesError(err error) bool {
 	_, ok := err.(*unsupportedSeriesError)
 	return ok
 }
+
+// Format of the parsed charm.
+type Format int
+
+// Formats are the different versions of charm metadata supported.
+const (
+	FormatUnknown Format = iota
+	FormatV1      Format = iota
+	FormatV2      Format = iota
+)

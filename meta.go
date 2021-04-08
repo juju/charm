@@ -12,14 +12,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 	"github.com/juju/names/v4"
 	"github.com/juju/os/v2"
 	"github.com/juju/os/v2/series"
 	"github.com/juju/schema"
-	"github.com/juju/systems"
-	"github.com/juju/systems/channel"
 	"github.com/juju/utils/v2"
 	"github.com/juju/version"
 	"gopkg.in/yaml.v2"
@@ -278,7 +275,6 @@ type Meta struct {
 	Terms          []string                 `bson:"terms,omitempty" json:"Terms,omitempty"`
 	MinJujuVersion version.Number           `bson:"min-juju-version,omitempty" json:"min-juju-version,omitempty"`
 
-	Bases      []systems.Base       `bson:"bases,omitempty" json:"bases,omitempty" yaml:"bases,omitempty"`
 	Containers map[string]Container `bson:"containers,omitempty" json:"containers,omitempty" yaml:"containers,omitempty"`
 	Assumes    []string             `bson:"assumes,omitempty" json:"assumes,omitempty" yaml:"assumes,omitempty"`
 }
@@ -304,16 +300,6 @@ type Mount struct {
 	Storage  string `bson:"storage,omitempty" json:"storage,omitempty" yaml:"storage,omitempty"`
 	Location string `bson:"location,omitempty" json:"location,omitempty" yaml:"location,omitempty"`
 }
-
-// Format of the parsed charm.
-type Format int
-
-// Formats are the different versions of charm metadata supported.
-const (
-	FormatUnknown Format = iota
-	FormatV1      Format = iota
-	FormatV2      Format = iota
-)
 
 func generateRelationHooks(relName string, allHooks map[string]bool) {
 	for _, hookName := range hooks.RelationHooks() {
@@ -360,36 +346,6 @@ func (m Meta) Hooks() map[string]bool {
 		generateContainerHooks(containerName, allHooks)
 	}
 	return allHooks
-}
-
-// Format returns the charm metadata format version.
-// Charms that specify systems are v2. Otherwise it
-// defaults to v1.
-func (m Meta) Format() Format {
-	if m.Bases != nil {
-		return FormatV2
-	}
-	return FormatV1
-}
-
-// ComputedSeries of a charm. This is to support legacy logic on new
-// charms that use Systems.
-func (m Meta) ComputedSeries() []string {
-	if m.Format() == FormatV1 {
-		return m.Series
-	}
-	// The slice must be ordered based on system appearance but
-	// have unique elements.
-	seriesSlice := []string(nil)
-	seriesSet := set.NewStrings()
-	for _, base := range m.Bases {
-		series := base.String()
-		if !seriesSet.Contains(series) {
-			seriesSet.Add(series)
-			seriesSlice = append(seriesSlice, series)
-		}
-	}
-	return seriesSlice
 }
 
 // Used for parsing Categories and Tags.
@@ -633,10 +589,6 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	}
 
 	// v2 parsing
-	meta.Bases, err = parseBases(m["bases"])
-	if err != nil {
-		return nil, errors.Annotatef(err, "parsing bases")
-	}
 	meta.Containers, err = parseContainers(m["containers"], meta.Resources, meta.Storage)
 	if err != nil {
 		return nil, errors.Annotatef(err, "parsing containers")
@@ -651,13 +603,13 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 		return nil, errors.Trace(err)
 	}
 
-	switch m.Format() {
+	switch m.format() {
 	case FormatV1:
 		return m.marshalV1()
 	case FormatV2:
 		return m.marshalV2()
 	default:
-		return nil, errors.Errorf("unknown format %v", m.Format())
+		return nil, errors.Errorf("unknown format %v", m.format())
 	}
 }
 
@@ -677,7 +629,6 @@ func (m Meta) marshalV2() (interface{}, error) {
 		Devices       map[string]Device                `yaml:"devices,omitempty"`
 		Terms         []string                         `yaml:"terms,omitempty"`
 		Resources     map[string]marshaledResourceMeta `yaml:"resources,omitempty"`
-		Bases         []marshaledBase                  `yaml:"bases,omitempty"`
 		Containers    map[string]marshaledContainer    `yaml:"containers,omitempty"`
 		Assumes       []string                         `yaml:"assumes,omitempty"`
 	}{
@@ -695,7 +646,6 @@ func (m Meta) marshalV2() (interface{}, error) {
 		Devices:       m.Devices,
 		Terms:         m.Terms,
 		Resources:     marshaledResources(m.Resources),
-		Bases:         marshaledBases(m.Bases),
 		Containers:    marshaledContainers(m.Containers),
 		Assumes:       m.Assumes,
 	}, nil
@@ -810,27 +760,6 @@ func marshaledExtraBindings(bindings map[string]ExtraBinding) map[string]interfa
 	return marshaled
 }
 
-type marshaledBase systems.Base
-
-func marshaledBases(s []systems.Base) []marshaledBase {
-	marshaled := []marshaledBase(nil)
-	for _, v := range s {
-		marshaled = append(marshaled, marshaledBase(v))
-	}
-	return marshaled
-}
-
-func (s marshaledBase) MarshalYAML() (interface{}, error) {
-	ms := struct {
-		Name    string `yaml:"name,omitempty"`
-		Channel string `yaml:"channel,omitempty"`
-	}{
-		Name:    s.Name,
-		Channel: s.Channel.String(),
-	}
-	return ms, nil
-}
-
 type marshaledContainer Container
 
 func marshaledContainers(c map[string]Container) map[string]marshaledContainer {
@@ -852,9 +781,18 @@ func (c marshaledContainer) MarshalYAML() (interface{}, error) {
 	return mc, nil
 }
 
+// format is an imperfect version of charm.Format() for internal
+// metadata use.  Containers are optional in v2.
+func (m Meta) format() Format {
+	if len(m.Series) == 0|| m.Containers != nil {
+		return FormatV2
+	}
+	return FormatV1
+}
+
 // Check checks that the metadata is well-formed.
 func (m Meta) Check() error {
-	switch m.Format() {
+	switch m.format() {
 	case FormatV1:
 		err := m.checkV1()
 		if err != nil {
@@ -866,7 +804,7 @@ func (m Meta) Check() error {
 			return errors.Trace(err)
 		}
 	default:
-		return errors.Errorf("unknown format %v", m.Format())
+		return errors.Errorf("unknown format %v", m.format())
 	}
 
 	// Check for duplicate or forbidden relation names or interfaces.
@@ -1000,9 +938,6 @@ func (m Meta) checkV1() error {
 	}
 	if len(m.Containers) != 0 {
 		return errors.NotValidf("containers with metadata v1")
-	}
-	if len(m.Bases) != 0 {
-		return errors.NotValidf("bases with metadata v1")
 	}
 	return nil
 }
@@ -1251,33 +1186,6 @@ func parseDeployment(deployment interface{}, charmSeries []string, storage map[s
 	return &result, nil
 }
 
-func parseBases(input interface{}) ([]systems.Base, error) {
-	var err error
-	if input == nil {
-		return nil, nil
-	}
-	res := []systems.Base(nil)
-	for _, v := range input.([]interface{}) {
-		base := systems.Base{}
-		baseMap := v.(map[string]interface{})
-		if value, ok := baseMap["name"]; ok {
-			base.Name = value.(string)
-		}
-		if value, ok := baseMap["channel"]; ok {
-			base.Channel, err = channel.Parse(value.(string))
-			if err != nil {
-				return nil, errors.Annotatef(err, "parsing channel %q", value.(string))
-			}
-		}
-		err = base.Validate()
-		if err != nil {
-			return nil, errors.Trace(err)
-		}
-		res = append(res, base)
-	}
-	return res, nil
-}
-
 func parseContainers(input interface{}, resources map[string]resource.Meta, storage map[string]Storage) (map[string]Container, error) {
 	var err error
 	if input == nil {
@@ -1476,21 +1384,6 @@ var deploymentSchema = schema.FieldMap(
 	},
 )
 
-var baseSchema = schema.FieldMap(
-	schema.Fields{
-		"name": schema.OneOf(
-			schema.Const(systems.Ubuntu),
-			schema.Const(systems.Windows),
-			schema.Const(systems.CentOS),
-			schema.Const(systems.OpenSUSE),
-			schema.Const(systems.GenericLinux),
-			schema.Const(systems.OSX),
-		),
-		"channel": schema.String(),
-	}, schema.Defaults{
-		"name":    schema.Omit,
-		"channel": schema.Omit,
-	})
 
 var containerSchema = schema.FieldMap(
 	schema.Fields{
@@ -1572,7 +1465,6 @@ var charmV2Schema = schema.FieldMap(
 		"resources":      schema.StringMap(resourceSchema),
 		"terms":          schema.List(schema.String()),
 		"assumes":        schema.List(schema.String()),
-		"bases":          schema.List(baseSchema),
 		"containers":     schema.StringMap(containerSchema),
 	},
 	schema.Defaults{
@@ -1589,7 +1481,6 @@ var charmV2Schema = schema.FieldMap(
 		"resources":      schema.Omit,
 		"terms":          schema.Omit,
 		"assumes":        schema.Omit,
-		"bases":          schema.Omit,
 		"containers":     schema.Omit,
 	},
 )
@@ -1611,7 +1502,7 @@ func identifyFormat(raw map[interface{}]interface{}) (Format, error) {
 	for _, key := range keys {
 		detected := FormatUnknown
 		switch key {
-		case "bases", "containers", "assumes":
+		case "containers", "assumes":
 			detected = FormatV2
 		case "series", "deployment", "min-juju-version":
 			detected = FormatV1
