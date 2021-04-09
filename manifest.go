@@ -5,6 +5,7 @@ package charm
 
 import (
 	"fmt"
+	"github.com/juju/systems/channel"
 	"io"
 	"io/ioutil"
 
@@ -32,6 +33,58 @@ func (m *Manifest) Validate() error {
 	return nil
 }
 
+func (m *Manifest) UnmarshalYAML(f func(interface{}) error) error {
+	raw := make(map[interface{}]interface{})
+	err := f(&raw)
+	if err != nil {
+		return err
+	}
+
+	v, err := schema.List(baseSchema).Coerce(raw["bases"], nil)
+	if err != nil {
+		return errors.Annotatef(err, "coerce")
+	}
+
+	newV, ok := v.([]interface{})
+	if !ok {
+		return errors.Annotatef(err, "converting")
+	}
+	bases, err := parseBases(newV)
+	if err != nil {
+		return err
+	}
+
+	*m = Manifest{Bases: bases}
+	return nil
+}
+
+func parseBases(input interface{}) ([]systems.Base, error) {
+	var err error
+	if input == nil {
+		return nil, nil
+	}
+	res := []systems.Base(nil)
+	for _, v := range input.([]interface{}) {
+		base := systems.Base{}
+		baseMap := v.(map[string]interface{})
+		if value, ok := baseMap["name"]; ok {
+			base.Name = value.(string)
+		}
+		if value, ok := baseMap["channel"]; ok {
+			base.Channel, err = channel.Parse(value.(string))
+			if err != nil {
+				return nil, errors.Annotatef(err, "parsing channel %q", value.(string))
+			}
+		}
+		err = base.Validate()
+		if err != nil {
+			return nil, errors.Trace(err)
+		}
+		res = append(res, base)
+	}
+	return res, nil
+}
+
 // ReadManifest reads in a Manifest from a charm's manifest.yaml.
 // It is not validated at this point so that the caller can choose to override
 // any validation.
@@ -42,17 +95,10 @@ func ReadManifest(r io.Reader) (*Manifest, error) {
 	}
 	var manifest *Manifest
 	if err := yaml.Unmarshal(data, &manifest); err != nil {
-		return nil, err
+		return nil, errors.Annotatef(err, "manifest")
 	}
 	if manifest == nil {
 		return nil, errors.Annotatef(err, "invalid base in manifest")
-	}
-	formatSchema := baseSchema
-	for _, base := range manifest.Bases {
-		_, err := formatSchema.Coerce(base, nil)
-		if err != nil {
-			return nil, errors.Annotatef(err, "manifest")
-		}
 	}
 	return manifest, nil
 }

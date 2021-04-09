@@ -4,17 +4,15 @@
 package charm
 
 import (
-	"strings"
-	stdtesting "testing"
-
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
+	"strings"
 )
 
-func Test(t *stdtesting.T) {
-	gc.TestingT(t)
-}
+//func Test(t *stdtesting.T) {
+//	gc.TestingT(t)
+//}
 
 type computedSeriesSuite struct {
 	testing.CleanupSuite
@@ -49,14 +47,16 @@ description: c
 	manifest, err := ReadManifest(strings.NewReader(`
 bases:
   - name: ubuntu
-    channel: 18.04/stable
+    channel: "18.04"
+  - name: ubuntu
+    channel: "20.04"
 `))
 	c.Assert(err, gc.IsNil)
 	dir := CharmDir{
 		meta: meta,
 		manifest:manifest,
 	}
-	c.Assert(dir.ComputedSeries(), jc.DeepEquals, []string{"bionic"})
+	c.Assert(dir.ComputedSeries(), jc.DeepEquals, []string{"bionic", "focal"})
 }
 
 func (s *computedSeriesSuite) TestArchiveComputedSeriesLegacy(c *gc.C) {
