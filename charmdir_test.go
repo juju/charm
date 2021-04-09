@@ -143,9 +143,9 @@ func (s *CharmDirSuite) TestArchiveToWithIgnoredFiles(c *gc.C) {
 	archive, err := charm.ReadCharmArchiveBytes(b.Bytes())
 	c.Assert(err, jc.ErrorIsNil)
 
-	manifest, err := archive.Manifest()
+	manifest, err := archive.ArchiveMembers()
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifest...))
+	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyArchiveMembers...))
 
 	c.Assert(archive.Version(), gc.Not(gc.Equals), "spoofed version")
 	c.Assert(archive.Revision(), gc.Not(gc.Equals), 42)
@@ -196,9 +196,9 @@ tox/**
 	// Based on the .jujuignore rules, we should retain "foo/bar" and
 	// "tox/keep" but nothing else
 	retained := []string{"foo", "tox", "tox/keep"}
-	expContents := set.NewStrings(append(retained, dummyManifest...)...)
+	expContents := set.NewStrings(append(retained, dummyArchiveMembers...)...)
 
-	manifest, err := archive.Manifest()
+	manifest, err := archive.ArchiveMembers()
 	c.Log(manifest.Difference(expContents))
 	c.Log(expContents.Difference(manifest))
 	c.Assert(err, jc.ErrorIsNil)

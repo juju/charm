@@ -313,8 +313,8 @@ func (zo *zipReaderOpener) openZip() (*zipReadCloser, error) {
 	return &zipReadCloser{Closer: ioutil.NopCloser(nil), Reader: r}, nil
 }
 
-// Manifest returns a set of the charm's contents.
-func (a *CharmArchive) Manifest() (set.Strings, error) {
+// ArchiveMembers returns a set of the charm's contents.
+func (a *CharmArchive) ArchiveMembers() (set.Strings, error) {
 	zipr, err := a.zopen.openZip()
 	if err != nil {
 		return set.NewStrings(), err
