@@ -252,6 +252,12 @@ func (a *CharmArchive) LXDProfile() *LXDProfile {
 	return a.lxdProfile
 }
 
+// Manifest returns the Manifest representing the manifest.yaml file
+// for the charm expanded in dir.
+func (a *CharmArchive) Manifest() *Manifest {
+	return a.manifest
+}
+
 type zipReadCloser struct {
 	io.Closer
 	*zip.Reader

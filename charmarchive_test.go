@@ -16,6 +16,8 @@ import (
 	"syscall"
 
 	"github.com/juju/collections/set"
+	"github.com/juju/systems"
+	"github.com/juju/systems/channel"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
@@ -74,6 +76,38 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutConfig(c *gc.C) {
 	// A lacking config.yaml file still causes a proper
 	// Config value to be returned.
 	c.Assert(archive.Config().Options, gc.HasLen, 0)
+}
+
+func (s *CharmArchiveSuite) TestReadCharmDirManifest(c *gc.C) {
+	path := archivePath(c, readCharmDir(c, "dummy"))
+	dir, err := charm.ReadCharmArchive(path)
+	c.Assert(err, gc.IsNil)
+
+	c.Assert(dir.Manifest().Bases, gc.DeepEquals, []systems.Base{{
+		Name: "ubuntu",
+		Channel: channel.Channel{
+			Name:  "18.04/stable",
+			Track: "18.04",
+			Risk:  "stable",
+		},
+	}, {
+		Name: "ubuntu",
+		Channel: channel.Channel{
+			Name:  "20.04/stable",
+			Track: "20.04",
+			Risk:  "stable",
+		},
+	}})
+}
+
+func (s *CharmArchiveSuite) TestReadCharmDirWithoutManifest(c *gc.C) {
+	path := archivePath(c, readCharmDir(c, "mysql"))
+	dir, err := charm.ReadCharmArchive(path)
+	c.Assert(err, gc.IsNil)
+
+	// A lacking manifest.yaml file still causes a proper
+	// Manifest value to be returned.
+	c.Assert(dir.Manifest().Bases, gc.HasLen, 0)
 }
 
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutMetrics(c *gc.C) {

@@ -247,6 +247,12 @@ func (dir *CharmDir) LXDProfile() *LXDProfile {
 	return dir.lxdProfile
 }
 
+// Manifest returns the Manifest representing the manifest.yaml file
+// for the charm expanded in dir.
+func (dir *CharmDir) Manifest() *Manifest {
+	return dir.manifest
+}
+
 // SetRevision changes the charm revision number. This affects
 // the revision reported by Revision and the revision of the
 // charm archived by ArchiveTo.

@@ -18,6 +18,8 @@ import (
 	"github.com/juju/charm/v8"
 	"github.com/juju/collections/set"
 	"github.com/juju/loggo"
+	"github.com/juju/systems"
+	"github.com/juju/systems/channel"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils/v2"
@@ -103,6 +105,38 @@ func (s *CharmDirSuite) TestReadCharmDirWithActions(c *gc.C) {
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 1)
+}
+
+func (s *CharmDirSuite) TestReadCharmDirManifest(c *gc.C) {
+	path := charmDirPath(c, "dummy")
+	dir, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
+
+	c.Assert(dir.Manifest().Bases, gc.DeepEquals, []systems.Base{{
+		Name: "ubuntu",
+		Channel: channel.Channel{
+			Name:  "18.04/stable",
+			Track: "18.04",
+			Risk:  "stable",
+		},
+	}, {
+		Name: "ubuntu",
+		Channel: channel.Channel{
+			Name:  "20.04/stable",
+			Track: "20.04",
+			Risk:  "stable",
+		},
+	}})
+}
+
+func (s *CharmDirSuite) TestReadCharmDirWithoutManifest(c *gc.C) {
+	path := charmDirPath(c, "mysql")
+	dir, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
+
+	// A lacking manifest.yaml file still causes a proper
+	// Manifest value to be returned.
+	c.Assert(dir.Manifest().Bases, gc.HasLen, 0)
 }
 
 func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
@@ -670,7 +704,7 @@ func (s *CharmSuite) TestMaybeGenerateVersionStringLogsAbsolutePath(c *gc.C) {
 	logger := ctx.GetLogger("juju.testing")
 	lvl, _ := loggo.ParseLevel("TRACE")
 	logger.SetLogLevel(lvl)
-	defer func() {_, _= loggo.RemoveWriter("versionstring-test") }()
+	defer func() { _, _ = loggo.RemoveWriter("versionstring-test") }()
 	defer loggo.ResetLogging()
 
 	testing.PatchExecutableThrowError(c, s, "git", 128)

@@ -1860,6 +1860,10 @@ func (c *dummyCharm) LXDProfile() *charm.LXDProfile {
 	panic("unused")
 }
 
+func (c *dummyCharm) Manifest() *charm.Manifest {
+	panic("unused")
+}
+
 func (c *dummyCharm) Revision() int {
 	panic("unused")
 }

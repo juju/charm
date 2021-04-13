@@ -22,7 +22,7 @@ type Manifest struct {
 	Bases []systems.Base `yaml:"bases"`
 }
 
-func NewManifest() *Manifest{
+func NewManifest() *Manifest {
 	return &Manifest{}
 }
 
@@ -89,10 +89,10 @@ func parseBases(input interface{}) ([]systems.Base, error) {
 	return res, nil
 }
 
-// ReadManifest reads in a Manifest from a charm's manifest.yaml.
-// TODO hml - update this header comment.
-// It is not validated at this point so that the caller can choose to override
-// any validation.
+// ReadManifest reads in a Manifest from a charm's manifest.yaml. Some of
+// validation is done when unmarshalling the manifest, including
+// verification that the base.Name is a supported operating system.  Full
+// validation done by calling Validate().
 func ReadManifest(r io.Reader) (*Manifest, error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
