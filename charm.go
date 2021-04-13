@@ -40,7 +40,15 @@ func ReadCharm(path string) (charm Charm, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return charm, nil
+
+	// Find out the charm format, to Check the metadata.  It should
+	// be one format or the other.
+	format := FormatV2
+	if len(charm.Manifest().Bases) == 0 {
+		format = FormatV1
+	}
+
+	return charm, charm.Meta().Check(format)
 }
 
 // SeriesForCharm takes a requested series and a list of series supported by a
