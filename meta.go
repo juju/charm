@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 	"github.com/juju/names/v4"
 	"github.com/juju/os/v2"
@@ -371,26 +370,6 @@ func (m Meta) format() Format {
 		return FormatV2
 	}
 	return FormatV1
-}
-
-// ComputedSeries of a charm. This is to support legacy logic on new
-// charms that use Systems.
-func (m Meta) ComputedSeries() []string {
-	if m.format() == FormatV1 {
-		return m.Series
-	}
-	// The slice must be ordered based on system appearance but
-	// have unique elements.
-	seriesSlice := []string(nil)
-	seriesSet := set.NewStrings()
-	for _, base := range m.Bases {
-		series := base.String()
-		if !seriesSet.Contains(series) {
-			seriesSet.Add(series)
-			seriesSlice = append(seriesSlice, series)
-		}
-	}
-	return seriesSlice
 }
 
 // Used for parsing Categories and Tags.

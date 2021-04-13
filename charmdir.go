@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 )
 
@@ -251,6 +252,26 @@ func (dir *CharmDir) LXDProfile() *LXDProfile {
 // for the charm expanded in dir.
 func (dir *CharmDir) Manifest() *Manifest {
 	return dir.manifest
+}
+
+// ComputedSeries of a charm. This is to support legacy logic on new
+// charms that use Systems.
+func (dir *CharmDir) ComputedSeries() []string {
+	if len(dir.manifest.Bases) == 0 {
+		return dir.meta.Series
+	}
+	// The slice must be ordered based on system appearance but
+	// have unique elements.
+	seriesSlice := []string(nil)
+	seriesSet := set.NewStrings()
+	for _, base := range dir.manifest.Bases {
+		series := base.String()
+		if !seriesSet.Contains(series) {
+			seriesSet.Add(series)
+			seriesSlice = append(seriesSlice, series)
+		}
+	}
+	return seriesSlice
 }
 
 // SetRevision changes the charm revision number. This affects

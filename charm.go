@@ -22,6 +22,7 @@ type Charm interface {
 	Metrics() *Metrics
 	Actions() *Actions
 	Revision() int
+	ComputedSeries() []string
 }
 
 // ReadCharm reads a Charm from path, which can point to either a charm archive or a

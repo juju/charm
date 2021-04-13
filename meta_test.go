@@ -1657,33 +1657,6 @@ func (s *MetaSuite) TestParseResourceMetaNil(c *gc.C) {
 	})
 }
 
-// TODO hml
-// move and enable with ComputedSeries at Charm level.
-//func (s *MetaSuite) TestComputedSeriesLegacy(c *gc.C) {
-//	meta, err := charm.ReadMeta(strings.NewReader(`
-//name: a
-//summary: b
-//description: c
-//series:
-//  - bionic
-//`))
-//	c.Assert(err, gc.IsNil)
-//	c.Assert(meta.ComputedSeries(), jc.DeepEquals, []string{"bionic"})
-//}
-//
-//func (s *MetaSuite) TestComputedSeries(c *gc.C) {
-//	meta, err := charm.ReadMeta(strings.NewReader(`
-//name: a
-//summary: b
-//description: c
-//bases:
-//  - name: ubuntu
-//    channel: 18.04/stable
-//`))
-//	c.Assert(err, gc.IsNil)
-//	c.Assert(meta.ComputedSeries(), jc.DeepEquals, []string{"bionic"})
-//}
-
 func (s *MetaSuite) TestContainers(c *gc.C) {
 	meta, err := charm.ReadMeta(strings.NewReader(`
 name: a
@@ -1861,6 +1834,10 @@ func (c *dummyCharm) LXDProfile() *charm.LXDProfile {
 }
 
 func (c *dummyCharm) Manifest() *charm.Manifest {
+	panic("unused")
+}
+
+func (c *dummyCharm) ComputedSeries() []string {
 	panic("unused")
 }
 
