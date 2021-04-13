@@ -72,28 +72,29 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	if err != nil {
 		return nil, err
 	}
-	defer zipr.Close()
+	defer func() { _ = zipr.Close() }()
 	reader, err := zipOpenFile(zipr, "metadata.yaml")
 	if err != nil {
 		return nil, err
 	}
 	b.meta, err = ReadMeta(reader)
-	reader.Close()
+	_ = reader.Close()
 	if err != nil {
 		return nil, err
 	}
 
-	// If the format is not the v1 format (this should take care of any
-	// potential N formats), ensure that we can read the manifest file.
-	if b.meta.Format() != FormatV1 {
-		reader, err = zipOpenFile(zipr, "manifest.yaml")
-		if err != nil {
-			return nil, errors.Annotatef(err, "opening manifest file")
-		}
+	// Try to read the optional manifest.yaml, it's required to determine if
+	// this charm is v1 or not.
+	reader, err = zipOpenFile(zipr, "manifest.yaml")
+	if _, ok := err.(*noCharmArchiveFile); ok {
+		b.manifest = NewManifest()
+	} else if err != nil {
+		return nil, errors.Annotatef(err, `opening "manifest.yaml" file`)
+	} else {
 		b.manifest, err = ReadManifest(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
-			return nil, errors.Trace(err)
+			return nil, errors.Annotatef(err, `parsing "manifest.yaml" file`)
 		}
 	}
 
@@ -104,7 +105,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		return nil, err
 	} else {
 		b.config, err = ReadConfig(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +114,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	reader, err = zipOpenFile(zipr, "metrics.yaml")
 	if err == nil {
 		b.metrics, err = ReadMetrics(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +153,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		return nil, err
 	} else {
 		b.lxdProfile, err = ReadLXDProfile(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +166,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		}
 	} else {
 		b.version, err = ReadVersion(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, err
 		}

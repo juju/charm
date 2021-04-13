@@ -45,12 +45,6 @@ func (s *CharmDirSuite) TestIsCharmDirNoMetadataYaml(c *gc.C) {
 	c.Assert(charm.IsCharmDir(path), jc.IsFalse)
 }
 
-func (s *CharmDirSuite) TestReadCharmDirNoManifest(c *gc.C) {
-	path := charmDirPath(c, "bad-bases")
-	_, err := charm.ReadCharmDir(path)
-	c.Assert(err, gc.ErrorMatches, `reading "manifest.yaml" file: open internal/test-charm-repo/quantal/bad-bases/manifest.yaml: no such file or directory`)
-}
-
 func (s *CharmDirSuite) TestReadCharmDir(c *gc.C) {
 	path := charmDirPath(c, "dummy")
 	dir, err := charm.ReadCharmDir(path)
@@ -120,6 +114,7 @@ func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 func (s *CharmDirSuite) TestArchiveToWithIgnoredFiles(c *gc.C) {
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
 	dir, err := charm.ReadCharmDir(charmDir)
+	c.Assert(err, jc.ErrorIsNil)
 
 	// Add a directory/files that should be ignored
 	nestedGitDir := filepath.Join(dir.Path, ".git/nested")
@@ -675,7 +670,7 @@ func (s *CharmSuite) TestMaybeGenerateVersionStringLogsAbsolutePath(c *gc.C) {
 	logger := ctx.GetLogger("juju.testing")
 	lvl, _ := loggo.ParseLevel("TRACE")
 	logger.SetLogLevel(lvl)
-	defer loggo.RemoveWriter("versionstring-test")
+	defer func() {_, _= loggo.RemoveWriter("versionstring-test") }()
 	defer loggo.ResetLogging()
 
 	testing.PatchExecutableThrowError(c, s, "git", 128)

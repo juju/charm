@@ -43,6 +43,7 @@ var dummyArchiveMembersCommon = []string{
 	"hooks",
 	"hooks/install",
 	"lxd-profile.yaml",
+	"manifest.yaml",
 	"metadata.yaml",
 	"revision",
 	"src",
@@ -112,7 +113,7 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutActions(c *gc.C) {
 	c.Assert(archive.Actions().ActionSpecs, gc.HasLen, 0)
 }
 
-func (s *CharmDirSuite) TestReadCharmArchiveWithActions(c *gc.C) {
+func (s *CharmArchiveSuite) TestReadCharmArchiveWithActions(c *gc.C) {
 	path := archivePath(c, readCharmDir(c, "dummy-actions"))
 	archive, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
@@ -131,7 +132,7 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveBytes(c *gc.C) {
 func (s *CharmArchiveSuite) TestReadCharmArchiveFromReader(c *gc.C) {
 	f, err := os.Open(s.archivePath)
 	c.Assert(err, gc.IsNil)
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	info, err := f.Stat()
 	c.Assert(err, gc.IsNil)
 

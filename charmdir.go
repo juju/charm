@@ -76,20 +76,21 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 		return nil, errors.Annotatef(err, `reading "metadata.yaml" file`)
 	}
 	b.meta, err = ReadMeta(reader)
-	reader.Close()
+	_ = reader.Close()
 	if err != nil {
 		return nil, errors.Annotatef(err, `parsing "metadata.yaml" file`)
 	}
 
-	// If the format is not the v1 format (this should take care of any
-	// potential N formats), ensure that we can read the manifest file.
-	if b.meta.Format() != FormatV1 {
-		reader, err = os.Open(b.join("manifest.yaml"))
-		if err != nil {
-			return nil, errors.Annotatef(err, `reading "manifest.yaml" file`)
-		}
+	// Try to read the optional manifest.yaml, it's required to determine if
+	// this charm is v1 or not.
+	reader, err = os.Open(b.join("manifest.yaml"))
+	if _, ok := err.(*os.PathError); ok {
+		b.manifest = NewManifest()
+	} else if err != nil {
+		return nil, errors.Annotatef(err, `reading "manifest.yaml" file`)
+	} else {
 		b.manifest, err = ReadManifest(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `parsing "manifest.yaml" file`)
 		}
@@ -102,7 +103,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 		return nil, errors.Annotatef(err, `reading "config.yaml" file`)
 	} else {
 		b.config, err = ReadConfig(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `parsing "config.yaml" file`)
 		}
@@ -111,7 +112,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 	reader, err = os.Open(b.join("metrics.yaml"))
 	if err == nil {
 		b.metrics, err = ReadMetrics(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `parsing "metrics.yaml" file`)
 		}
@@ -133,7 +134,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 
 	if reader, err = os.Open(b.join("revision")); err == nil {
 		_, err = fmt.Fscan(reader, &b.revision)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.New("invalid revision file")
 		}
@@ -146,7 +147,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 		return nil, errors.Annotatef(err, `reading "lxd-profile.yaml" file`)
 	} else {
 		b.lxdProfile, err = ReadLXDProfile(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `parsing "lxd-profile.yaml" file`)
 		}
@@ -159,7 +160,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 		}
 	} else {
 		b.version, err = ReadVersion(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `parsing "version" file`)
 		}
