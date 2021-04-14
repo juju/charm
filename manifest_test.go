@@ -21,6 +21,7 @@ func (s *manifestSuite) TestReadManifest(c *gc.C) {
 bases:
   - name: ubuntu
     channel: "18.04"
+    architectures: ["amd64","aarch64","s390x"]
   - name: ubuntu
     channel: "20.04/stable"
 `))
@@ -32,6 +33,7 @@ bases:
 			Risk:   "stable",
 			Branch: "",
 		},
+		Architectures: []string{"amd64", "arm64", "s390x"},
 	}, {
 		Name: "ubuntu",
 		Channel: Channel{

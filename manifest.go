@@ -10,6 +10,7 @@ import (
 
 	"github.com/juju/errors"
 	"github.com/juju/schema"
+	"github.com/juju/utils/v2/arch"
 	"gopkg.in/yaml.v2"
 )
 
@@ -78,6 +79,7 @@ func parseBases(input interface{}) ([]Base, error) {
 				return nil, errors.Annotatef(err, "parsing channel %q", value.(string))
 			}
 		}
+		base.Architectures = parseArchitectureList(baseMap["architectures"])
 		err = base.Validate()
 		if err != nil {
 			return nil, errors.Trace(err)
@@ -108,9 +110,23 @@ func ReadManifest(r io.Reader) (*Manifest, error) {
 
 var baseSchema = schema.FieldMap(
 	schema.Fields{
-		"name":    schema.String(),
-		"channel": schema.String(),
+		"name":          schema.String(),
+		"channel":       schema.String(),
+		"architectures": schema.List(schema.String()),
 	}, schema.Defaults{
-		"name":    schema.Omit,
-		"channel": schema.Omit,
+		"name":          schema.Omit,
+		"channel":       schema.Omit,
+		"architectures": schema.Omit,
 	})
+
+func parseArchitectureList(list interface{}) []string {
+	if list == nil {
+		return nil
+	}
+	slice := list.([]interface{})
+	result := make([]string, 0, len(slice))
+	for _, elem := range slice {
+		result = append(result, arch.NormaliseArch(elem.(string)))
+	}
+	return result
+}

@@ -4,48 +4,91 @@
 package charm
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 	"github.com/juju/os/v2"
+	"github.com/juju/utils/v2/arch"
 )
 
 // Base represents an OS/Channel.
 // Bases can also be converted to and from a series string.
 type Base struct {
-	Name    string  `json:"name,omitempty"`
-	Channel Channel `json:"channel,omitempty"`
+	Name          string   `json:"name,omitempty"`
+	Channel       Channel  `json:"channel,omitempty"`
+	Architectures []string `json:"architectures,omitempty"`
 }
 
 // Validate returns with no error when the Base is valid.
-func (s Base) Validate() error {
-	if s.Name == "" {
+func (b Base) Validate() error {
+	if b.Name == "" {
 		return errors.NotValidf("name must be specified")
 	}
 
-	if !validOSForBase.Contains(s.Name) {
-		return errors.NotValidf("os %q", s.Name)
+	if !validOSForBase.Contains(b.Name) {
+		return errors.NotValidf("os %q", b.Name)
 	}
-	if s.Channel.Empty() {
+	if b.Channel.Empty() {
 		return errors.NotValidf("channel")
+	}
+	for _, v := range b.Architectures {
+		if !arch.IsSupportedArch(v) {
+			return errors.NotValidf("architecture %q", v)
+		}
 	}
 
 	return nil
 }
 
 // String representation of the Base.
-func (s Base) String() string {
-	str := strings.ToLower(s.Name)
-	if !s.Channel.Empty() {
-		str += "/" + s.Channel.String()
+func (b Base) String() string {
+	str := strings.ToLower(b.Name)
+	if !b.Channel.Empty() {
+		str += "/" + b.Channel.String()
+	}
+	if len(b.Architectures) > 0 {
+		str = fmt.Sprintf("%s on %s", str, strings.Join(b.Architectures, ", "))
 	}
 	return str
 }
 
-// ParseBaseFromString parses a base as series string
-// in the form "os/track/risk/branch"
+// ParseBaseFromString parses a base as string in the form
+// "os/track/risk/branch"
 func ParseBaseFromString(s string) (Base, error) {
+	base, err := parseBaseString(s)
+	if err != nil {
+		return Base{}, err
+	}
+	err = base.Validate()
+	if err != nil {
+		return Base{}, errors.Annotatef(err, "invalid base string %q", s)
+	}
+	return base, nil
+}
+
+// ParseBaseWithArchitectures parses a base as string in the form
+// "os/track/risk/branch" and a list of architectures
+func ParseBaseWithArchitectures(s string, archs []string) (Base, error) {
+	base, err := parseBaseString(s)
+	if err != nil {
+		return Base{}, err
+	}
+
+	base.Architectures = make([]string, len(archs))
+	for i, v := range archs {
+		base.Architectures[i] = arch.NormaliseArch(v)
+	}
+
+	err = base.Validate()
+	if err != nil {
+		return Base{}, errors.Annotatef(err, "invalid base string %q with architectures %s", s, archs)
+	}
+	return base, nil
+}
+
+func parseBaseString(s string) (Base, error) {
 	var err error
 	base := Base{}
 
@@ -63,11 +106,6 @@ func ParseBaseFromString(s string) (Base, error) {
 		if err != nil {
 			return Base{}, errors.Annotatef(err, "malformed channel in base string %q", s)
 		}
-	}
-
-	err = base.Validate()
-	if err != nil {
-		return Base{}, errors.Annotatef(err, "invalid base string %q", s)
 	}
 	return base, nil
 }

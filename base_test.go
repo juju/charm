@@ -11,6 +11,7 @@ import (
 	"github.com/juju/os/v2"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
+	"github.com/juju/utils/v2/arch"
 	gc "gopkg.in/check.v1"
 )
 
@@ -20,7 +21,7 @@ type baseSuite struct {
 
 var _ = gc.Suite(&baseSuite{})
 
-func (s *baseSuite) TestBaseParsingToFromSeries(c *gc.C) {
+func (s *baseSuite) TestParseBaseFromString(c *gc.C) {
 	tests := []struct {
 		base       charm.Base
 		str        string
@@ -61,6 +62,70 @@ func (s *baseSuite) TestBaseParsingToFromSeries(c *gc.C) {
 		comment := gc.Commentf("test %d", i)
 		c.Check(str, gc.Equals, v.str, comment)
 		s, err := charm.ParseBaseFromString(str)
+		if v.err != "" {
+			c.Check(err, gc.ErrorMatches, v.err, comment)
+		} else {
+			c.Check(err, jc.ErrorIsNil, comment)
+		}
+		c.Check(s, jc.DeepEquals, v.parsedBase, comment)
+	}
+}
+
+func (s *baseSuite) TestParseBaseWithArchitectures(c *gc.C) {
+	tests := []struct {
+		base       charm.Base
+		str        string
+		baseString string
+		archs      []string
+		parsedBase charm.Base
+		err        string
+	}{
+		{
+			base:       charm.Base{Name: os.Ubuntu.String(), Architectures: []string{arch.AMD64}},
+			baseString: "ubuntu",
+			str:        "ubuntu on amd64",
+			archs:      []string{"amd64"},
+			parsedBase: charm.Base{},
+			err:        `invalid base string "ubuntu" with architectures \[amd64\]: channel not valid`,
+		}, {
+			base:       charm.Base{Name: os.Windows.String()},
+			baseString: "windows",
+			str:        "windows",
+			parsedBase: charm.Base{},
+			err:        `invalid base string "windows" with architectures \[\]: channel not valid`,
+		}, {
+			base:       charm.Base{Name: "mythicalos"},
+			baseString: "mythicalos",
+			str:        "mythicalos",
+			parsedBase: charm.Base{},
+			err:        `invalid base string "mythicalos" with architectures \[\]: os "mythicalos" not valid`,
+		}, {
+			base: charm.Base{
+				Name:          os.Ubuntu.String(),
+				Channel:       mustParseChannel("20.04/stable"),
+				Architectures: []string{arch.AMD64, arch.PPC64EL},
+			},
+			baseString: "ubuntu/20.04/stable",
+			archs:      []string{arch.AMD64, "ppc64"},
+			str:        "ubuntu/20.04/stable on amd64, ppc64el",
+			parsedBase: charm.Base{
+				Name:          strings.ToLower(os.Ubuntu.String()),
+				Channel:       mustParseChannel("20.04/stable"),
+				Architectures: []string{arch.AMD64, arch.PPC64EL}},
+		}, {
+			base:       charm.Base{Name: os.Windows.String(), Channel: mustParseChannel("win10/stable")},
+			baseString: "windows/win10/stable",
+			archs:      []string{"testme"},
+			str:        "windows/win10/stable",
+			parsedBase: charm.Base{},
+			err:        `invalid base string "windows/win10/stable" with architectures \[testme\]: architecture \"testme\" not valid`,
+		},
+	}
+	for i, v := range tests {
+		str := v.base.String()
+		comment := gc.Commentf("test %d", i)
+		c.Check(str, gc.Equals, v.str, comment)
+		s, err := charm.ParseBaseWithArchitectures(v.baseString, v.archs)
 		if v.err != "" {
 			c.Check(err, gc.ErrorMatches, v.err, comment)
 		} else {
