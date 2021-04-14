@@ -24,14 +24,7 @@ type CharmArchive struct {
 	zopen zipOpener
 
 	Path       string // May be empty if CharmArchive wasn't read from a file
-	meta       *Meta
-	config     *Config
-	metrics    *Metrics
-	actions    *Actions
-	lxdProfile *LXDProfile
-	manifest   *Manifest
-	revision   int
-	version    string
+	*charmBase
 }
 
 // Trick to ensure *CharmArchive implements the Charm interface.
@@ -67,6 +60,7 @@ func ReadCharmArchiveFromReader(r io.ReaderAt, size int64) (archive *CharmArchiv
 func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	b := &CharmArchive{
 		zopen: zopen,
+		charmBase: &charmBase{},
 	}
 	zipr, err := zopen.openZip()
 	if err != nil {
@@ -203,59 +197,6 @@ type noCharmArchiveFile struct {
 
 func (err noCharmArchiveFile) Error() string {
 	return fmt.Sprintf("archive file %q not found", err.path)
-}
-
-// Version returns the VCS version representing the version file from archive.
-func (a *CharmArchive) Version() string {
-	return a.version
-}
-
-// Revision returns the revision number for the charm
-// expanded in dir.
-func (a *CharmArchive) Revision() int {
-	return a.revision
-}
-
-// SetRevision changes the charm revision number. This affects the
-// revision reported by Revision and the revision of the charm
-// directory created by ExpandTo.
-func (a *CharmArchive) SetRevision(revision int) {
-	a.revision = revision
-}
-
-// Meta returns the Meta representing the metadata.yaml file from archive.
-func (a *CharmArchive) Meta() *Meta {
-	return a.meta
-}
-
-// Config returns the Config representing the config.yaml file
-// for the charm archive.
-func (a *CharmArchive) Config() *Config {
-	return a.config
-}
-
-// Metrics returns the Metrics representing the metrics.yaml file
-// for the charm archive.
-func (a *CharmArchive) Metrics() *Metrics {
-	return a.metrics
-}
-
-// Actions returns the Actions map for the actions.yaml/functions.yaml  file for the charm
-// archive.
-func (a *CharmArchive) Actions() *Actions {
-	return a.actions
-}
-
-// LXDProfile returns the LXDProfile representing the lxd-profile.yaml file
-// for the charm expanded in dir.
-func (a *CharmArchive) LXDProfile() *LXDProfile {
-	return a.lxdProfile
-}
-
-// Manifest returns the Manifest representing the manifest.yaml file
-// for the charm expanded in dir.
-func (a *CharmArchive) Manifest() *Manifest {
-	return a.manifest
 }
 
 type zipReadCloser struct {

@@ -45,14 +45,7 @@ var defaultJujuIgnore = `
 // on a charm directory.
 type CharmDir struct {
 	Path       string
-	meta       *Meta
-	config     *Config
-	metrics    *Metrics
-	actions    *Actions
-	lxdProfile *LXDProfile
-	manifest   *Manifest
-	revision   int
-	version    string
+	*charmBase
 }
 
 // Trick to ensure *CharmDir implements the Charm interface.
@@ -70,6 +63,7 @@ func IsCharmDir(path string) bool {
 func ReadCharmDir(path string) (*CharmDir, error) {
 	b := &CharmDir{
 		Path: path,
+		charmBase: &charmBase{},
 	}
 	reader, err := os.Open(b.join("metadata.yaml"))
 	if err != nil {
@@ -204,61 +198,6 @@ func (dir *CharmDir) buildIgnoreRules() (ignoreRuleset, error) {
 func (dir *CharmDir) join(parts ...string) string {
 	parts = append([]string{dir.Path}, parts...)
 	return filepath.Join(parts...)
-}
-
-// Revision returns the revision number for the charm
-// expanded in dir.
-func (dir *CharmDir) Revision() int {
-	return dir.revision
-}
-
-// Version returns the VCS version representing the version file from archive.
-func (dir *CharmDir) Version() string {
-	return dir.version
-}
-
-// Meta returns the Meta representing the metadata.yaml file
-// for the charm expanded in dir.
-func (dir *CharmDir) Meta() *Meta {
-	return dir.meta
-}
-
-// Config returns the Config representing the config.yaml file
-// for the charm expanded in dir.
-func (dir *CharmDir) Config() *Config {
-	return dir.config
-}
-
-// Metrics returns the Metrics representing the metrics.yaml file
-// for the charm expanded in dir.
-func (dir *CharmDir) Metrics() *Metrics {
-	return dir.metrics
-}
-
-// Actions returns the Actions representing the actions.yaml file
-// for the charm expanded in dir.
-func (dir *CharmDir) Actions() *Actions {
-	return dir.actions
-}
-
-// LXDProfile returns the LXDProfile representing the lxd-profile.yaml file
-// for the charm expanded in dir.
-func (dir *CharmDir) LXDProfile() *LXDProfile {
-	return dir.lxdProfile
-}
-
-// Manifest returns the Manifest representing the manifest.yaml file
-// for the charm expanded in dir.
-func (dir *CharmDir) Manifest() *Manifest {
-	return dir.manifest
-}
-
-// SetRevision changes the charm revision number. This affects
-// the revision reported by Revision and the revision of the
-// charm archived by ArchiveTo.
-// The revision file in the charm directory is not modified.
-func (dir *CharmDir) SetRevision(revision int) {
-	dir.revision = revision
 }
 
 // SetDiskRevision does the same as SetRevision but also changes

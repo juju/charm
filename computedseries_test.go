@@ -25,7 +25,7 @@ series:
   - bionic
 `))
 	c.Assert(err, gc.IsNil)
-	dir := CharmDir{
+	dir := charmBase{
 		meta:     meta,
 		manifest: &Manifest{},
 	}
@@ -48,7 +48,7 @@ bases:
     channel: "20.04"
 `))
 	c.Assert(err, gc.IsNil)
-	dir := CharmDir{
+	dir := charmBase{
 		meta:     meta,
 		manifest: manifest,
 	}
