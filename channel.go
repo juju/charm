@@ -54,9 +54,9 @@ func isRisk(potential string) bool {
 //    <track>/<risk>/<branch>
 //
 type Channel struct {
-	Track  string
-	Risk   Risk
-	Branch string
+	Track  string `json:"track,omitempty"`
+	Risk   Risk   `json:"risk,omitempty"`
+	Branch string `json:"branch,omitempty"`
 }
 
 // MakeChannel creates a core charm Channel from a set of component parts.
