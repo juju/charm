@@ -258,26 +258,6 @@ func (a *CharmArchive) Manifest() *Manifest {
 	return a.manifest
 }
 
-// ComputedSeries of a charm. This is to support legacy logic on new
-// charms that use Systems.
-func (a *CharmArchive) ComputedSeries() []string {
-	if len(a.manifest.Bases) == 0 {
-		return a.meta.Series
-	}
-	// The slice must be ordered based on system appearance but
-	// have unique elements.
-	seriesSlice := []string(nil)
-	seriesSet := set.NewStrings()
-	for _, base := range a.manifest.Bases {
-		series := base.String()
-		if !seriesSet.Contains(series) {
-			seriesSet.Add(series)
-			seriesSlice = append(seriesSlice, series)
-		}
-	}
-	return seriesSlice
-}
-
 type zipReadCloser struct {
 	io.Closer
 	*zip.Reader

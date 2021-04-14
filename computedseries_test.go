@@ -16,7 +16,7 @@ type computedSeriesSuite struct {
 
 var _ = gc.Suite(&computedSeriesSuite{})
 
-func (s *computedSeriesSuite) TestDirComputedSeriesLegacy(c *gc.C) {
+func (s *computedSeriesSuite) TestCharmComputedSeriesLegacy(c *gc.C) {
 	meta, err := ReadMeta(strings.NewReader(`
 name: a
 summary: b
@@ -30,10 +30,10 @@ series:
 		manifest: &Manifest{},
 	}
 	c.Assert(err, gc.IsNil)
-	c.Assert(dir.ComputedSeries(), jc.DeepEquals, []string{"bionic"})
+	c.Assert(ComputedSeries(&dir), jc.DeepEquals, []string{"bionic"})
 }
 
-func (s *computedSeriesSuite) TestDirComputedSeries(c *gc.C) {
+func (s *computedSeriesSuite) TestCharmComputedSeries(c *gc.C) {
 	meta, err := ReadMeta(strings.NewReader(`
 name: a
 summary: b
@@ -52,41 +52,5 @@ bases:
 		meta:     meta,
 		manifest: manifest,
 	}
-	c.Assert(dir.ComputedSeries(), jc.DeepEquals, []string{"bionic", "focal"})
-}
-
-func (s *computedSeriesSuite) TestArchiveComputedSeriesLegacy(c *gc.C) {
-	meta, err := ReadMeta(strings.NewReader(`
-name: a
-summary: b
-description: c
-series:
-  - bionic
-`))
-	c.Assert(err, gc.IsNil)
-	arc := CharmArchive{
-		meta:     meta,
-		manifest: &Manifest{},
-	}
-	c.Assert(arc.ComputedSeries(), jc.DeepEquals, []string{"bionic"})
-}
-
-func (s *computedSeriesSuite) TestArchiveComputedSeries(c *gc.C) {
-	meta, err := ReadMeta(strings.NewReader(`
-name: a
-summary: b
-description: c
-`))
-	c.Assert(err, gc.IsNil)
-	manifest, err := ReadManifest(strings.NewReader(`
-bases:
-  - name: ubuntu
-    channel: 14.04/stable
-`))
-	c.Assert(err, gc.IsNil)
-	arc := CharmArchive{
-		meta:     meta,
-		manifest: manifest,
-	}
-	c.Assert(arc.ComputedSeries(), jc.DeepEquals, []string{"trusty"})
+	c.Assert(ComputedSeries(&dir), jc.DeepEquals, []string{"bionic", "focal"})
 }

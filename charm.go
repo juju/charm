@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/juju/loggo"
+	"github.com/juju/collections/set"
 )
 
 var logger = loggo.GetLogger("juju.charm")
@@ -22,7 +23,6 @@ type Charm interface {
 	Metrics() *Metrics
 	Actions() *Actions
 	Revision() int
-	ComputedSeries() []string
 }
 
 // ReadCharm reads a Charm from path, which can point to either a charm archive or a
@@ -73,6 +73,26 @@ func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, e
 		}
 	}
 	return "", &unsupportedSeriesError{requestedSeries, supportedSeries}
+}
+
+// ComputedSeries of a charm. This is to support legacy logic on new
+// charms that use Systems.
+func  ComputedSeries(c Charm) []string {
+	if len(c.Manifest().Bases) == 0 {
+		return c.Meta().Series
+	}
+	// The slice must be ordered based on system appearance but
+	// have unique elements.
+	seriesSlice := []string(nil)
+	seriesSet := set.NewStrings()
+	for _, base := range c.Manifest().Bases {
+		series := base.String()
+		if !seriesSet.Contains(series) {
+			seriesSet.Add(series)
+			seriesSlice = append(seriesSlice, series)
+		}
+	}
+	return seriesSlice
 }
 
 // errMissingSeries is used to denote that SeriesForCharm could not determine
