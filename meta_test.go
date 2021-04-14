@@ -1839,7 +1839,7 @@ storage:
   a:
     type: filesystem
 `))
-	c.Assert(err, gc.ErrorMatches, `ambigious metadata: keys "series" cannot be used with "containers"`)
+	c.Assert(err, gc.ErrorMatches, `ambiguous metadata: keys "series" cannot be used with "containers"`)
 }
 
 type dummyCharm struct{}

@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/juju/loggo"
 	"github.com/juju/collections/set"
+	"github.com/juju/loggo"
 )
 
 var logger = loggo.GetLogger("juju.charm")
@@ -76,8 +76,8 @@ func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, e
 }
 
 // ComputedSeries of a charm. This is to support legacy logic on new
-// charms that use Systems.
-func  ComputedSeries(c Charm) []string {
+// charms that use Bases.
+func ComputedSeries(c Charm) []string {
 	if len(c.Manifest().Bases) == 0 {
 		return c.Meta().Series
 	}

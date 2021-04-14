@@ -495,7 +495,7 @@ func (meta *Meta) UnmarshalYAML(f func(interface{}) error) error {
 		return err
 	}
 
-	if err := ensureUnambigiousFormat(raw); err != nil {
+	if err := ensureUnambiguousFormat(raw); err != nil {
 		return err
 	}
 
@@ -1373,10 +1373,10 @@ var charmSchema = schema.FieldMap(
 	},
 )
 
-// ensureUnambigiousFormat returns an error if the raw data contains
+// ensureUnambiguousFormat returns an error if the raw data contains
 // both metadata v1 and v2 contents. However is it unable to definitively
 // determine which format the charm is as metadata does not contain bases.
-func ensureUnambigiousFormat(raw map[interface{}]interface{}) error {
+func ensureUnambiguousFormat(raw map[interface{}]interface{}) error {
 	format := FormatUnknown
 	matched := []string(nil)
 	mismatched := []string(nil)
@@ -1411,7 +1411,7 @@ func ensureUnambigiousFormat(raw map[interface{}]interface{}) error {
 		}
 	}
 	if mismatched != nil {
-		return errors.Errorf("ambigious metadata: keys %s cannot be used with %s",
+		return errors.Errorf("ambiguous metadata: keys %s cannot be used with %s",
 			`"`+strings.Join(mismatched, `", "`)+`"`,
 			`"`+strings.Join(matched, `", "`)+`"`)
 	}
