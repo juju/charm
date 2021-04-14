@@ -70,5 +70,5 @@ bases:
 		meta:     meta,
 		manifest: manifest,
 	}
-	c.Assert(ComputedSeries(&dir), jc.DeepEquals, []string{"bionic", "focal"})
+	c.Assert(ComputedSeries(&dir), jc.DeepEquals, []string{"18.04", "20.04"})
 }

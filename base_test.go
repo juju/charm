@@ -46,7 +46,7 @@ func (s *baseSuite) TestBaseParsingToFromSeries(c *gc.C) {
 			base:       charm.Base{Name: os.Ubuntu.String(), Channel: mustParseChannel("20.04/stable")},
 			str:        "ubuntu/20.04/stable",
 			parsedBase: charm.Base{Name: strings.ToLower(os.Ubuntu.String()), Channel: mustParseChannel("20.04/stable")},
-		},  {
+		}, {
 			base:       charm.Base{Name: os.Windows.String(), Channel: mustParseChannel("win10/stable")},
 			str:        "windows/win10/stable",
 			parsedBase: charm.Base{Name: strings.ToLower(os.Windows.String()), Channel: mustParseChannel("win10/stable")},

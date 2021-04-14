@@ -10,8 +10,6 @@ import (
 
 	"github.com/juju/errors"
 	"github.com/juju/schema"
-	"github.com/juju/systems"
-	"github.com/juju/systems/channel"
 	"gopkg.in/yaml.v2"
 )
 
@@ -19,7 +17,7 @@ import (
 // The manifest file should represent the metadata.yaml, but a lot more
 // information.
 type Manifest struct {
-	Bases []systems.Base `yaml:"bases"`
+	Bases []Base `yaml:"bases"`
 }
 
 func NewManifest() *Manifest {
@@ -62,20 +60,20 @@ func (m *Manifest) UnmarshalYAML(f func(interface{}) error) error {
 	return nil
 }
 
-func parseBases(input interface{}) ([]systems.Base, error) {
+func parseBases(input interface{}) ([]Base, error) {
 	var err error
 	if input == nil {
 		return nil, nil
 	}
-	var res []systems.Base
+	var res []Base
 	for _, v := range input.([]interface{}) {
-		var base systems.Base
+		var base Base
 		baseMap := v.(map[string]interface{})
 		if value, ok := baseMap["name"]; ok {
 			base.Name = value.(string)
 		}
 		if value, ok := baseMap["channel"]; ok {
-			base.Channel, err = channel.Parse(value.(string))
+			base.Channel, err = ParseChannelNormalize(value.(string))
 			if err != nil {
 				return nil, errors.Annotatef(err, "parsing channel %q", value.(string))
 			}
@@ -110,14 +108,7 @@ func ReadManifest(r io.Reader) (*Manifest, error) {
 
 var baseSchema = schema.FieldMap(
 	schema.Fields{
-		"name": schema.OneOf(
-			schema.Const(systems.Ubuntu),
-			schema.Const(systems.Windows),
-			schema.Const(systems.CentOS),
-			schema.Const(systems.OpenSUSE),
-			schema.Const(systems.GenericLinux),
-			schema.Const(systems.OSX),
-		),
+		"name":    schema.String(),
 		"channel": schema.String(),
 	}, schema.Defaults{
 		"name":    schema.Omit,

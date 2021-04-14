@@ -88,7 +88,8 @@ func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, e
 }
 
 // ComputedSeries of a charm. This is to support legacy logic on new
-// charms that use Bases.
+// charms that use Bases.  For v1 metadata, series are returned. For
+// v2 metadata, the tracks of channels in bases are returned.
 func ComputedSeries(c CharmMeta) []string {
 	manifest := c.Manifest()
 	if manifest == nil || len(manifest.Bases) == 0 {
@@ -99,7 +100,7 @@ func ComputedSeries(c CharmMeta) []string {
 	seriesSlice := []string(nil)
 	seriesSet := set.NewStrings()
 	for _, base := range manifest.Bases {
-		series := base.String()
+		series := base.Channel.Track
 		if !seriesSet.Contains(series) {
 			seriesSet.Add(series)
 			seriesSlice = append(seriesSlice, series)
