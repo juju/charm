@@ -100,7 +100,7 @@ func (s *CharmArchiveSuite) TestReadCharmDirManifest(c *gc.C) {
 	}})
 }
 
-func (s *CharmArchiveSuite) TestReadCharmDirWithoutManifest(c *gc.C) {
+func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutManifest(c *gc.C) {
 	path := archivePath(c, readCharmDir(c, "mysql"))
 	dir, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
