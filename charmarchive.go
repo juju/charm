@@ -23,7 +23,7 @@ import (
 type CharmArchive struct {
 	zopen zipOpener
 
-	Path       string // May be empty if CharmArchive wasn't read from a file
+	Path string // May be empty if CharmArchive wasn't read from a file
 	*charmBase
 }
 
@@ -59,7 +59,7 @@ func ReadCharmArchiveFromReader(r io.ReaderAt, size int64) (archive *CharmArchiv
 
 func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	b := &CharmArchive{
-		zopen: zopen,
+		zopen:     zopen,
 		charmBase: &charmBase{},
 	}
 	zipr, err := zopen.openZip()

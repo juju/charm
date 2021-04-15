@@ -6,8 +6,6 @@ package charm
 import (
 	"strings"
 
-	"github.com/juju/systems"
-	"github.com/juju/systems/channel"
 	"github.com/juju/testing"
 	gc "gopkg.in/check.v1"
 )
@@ -23,22 +21,22 @@ func (s *manifestSuite) TestReadManifest(c *gc.C) {
 bases:
   - name: ubuntu
     channel: "18.04"
+    architectures: ["amd64","aarch64","s390x"]
   - name: ubuntu
     channel: "20.04/stable"
 `))
 	c.Assert(err, gc.IsNil)
-	c.Assert(manifest, gc.DeepEquals, &Manifest{[]systems.Base{{
+	c.Assert(manifest, gc.DeepEquals, &Manifest{[]Base{{
 		Name: "ubuntu",
-		Channel: channel.Channel{
-			Name:   "18.04/stable",
+		Channel: Channel{
 			Track:  "18.04",
 			Risk:   "stable",
 			Branch: "",
 		},
+		Architectures: []string{"amd64", "arm64", "s390x"},
 	}, {
 		Name: "ubuntu",
-		Channel: channel.Channel{
-			Name:   "20.04/stable",
+		Channel: Channel{
 			Track:  "20.04",
 			Risk:   "stable",
 			Branch: "",
