@@ -24,14 +24,7 @@ type CharmArchive struct {
 	zopen zipOpener
 
 	Path       string // May be empty if CharmArchive wasn't read from a file
-	meta       *Meta
-	config     *Config
-	metrics    *Metrics
-	actions    *Actions
-	lxdProfile *LXDProfile
-	manifest   *Manifest
-	revision   int
-	version    string
+	*charmBase
 }
 
 // Trick to ensure *CharmArchive implements the Charm interface.
@@ -67,33 +60,35 @@ func ReadCharmArchiveFromReader(r io.ReaderAt, size int64) (archive *CharmArchiv
 func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	b := &CharmArchive{
 		zopen: zopen,
+		charmBase: &charmBase{},
 	}
 	zipr, err := zopen.openZip()
 	if err != nil {
 		return nil, err
 	}
-	defer zipr.Close()
+	defer func() { _ = zipr.Close() }()
 	reader, err := zipOpenFile(zipr, "metadata.yaml")
 	if err != nil {
 		return nil, err
 	}
 	b.meta, err = ReadMeta(reader)
-	reader.Close()
+	_ = reader.Close()
 	if err != nil {
 		return nil, err
 	}
 
-	// If the format is not the v1 format (this should take care of any
-	// potential N formats), ensure that we can read the manifest file.
-	if b.meta.Format() != FormatV1 {
-		reader, err = zipOpenFile(zipr, "manifest.yaml")
-		if err != nil {
-			return nil, errors.Annotatef(err, "opening manifest file")
-		}
+	// Try to read the optional manifest.yaml, it's required to determine if
+	// this charm is v1 or not.
+	reader, err = zipOpenFile(zipr, "manifest.yaml")
+	if _, ok := err.(*noCharmArchiveFile); ok {
+		b.manifest = NewManifest()
+	} else if err != nil {
+		return nil, errors.Annotatef(err, `opening "manifest.yaml" file`)
+	} else {
 		b.manifest, err = ReadManifest(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
-			return nil, errors.Trace(err)
+			return nil, errors.Annotatef(err, `parsing "manifest.yaml" file`)
 		}
 	}
 
@@ -104,7 +99,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		return nil, err
 	} else {
 		b.config, err = ReadConfig(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +108,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	reader, err = zipOpenFile(zipr, "metrics.yaml")
 	if err == nil {
 		b.metrics, err = ReadMetrics(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -153,7 +148,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		return nil, err
 	} else {
 		b.lxdProfile, err = ReadLXDProfile(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -166,7 +161,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		}
 	} else {
 		b.version, err = ReadVersion(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, err
 		}
@@ -203,53 +198,6 @@ type noCharmArchiveFile struct {
 
 func (err noCharmArchiveFile) Error() string {
 	return fmt.Sprintf("archive file %q not found", err.path)
-}
-
-// Version returns the VCS version representing the version file from archive.
-func (a *CharmArchive) Version() string {
-	return a.version
-}
-
-// Revision returns the revision number for the charm
-// expanded in dir.
-func (a *CharmArchive) Revision() int {
-	return a.revision
-}
-
-// SetRevision changes the charm revision number. This affects the
-// revision reported by Revision and the revision of the charm
-// directory created by ExpandTo.
-func (a *CharmArchive) SetRevision(revision int) {
-	a.revision = revision
-}
-
-// Meta returns the Meta representing the metadata.yaml file from archive.
-func (a *CharmArchive) Meta() *Meta {
-	return a.meta
-}
-
-// Config returns the Config representing the config.yaml file
-// for the charm archive.
-func (a *CharmArchive) Config() *Config {
-	return a.config
-}
-
-// Metrics returns the Metrics representing the metrics.yaml file
-// for the charm archive.
-func (a *CharmArchive) Metrics() *Metrics {
-	return a.metrics
-}
-
-// Actions returns the Actions map for the actions.yaml/functions.yaml  file for the charm
-// archive.
-func (a *CharmArchive) Actions() *Actions {
-	return a.actions
-}
-
-// LXDProfile returns the LXDProfile representing the lxd-profile.yaml file
-// for the charm expanded in dir.
-func (a *CharmArchive) LXDProfile() *LXDProfile {
-	return a.lxdProfile
 }
 
 type zipReadCloser struct {
@@ -314,8 +262,8 @@ func (zo *zipReaderOpener) openZip() (*zipReadCloser, error) {
 	return &zipReadCloser{Closer: ioutil.NopCloser(nil), Reader: r}, nil
 }
 
-// Manifest returns a set of the charm's contents.
-func (a *CharmArchive) Manifest() (set.Strings, error) {
+// ArchiveMembers returns a set of the charm's contents.
+func (a *CharmArchive) ArchiveMembers() (set.Strings, error) {
 	zipr, err := a.zopen.openZip()
 	if err != nil {
 		return set.NewStrings(), err

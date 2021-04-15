@@ -16,6 +16,8 @@ import (
 	"syscall"
 
 	"github.com/juju/collections/set"
+	"github.com/juju/systems"
+	"github.com/juju/systems/channel"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
@@ -36,13 +38,14 @@ func (s *CharmArchiveSuite) SetUpSuite(c *gc.C) {
 	s.archivePath = archivePath(c, readCharmDir(c, "dummy"))
 }
 
-var dummyManifestCommon = []string{
+var dummyArchiveMembersCommon = []string{
 	"config.yaml",
 	"empty",
 	"empty/.gitkeep",
 	"hooks",
 	"hooks/install",
 	"lxd-profile.yaml",
+	"manifest.yaml",
 	"metadata.yaml",
 	"revision",
 	"src",
@@ -50,8 +53,8 @@ var dummyManifestCommon = []string{
 	".notignored",
 }
 
-var dummyManifest = append(dummyManifestCommon, "actions.yaml")
-var dummyManifestActions = append(dummyManifestCommon, []string{
+var dummyArchiveMembers = append(dummyArchiveMembersCommon, "actions.yaml")
+var dummyArchiveMembersActions = append(dummyArchiveMembersCommon, []string{
 	"actions.yaml",
 	"actions/snapshot",
 	"actions",
@@ -73,6 +76,38 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutConfig(c *gc.C) {
 	// A lacking config.yaml file still causes a proper
 	// Config value to be returned.
 	c.Assert(archive.Config().Options, gc.HasLen, 0)
+}
+
+func (s *CharmArchiveSuite) TestReadCharmDirManifest(c *gc.C) {
+	path := archivePath(c, readCharmDir(c, "dummy"))
+	dir, err := charm.ReadCharmArchive(path)
+	c.Assert(err, gc.IsNil)
+
+	c.Assert(dir.Manifest().Bases, gc.DeepEquals, []systems.Base{{
+		Name: "ubuntu",
+		Channel: channel.Channel{
+			Name:  "18.04/stable",
+			Track: "18.04",
+			Risk:  "stable",
+		},
+	}, {
+		Name: "ubuntu",
+		Channel: channel.Channel{
+			Name:  "20.04/stable",
+			Track: "20.04",
+			Risk:  "stable",
+		},
+	}})
+}
+
+func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutManifest(c *gc.C) {
+	path := archivePath(c, readCharmDir(c, "mysql"))
+	dir, err := charm.ReadCharmArchive(path)
+	c.Assert(err, gc.IsNil)
+
+	// A lacking manifest.yaml file still causes a proper
+	// Manifest value to be returned.
+	c.Assert(dir.Manifest().Bases, gc.HasLen, 0)
 }
 
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutMetrics(c *gc.C) {
@@ -112,7 +147,7 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutActions(c *gc.C) {
 	c.Assert(archive.Actions().ActionSpecs, gc.HasLen, 0)
 }
 
-func (s *CharmDirSuite) TestReadCharmArchiveWithActions(c *gc.C) {
+func (s *CharmArchiveSuite) TestReadCharmArchiveWithActions(c *gc.C) {
 	path := archivePath(c, readCharmDir(c, "dummy-actions"))
 	archive, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
@@ -138,7 +173,7 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveBytes(c *gc.C) {
 func (s *CharmArchiveSuite) TestReadCharmArchiveFromReader(c *gc.C) {
 	f, err := os.Open(s.archivePath)
 	c.Assert(err, gc.IsNil)
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	info, err := f.Stat()
 	c.Assert(err, gc.IsNil)
 
@@ -147,24 +182,24 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveFromReader(c *gc.C) {
 	checkDummy(c, archive, "")
 }
 
-func (s *CharmArchiveSuite) TestManifest(c *gc.C) {
+func (s *CharmArchiveSuite) TestArchiveMembers(c *gc.C) {
 	archive, err := charm.ReadCharmArchive(s.archivePath)
 	c.Assert(err, gc.IsNil)
-	manifest, err := archive.Manifest()
+	manifest, err := archive.ArchiveMembers()
 	c.Assert(err, gc.IsNil)
-	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifest...))
+	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyArchiveMembers...))
 }
 
-func (s *CharmArchiveSuite) TestManifestActions(c *gc.C) {
+func (s *CharmArchiveSuite) TestArchiveMembersActions(c *gc.C) {
 	path := archivePath(c, readCharmDir(c, "dummy-actions"))
 	archive, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
-	manifest, err := archive.Manifest()
+	manifest, err := archive.ArchiveMembers()
 	c.Assert(err, gc.IsNil)
-	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifestActions...))
+	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyArchiveMembersActions...))
 }
 
-func (s *CharmArchiveSuite) TestManifestNoRevision(c *gc.C) {
+func (s *CharmArchiveSuite) TestArchiveMembersNoRevision(c *gc.C) {
 	archive, err := charm.ReadCharmArchive(s.archivePath)
 	c.Assert(err, gc.IsNil)
 	dirPath := c.MkDir()
@@ -174,20 +209,20 @@ func (s *CharmArchiveSuite) TestManifestNoRevision(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	archive = extCharmArchiveDir(c, dirPath)
-	manifest, err := archive.Manifest()
+	manifest, err := archive.ArchiveMembers()
 	c.Assert(err, gc.IsNil)
-	c.Assert(manifest, gc.DeepEquals, set.NewStrings(dummyManifest...))
+	c.Assert(manifest, gc.DeepEquals, set.NewStrings(dummyArchiveMembers...))
 }
 
-func (s *CharmArchiveSuite) TestManifestSymlink(c *gc.C) {
+func (s *CharmArchiveSuite) TestArchiveMembersSymlink(c *gc.C) {
 	srcPath := cloneDir(c, charmDirPath(c, "dummy"))
 	if err := os.Symlink("../target", filepath.Join(srcPath, "hooks/symlink")); err != nil {
 		c.Skip("cannot symlink")
 	}
-	expected := append([]string{"hooks/symlink"}, dummyManifest...)
+	expected := append([]string{"hooks/symlink"}, dummyArchiveMembers...)
 
 	archive := archiveDir(c, srcPath)
-	manifest, err := archive.Manifest()
+	manifest, err := archive.ArchiveMembers()
 	c.Assert(err, gc.IsNil)
 	c.Assert(manifest, gc.DeepEquals, set.NewStrings(expected...))
 }
