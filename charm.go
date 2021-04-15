@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/juju/collections/set"
 	"github.com/juju/loggo"
 )
 
@@ -24,7 +23,7 @@ type CharmMeta interface {
 // may be handled as a charm.
 type Charm interface {
 	CharmMeta
-
+	Manifest() *Manifest
 	Config() *Config
 	Metrics() *Metrics
 	Actions() *Actions
@@ -85,28 +84,6 @@ func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, e
 		}
 	}
 	return "", &unsupportedSeriesError{requestedSeries, supportedSeries}
-}
-
-// ComputedSeries of a charm. This is to support legacy logic on new
-// charms that use Bases.  For v1 metadata, series are returned. For
-// v2 metadata, the tracks of channels in bases are returned.
-func ComputedSeries(c CharmMeta) []string {
-	manifest := c.Manifest()
-	if manifest == nil || len(manifest.Bases) == 0 {
-		return c.Meta().Series
-	}
-	// The slice must be ordered based on system appearance but
-	// have unique elements.
-	seriesSlice := []string(nil)
-	seriesSet := set.NewStrings()
-	for _, base := range manifest.Bases {
-		series := base.Channel.Track
-		if !seriesSet.Contains(series) {
-			seriesSet.Add(series)
-			seriesSlice = append(seriesSlice, series)
-		}
-	}
-	return seriesSlice
 }
 
 // errMissingSeries is used to denote that SeriesForCharm could not determine
