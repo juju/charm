@@ -18,6 +18,8 @@ import (
 	"github.com/juju/charm/v9"
 	"github.com/juju/collections/set"
 	"github.com/juju/loggo"
+	"github.com/juju/systems"
+	"github.com/juju/systems/channel"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils/v2"
@@ -43,12 +45,6 @@ func (s *CharmDirSuite) TestIsCharmDirBundle(c *gc.C) {
 func (s *CharmDirSuite) TestIsCharmDirNoMetadataYaml(c *gc.C) {
 	path := charmDirPath(c, "bad")
 	c.Assert(charm.IsCharmDir(path), jc.IsFalse)
-}
-
-func (s *CharmDirSuite) TestReadCharmDirNoManifest(c *gc.C) {
-	path := charmDirPath(c, "bad-bases")
-	_, err := charm.ReadCharmDir(path)
-	c.Assert(err, gc.ErrorMatches, `reading "manifest.yaml" file: open internal/test-charm-repo/quantal/bad-bases/manifest.yaml: no such file or directory`)
 }
 
 func (s *CharmDirSuite) TestReadCharmDir(c *gc.C) {
@@ -118,6 +114,38 @@ func (s *CharmDirSuite) TestReadCharmDirWithJujuActions(c *gc.C) {
 	c.Assert(dir.Actions().ActionSpecs, gc.HasLen, 1)
 }
 
+func (s *CharmDirSuite) TestReadCharmDirManifest(c *gc.C) {
+	path := charmDirPath(c, "dummy")
+	dir, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
+
+	c.Assert(dir.Manifest().Bases, gc.DeepEquals, []systems.Base{{
+		Name: "ubuntu",
+		Channel: channel.Channel{
+			Name:  "18.04/stable",
+			Track: "18.04",
+			Risk:  "stable",
+		},
+	}, {
+		Name: "ubuntu",
+		Channel: channel.Channel{
+			Name:  "20.04/stable",
+			Track: "20.04",
+			Risk:  "stable",
+		},
+	}})
+}
+
+func (s *CharmDirSuite) TestReadCharmDirWithoutManifest(c *gc.C) {
+	path := charmDirPath(c, "mysql")
+	dir, err := charm.ReadCharmDir(path)
+	c.Assert(err, gc.IsNil)
+
+	// A lacking manifest.yaml file still causes a proper
+	// Manifest value to be returned.
+	c.Assert(dir.Manifest().Bases, gc.HasLen, 0)
+}
+
 func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 	baseDir := c.MkDir()
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
@@ -127,6 +155,7 @@ func (s *CharmDirSuite) TestArchiveTo(c *gc.C) {
 func (s *CharmDirSuite) TestArchiveToWithIgnoredFiles(c *gc.C) {
 	charmDir := cloneDir(c, charmDirPath(c, "dummy"))
 	dir, err := charm.ReadCharmDir(charmDir)
+	c.Assert(err, jc.ErrorIsNil)
 
 	// Add a directory/files that should be ignored
 	nestedGitDir := filepath.Join(dir.Path, ".git/nested")
@@ -150,9 +179,9 @@ func (s *CharmDirSuite) TestArchiveToWithIgnoredFiles(c *gc.C) {
 	archive, err := charm.ReadCharmArchiveBytes(b.Bytes())
 	c.Assert(err, jc.ErrorIsNil)
 
-	manifest, err := archive.Manifest()
+	manifest, err := archive.ArchiveMembers()
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyManifest...))
+	c.Assert(manifest, jc.DeepEquals, set.NewStrings(dummyArchiveMembers...))
 
 	c.Assert(archive.Version(), gc.Not(gc.Equals), "spoofed version")
 	c.Assert(archive.Revision(), gc.Not(gc.Equals), 42)
@@ -203,9 +232,9 @@ tox/**
 	// Based on the .jujuignore rules, we should retain "foo/bar" and
 	// "tox/keep" but nothing else
 	retained := []string{"foo", "tox", "tox/keep"}
-	expContents := set.NewStrings(append(retained, dummyManifest...)...)
+	expContents := set.NewStrings(append(retained, dummyArchiveMembers...)...)
 
-	manifest, err := archive.Manifest()
+	manifest, err := archive.ArchiveMembers()
 	c.Log(manifest.Difference(expContents))
 	c.Log(expContents.Difference(manifest))
 	c.Assert(err, jc.ErrorIsNil)
@@ -682,7 +711,7 @@ func (s *CharmSuite) TestMaybeGenerateVersionStringLogsAbsolutePath(c *gc.C) {
 	logger := ctx.GetLogger("juju.testing")
 	lvl, _ := loggo.ParseLevel("TRACE")
 	logger.SetLogLevel(lvl)
-	defer loggo.RemoveWriter("versionstring-test")
+	defer func() { _, _ = loggo.RemoveWriter("versionstring-test") }()
 	defer loggo.ResetLogging()
 
 	testing.PatchExecutableThrowError(c, s, "git", 128)

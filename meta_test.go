@@ -12,13 +12,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/juju/systems"
-	"github.com/juju/systems/channel"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/version/v2"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
-	yamlv2 "gopkg.in/yaml.v2"
 
 	"github.com/juju/charm/v9"
 	"github.com/juju/charm/v9/resource"
@@ -86,14 +83,14 @@ func (s *MetaSuite) TestValidTermFormat(c *gc.C) {
 	for i, s := range valid {
 		c.Logf("valid test %d: %s", i, s)
 		meta := charm.Meta{Terms: []string{s}}
-		err := meta.Check()
+		err := meta.Check(charm.FormatV1)
 		c.Check(err, jc.ErrorIsNil)
 	}
 
 	for i, s := range invalid {
 		c.Logf("invalid test %d: %s", i, s)
 		meta := charm.Meta{Terms: []string{s}}
-		err := meta.Check()
+		err := meta.Check(charm.FormatV1)
 		c.Check(err, gc.NotNil)
 	}
 }
@@ -180,7 +177,7 @@ func (s *MetaSuite) TestCheckTerms(c *gc.C) {
 	for i, test := range tests {
 		c.Logf("running test %v: %v", i, test.about)
 		meta := charm.Meta{Terms: test.terms}
-		err := meta.Check()
+		err := meta.Check(charm.FormatV1)
 		if test.expectError == "" {
 			c.Check(err, jc.ErrorIsNil)
 		} else {
@@ -282,7 +279,7 @@ func (s *MetaSuite) TestReadCategory(c *gc.C) {
 func (s *MetaSuite) TestReadTerms(c *gc.C) {
 	meta, err := charm.ReadMeta(repoMeta(c, "terms"))
 	c.Assert(err, jc.ErrorIsNil)
-	err = meta.Check()
+	err = meta.Check(charm.FormatV1)
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(meta.Terms, jc.DeepEquals, []string{"term1/1", "term2", "owner/term3/1"})
 }
@@ -295,9 +292,11 @@ description: |
 terms: ["!!!/abc"]
 `
 
-func (s *MetaSuite) TestReadInvalidTerms(c *gc.C) {
+func (s *MetaSuite) TestCheckReadInvalidTerms(c *gc.C) {
 	reader := strings.NewReader(metaDataWithInvalidTermsId)
-	_, err := charm.ReadMeta(reader)
+	meta, err := charm.ReadMeta(reader)
+	c.Assert(err, jc.ErrorIsNil)
+	err = meta.Check(charm.FormatV1)
 	c.Assert(err, gc.ErrorMatches, `wrong owner format "!!!"`)
 }
 
@@ -313,11 +312,13 @@ func (s *MetaSuite) TestSubordinate(c *gc.C) {
 	c.Assert(meta.Subordinate, gc.Equals, true)
 }
 
-func (s *MetaSuite) TestSubordinateWithoutContainerRelation(c *gc.C) {
+func (s *MetaSuite) TestCheckSubordinateWithoutContainerRelation(c *gc.C) {
 	r := repoMeta(c, "dummy")
 	hackYaml := ReadYaml(r)
 	hackYaml["subordinate"] = true
-	_, err := charm.ReadMeta(hackYaml.Reader())
+	meta, err := charm.ReadMeta(hackYaml.Reader())
+	c.Assert(err, jc.ErrorIsNil)
+	err = meta.Check(charm.FormatV1)
 	c.Assert(err, gc.ErrorMatches, "subordinate charm \"dummy\" lacks \"requires\" relation with container scope")
 }
 
@@ -514,15 +515,16 @@ var relationsConstraintsTests = []struct {
 	},
 }
 
-func (s *MetaSuite) TestRelationsConstraints(c *gc.C) {
+func (s *MetaSuite) TestCheckRelationsConstraints(c *gc.C) {
 	check := func(s, e string) {
 		meta, err := charm.ReadMeta(strings.NewReader(s))
+		c.Assert(err, jc.ErrorIsNil)
+		c.Assert(meta, gc.NotNil)
+		err = meta.Check(charm.FormatV1)
 		if e != "" {
 			c.Assert(err, gc.ErrorMatches, e)
-			c.Assert(meta, gc.IsNil)
 		} else {
 			c.Assert(err, gc.IsNil)
-			c.Assert(meta, gc.NotNil)
 		}
 	}
 	prefix := "name: a\nsummary: b\ndescription: c\n"
@@ -563,11 +565,14 @@ func (s *MetaSuite) TestSeries(c *gc.C) {
 	c.Assert(meta.Series, gc.DeepEquals, []string{"precise", "trusty", "plan9"})
 }
 
-func (s *MetaSuite) TestInvalidSeries(c *gc.C) {
+func (s *MetaSuite) TestCheckInvalidSeries(c *gc.C) {
 	for _, seriesName := range []string{"pre-c1se", "pre^cise", "cp/m", "OpenVMS"} {
-		_, err := charm.ReadMeta(strings.NewReader(
-			fmt.Sprintf("%s\nseries:\n    - %s\n", dummyMetadata, seriesName)))
-		c.Assert(err, gc.NotNil)
+		err := charm.Meta{
+			Name:        "a",
+			Summary:     "b",
+			Description: "c",
+			Series:      []string{seriesName},
+		}.Check(charm.FormatV1)
 		c.Check(err, gc.ErrorMatches, `charm "a" declares invalid series: .*`)
 	}
 }
@@ -605,7 +610,7 @@ func (s *MetaSuite) TestNoMinJujuVersion(c *gc.C) {
 
 func (s *MetaSuite) TestCheckMismatchedRelationName(c *gc.C) {
 	// This  Check case cannot be covered by the above
-	// TestRelationsConstraints tests.
+	// TestCheckRelationsConstraints tests.
 	meta := charm.Meta{
 		Name: "foo",
 		Provides: map[string]charm.Relation{
@@ -617,13 +622,13 @@ func (s *MetaSuite) TestCheckMismatchedRelationName(c *gc.C) {
 			},
 		},
 	}
-	err := meta.Check()
+	err := meta.Check(charm.FormatV1)
 	c.Assert(err, gc.ErrorMatches, `charm "foo" has mismatched role "peer"; expected "provider"`)
 }
 
 func (s *MetaSuite) TestCheckMismatchedRole(c *gc.C) {
 	// This  Check case cannot be covered by the above
-	// TestRelationsConstraints tests.
+	// TestCheckRelationsConstraints tests.
 	meta := charm.Meta{
 		Name: "foo",
 		Provides: map[string]charm.Relation{
@@ -634,7 +639,7 @@ func (s *MetaSuite) TestCheckMismatchedRole(c *gc.C) {
 			},
 		},
 	}
-	err := meta.Check()
+	err := meta.Check(charm.FormatV1)
 	c.Assert(err, gc.ErrorMatches, `charm "foo" has mismatched relation name ""; expected "foo"`)
 }
 
@@ -645,7 +650,7 @@ func (s *MetaSuite) TestCheckMismatchedExtraBindingName(c *gc.C) {
 			"foo": {Name: "bar"},
 		},
 	}
-	err := meta.Check()
+	err := meta.Check(charm.FormatV1)
 	c.Assert(err, gc.ErrorMatches, `charm "foo" has invalid extra bindings: mismatched extra binding name: got "bar", expected "foo"`)
 }
 
@@ -654,12 +659,12 @@ func (s *MetaSuite) TestCheckEmptyNameKeyOrEmptyExtraBindingName(c *gc.C) {
 		Name:          "foo",
 		ExtraBindings: map[string]charm.ExtraBinding{"": {Name: "bar"}},
 	}
-	err := meta.Check()
+	err := meta.Check(charm.FormatV1)
 	expectedError := `charm "foo" has invalid extra bindings: missing binding name`
 	c.Assert(err, gc.ErrorMatches, expectedError)
 
 	meta.ExtraBindings = map[string]charm.ExtraBinding{"bar": {Name: ""}}
-	err = meta.Check()
+	err = meta.Check(charm.FormatV1)
 	c.Assert(err, gc.ErrorMatches, expectedError)
 }
 
@@ -817,10 +822,6 @@ func (s *MetaSuite) TestCodecRoundTrip(c *gc.C) {
 		Categories: []string{"quxxxx", "quxxxxx"},
 		Tags:       []string{"openstack", "storage"},
 		Terms:      []string{"test-term/1", "test-term/2"},
-		Bases: []systems.Base{{
-			Name:    "ubuntu",
-			Channel: channel.MustParse("18.04/stable"),
-		}},
 	}
 	for _, codec := range codecs {
 		c.Logf("codec %s", codec.Name)
@@ -885,10 +886,6 @@ func (s *MetaSuite) TestCodecRoundTripKubernetes(c *gc.C) {
 				Resource: "test",
 			},
 		},
-		Bases: []systems.Base{{
-			Name:    "ubuntu",
-			Channel: channel.MustParse("18.04/stable"),
-		}},
 		Resources: map[string]resource.Meta{
 			"test": resource.Meta{
 				Name: "test",
@@ -1038,19 +1035,6 @@ func (s *MetaSuite) TestYAMLMarshal(c *gc.C) {
 	}
 }
 
-func (s *MetaSuite) TestYAMLMarshalV2(c *gc.C) {
-	for i, test := range metaYAMLMarshalTests {
-		c.Logf("test %d: %s", i, test.about)
-		ch, err := charm.ReadMeta(strings.NewReader(test.yaml))
-		c.Assert(err, gc.IsNil)
-		gotYAML, err := yamlv2.Marshal(ch)
-		c.Assert(err, gc.IsNil)
-		gotCh, err := charm.ReadMeta(bytes.NewReader(gotYAML))
-		c.Assert(err, gc.IsNil)
-		c.Assert(gotCh, jc.DeepEquals, ch)
-	}
-}
-
 func (s *MetaSuite) TestYAMLMarshalSimpleRelationOrExtraBinding(c *gc.C) {
 	// Check that a simple relation / extra-binding gets marshaled as a string.
 	chYAML := `
@@ -1185,7 +1169,7 @@ deployment:
 	}, gc.Commentf("meta: %+v", meta))
 }
 
-func (s *MetaSuite) TestDeploymentErrors(c *gc.C) {
+func (s *MetaSuite) TestCheckDeploymentErrors(c *gc.C) {
 	prefix := `
 name: a
 summary: b
@@ -1233,6 +1217,17 @@ func testErrors(c *gc.C, prefix string, tests []testErrorPayload) {
 	}
 }
 
+func testCheckErrors(c *gc.C, prefix string, tests []testErrorPayload) {
+	for i, test := range tests {
+		c.Logf("test %d: %s", i, test.desc)
+		c.Logf("\n%s\n", prefix+test.yaml)
+		meta, err := charm.ReadMeta(strings.NewReader(prefix + test.yaml))
+		c.Assert(err, jc.ErrorIsNil)
+		err = meta.Check(charm.FormatV1)
+		c.Assert(err, gc.ErrorMatches, test.err)
+	}
+}
+
 func (s *MetaSuite) TestDevicesErrors(c *gc.C) {
 	prefix := `
 name: a
@@ -1254,13 +1249,28 @@ devices:
 		desc: "countmin has to be greater than 0",
 		yaml: "        countmin: -1\n        description: a big gpu device\n        type: gpu",
 		err:  "metadata: invalid device count -1",
-	}, {
+	}}
+
+	testErrors(c, prefix, tests)
+
+}
+
+func (s *MetaSuite) TestCheckDevicesErrors(c *gc.C) {
+	prefix := `
+name: a
+summary: b
+description: c
+devices:
+    bad-nvidia-gpu:
+`[1:]
+
+	tests := []testErrorPayload{{
 		desc: "countmax can not be smaller than countmin",
 		yaml: "        countmin: 2\n        countmax: 1\n        description: a big gpu device\n        type: gpu",
 		err:  "charm \"a\" device \"bad-nvidia-gpu\": maximum count 1 can not be smaller than minimum count 2",
 	}}
 
-	testErrors(c, prefix, tests)
+	testCheckErrors(c, prefix, tests)
 
 }
 
@@ -1325,10 +1335,6 @@ storage:
 		yaml: "  type: filesystem\n  multiple:\n    range: 0",
 		err:  `metadata: storage.store-bad.multiple.range: invalid count 0`,
 	}, {
-		desc: "location cannot be specified for block type storage",
-		yaml: "  type: block\n  location: /dev/sdc",
-		err:  `charm "a" storage "store-bad": location may not be specified for "type: block"`,
-	}, {
 		desc: "minimum size must parse correctly",
 		yaml: "  type: block\n  minimum-size: foo",
 		err:  `metadata: expected a non-negative number, got "foo"`,
@@ -1343,6 +1349,24 @@ storage:
 	}}
 
 	testErrors(c, prefix, tests)
+}
+
+func (s *MetaSuite) TestCheckStorageErrors(c *gc.C) {
+	prefix := `
+name: a
+summary: b
+description: c
+storage:
+ store-bad:
+`[1:]
+
+	tests := []testErrorPayload{{
+		desc: "location cannot be specified for block type storage",
+		yaml: "  type: block\n  location: /dev/sdc",
+		err:  `charm "a" storage "store-bad": location may not be specified for "type: block"`,
+	}}
+
+	testCheckErrors(c, prefix, tests)
 }
 
 func (s *MetaSuite) TestStorageCount(c *gc.C) {
@@ -1675,39 +1699,11 @@ func (s *MetaSuite) TestParseResourceMetaNil(c *gc.C) {
 	})
 }
 
-func (s *MetaSuite) TestComputedSeriesLegacy(c *gc.C) {
-	meta, err := charm.ReadMeta(strings.NewReader(`
-name: a
-summary: b
-description: c
-series:
-  - bionic
-`))
-	c.Assert(err, gc.IsNil)
-	c.Assert(meta.ComputedSeries(), jc.DeepEquals, []string{"bionic"})
-}
-
-func (s *MetaSuite) TestComputedSeries(c *gc.C) {
-	meta, err := charm.ReadMeta(strings.NewReader(`
-name: a
-summary: b
-description: c
-bases:
-  - name: ubuntu
-    channel: 18.04/stable
-`))
-	c.Assert(err, gc.IsNil)
-	c.Assert(meta.ComputedSeries(), jc.DeepEquals, []string{"bionic"})
-}
-
 func (s *MetaSuite) TestContainers(c *gc.C) {
 	meta, err := charm.ReadMeta(strings.NewReader(`
 name: a
 summary: b
 description: c
-bases:
-  - name: ubuntu
-    channel: 18.04/stable
 containers:
   foo:
     resource: test-os
@@ -1738,9 +1734,6 @@ func (s *MetaSuite) TestSystemReferencesFileResource(c *gc.C) {
 name: a
 summary: b
 description: c
-bases:
-  - name: ubuntu
-    channel: 18.04/stable
 containers:
   foo:
     resource: test-os
@@ -1763,9 +1756,6 @@ func (s *MetaSuite) TestSystemReferencedMissingResource(c *gc.C) {
 name: a
 summary: b
 description: c
-bases:
-  - name: ubuntu
-    channel: 18.04/stable
 containers:
   foo:
     resource: test-os
@@ -1784,9 +1774,6 @@ func (s *MetaSuite) TestMountMissingStorage(c *gc.C) {
 name: a
 summary: b
 description: c
-bases:
-  - name: ubuntu
-    channel: 18.04/stable
 containers:
   foo:
     resource: test-os
@@ -1807,9 +1794,6 @@ func (s *MetaSuite) TestMountMissingLocation(c *gc.C) {
 name: a
 summary: b
 description: c
-bases:
-  - name: ubuntu
-    channel: 18.04/stable
 containers:
   foo:
     resource: test-os
@@ -1830,9 +1814,6 @@ func (s *MetaSuite) TestMountIncorrectStorage(c *gc.C) {
 name: a
 summary: b
 description: c
-bases:
-  - name: ubuntu
-    channel: 18.04/stable
 containers:
   foo:
     resource: test-os
@@ -1856,9 +1837,6 @@ summary: b
 description: c
 series:
   - focal
-bases:
-  - name: ubuntu
-    channel: 18.04/stable
 containers:
   foo:
     resource: test-os
@@ -1872,7 +1850,7 @@ storage:
   a:
     type: filesystem
 `))
-	c.Assert(err, gc.ErrorMatches, `ambigious metadata: keys "series" cannot be used with "bases", "containers"`)
+	c.Assert(err, gc.ErrorMatches, `ambiguous metadata: keys "series" cannot be used with "containers"`)
 }
 
 type dummyCharm struct{}
@@ -1894,6 +1872,10 @@ func (c *dummyCharm) Actions() *charm.Actions {
 }
 
 func (c *dummyCharm) LXDProfile() *charm.LXDProfile {
+	panic("unused")
+}
+
+func (c *dummyCharm) Manifest() *charm.Manifest {
 	panic("unused")
 }
 

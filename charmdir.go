@@ -45,14 +45,7 @@ var defaultJujuIgnore = `
 // on a charm directory.
 type CharmDir struct {
 	Path       string
-	meta       *Meta
-	config     *Config
-	metrics    *Metrics
-	actions    *Actions
-	lxdProfile *LXDProfile
-	manifest   *Manifest
-	revision   int
-	version    string
+	*charmBase
 }
 
 // Trick to ensure *CharmDir implements the Charm interface.
@@ -70,26 +63,28 @@ func IsCharmDir(path string) bool {
 func ReadCharmDir(path string) (*CharmDir, error) {
 	b := &CharmDir{
 		Path: path,
+		charmBase: &charmBase{},
 	}
 	reader, err := os.Open(b.join("metadata.yaml"))
 	if err != nil {
 		return nil, errors.Annotatef(err, `reading "metadata.yaml" file`)
 	}
 	b.meta, err = ReadMeta(reader)
-	reader.Close()
+	_ = reader.Close()
 	if err != nil {
 		return nil, errors.Annotatef(err, `parsing "metadata.yaml" file`)
 	}
 
-	// If the format is not the v1 format (this should take care of any
-	// potential N formats), ensure that we can read the manifest file.
-	if b.meta.Format() != FormatV1 {
-		reader, err = os.Open(b.join("manifest.yaml"))
-		if err != nil {
-			return nil, errors.Annotatef(err, `reading "manifest.yaml" file`)
-		}
+	// Try to read the optional manifest.yaml, it's required to determine if
+	// this charm is v1 or not.
+	reader, err = os.Open(b.join("manifest.yaml"))
+	if _, ok := err.(*os.PathError); ok {
+		b.manifest = NewManifest()
+	} else if err != nil {
+		return nil, errors.Annotatef(err, `reading "manifest.yaml" file`)
+	} else {
 		b.manifest, err = ReadManifest(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `parsing "manifest.yaml" file`)
 		}
@@ -102,7 +97,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 		return nil, errors.Annotatef(err, `reading "config.yaml" file`)
 	} else {
 		b.config, err = ReadConfig(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `parsing "config.yaml" file`)
 		}
@@ -111,7 +106,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 	reader, err = os.Open(b.join("metrics.yaml"))
 	if err == nil {
 		b.metrics, err = ReadMetrics(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `parsing "metrics.yaml" file`)
 		}
@@ -134,7 +129,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 
 	if reader, err = os.Open(b.join("revision")); err == nil {
 		_, err = fmt.Fscan(reader, &b.revision)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.New("invalid revision file")
 		}
@@ -147,7 +142,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 		return nil, errors.Annotatef(err, `reading "lxd-profile.yaml" file`)
 	} else {
 		b.lxdProfile, err = ReadLXDProfile(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `parsing "lxd-profile.yaml" file`)
 		}
@@ -160,7 +155,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 		}
 	} else {
 		b.version, err = ReadVersion(reader)
-		reader.Close()
+		_ = reader.Close()
 		if err != nil {
 			return nil, errors.Annotatef(err, `parsing "version" file`)
 		}
@@ -204,55 +199,6 @@ func (dir *CharmDir) buildIgnoreRules() (ignoreRuleset, error) {
 func (dir *CharmDir) join(parts ...string) string {
 	parts = append([]string{dir.Path}, parts...)
 	return filepath.Join(parts...)
-}
-
-// Revision returns the revision number for the charm
-// expanded in dir.
-func (dir *CharmDir) Revision() int {
-	return dir.revision
-}
-
-// Version returns the VCS version representing the version file from archive.
-func (dir *CharmDir) Version() string {
-	return dir.version
-}
-
-// Meta returns the Meta representing the metadata.yaml file
-// for the charm expanded in dir.
-func (dir *CharmDir) Meta() *Meta {
-	return dir.meta
-}
-
-// Config returns the Config representing the config.yaml file
-// for the charm expanded in dir.
-func (dir *CharmDir) Config() *Config {
-	return dir.config
-}
-
-// Metrics returns the Metrics representing the metrics.yaml file
-// for the charm expanded in dir.
-func (dir *CharmDir) Metrics() *Metrics {
-	return dir.metrics
-}
-
-// Actions returns the Actions representing the actions.yaml file
-// for the charm expanded in dir.
-func (dir *CharmDir) Actions() *Actions {
-	return dir.actions
-}
-
-// LXDProfile returns the LXDProfile representing the lxd-profile.yaml file
-// for the charm expanded in dir.
-func (dir *CharmDir) LXDProfile() *LXDProfile {
-	return dir.lxdProfile
-}
-
-// SetRevision changes the charm revision number. This affects
-// the revision reported by Revision and the revision of the
-// charm archived by ArchiveTo.
-// The revision file in the charm directory is not modified.
-func (dir *CharmDir) SetRevision(revision int) {
-	dir.revision = revision
 }
 
 // SetDiskRevision does the same as SetRevision but also changes
