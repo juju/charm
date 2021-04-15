@@ -21,7 +21,7 @@ type baseSuite struct {
 
 var _ = gc.Suite(&baseSuite{})
 
-func (s *baseSuite) TestParseBaseFromString(c *gc.C) {
+func (s *baseSuite) TestParseBase(c *gc.C) {
 	tests := []struct {
 		base       charm.Base
 		str        string
@@ -61,7 +61,7 @@ func (s *baseSuite) TestParseBaseFromString(c *gc.C) {
 		str := v.base.String()
 		comment := gc.Commentf("test %d", i)
 		c.Check(str, gc.Equals, v.str, comment)
-		s, err := charm.ParseBaseFromString(str)
+		s, err := charm.ParseBase(str)
 		if v.err != "" {
 			c.Check(err, gc.ErrorMatches, v.err, comment)
 		} else {
@@ -86,19 +86,19 @@ func (s *baseSuite) TestParseBaseWithArchitectures(c *gc.C) {
 			str:        "ubuntu on amd64",
 			archs:      []string{"amd64"},
 			parsedBase: charm.Base{},
-			err:        `invalid base string "ubuntu" with architectures \[amd64\]: channel not valid`,
+			err:        `invalid base string "ubuntu" with architectures "amd64": channel not valid`,
 		}, {
 			base:       charm.Base{Name: os.Windows.String()},
 			baseString: "windows",
 			str:        "windows",
 			parsedBase: charm.Base{},
-			err:        `invalid base string "windows" with architectures \[\]: channel not valid`,
+			err:        `invalid base string "windows": channel not valid`,
 		}, {
 			base:       charm.Base{Name: "mythicalos"},
 			baseString: "mythicalos",
 			str:        "mythicalos",
 			parsedBase: charm.Base{},
-			err:        `invalid base string "mythicalos" with architectures \[\]: os "mythicalos" not valid`,
+			err:        `invalid base string "mythicalos": os "mythicalos" not valid`,
 		}, {
 			base: charm.Base{
 				Name:          os.Ubuntu.String(),
@@ -118,14 +118,14 @@ func (s *baseSuite) TestParseBaseWithArchitectures(c *gc.C) {
 			archs:      []string{"testme"},
 			str:        "windows/win10/stable",
 			parsedBase: charm.Base{},
-			err:        `invalid base string "windows/win10/stable" with architectures \[testme\]: architecture \"testme\" not valid`,
+			err:        `invalid base string "windows/win10/stable" with architectures "testme": architecture "testme" not valid`,
 		},
 	}
 	for i, v := range tests {
 		str := v.base.String()
 		comment := gc.Commentf("test %d", i)
 		c.Check(str, gc.Equals, v.str, comment)
-		s, err := charm.ParseBaseWithArchitectures(v.baseString, v.archs)
+		s, err := charm.ParseBase(v.baseString, v.archs...)
 		if v.err != "" {
 			c.Check(err, gc.ErrorMatches, v.err, comment)
 		} else {

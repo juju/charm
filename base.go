@@ -54,41 +54,9 @@ func (b Base) String() string {
 	return str
 }
 
-// ParseBaseFromString parses a base as string in the form
-// "os/track/risk/branch"
-func ParseBaseFromString(s string) (Base, error) {
-	base, err := parseBaseString(s)
-	if err != nil {
-		return Base{}, err
-	}
-	err = base.Validate()
-	if err != nil {
-		return Base{}, errors.Annotatef(err, "invalid base string %q", s)
-	}
-	return base, nil
-}
-
-// ParseBaseWithArchitectures parses a base as string in the form
-// "os/track/risk/branch" and a list of architectures
-func ParseBaseWithArchitectures(s string, archs []string) (Base, error) {
-	base, err := parseBaseString(s)
-	if err != nil {
-		return Base{}, err
-	}
-
-	base.Architectures = make([]string, len(archs))
-	for i, v := range archs {
-		base.Architectures[i] = arch.NormaliseArch(v)
-	}
-
-	err = base.Validate()
-	if err != nil {
-		return Base{}, errors.Annotatef(err, "invalid base string %q with architectures %s", s, archs)
-	}
-	return base, nil
-}
-
-func parseBaseString(s string) (Base, error) {
+// ParseBase parses a base as string in the form "os/track/risk/branch"
+// and an optional list of architectures
+func ParseBase(s string, archs ...string) (Base, error) {
 	var err error
 	base := Base{}
 
@@ -106,6 +74,20 @@ func parseBaseString(s string) (Base, error) {
 		if err != nil {
 			return Base{}, errors.Annotatef(err, "malformed channel in base string %q", s)
 		}
+	}
+
+	base.Architectures = make([]string, len(archs))
+	for i, v := range archs {
+		base.Architectures[i] = arch.NormaliseArch(v)
+	}
+
+	err = base.Validate()
+	if err != nil {
+		var a string
+		if len(base.Architectures) > 0 {
+			a = fmt.Sprintf(" with architectures %q", strings.Join(base.Architectures, ","))
+		}
+		return Base{}, errors.Annotatef(err, "invalid base string %q%s", s, a)
 	}
 	return base, nil
 }
