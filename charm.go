@@ -14,12 +14,18 @@ import (
 
 var logger = loggo.GetLogger("juju.charm")
 
+// CharmMeta describes methods that inform charm operation.
+type CharmMeta interface {
+	Meta() *Meta
+	Manifest() *Manifest
+}
+
 // The Charm interface is implemented by any type that
 // may be handled as a charm.
 type Charm interface {
-	Meta() *Meta
+	CharmMeta
+
 	Config() *Config
-	Manifest() *Manifest
 	Metrics() *Metrics
 	Actions() *Actions
 	Revision() int
@@ -77,15 +83,16 @@ func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, e
 
 // ComputedSeries of a charm. This is to support legacy logic on new
 // charms that use Bases.
-func ComputedSeries(c Charm) []string {
-	if len(c.Manifest().Bases) == 0 {
+func ComputedSeries(c CharmMeta) []string {
+	manifest := c.Manifest()
+	if manifest == nil || len(manifest.Bases) == 0 {
 		return c.Meta().Series
 	}
 	// The slice must be ordered based on system appearance but
 	// have unique elements.
 	seriesSlice := []string(nil)
 	seriesSet := set.NewStrings()
-	for _, base := range c.Manifest().Bases {
+	for _, base := range manifest.Bases {
 		series := base.String()
 		if !seriesSet.Contains(series) {
 			seriesSet.Add(series)

@@ -4,10 +4,11 @@
 package charm
 
 import (
+	"strings"
+
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
-	"strings"
 )
 
 type computedSeriesSuite struct {
@@ -28,6 +29,23 @@ series:
 	dir := charmBase{
 		meta:     meta,
 		manifest: &Manifest{},
+	}
+	c.Assert(err, gc.IsNil)
+	c.Assert(ComputedSeries(&dir), jc.DeepEquals, []string{"bionic"})
+}
+
+func (s *computedSeriesSuite) TestCharmComputedSeriesNilManifest(c *gc.C) {
+	meta, err := ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+series:
+  - bionic
+`))
+	c.Assert(err, gc.IsNil)
+	dir := charmBase{
+		meta:     meta,
+		manifest: nil,
 	}
 	c.Assert(err, gc.IsNil)
 	c.Assert(ComputedSeries(&dir), jc.DeepEquals, []string{"bionic"})
