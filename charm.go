@@ -23,7 +23,6 @@ type CharmMeta interface {
 // may be handled as a charm.
 type Charm interface {
 	CharmMeta
-	Manifest() *Manifest
 	Config() *Config
 	Metrics() *Metrics
 	Actions() *Actions
