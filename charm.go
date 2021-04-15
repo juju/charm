@@ -47,14 +47,20 @@ func ReadCharm(path string) (charm Charm, err error) {
 		return nil, err
 	}
 
-	// Find out the charm format, to Check the metadata.  It should
-	// be one format or the other.
+	return charm, CheckMeta(charm)
+}
+
+// CheckMeta determines the version of the metadata used by this charm,
+// then checks that it is valid as appropriate.
+func CheckMeta(ch CharmMeta) error {
+	manifest := ch.Manifest()
+
 	format := FormatV2
-	if len(charm.Manifest().Bases) == 0 {
+	if manifest == nil || len(manifest.Bases) == 0 {
 		format = FormatV1
 	}
 
-	return charm, charm.Meta().Check(format)
+	return ch.Meta().Check(format)
 }
 
 // SeriesForCharm takes a requested series and a list of series supported by a
