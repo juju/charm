@@ -34,6 +34,23 @@ series:
 	c.Assert(ComputedSeries(&dir), jc.DeepEquals, []string{"bionic"})
 }
 
+func (s *computedSeriesSuite) TestCharmComputedSeriesNilManifest(c *gc.C) {
+	meta, err := ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+series:
+  - bionic
+`))
+	c.Assert(err, gc.IsNil)
+	dir := charmBase{
+		meta:     meta,
+		manifest: nil,
+	}
+	c.Assert(err, gc.IsNil)
+	c.Assert(ComputedSeries(&dir), jc.DeepEquals, []string{"bionic"})
+}
+
 func (s *computedSeriesSuite) TestCharmComputedSeries(c *gc.C) {
 	meta, err := ReadMeta(strings.NewReader(`
 name: a
