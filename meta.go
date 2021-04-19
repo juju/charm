@@ -18,7 +18,7 @@ import (
 	"github.com/juju/os/v2/series"
 	"github.com/juju/schema"
 	"github.com/juju/utils/v2"
-	"github.com/juju/version"
+	"github.com/juju/version/v2"
 	"gopkg.in/yaml.v2"
 
 	"github.com/juju/charm/v8/hooks"
