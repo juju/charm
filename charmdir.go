@@ -44,7 +44,7 @@ var defaultJujuIgnore = `
 // CharmDir encapsulates access to data and operations
 // on a charm directory.
 type CharmDir struct {
-	Path       string
+	Path string
 	*charmBase
 }
 
@@ -62,7 +62,7 @@ func IsCharmDir(path string) bool {
 // ReadCharmDir returns a CharmDir representing an expanded charm directory.
 func ReadCharmDir(path string) (*CharmDir, error) {
 	b := &CharmDir{
-		Path: path,
+		Path:      path,
 		charmBase: &charmBase{},
 	}
 	reader, err := os.Open(b.join("metadata.yaml"))

@@ -8,18 +8,22 @@ import (
 	"os"
 	"strings"
 
-	"github.com/juju/collections/set"
 	"github.com/juju/loggo"
 )
 
 var logger = loggo.GetLogger("juju.charm")
 
+// CharmMeta describes methods that inform charm operation.
+type CharmMeta interface {
+	Meta() *Meta
+	Manifest() *Manifest
+}
+
 // The Charm interface is implemented by any type that
 // may be handled as a charm.
 type Charm interface {
-	Meta() *Meta
+	CharmMeta
 	Config() *Config
-	Manifest() *Manifest
 	Metrics() *Metrics
 	Actions() *Actions
 	Revision() int
@@ -41,14 +45,20 @@ func ReadCharm(path string) (charm Charm, err error) {
 		return nil, err
 	}
 
-	// Find out the charm format, to Check the metadata.  It should
-	// be one format or the other.
+	return charm, CheckMeta(charm)
+}
+
+// CheckMeta determines the version of the metadata used by this charm,
+// then checks that it is valid as appropriate.
+func CheckMeta(ch CharmMeta) error {
+	manifest := ch.Manifest()
+
 	format := FormatV2
-	if len(charm.Manifest().Bases) == 0 {
+	if manifest == nil || len(manifest.Bases) == 0 {
 		format = FormatV1
 	}
 
-	return charm, charm.Meta().Check(format)
+	return ch.Meta().Check(format)
 }
 
 // SeriesForCharm takes a requested series and a list of series supported by a
@@ -73,27 +83,6 @@ func SeriesForCharm(requestedSeries string, supportedSeries []string) (string, e
 		}
 	}
 	return "", &unsupportedSeriesError{requestedSeries, supportedSeries}
-}
-
-// ComputedSeries of a charm. This is to support legacy logic on new
-// charms that use Bases.
-func ComputedSeries(c Charm) []string {
-	manifest := c.Manifest()
-	if manifest == nil || len(manifest.Bases) == 0 {
-		return c.Meta().Series
-	}
-	// The slice must be ordered based on system appearance but
-	// have unique elements.
-	seriesSlice := []string(nil)
-	seriesSet := set.NewStrings()
-	for _, base := range manifest.Bases {
-		series := base.String()
-		if !seriesSet.Contains(series) {
-			seriesSet.Add(series)
-			seriesSlice = append(seriesSlice, series)
-		}
-	}
-	return seriesSlice
 }
 
 // errMissingSeries is used to denote that SeriesForCharm could not determine
