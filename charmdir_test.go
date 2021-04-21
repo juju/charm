@@ -18,8 +18,6 @@ import (
 	"github.com/juju/charm/v9"
 	"github.com/juju/collections/set"
 	"github.com/juju/loggo"
-	"github.com/juju/systems"
-	"github.com/juju/systems/channel"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	"github.com/juju/utils/v2"
@@ -119,17 +117,15 @@ func (s *CharmDirSuite) TestReadCharmDirManifest(c *gc.C) {
 	dir, err := charm.ReadCharmDir(path)
 	c.Assert(err, gc.IsNil)
 
-	c.Assert(dir.Manifest().Bases, gc.DeepEquals, []systems.Base{{
+	c.Assert(dir.Manifest().Bases, gc.DeepEquals, []charm.Base{{
 		Name: "ubuntu",
-		Channel: channel.Channel{
-			Name:  "18.04/stable",
+		Channel: charm.Channel{
 			Track: "18.04",
 			Risk:  "stable",
 		},
 	}, {
 		Name: "ubuntu",
-		Channel: channel.Channel{
-			Name:  "20.04/stable",
+		Channel: charm.Channel{
 			Track: "20.04",
 			Risk:  "stable",
 		},

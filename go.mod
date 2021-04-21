@@ -12,7 +12,6 @@ require (
 	github.com/juju/names/v4 v4.0.0-20200923012352-008effd8611b
 	github.com/juju/os/v2 v2.0.0
 	github.com/juju/schema v0.0.0-20160301111646-1e25943f8c6f
-	github.com/juju/systems v0.0.0-20210311041303-bc6b2f9677ca
 	github.com/juju/testing v0.0.0-20210302031854-2c7ee8570c07
 	github.com/juju/utils/v2 v2.0.0-20200923005554-4646bfea2ef1
 	github.com/juju/version/v2 v2.0.0-20210319015800-dcfac8f4f057
