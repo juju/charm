@@ -472,8 +472,8 @@ func ParseTerm(s string) (*TermsId, error) {
 }
 
 // ReadMeta reads the content of a metadata.yaml file and returns
-// its representation.  The data has verfied as unambiguous, but
-// not Check'd.
+// its representation.
+// The data has verified as unambiguous, but not validated.
 func ReadMeta(r io.Reader) (*Meta, error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
