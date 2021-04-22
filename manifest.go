@@ -4,7 +4,6 @@
 package charm
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -30,7 +29,7 @@ func NewManifest() *Manifest {
 func (m *Manifest) Validate() error {
 	for _, b := range m.Bases {
 		if err := b.Validate(); err != nil {
-			return fmt.Errorf("invalid base: empty file")
+			return errors.Annotate(err, "invalid base")
 		}
 	}
 	return nil
