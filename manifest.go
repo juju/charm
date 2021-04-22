@@ -29,7 +29,7 @@ func NewManifest() *Manifest {
 func (m *Manifest) Validate() error {
 	for _, b := range m.Bases {
 		if err := b.Validate(); err != nil {
-			return errors.Annotate(err, "invalid base")
+			return errors.Annotate(err, "validating manifest")
 		}
 	}
 	return nil

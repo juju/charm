@@ -51,7 +51,7 @@ bases:
   - name: ""
     channel: "18.04"
 `))
-	c.Assert(err, gc.ErrorMatches, "manifest: name must be specified not valid")
+	c.Assert(err, gc.ErrorMatches, "manifest: base without name not valid")
 }
 
 func (s *manifestSuite) TestValidateManifest(c *gc.C) {
@@ -60,5 +60,5 @@ func (s *manifestSuite) TestValidateManifest(c *gc.C) {
 			Name: "",
 		}},
 	}
-	c.Assert(manifest.Validate(), gc.ErrorMatches, "invalid base: name must be specified not valid")
+	c.Assert(manifest.Validate(), gc.ErrorMatches, "validating manifest: base without name not valid")
 }
