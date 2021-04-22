@@ -24,7 +24,7 @@ type Base struct {
 // Validate returns with no error when the Base is valid.
 func (b Base) Validate() error {
 	if b.Name == "" {
-		return errors.NotValidf("name must be specified")
+		return errors.NotValidf("base without name")
 	}
 
 	if !validOSForBase.Contains(b.Name) {

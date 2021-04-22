@@ -44,3 +44,21 @@ bases:
 	},
 	}})
 }
+
+func (s *manifestSuite) TestReadValidateManifest(c *gc.C) {
+	_, err := ReadManifest(strings.NewReader(`
+bases:
+  - name: ""
+    channel: "18.04"
+`))
+	c.Assert(err, gc.ErrorMatches, "manifest: base without name not valid")
+}
+
+func (s *manifestSuite) TestValidateManifest(c *gc.C) {
+	manifest := &Manifest{
+		Bases: []Base{{
+			Name: "",
+		}},
+	}
+	c.Assert(manifest.Validate(), gc.ErrorMatches, "validating manifest: base without name not valid")
+}
