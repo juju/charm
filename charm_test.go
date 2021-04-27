@@ -41,10 +41,16 @@ func (s *CharmSuite) TestReadCharm(c *gc.C) {
 	c.Assert(ch.Meta().Name, gc.Equals, "dummy")
 }
 
-func (s *CharmSuite) TestReadCharmDirError(c *gc.C) {
+func (s *CharmSuite) TestReadCharmDirEmptyError(c *gc.C) {
 	ch, err := charm.ReadCharm(c.MkDir())
 	c.Assert(err, gc.NotNil)
 	c.Assert(ch, gc.Equals, nil)
+}
+
+func (s *CharmSuite) TestReadCharmSeriesWithBases(c *gc.C) {
+	ch, err := charm.ReadCharm(charmDirPath(c, "seriesmanifest"))
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(ch, gc.NotNil)
 }
 
 func (s *CharmSuite) TestReadCharmArchiveError(c *gc.C) {
@@ -110,7 +116,7 @@ func checkDummy(c *gc.C, f charm.Charm, path string) {
 	c.Assert(f.Config().Options["title"].Default, gc.Equals, "My Title")
 	c.Assert(f.Actions(), jc.DeepEquals,
 		&charm.Actions{
-			map[string]charm.ActionSpec{
+			ActionSpecs: map[string]charm.ActionSpec{
 				"snapshot": {
 					Description: "Take a snapshot of the database.",
 					Params: map[string]interface{}{
