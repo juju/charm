@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/juju/errors"
 	"github.com/juju/loggo"
 )
 
@@ -34,7 +35,7 @@ type Charm interface {
 func ReadCharm(path string) (charm Charm, err error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return nil, err
+		return nil, errors.Trace(err)
 	}
 	if info.IsDir() {
 		charm, err = ReadCharmDir(path)
@@ -42,10 +43,10 @@ func ReadCharm(path string) (charm Charm, err error) {
 		charm, err = ReadCharmArchive(path)
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.Trace(err)
 	}
 
-	return charm, CheckMeta(charm)
+	return charm, errors.Trace(CheckMeta(charm))
 }
 
 // CheckMeta determines the version of the metadata used by this charm,
@@ -54,7 +55,7 @@ func CheckMeta(ch CharmMeta) error {
 	manifest := ch.Manifest()
 
 	format := FormatV2
-	if manifest == nil || len(manifest.Bases) == 0 {
+	if manifest == nil || len(manifest.Bases) == 0 || len(ch.Meta().Series) > 0 {
 		format = FormatV1
 	}
 
