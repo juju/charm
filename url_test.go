@@ -414,7 +414,7 @@ var ensureSchemaTests = []struct {
 func (s *URLSuite) TestInferURLNoDefaultSeries(c *gc.C) {
 	for i, t := range ensureSchemaTests {
 		c.Logf("%d: %s", i, t.input)
-		inferred, err := charm.EnsureSchema(t.input)
+		inferred, err := charm.EnsureSchema(t.input, charm.CharmHub)
 		if t.err != "" {
 			c.Assert(err, gc.ErrorMatches, t.err)
 			continue
