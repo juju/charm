@@ -351,6 +351,88 @@ series: trusty
 	)
 }
 
+func (*bundleDataOverlaySuite) TestOverrideScale(c *gc.C) {
+	testBundleMergeResult(c, `
+applications:
+  apache2:
+    charm: cs:apache2-26
+    scale: 1
+---
+applications:
+  apache2:
+    scale: 2
+`, `
+applications:
+  apache2:
+    charm: cs:apache2-26
+    num_units: 2
+`,
+	)
+}
+
+func (*bundleDataOverlaySuite) TestOverrideScaleWithNumUnits(c *gc.C) {
+	// This shouldn't be allowed, but the code does, so we should test it!
+	// Notice that scale doesn't exist.
+	testBundleMergeResult(c, `
+applications:
+  apache2:
+    charm: cs:apache2-26
+    scale: 1
+---
+applications:
+  apache2:
+    num_units: 2
+`, `
+applications:
+  apache2:
+    charm: cs:apache2-26
+    num_units: 2
+`,
+	)
+}
+
+func (*bundleDataOverlaySuite) TestMultipleOverrideScale(c *gc.C) {
+	testBundleMergeResult(c, `
+applications:
+  apache2:
+    charm: cs:apache2-26
+    scale: 1
+---
+applications:
+  apache2:
+    scale: 50
+---
+applications:
+  apache2:
+    scale: 3
+`, `
+applications:
+  apache2:
+    charm: cs:apache2-26
+    num_units: 3
+`,
+	)
+}
+
+func (*bundleDataOverlaySuite) TestOverrideScaleWithZero(c *gc.C) {
+	testBundleMergeResult(c, `
+applications:
+  apache2:
+    charm: cs:apache2-26
+    scale: 1
+---
+applications:
+  apache2:
+    scale: 0
+`, `
+applications:
+  apache2:
+    charm: cs:apache2-26
+    num_units: 1
+`,
+	)
+}
+
 func (*bundleDataOverlaySuite) TestAddAndOverrideResourcesStorageDevicesAndBindings(c *gc.C) {
 	testBundleMergeResult(c, `
 applications:
