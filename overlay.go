@@ -512,8 +512,8 @@ func resolveOverlayPresenceFields(base *BundleDataPart) {
 		}
 
 		presence := applications.forField(name)
-		// If the presence map contains scale, but doesn't containt num_units
-		// and if the app.Scale_ has be set to zero. We can then assume that a
+		// If the presence map contains scale, but doesn't contain num_units
+		// and if the app.Scale_ has been set to zero. We can then assume that a
 		// normalistion has occurred.
 		if presence.fieldPresent("scale") && !presence.fieldPresent("num_units") && app.Scale_ == 0 && app.NumUnits > 0 {
 			presence["num_units"] = presence["scale"]
@@ -534,6 +534,7 @@ func applyOverlay(base, overlay *BundleDataPart) error {
 		if base.Data.Applications == nil {
 			base.Data.Applications = make(map[string]*ApplicationSpec, len(overlay.Data.Applications))
 		}
+
 		fpm := overlay.PresenceMap.forField("applications")
 		for srcAppName, srcAppSpec := range overlay.Data.Applications {
 			// If the overlay map points to an empty object, delete
