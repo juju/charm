@@ -421,14 +421,18 @@ func ReadAndMergeBundleData(sources ...BundleDataSource) (*BundleData, error) {
 	// Treat the first part as the base bundle
 	base := allParts[0]
 	if err := VerifyNoOverlayFieldsPresent(base.Data); err != nil {
-		return nil, err
+		return nil, errors.Trace(err)
 	}
 
 	// Merge parts and resolve include directives
 	for index, part := range allParts {
+		// Resolve any re-writing of normalisation that could cause the presence
+		// field to be out of sync with the actual bundle representation.
+		resolveOverlayPresenceFields(part)
+
 		if index != 0 {
 			if err := applyOverlay(base, part); err != nil {
-				return nil, err
+				return nil, errors.Trace(err)
 			}
 		}
 
@@ -488,6 +492,33 @@ func ReadAndMergeBundleData(sources ...BundleDataSource) (*BundleData, error) {
 	return base.Data, nil
 }
 
+// resolveOverlayPresenceFields exists because we expose an internal bundle
+// representation of a type out to the consumers of the library. This means it
+// becomes very difficult to know what was re-written during the normalisation
+// phase, without telling downstream consumers.
+//
+// The following attempts to guess when a normalisation has occurred, but the
+// presence field map is out of sync with the new changes.
+func resolveOverlayPresenceFields(base *BundleDataPart) {
+	applications := base.PresenceMap.forField("applications")
+	if len(applications) == 0 {
+		return
+	}
+	for name, app := range base.Data.Applications {
+		if !applications.fieldPresent(name) {
+			continue
+		}
+
+		presence := applications.forField(name)
+		// If the presence map contains scale, but doesn't contain num_units
+		// and if the app.Scale_ has been set to zero. We can then assume that a
+		// normalistion has occurred.
+		if presence.fieldPresent("scale") && !presence.fieldPresent("num_units") && app.Scale_ == 0 && app.NumUnits > 0 {
+			presence["num_units"] = presence["scale"]
+		}
+	}
+}
+
 func applyOverlay(base, overlay *BundleDataPart) error {
 	if overlay == nil || len(overlay.PresenceMap) == 0 {
 		return nil
@@ -501,6 +532,7 @@ func applyOverlay(base, overlay *BundleDataPart) error {
 		if base.Data.Applications == nil {
 			base.Data.Applications = make(map[string]*ApplicationSpec, len(overlay.Data.Applications))
 		}
+
 		fpm := overlay.PresenceMap.forField("applications")
 		for srcAppName, srcAppSpec := range overlay.Data.Applications {
 			// If the overlay map points to an empty object, delete
@@ -511,7 +543,7 @@ func applyOverlay(base, overlay *BundleDataPart) error {
 				continue
 			}
 
-			// if this is a new application just append it; otherwise
+			// If this is a new application just append it; otherwise
 			// recursively merge the two application specs.
 			dstAppSpec, defined := base.Data.Applications[srcAppName]
 			if !defined {
