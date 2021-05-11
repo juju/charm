@@ -31,9 +31,12 @@ func (fpm FieldPresenceMap) forField(fieldName string) FieldPresenceMap {
 		return nil
 	}
 
-	asMap, valid := v.(FieldPresenceMap)
-	if !valid {
-		panic(errors.Errorf("field map entry %q does not point to a nested field presence map", fieldName))
+	// Always returns a FieldPresenceMap even if the underlying type is empty.
+	// As the only way to interact with the map is through the use of the two
+	// methods, then it will allow you to walk over the map in a much saner way.
+	asMap, _ := v.(FieldPresenceMap)
+	if asMap == nil {
+		return FieldPresenceMap{}
 	}
 	return asMap
 }
