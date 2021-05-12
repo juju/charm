@@ -50,12 +50,6 @@ func (s Schema) String() string {
 	return string(s)
 }
 
-var (
-	// DefaultSchema for the charm package.
-	// It's used as the fallback for the absence of a schema in a URL.
-	DefaultSchema = CharmHub
-)
-
 // Location represents a charm location, which must declare a path component
 // and a string representation.
 type Location interface {
@@ -561,8 +555,9 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 }
 
 // EnsureSchema will ensure that the scheme for a given URL is correct and
-// valid.
-func EnsureSchema(url string) (string, error) {
+// valid. If the url does not specify a schema, the provided defaultSchema
+// will be injected to it.
+func EnsureSchema(url string, defaultSchema Schema) (string, error) {
 	u, err := gourl.Parse(url)
 	if err != nil {
 		return "", errors.Errorf("cannot parse charm or bundle URL: %q", url)
@@ -572,7 +567,7 @@ func EnsureSchema(url string) (string, error) {
 		return url, nil
 	case Schema(""):
 		// If the schema is empty, we fall back to the default schema.
-		return DefaultSchema.Prefix(url), nil
+		return defaultSchema.Prefix(url), nil
 	default:
 		return "", errors.NotValidf("schema %q", u.Scheme)
 	}
