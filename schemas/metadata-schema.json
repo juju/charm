@@ -1,0 +1,402 @@
+{
+  "definitions": {
+    "relationScope": {
+      "type": "string",
+      "description": "Scope of the relation",
+      "enum": [ "global", "container" ]
+    },
+    "relation": {
+      "description": "charm relation",
+      "type": "object",
+      "required": [ "interface" ],
+      "additionalProperties": false,
+      "properties": {
+        "interface": {
+          "type": "string",
+          "description": "The interface schema this relation conforms to"
+        },
+        
+        "limit": {
+          "type": "number",
+          "description": "Maximum number of connections to this relation endpoint"
+        },
+        
+        "optional": {
+          "type": "boolean",
+          "description": "True if this relation is optional"
+        },
+        
+        "scope": {
+          "$ref": "#/definitions/relationScope"
+        }
+      }
+    },
+    "storageType": {
+      "type": "string",
+      "description": "Type of storage requested.",
+      "enum": [ "block", "filesystem" ]
+    },
+    "storageCount": {
+      "description": "Determines the number of storage instances to be requested. int: exact number of storage instances; string: in the form of m-n or m+ or m- where m and n are integers",
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "storage": {
+      "description": "charm storage",
+      "type": "object",
+      "required": [ "type" ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/storageType"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the storage requested"
+        },
+        
+        "shared": {
+          "type": "boolean",
+          "description": "True indicates all units of the application share the storage"
+        },
+        
+        "read-only": {
+          "type": "boolean",
+          "description": "True indicates the storage should be made read-only where possible"
+        },
+        
+        "multiple": {
+          "$ref": "#/definitions/storageCount"
+        },
+        
+        "minimum-size": {
+          "type": "string",
+          "description": "Size in the forms 1.0G, 1GiB, 1.0GB. Size multipliers are M, G, T, P, E, Z or Y. If no multiplier is supplied, M is implied."
+        },
+        
+        "location": {
+          "type": "string",
+          "description": "Location is the mount location for filesystem stores. For multi-stores, the location acts as the parent directory for each mounted store."
+        },
+        
+        "properties": {
+          "type": "array",
+          "description": "List of properties. Currently only supported value is 'transient'.",
+          "items": {
+            "type": "string",
+            "enum": [ "transient" ]
+          }
+        }
+        
+      }
+    },
+    "device": {
+      "type": "object",
+      "description": "Device requests for the charm, e.g. GPU. Key represents the Device name.",
+      "additionalProperties": {
+        "type": "object",
+        "required": [ "type" ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type of device requested. Currently supported values: 'gpu', 'nvidia.com/gpu' or 'amd.com/gpu'",
+            "enum": [ "gpu", "nvidia.com/gpu", "amd.com/gpu" ]
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the device requested."
+          },
+          "countmin": {
+            "type": "number",
+            "description": "Minimum number of devices required"
+          },
+          "countmax": {
+            "type": "number",
+            "description": "Maximum number of devices required"
+          }
+        }
+      }
+    },
+    "base": {
+      "type": "object",
+      "description": "A list of bases in descending order of preference for use in resolving a container image. Must not be present if resource is specified. These bases are listed as base (instead of name) and channel as in the Base definition, as an unnamed top-level object list.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the OS e.g. ubuntu, centos, windows, osx, opensuse or genericlinux."
+          },
+          "channel": {
+            "type": "string",
+            "description": "Channel of the OS (track/risk/branch) such as used for Snaps e.g. 18.04/stable or 20.04/stable/fips."
+          },
+          "architectures": {
+            "type": "array",
+            "description": "List of architectures that this particular charm build can run on.",
+            "items": {
+              "type": "string"
+            }
+          } 
+        }
+      }
+    },
+    "mount": {
+      "type": "array",
+      "description": "List of mounted storage for this container",
+      "items": {
+        "type": "object",
+        "properties": {
+          "storage": {
+            "type": "string",
+            "description": "Name of storage to mount from the charm storage."
+          },
+          "location": {
+            "type": "string",
+            "description": "Location is the mount location for filesystem stores. For multi-stores, the location acts as the parent directory for each mounted store."
+          }
+        },
+        "required": [ "storage" ]
+      }
+    },
+    "container": {
+      "type": "object",
+      "description": "Map of containers to be created adjacent to the charm. On kubernetes these are sidecars. Other platforms the behaviour is to be determined and will likely be fulfilled by a container runtime like LXD, containerd, Docker. Adjacency control is likely to arrive in a future revision (such as charm running on machine-0 and container-1 running on machine-1 etc.). The key represents the container name.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string",
+            "description": "Reference for on entry in the resources field, indicating a specific container image. Must not be present if a base/channel is specified"
+          },
+          "bases": {
+            "$ref": "#/definitions/base"
+          },
+          "mounts": {
+            "$ref": "#/definitions/mount"
+          }
+        }
+      }
+    },
+    "deploymentType": {
+      "type": "string",
+      "description": "Type of deployment in kubernetes",
+      "enum": [ "stateful", "stateless", "daemon" ]
+    },
+    "deploymentMode": {
+      "type": "string",
+      "description": "Type of charm runtime location",
+      "enum": [ "operator", "workload" ]
+    },
+    "deployment": {
+      "deprecated": true,
+      "description": "Deployment information for legacy Kubernetes charms. The presence of this field in metadata determined to be version 2 will be considered an error.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/deploymentType"
+        },
+        "mode": {
+          "$ref": "#/definitions/deploymentMode"
+        },
+        "service": {
+          "$ref": "#/definitions/serviceType"
+        },
+        "min-version": {
+          "type": "string",
+          "description": "Minimum version of kubernetes this charm supports"
+        }
+      }
+    },
+    "serviceType": {
+      "description": "Type of kubernetes service to create",
+      "type": "string",
+      "enum": [ "cluster", "loadbalancer", "external", "omit" ]
+    },
+    "resourceType": {
+      "type": "string",
+      "description": "Type of the resource.",
+      "enum": [ "file", "oci-image" ]
+    },
+    "resource": {
+      "type": "object",
+      "description": "Resources to accompany the charm. The key represents the resource name.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/definitions/resourceType"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Name of the file resource."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the resource"
+          }
+        }
+      }
+    }
+  },
+  
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/juju/charm/metadata-schema.json",
+  "title": "Charm metadata",
+  "description": "JSON Schema for a charm metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the charm"
+    },
+    
+    "summary": {
+      "type": "string",
+      "description": "A short one line summary of the charm"
+    },
+    
+    "description": {
+      "type": "string",
+      "description": "A full description of the charm, can be multiple lines."
+    },
+    
+    "maintainers": {
+      "type": "array",
+      "description": "List of maintainers in the formation 'First Last'",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    
+    "terms": {
+      "type": "array",
+      "description": "List of terms a charm user must agree with",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    
+    "min-juju-version": {
+      "deprecated": true,
+      "type": "string",
+      "description": "Version (e.g. '2.6.10') that represents the earliest version of juju this charm can be deployed to."
+    },
+    
+    "series": {
+      "deprecated": true,
+      "type": "array",
+      "description": "List of supported charm base platforms/versions. In the form of 'focal', 'bionic', 'centos7' etc.",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    
+    "assumes": {
+      "type": "array",
+      "description": "List of capabilities that must be present in order for the charm to operate correctly",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    
+    "tags": {
+      "type": "array",
+      "description": "List of short tags used by the charm store",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    
+    "categories": {
+      "type": "array",
+      "description": "List of categories used by the charm store",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    
+    "subordinate": {
+      "type": "boolean",
+      "description": "True if the charm is meant to be deployed as a subordinate to a principal charm"
+    },
+    
+    "provides": {
+      "type": "object",
+      "description": "Relations provided by this charm. Key represents the Relation name",
+      "additionalProperties": {
+        "$ref": "#/definitions/relation"
+      }
+    },
+    
+    "requires": {
+      "type": "object",
+      "description": "Relations required by this charm. Key represents the Relation name.",
+      "additionalProperties": {
+        "$ref": "#/definitions/relation"
+      }
+    },
+    
+    "peers": {
+      "type": "object",
+      "description": "Mutual relations between units/peers of this charm. Key represents the peer Relation name.",
+      "additionalProperties": {
+        "$ref": "#/definitions/relation"
+      }
+    },
+    
+    "extra-bindings": {
+      "type": "object",
+      "description": "Extra bindings for the charm, for example binding extra network interfaces. Key only map. Value must be none. Key represents the binding name.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    
+    "storage": {
+      "type": "object",
+      "description": "Storage requests for the charm. Key represents the Storage name.",
+      "additionalProperties": {
+        "$ref": "#/definitions/storage"
+      }
+    },
+    
+    "devices": {
+      "$ref": "#/definitions/device"
+    },
+    
+    "containers": {
+      "$ref": "#/definitions/container"
+    },
+    
+    "deployment": {
+      "$ref": "#/definitions/deployment"
+    },
+    
+    "resources": {
+      "$ref": "#/definitions/resource"
+    }
+  },
+  
+  "required": [ "name", "summary", "description" ]
+}
+
