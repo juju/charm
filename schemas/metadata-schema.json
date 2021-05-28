@@ -37,7 +37,7 @@
       "enum": [ "block", "filesystem" ]
     },
     "storageCount": {
-      "description": "Determines the number of storage instances to be requested. int: exact number of storage instances; string: in the form of m-n or m+ or m- where m and n are integers",
+      "description": "Number of storage instances to be requested. int: exact number of storage instances; string: in the form of m-n or m+ or m- where m and n are integers",
       "oneOf": [
         {
           "type": "number"
@@ -125,7 +125,7 @@
     },
     "base": {
       "type": "object",
-      "description": "A list of bases in descending order of preference for use in resolving a container image. Must not be present if resource is specified. These bases are listed as base (instead of name) and channel as in the Base definition, as an unnamed top-level object list.",
+      "description": "List of bases in descending order of preference for use in resolving a container image. Must not be present if resource is specified. These bases are listed as base (instead of name) and channel as in the Base definition, as an unnamed top-level object list.",
       "additionalProperties": {
         "type": "object",
         "properties": {
@@ -186,7 +186,7 @@
     },
     "deploymentType": {
       "type": "string",
-      "description": "Type of deployment in kubernetes",
+      "description": "Type of deployment in Kubernetes",
       "enum": [ "stateful", "stateless", "daemon" ]
     },
     "deploymentMode": {
@@ -260,12 +260,12 @@
     
     "summary": {
       "type": "string",
-      "description": "A short one line summary of the charm"
+      "description": "Short one-line summary of the charm"
     },
     
     "description": {
       "type": "string",
-      "description": "A full description of the charm, can be multiple lines."
+      "description": "Full description of the charm, can be multiple lines."
     },
     
     "maintainers": {
@@ -399,4 +399,3 @@
   
   "required": [ "name", "summary", "description" ]
 }
-
