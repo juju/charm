@@ -875,6 +875,7 @@ func (s *MetaSuite) TestCodecRoundTripKubernetes(c *gc.C) {
 				Resource: "test",
 			},
 		},
+		Assumes: charm.FeatureList{charm.FeatureContainers},
 		Resources: map[string]resource.Meta{
 			"test": resource.Meta{
 				Name: "test",
@@ -1840,6 +1841,42 @@ storage:
     type: filesystem
 `))
 	c.Assert(err, gc.ErrorMatches, `ambiguous metadata: keys "series" cannot be used with "containers"`)
+}
+
+func (s *MetaSuite) TestImplicitAssumesForContainers(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+containers:
+  foo:
+    resource: test-os
+resources:
+  test-os:
+    type: oci-image
+`))
+
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(meta.AssumesAllOf(charm.FeatureContainers), jc.IsTrue, gc.Commentf(`expected an implicit assumes: "containers" entry to be injected when the metadata defines containers`))
+	c.Assert(meta.AssumesAnyOf(charm.FeatureContainers), jc.IsTrue, gc.Commentf(`expected an implicit assumes: "containers" entry to be injected when the metadata defines containers`))
+	c.Assert(meta.AssumesNoneOf(charm.FeatureContainers), jc.IsFalse)
+}
+
+func (s *MetaSuite) TestParsedAssumptions(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+assumes:
+  - unicorns
+  - ghosts
+`))
+
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(meta.AssumesAnyOf(charm.Feature("unicorns")), jc.IsTrue)
+	c.Assert(meta.AssumesAllOf(charm.Feature("unicorns"), charm.Feature("vampires")), jc.IsFalse)
+	c.Assert(meta.AssumesAllOf(charm.Feature("unicorns"), charm.Feature("ghosts")), jc.IsTrue)
+	c.Assert(meta.AssumesNoneOf(charm.FeatureContainers), jc.IsTrue)
 }
 
 type dummyCharm struct{}

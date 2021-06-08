@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 	"github.com/juju/names/v4"
 	"github.com/juju/os/v2"
@@ -45,6 +46,38 @@ const (
 	RoleRequirer RelationRole = "requirer"
 	RolePeer     RelationRole = "peer"
 )
+
+// Feature defines a piece of functionality provided by a Juju controller.
+type Feature string
+
+// Supported feature types.
+const (
+	FeatureContainers Feature = "containers"
+)
+
+// Description returns a user-friendly description for a particular feature
+// which can be used by clients to emit meaningful error messages when a
+// (implicitly or explicitly) required feature is not supported by the
+// controller.
+func (f Feature) Description() string {
+	switch f {
+	case FeatureContainers:
+		return `a substrate capable of deploying and managing containerized workloads (assumes "containers")`
+	default:
+		return string(f)
+	}
+}
+
+// FeatureList is a list of Feature values.
+type FeatureList []Feature
+
+func (fl FeatureList) AsSet() set.Strings {
+	fs := set.NewStrings()
+	for _, feat := range fl {
+		fs.Add(string(feat))
+	}
+	return fs
+}
 
 // StorageType defines a storage type.
 type StorageType string
@@ -277,7 +310,7 @@ type Meta struct {
 
 	// v2
 	Containers map[string]Container `bson:"containers,omitempty" json:"containers,omitempty" yaml:"containers,omitempty"`
-	Assumes    []string             `bson:"assumes,omitempty" json:"assumes,omitempty" yaml:"assumes,omitempty"`
+	Assumes    FeatureList          `bson:"assumes,omitempty" json:"assumes,omitempty" yaml:"assumes,omitempty"`
 }
 
 // Container specifies the possible systems it supports and mounts it wants.
@@ -558,12 +591,42 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	}
 
 	// v2 parsing
-	meta.Assumes = parseStringList(m["assumes"])
 	meta.Containers, err = parseContainers(m["containers"], meta.Resources, meta.Storage)
 	if err != nil {
 		return nil, errors.Annotatef(err, "parsing containers")
 	}
+
+	// NOTE(achilleasa): CharmHub currently hosts charms that use V2 metadata
+	// that define containers but do not populate the "assumes" field. In
+	// such cases we inject an implicit "assumes containers" entry.
+	assumes := set.NewStrings(parseStringList(m["assumes"])...)
+	if len(meta.Containers) != 0 {
+		assumes.Add(string(FeatureContainers))
+	}
+
+	for _, feat := range assumes.Values() {
+		meta.Assumes = append(meta.Assumes, Feature(feat))
+	}
+
 	return &meta, nil
+}
+
+// AssumesAnyOf returns true if the metadata assumes any of the provided features.
+func (m Meta) AssumesAnyOf(features ...Feature) bool {
+	fl := FeatureList(features).AsSet()
+	return m.Assumes.AsSet().Intersection(fl).Size() != 0
+}
+
+// AssumesAllOf returns true if the metadata assumes all of the provided features.
+func (m Meta) AssumesAllOf(features ...Feature) bool {
+	fl := FeatureList(features).AsSet()
+	return m.Assumes.AsSet().Intersection(fl).Size() == fl.Size()
+}
+
+// AssumesNonef returns true if the metadata assumes none of the provided features.
+func (m Meta) AssumesNoneOf(features ...Feature) bool {
+	fl := FeatureList(features).AsSet()
+	return m.Assumes.AsSet().Intersection(fl).Size() == 0
 }
 
 // MarshalYAML implements yaml.Marshaler (yaml.v2).
@@ -594,7 +657,7 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 		MinJujuVersion string                           `yaml:"min-juju-version,omitempty"`
 		Resources      map[string]marshaledResourceMeta `yaml:"resources,omitempty"`
 		Containers     map[string]marshaledContainer    `yaml:"containers,omitempty"`
-		Assumes        []string                         `yaml:"assumes,omitempty"`
+		Assumes        FeatureList                      `yaml:"assumes,omitempty"`
 	}{
 		Name:           m.Name,
 		Summary:        m.Summary,
@@ -1381,7 +1444,7 @@ func ensureUnambiguousFormat(raw map[interface{}]interface{}) error {
 	matched := []string(nil)
 	mismatched := []string(nil)
 	keys := []string(nil)
-	for k, _ := range raw {
+	for k := range raw {
 		key, ok := k.(string)
 		if !ok {
 			// Non-string keys will be an error handled by the schema lib.
