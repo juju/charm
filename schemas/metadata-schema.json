@@ -15,17 +15,14 @@
           "type": "string",
           "description": "The interface schema this relation conforms to"
         },
-        
         "limit": {
           "type": "number",
           "description": "Maximum number of connections to this relation endpoint"
         },
-        
         "optional": {
           "type": "boolean",
           "description": "True if this relation is optional"
         },
-        
         "scope": {
           "$ref": "#/definitions/relationScope"
         }
@@ -60,31 +57,25 @@
           "type": "string",
           "description": "Description of the storage requested"
         },
-        
         "shared": {
           "type": "boolean",
           "description": "True indicates all units of the application share the storage"
         },
-        
         "read-only": {
           "type": "boolean",
           "description": "True indicates the storage should be made read-only where possible"
         },
-        
         "multiple": {
           "$ref": "#/definitions/storageCount"
         },
-        
         "minimum-size": {
           "type": "string",
           "description": "Size in the forms 1.0G, 1GiB, 1.0GB. Size multipliers are M, G, T, P, E, Z or Y. If no multiplier is supplied, M is implied."
         },
-        
         "location": {
           "type": "string",
           "description": "Location is the mount location for filesystem stores. For multi-stores, the location acts as the parent directory for each mounted store."
         },
-        
         "properties": {
           "type": "array",
           "description": "List of properties. Currently only supported value is 'transient'.",
@@ -93,7 +84,6 @@
             "enum": [ "transient" ]
           }
         }
-        
       }
     },
     "device": {
@@ -245,7 +235,6 @@
       }
     }
   },
-  
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/juju/charm/metadata-schema.json",
   "title": "Charm metadata",
@@ -257,17 +246,14 @@
       "type": "string",
       "description": "Name of the charm"
     },
-    
     "summary": {
       "type": "string",
       "description": "Short one-line summary of the charm"
     },
-    
     "description": {
       "type": "string",
       "description": "Full description of the charm, can be multiple lines."
     },
-    
     "maintainers": {
       "type": "array",
       "description": "List of maintainers in the formation 'First Last'",
@@ -277,7 +263,6 @@
       "minItems": 1,
       "uniqueItems": true
     },
-    
     "terms": {
       "type": "array",
       "description": "List of terms a charm user must agree with",
@@ -287,13 +272,11 @@
       "minItems": 1,
       "uniqueItems": true
     },
-    
     "min-juju-version": {
       "deprecated": true,
       "type": "string",
       "description": "Version (e.g. '2.6.10') that represents the earliest version of juju this charm can be deployed to."
     },
-    
     "series": {
       "deprecated": true,
       "type": "array",
@@ -304,7 +287,6 @@
       "minItems": 1,
       "uniqueItems": true
     },
-    
     "assumes": {
       "type": "array",
       "description": "List of capabilities that must be present in order for the charm to operate correctly",
@@ -314,7 +296,6 @@
       "minItems": 1,
       "uniqueItems": true
     },
-    
     "tags": {
       "type": "array",
       "description": "List of short tags used by the charm store",
@@ -324,7 +305,6 @@
       "minItems": 1,
       "uniqueItems": true
     },
-    
     "categories": {
       "type": "array",
       "description": "List of categories used by the charm store",
@@ -334,12 +314,10 @@
       "minItems": 1,
       "uniqueItems": true
     },
-    
     "subordinate": {
       "type": "boolean",
       "description": "True if the charm is meant to be deployed as a subordinate to a principal charm"
     },
-    
     "provides": {
       "type": "object",
       "description": "Relations provided by this charm. Key represents the Relation name",
@@ -347,7 +325,6 @@
         "$ref": "#/definitions/relation"
       }
     },
-    
     "requires": {
       "type": "object",
       "description": "Relations required by this charm. Key represents the Relation name.",
@@ -355,7 +332,6 @@
         "$ref": "#/definitions/relation"
       }
     },
-    
     "peers": {
       "type": "object",
       "description": "Mutual relations between units/peers of this charm. Key represents the peer Relation name.",
@@ -363,7 +339,6 @@
         "$ref": "#/definitions/relation"
       }
     },
-    
     "extra-bindings": {
       "type": "object",
       "description": "Extra bindings for the charm, for example binding extra network interfaces. Key only map. Value must be none. Key represents the binding name.",
@@ -371,7 +346,6 @@
         "type": "string"
       }
     },
-    
     "storage": {
       "type": "object",
       "description": "Storage requests for the charm. Key represents the Storage name.",
@@ -379,23 +353,18 @@
         "$ref": "#/definitions/storage"
       }
     },
-    
     "devices": {
       "$ref": "#/definitions/device"
     },
-    
     "containers": {
       "$ref": "#/definitions/container"
     },
-    
     "deployment": {
       "$ref": "#/definitions/deployment"
     },
-    
     "resources": {
       "$ref": "#/definitions/resource"
     }
   },
-  
   "required": [ "name", "summary", "description" ]
 }
