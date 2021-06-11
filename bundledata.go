@@ -56,9 +56,8 @@ func (lbd *legacyBundleData) setBundleData(bd *BundleData) error {
 			app.Scale_ = 0
 			lbd.Applications[appName] = app
 		}
-		// // Kubernetes bundles default to series "kubernetes".
+		// Kubernetes bundles default to series "kubernetes".
 		if lbd.Type == kubernetes && app.Series == "" {
-			app.Series = kubernetes
 			lbd.Applications[appName] = app
 		}
 		// Non-Kubernetes bundles do not use the placement attribute.
