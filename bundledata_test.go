@@ -806,7 +806,6 @@ applications:
 		Applications: map[string]*charm.ApplicationSpec{
 			"mariadb": {
 				Charm:    "cs:mariadb-k8s-10",
-				Series:   "kubernetes",
 				To:       []string{"foo=bar"},
 				NumUnits: 2,
 			},
@@ -818,7 +817,6 @@ applications:
 			},
 			"redis": {
 				Charm:    "cs:redis-k8s-10",
-				Series:   "kubernetes",
 				To:       []string{"foo=baz"},
 				NumUnits: 3,
 			}},
