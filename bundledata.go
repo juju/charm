@@ -299,10 +299,6 @@ func (bd *BundleData) normalizeData() error {
 			app.NumUnits = app.Scale_
 			app.Scale_ = 0
 		}
-		// // Kubernetes bundles default to series "kubernetes".
-		if bd.Type == kubernetes && app.Series == "" {
-			app.Series = kubernetes
-		}
 		// Non-Kubernetes bundles do not use the placement attribute.
 		if bd.Type != kubernetes && app.Placement_ != "" {
 			return fmt.Errorf("placement (%s) not valid for non-Kubernetes application %q", app.Placement_, appName)
