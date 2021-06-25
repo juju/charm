@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/juju/charm/config-schema.json",
+  "title": "Configuration specification",
+  "description": "JSON Schema for charm config.yaml (https://juju.is/docs/sdk/config)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "options": {
+      "type": "object",
+      "description": "a map of fields that defines the configuration option",
+      "additionalProperties": {
+        "type": "object",
+        "description": "name of a configuration setting",
+        "required": [ "type" ],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Specifies the data type of the configuration option. Possible values are: string, int, float and boolean."
+          },
+          "description": {
+            "type": "string",
+            "description": "Contains an explanation of the configuration item and the resulting behaviour. Might also include a list of acceptable values."
+          },
+          "default": {
+            "type": "string",
+            "description": "Defines the default value for the option. Must be of the appropriate type and a sane default value in the context of the charm."
+          }
+        }
+      }
+    }
+  }
+}
+
