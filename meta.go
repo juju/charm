@@ -714,7 +714,7 @@ const (
 )
 
 // Check checks that the metadata is well-formed.
-func (m Meta) Check(format Format, reasons ...SelectionReason) error {
+func (m Meta) Check(format Format, reasons ...FormatSelectionReason) error {
 	switch format {
 	case FormatV1:
 		err := m.checkV1(reasons)
@@ -855,7 +855,7 @@ func (m Meta) Check(format Format, reasons ...SelectionReason) error {
 	return nil
 }
 
-func (m Meta) checkV1(reasons []SelectionReason) error {
+func (m Meta) checkV1(reasons []FormatSelectionReason) error {
 	if len(m.Assumes) != 0 {
 		return errors.NotValidf("assumes in metadata v1")
 	}
@@ -868,7 +868,7 @@ func (m Meta) checkV1(reasons []SelectionReason) error {
 	return nil
 }
 
-func (m Meta) checkV2(reasons []SelectionReason) error {
+func (m Meta) checkV2(reasons []FormatSelectionReason) error {
 	if len(reasons) == 0 {
 		return errors.NotValidf("metadata v2 without manifest.yaml")
 	}
@@ -879,7 +879,7 @@ func (m Meta) checkV2(reasons []SelectionReason) error {
 		return errors.NotValidf("series slice in metadata v2")
 	}
 	if m.MinJujuVersion != version.Zero {
-		return errors.NotValidf("min-juju-version in metdata v2")
+		return errors.NotValidf("min-juju-version in metadata v2")
 	}
 	if m.Deployment != nil {
 		return errors.NotValidf("deployment in metadata v2")
@@ -887,7 +887,7 @@ func (m Meta) checkV2(reasons []SelectionReason) error {
 	return nil
 }
 
-func hasReason(reasons []SelectionReason, reason SelectionReason) bool {
+func hasReason(reasons []FormatSelectionReason, reason FormatSelectionReason) bool {
 	for _, v := range reasons {
 		if v == reason {
 			return true

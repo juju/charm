@@ -49,22 +49,26 @@ func ReadCharm(path string) (charm Charm, err error) {
 	return charm, errors.Trace(CheckMeta(charm))
 }
 
-type SelectionReason string
+// FormatSelectionReason represents the reason for a format version selection.
+type FormatSelectionReason string
 
 const (
-	SelectionManifest SelectionReason = "manifest"
-	SelectionBases    SelectionReason = "bases"
-	SelectionSeries   SelectionReason = "series"
+	// SelectionManifest states that it found a manifest.
+	SelectionManifest FormatSelectionReason = "manifest"
+	// SelectionBases states that there was at least 1 base.
+	SelectionBases FormatSelectionReason = "bases"
+	// SelectionSeries states that there was at least 1 series.
+	SelectionSeries FormatSelectionReason = "series"
 )
 
 // MetaFormatReasons returns the format and why the selection was done. We can
 // then inspect the reasons to understand the reasoning.
-func MetaFormatReasons(ch CharmMeta) (Format, []SelectionReason) {
+func MetaFormatReasons(ch CharmMeta) (Format, []FormatSelectionReason) {
 	manifest := ch.Manifest()
 
 	// To better inform users of why a metadata selection was preferred over
 	// another, we deduce why a format is selected over another.
-	var reasons []SelectionReason
+	var reasons []FormatSelectionReason
 	if manifest != nil {
 		reasons = append(reasons, SelectionManifest)
 		if len(manifest.Bases) > 0 {
