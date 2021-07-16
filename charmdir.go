@@ -79,7 +79,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 	// this charm is v1 or not.
 	reader, err = os.Open(b.join("manifest.yaml"))
 	if _, ok := err.(*os.PathError); ok {
-		b.manifest = NewEmptyManifest()
+		b.manifest = nil
 	} else if err != nil {
 		return nil, errors.Annotatef(err, `reading "manifest.yaml" file`)
 	} else {

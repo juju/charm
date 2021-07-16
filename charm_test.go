@@ -42,8 +42,8 @@ func (s *CharmSuite) TestReadCharmDirEmptyError(c *gc.C) {
 	c.Assert(ch, gc.Equals, nil)
 }
 
-func (s *CharmSuite) TestReadCharmSeriesWithBases(c *gc.C) {
-	ch, err := charm.ReadCharm(charmDirPath(c, "format-seriesmanifest"))
+func (s *CharmSuite) TestReadCharmSeriesWithoutBases(c *gc.C) {
+	ch, err := charm.ReadCharm(charmDirPath(c, "format-series"))
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(ch, gc.NotNil)
 }

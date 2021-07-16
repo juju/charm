@@ -18,14 +18,11 @@ import (
 // information.
 type Manifest struct {
 	Bases []Base `yaml:"bases"`
-	empty bool
 }
 
-// NewEmptyManifest creates a new empty manifest.
-func NewEmptyManifest() *Manifest {
-	return &Manifest{
-		empty: true,
-	}
+// NewManifest creates a new empty manifest.
+func NewManifest() *Manifest {
+	return &Manifest{}
 }
 
 // Validate checks the manifest to ensure there are no empty names, nor channels,

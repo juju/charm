@@ -57,15 +57,15 @@ const (
 	SelectionSeries   SelectionReason = "series"
 )
 
-// CheckMeta determines the version of the metadata used by this charm,
-// then checks that it is valid as appropriate.
-func CheckMeta(ch CharmMeta) error {
+// MetaFormatReasons returns the format and why the selection was done. We can
+// then inspect the reasons to understand the reasoning.
+func MetaFormatReasons(ch CharmMeta) (Format, []SelectionReason) {
 	manifest := ch.Manifest()
 
 	// To better inform users of why a metadata selection was preferred over
 	// another, we deduce why a format is selected over another.
-	reasons := []SelectionReason{}
-	if manifest != nil && !manifest.empty {
+	var reasons []SelectionReason
+	if manifest != nil {
 		reasons = append(reasons, SelectionManifest)
 		if len(manifest.Bases) > 0 {
 			reasons = append(reasons, SelectionBases)
@@ -75,13 +75,26 @@ func CheckMeta(ch CharmMeta) error {
 		reasons = append(reasons, SelectionSeries)
 	}
 
+	// To be a format v1, you must only have series, no manifest or bases.
 	format := FormatV2
 	if len(reasons) == 1 && reasons[0] == SelectionSeries {
 		format = FormatV1
 	}
 
-	fmt.Println(format, reasons)
+	return format, reasons
+}
 
+// MetaFormat returns the underlying format from checking the charm for the
+// right values.
+func MetaFormat(ch CharmMeta) Format {
+	format, _ := MetaFormatReasons(ch)
+	return format
+}
+
+// CheckMeta determines the version of the metadata used by this charm,
+// then checks that it is valid as appropriate.
+func CheckMeta(ch CharmMeta) error {
+	format, reasons := MetaFormatReasons(ch)
 	return ch.Meta().Check(format, reasons...)
 }
 
