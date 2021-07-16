@@ -49,17 +49,40 @@ func ReadCharm(path string) (charm Charm, err error) {
 	return charm, errors.Trace(CheckMeta(charm))
 }
 
+type SelectionReason string
+
+const (
+	SelectionManifest SelectionReason = "manifest"
+	SelectionBases    SelectionReason = "bases"
+	SelectionSeries   SelectionReason = "series"
+)
+
 // CheckMeta determines the version of the metadata used by this charm,
 // then checks that it is valid as appropriate.
 func CheckMeta(ch CharmMeta) error {
 	manifest := ch.Manifest()
 
+	// To better inform users of why a metadata selection was preferred over
+	// another, we deduce why a format is selected over another.
+	reasons := []SelectionReason{}
+	if manifest != nil && !manifest.empty {
+		reasons = append(reasons, SelectionManifest)
+		if len(manifest.Bases) > 0 {
+			reasons = append(reasons, SelectionBases)
+		}
+	}
+	if len(ch.Meta().Series) > 0 {
+		reasons = append(reasons, SelectionSeries)
+	}
+
 	format := FormatV2
-	if manifest == nil || len(manifest.Bases) == 0 || len(ch.Meta().Series) > 0 {
+	if len(reasons) == 1 && reasons[0] == SelectionSeries {
 		format = FormatV1
 	}
 
-	return ch.Meta().Check(format)
+	fmt.Println(format, reasons)
+
+	return ch.Meta().Check(format, reasons...)
 }
 
 // SeriesForCharm takes a requested series and a list of series supported by a

@@ -81,7 +81,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	// this charm is v1 or not.
 	reader, err = zipOpenFile(zipr, "manifest.yaml")
 	if _, ok := err.(*noCharmArchiveFile); ok {
-		b.manifest = NewManifest()
+		b.manifest = NewEmptyManifest()
 	} else if err != nil {
 		return nil, errors.Annotatef(err, `opening "manifest.yaml" file`)
 	} else {
