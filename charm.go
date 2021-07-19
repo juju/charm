@@ -80,9 +80,9 @@ func MetaFormatReasons(ch CharmMeta) (Format, []FormatSelectionReason) {
 	}
 
 	// To be a format v1, you must only have series, no manifest or bases.
-	format := FormatV2
-	if len(reasons) == 1 && reasons[0] == SelectionSeries {
-		format = FormatV1
+	format := FormatV1
+	if len(reasons) > 1 && (hasReason(reasons, SelectionManifest) || hasReason(reasons, SelectionBases)) {
+		format = FormatV2
 	}
 
 	return format, reasons
