@@ -20,11 +20,6 @@ type Manifest struct {
 	Bases []Base `yaml:"bases"`
 }
 
-// NewManifest creates a new empty manifest.
-func NewManifest() *Manifest {
-	return &Manifest{}
-}
-
 // Validate checks the manifest to ensure there are no empty names, nor channels,
 // and that architectures are supported.
 func (m *Manifest) Validate() error {
