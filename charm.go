@@ -49,17 +49,57 @@ func ReadCharm(path string) (charm Charm, err error) {
 	return charm, errors.Trace(CheckMeta(charm))
 }
 
-// CheckMeta determines the version of the metadata used by this charm,
-// then checks that it is valid as appropriate.
-func CheckMeta(ch CharmMeta) error {
+// FormatSelectionReason represents the reason for a format version selection.
+type FormatSelectionReason string
+
+const (
+	// SelectionManifest states that it found a manifest.
+	SelectionManifest FormatSelectionReason = "manifest"
+	// SelectionBases states that there was at least 1 base.
+	SelectionBases FormatSelectionReason = "bases"
+	// SelectionSeries states that there was at least 1 series.
+	SelectionSeries FormatSelectionReason = "series"
+)
+
+// MetaFormatReasons returns the format and why the selection was done. We can
+// then inspect the reasons to understand the reasoning.
+func MetaFormatReasons(ch CharmMeta) (Format, []FormatSelectionReason) {
 	manifest := ch.Manifest()
 
+	// To better inform users of why a metadata selection was preferred over
+	// another, we deduce why a format is selected over another.
+	var reasons []FormatSelectionReason
+	if manifest != nil {
+		reasons = append(reasons, SelectionManifest)
+		if len(manifest.Bases) > 0 {
+			reasons = append(reasons, SelectionBases)
+		}
+	}
+	if len(ch.Meta().Series) > 0 {
+		reasons = append(reasons, SelectionSeries)
+	}
+
+	// To be a format v1, you must only have series, no manifest or bases.
 	format := FormatV2
-	if manifest == nil || len(manifest.Bases) == 0 || len(ch.Meta().Series) > 0 {
+	if len(reasons) == 1 && reasons[0] == SelectionSeries {
 		format = FormatV1
 	}
 
-	return ch.Meta().Check(format)
+	return format, reasons
+}
+
+// MetaFormat returns the underlying format from checking the charm for the
+// right values.
+func MetaFormat(ch CharmMeta) Format {
+	format, _ := MetaFormatReasons(ch)
+	return format
+}
+
+// CheckMeta determines the version of the metadata used by this charm,
+// then checks that it is valid as appropriate.
+func CheckMeta(ch CharmMeta) error {
+	format, reasons := MetaFormatReasons(ch)
+	return ch.Meta().Check(format, reasons...)
 }
 
 // SeriesForCharm takes a requested series and a list of series supported by a

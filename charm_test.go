@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	stdtesting "testing"
 
 	"github.com/juju/charm/v8"
 	"github.com/juju/testing"
@@ -19,10 +18,6 @@ import (
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
 )
-
-func Test(t *stdtesting.T) {
-	gc.TestingT(t)
-}
 
 type CharmSuite struct {
 	testing.CleanupSuite
@@ -47,8 +42,8 @@ func (s *CharmSuite) TestReadCharmDirEmptyError(c *gc.C) {
 	c.Assert(ch, gc.Equals, nil)
 }
 
-func (s *CharmSuite) TestReadCharmSeriesWithBases(c *gc.C) {
-	ch, err := charm.ReadCharm(charmDirPath(c, "seriesmanifest"))
+func (s *CharmSuite) TestReadCharmSeriesWithoutBases(c *gc.C) {
+	ch, err := charm.ReadCharm(charmDirPath(c, "format-series"))
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(ch, gc.NotNil)
 }
@@ -108,6 +103,40 @@ func (s *CharmSuite) IsMissingSeriesError(c *gc.C) {
 	err := charm.MissingSeriesError()
 	c.Assert(charm.IsMissingSeriesError(err), jc.IsTrue)
 	c.Assert(charm.IsMissingSeriesError(fmt.Errorf("foo")), jc.IsFalse)
+}
+
+type FormatSuite struct {
+	testing.CleanupSuite
+}
+
+var _ = gc.Suite(&FormatSuite{})
+
+func (FormatSuite) TestFormatV1NoManifest(c *gc.C) {
+	ch, err := charm.ReadCharm(charmDirPath(c, "format-series"))
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(ch, gc.NotNil)
+
+	err = charm.CheckMeta(ch)
+	c.Assert(err, jc.ErrorIsNil)
+}
+
+func (FormatSuite) TestFormatV1Manifest(c *gc.C) {
+	_, err := charm.ReadCharm(charmDirPath(c, "format-seriesmanifest"))
+	c.Assert(err, gc.ErrorMatches, `metadata v2 manifest.yaml with series slice not valid`)
+}
+
+func (FormatSuite) TestFormatV2ContainersNoManifest(c *gc.C) {
+	_, err := charm.ReadCharm(charmDirPath(c, "format-containers"))
+	c.Assert(err, gc.ErrorMatches, `metadata v2 without manifest.yaml not valid`)
+}
+
+func (FormatSuite) TestFormatV2ContainersManifest(c *gc.C) {
+	ch, err := charm.ReadCharm(charmDirPath(c, "format-containersmanifest"))
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(ch, gc.NotNil)
+
+	err = charm.CheckMeta(ch)
+	c.Assert(err, jc.ErrorIsNil)
 }
 
 func checkDummy(c *gc.C, f charm.Charm, path string) {
