@@ -149,6 +149,9 @@ func (FormatSuite) TestFormatV2ContainersManifest(c *gc.C) {
 
 	err = charm.CheckMeta(ch)
 	c.Assert(err, jc.ErrorIsNil)
+
+	f := charm.MetaFormat(ch)
+	c.Assert(f, gc.Equals, charm.FormatV2)
 }
 
 func checkDummy(c *gc.C, f charm.Charm, path string) {

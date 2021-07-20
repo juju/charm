@@ -59,6 +59,8 @@ const (
 	SelectionBases FormatSelectionReason = "bases"
 	// SelectionSeries states that there was at least 1 series.
 	SelectionSeries FormatSelectionReason = "series"
+	// SelectionContainers states that there was at least 1 container.
+	SelectionContainers FormatSelectionReason = "containers"
 )
 
 // MetaFormatReasons returns the format and why the selection was done. We can
@@ -81,7 +83,7 @@ func MetaFormatReasons(ch CharmMeta) (Format, []FormatSelectionReason) {
 
 	// To be a format v1, you must only have series, no manifest or bases.
 	format := FormatV1
-	if len(reasons) > 1 && (hasReason(reasons, SelectionManifest) || hasReason(reasons, SelectionBases)) {
+	if len(reasons) > 1 && (hasReason(reasons, SelectionBases) || hasReason(reasons, SelectionContainers)) {
 		format = FormatV2
 	}
 
