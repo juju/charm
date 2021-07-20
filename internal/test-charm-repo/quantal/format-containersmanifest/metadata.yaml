@@ -1,5 +1,5 @@
-name: series-and-manifest
-summary: "Both manifest bases and series present"
+name: containers and manifest
+summary: "Both manifest bases and containers present"
 containers:
   containers:
     snappass:

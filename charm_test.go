@@ -111,6 +111,18 @@ type FormatSuite struct {
 
 var _ = gc.Suite(&FormatSuite{})
 
+func (FormatSuite) TestFormatV1NoSeries(c *gc.C) {
+	ch, err := charm.ReadCharm(charmDirPath(c, "format"))
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(ch, gc.NotNil)
+
+	err = charm.CheckMeta(ch)
+	c.Assert(err, jc.ErrorIsNil)
+
+	f := charm.MetaFormat(ch)
+	c.Assert(f, gc.Equals, charm.FormatV1)
+}
+
 func (FormatSuite) TestFormatV1NoManifest(c *gc.C) {
 	ch, err := charm.ReadCharm(charmDirPath(c, "format-series"))
 	c.Assert(err, jc.ErrorIsNil)
@@ -127,7 +139,7 @@ func (FormatSuite) TestFormatV1Manifest(c *gc.C) {
 
 func (FormatSuite) TestFormatV2ContainersNoManifest(c *gc.C) {
 	_, err := charm.ReadCharm(charmDirPath(c, "format-containers"))
-	c.Assert(err, gc.ErrorMatches, `metadata v2 without manifest.yaml not valid`)
+	c.Assert(err, gc.ErrorMatches, `containers without a manifest.yaml not valid`)
 }
 
 func (FormatSuite) TestFormatV2ContainersManifest(c *gc.C) {
