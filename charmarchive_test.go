@@ -101,10 +101,7 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutManifest(c *gc.C) {
 	path := archivePath(c, readCharmDir(c, "mysql"))
 	dir, err := charm.ReadCharmArchive(path)
 	c.Assert(err, gc.IsNil)
-
-	// A lacking manifest.yaml file still causes a proper
-	// Manifest value to be returned.
-	c.Assert(dir.Manifest().Bases, gc.HasLen, 0)
+	c.Assert(dir.Manifest(), gc.IsNil)
 }
 
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutMetrics(c *gc.C) {

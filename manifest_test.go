@@ -26,7 +26,7 @@ bases:
     channel: "20.04/stable"
 `))
 	c.Assert(err, gc.IsNil)
-	c.Assert(manifest, gc.DeepEquals, &Manifest{[]Base{{
+	c.Assert(manifest, gc.DeepEquals, &Manifest{Bases: []Base{{
 		Name: "ubuntu",
 		Channel: Channel{
 			Track:  "18.04",

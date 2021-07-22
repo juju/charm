@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 	"github.com/juju/names/v4"
 	"github.com/juju/os/v2"
@@ -714,15 +715,15 @@ const (
 )
 
 // Check checks that the metadata is well-formed.
-func (m Meta) Check(format Format) error {
+func (m Meta) Check(format Format, reasons ...FormatSelectionReason) error {
 	switch format {
 	case FormatV1:
-		err := m.checkV1()
+		err := m.checkV1(reasons)
 		if err != nil {
 			return errors.Trace(err)
 		}
 	case FormatV2:
-		err := m.checkV2()
+		err := m.checkV2(reasons)
 		if err != nil {
 			return errors.Trace(err)
 		}
@@ -855,27 +856,40 @@ func (m Meta) Check(format Format) error {
 	return nil
 }
 
-func (m Meta) checkV1() error {
+func (m Meta) checkV1(reasons []FormatSelectionReason) error {
 	if len(m.Assumes) != 0 {
-		return errors.NotValidf("assumes with metadata v1")
+		return errors.NotValidf("assumes in metadata v1")
 	}
 	if len(m.Containers) != 0 {
-		return errors.NotValidf("containers with metadata v1")
+		if !hasReason(reasons, SelectionManifest) {
+			return errors.NotValidf("containers without a manifest.yaml")
+		}
+		return errors.NotValidf("containers in metadata v1")
 	}
 	return nil
 }
 
-func (m Meta) checkV2() error {
+func (m Meta) checkV2(reasons []FormatSelectionReason) error {
+	if len(reasons) == 0 {
+		return errors.NotValidf("metadata v2 without manifest.yaml")
+	}
 	if len(m.Series) != 0 {
-		return errors.NotValidf("series with metadata v2")
+		if hasReason(reasons, SelectionManifest) {
+			return errors.NotValidf("metadata v2 manifest.yaml with series slice")
+		}
+		return errors.NotValidf("series slice in metadata v2")
 	}
 	if m.MinJujuVersion != version.Zero {
-		return errors.NotValidf("min-juju-version with metdata v2")
+		return errors.NotValidf("min-juju-version in metadata v2")
 	}
 	if m.Deployment != nil {
-		return errors.NotValidf("deployment with metadata v2")
+		return errors.NotValidf("deployment in metadata v2")
 	}
 	return nil
+}
+
+func hasReason(reasons []FormatSelectionReason, reason FormatSelectionReason) bool {
+	return set.NewStrings(reasons...).Contains(reason)
 }
 
 func reservedName(charmName, endpointName string) (reserved bool, reason string) {
@@ -890,7 +904,6 @@ func reservedName(charmName, endpointName string) (reserved bool, reason string)
 	}
 	return false, ""
 }
-
 func parseRelations(relations interface{}, role RelationRole) map[string]Relation {
 	if relations == nil {
 		return nil
