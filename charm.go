@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 	"github.com/juju/loggo"
 )
@@ -49,17 +50,65 @@ func ReadCharm(path string) (charm Charm, err error) {
 	return charm, errors.Trace(CheckMeta(charm))
 }
 
+// FormatSelectionReason represents the reason for a format version selection.
+type FormatSelectionReason = string
+
+const (
+	// SelectionManifest states that it found a manifest.
+	SelectionManifest FormatSelectionReason = "manifest"
+	// SelectionBases states that there was at least 1 base.
+	SelectionBases FormatSelectionReason = "bases"
+	// SelectionSeries states that there was at least 1 series.
+	SelectionSeries FormatSelectionReason = "series"
+	// SelectionContainers states that there was at least 1 container.
+	SelectionContainers FormatSelectionReason = "containers"
+)
+
+var (
+	// formatV2Set defines what in reality is a v2 metadata.
+	formatV2Set = set.NewStrings(SelectionBases, SelectionContainers)
+)
+
+// MetaFormatReasons returns the format and why the selection was done. We can
+// then inspect the reasons to understand the reasoning.
+func MetaFormatReasons(ch CharmMeta) (Format, []FormatSelectionReason) {
+	manifest := ch.Manifest()
+
+	// To better inform users of why a metadata selection was preferred over
+	// another, we deduce why a format is selected over another.
+	reasons := set.NewStrings()
+	if manifest != nil {
+		reasons.Add(SelectionManifest)
+		if len(manifest.Bases) > 0 {
+			reasons.Add(SelectionBases)
+		}
+	}
+	if len(ch.Meta().Series) > 0 {
+		reasons.Add(SelectionSeries)
+	}
+
+	// To be a format v1 you can have no series with no bases or containers, or
+	// just have a series slice.
+	format := FormatV1
+	if !reasons.Contains(SelectionSeries) && reasons.Intersection(formatV2Set).Size() > 0 {
+		format = FormatV2
+	}
+
+	return format, reasons.SortedValues()
+}
+
+// MetaFormat returns the underlying format from checking the charm for the
+// right values.
+func MetaFormat(ch CharmMeta) Format {
+	format, _ := MetaFormatReasons(ch)
+	return format
+}
+
 // CheckMeta determines the version of the metadata used by this charm,
 // then checks that it is valid as appropriate.
 func CheckMeta(ch CharmMeta) error {
-	manifest := ch.Manifest()
-
-	format := FormatV2
-	if manifest == nil || len(manifest.Bases) == 0 || len(ch.Meta().Series) > 0 {
-		format = FormatV1
-	}
-
-	return ch.Meta().Check(format)
+	format, reasons := MetaFormatReasons(ch)
+	return ch.Meta().Check(format, reasons...)
 }
 
 // SeriesForCharm takes a requested series and a list of series supported by a

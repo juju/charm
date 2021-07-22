@@ -702,13 +702,13 @@ func (s *MetaSuite) TestIfaceExpander(c *gc.C) {
 	c.Assert(v, jc.DeepEquals, map[string]interface{}{"interface": "http", "limit": nil, "optional": true, "scope": string(charm.ScopeGlobal)})
 
 	// Invalid data raises an error.
-	v, err = e.Coerce(42, path)
+	_, err = e.Coerce(42, path)
 	c.Assert(err, gc.ErrorMatches, `<path>: expected map, got int\(42\)`)
 
-	v, err = e.Coerce(map[string]interface{}{"interface": "http", "optional": nil}, path)
+	_, err = e.Coerce(map[string]interface{}{"interface": "http", "optional": nil}, path)
 	c.Assert(err, gc.ErrorMatches, "<path>.optional: expected bool, got nothing")
 
-	v, err = e.Coerce(map[string]interface{}{"interface": "http", "limit": "none, really"}, path)
+	_, err = e.Coerce(map[string]interface{}{"interface": "http", "limit": "none, really"}, path)
 	c.Assert(err, gc.ErrorMatches, "<path>.limit: unexpected value.*")
 
 	// Can change default limit
@@ -878,7 +878,7 @@ func (s *MetaSuite) TestCodecRoundTripKubernetes(c *gc.C) {
 		Tags:       []string{"openstack", "storage"},
 		Terms:      []string{"test-term/1", "test-term/2"},
 		Containers: map[string]charm.Container{
-			"test": charm.Container{
+			"test": {
 				Mounts: []charm.Mount{{
 					Storage:  "test",
 					Location: "/wow/",
@@ -887,17 +887,17 @@ func (s *MetaSuite) TestCodecRoundTripKubernetes(c *gc.C) {
 			},
 		},
 		Resources: map[string]resource.Meta{
-			"test": resource.Meta{
+			"test": {
 				Name: "test",
 				Type: resource.TypeContainerImage,
 			},
-			"test2": resource.Meta{
+			"test2": {
 				Name: "test2",
 				Type: resource.TypeContainerImage,
 			},
 		},
 		Storage: map[string]charm.Storage{
-			"test": charm.Storage{
+			"test": {
 				Name:     "test",
 				Type:     charm.StorageFilesystem,
 				CountMin: 1,
@@ -1516,11 +1516,11 @@ payloads:
 	c.Assert(err, gc.IsNil)
 
 	c.Check(meta.PayloadClasses, jc.DeepEquals, map[string]charm.PayloadClass{
-		"monitor": charm.PayloadClass{
+		"monitor": {
 			Name: "monitor",
 			Type: "docker",
 		},
-		"kvm-guest": charm.PayloadClass{
+		"kvm-guest": {
 			Name: "kvm-guest",
 			Type: "kvm",
 		},
@@ -1719,7 +1719,7 @@ storage:
 `))
 	c.Assert(err, gc.IsNil)
 	c.Assert(meta.Containers, jc.DeepEquals, map[string]charm.Container{
-		"foo": charm.Container{
+		"foo": {
 			Resource: "test-os",
 			Mounts: []charm.Mount{{
 				Storage:  "a",
@@ -1896,4 +1896,98 @@ func (c *dummyCharm) Meta() *charm.Meta {
 			"peer": {Interface: "ifce-peer", Scope: charm.ScopeGlobal},
 		},
 	}
+}
+
+type FormatMetaSuite struct{}
+
+var _ = gc.Suite(&FormatMetaSuite{})
+
+func (FormatMetaSuite) TestCheckV1(c *gc.C) {
+	meta := charm.Meta{}
+	err := meta.Check(charm.FormatV1)
+	c.Assert(err, jc.ErrorIsNil)
+}
+
+func (FormatMetaSuite) TestCheckV1WithAssumes(c *gc.C) {
+	meta := charm.Meta{
+		Assumes: []string{"pebble"},
+	}
+	err := meta.Check(charm.FormatV1)
+	c.Assert(err, gc.ErrorMatches, `assumes in metadata v1 not valid`)
+}
+
+func (FormatMetaSuite) TestCheckV1WithContainers(c *gc.C) {
+	meta := charm.Meta{
+		Containers: map[string]charm.Container{
+			"foo": {
+				Resource: "test-os",
+				Mounts: []charm.Mount{{
+					Storage:  "a",
+					Location: "/b/",
+				}},
+			},
+		},
+	}
+	err := meta.Check(charm.FormatV1)
+	c.Assert(err, gc.ErrorMatches, `containers without a manifest.yaml not valid`)
+}
+
+func (FormatMetaSuite) TestCheckV1WithContainersWithManifest(c *gc.C) {
+	meta := charm.Meta{
+		Containers: map[string]charm.Container{
+			"foo": {
+				Resource: "test-os",
+				Mounts: []charm.Mount{{
+					Storage:  "a",
+					Location: "/b/",
+				}},
+			},
+		},
+	}
+	err := meta.Check(charm.FormatV1, charm.SelectionManifest)
+	c.Assert(err, gc.ErrorMatches, `containers in metadata v1 not valid`)
+}
+
+func (FormatMetaSuite) TestCheckV2(c *gc.C) {
+	meta := charm.Meta{}
+	err := meta.Check(charm.FormatV2, charm.SelectionManifest, charm.SelectionBases)
+	c.Assert(err, jc.ErrorIsNil)
+}
+
+func (FormatMetaSuite) TestCheckV2NoReasons(c *gc.C) {
+	meta := charm.Meta{}
+	err := meta.Check(charm.FormatV2)
+	c.Assert(err, gc.ErrorMatches, `metadata v2 without manifest.yaml not valid`)
+}
+
+func (FormatMetaSuite) TestCheckV2WithSeries(c *gc.C) {
+	meta := charm.Meta{
+		Series: []string{"bionic"},
+	}
+	err := meta.Check(charm.FormatV2, charm.SelectionManifest, charm.SelectionBases)
+	c.Assert(err, gc.ErrorMatches, `metadata v2 manifest.yaml with series slice not valid`)
+}
+
+func (FormatMetaSuite) TestCheckV2WithSeriesWithoutManifest(c *gc.C) {
+	meta := charm.Meta{
+		Series: []string{"bionic"},
+	}
+	err := meta.Check(charm.FormatV2, charm.SelectionBases)
+	c.Assert(err, gc.ErrorMatches, `series slice in metadata v2 not valid`)
+}
+
+func (FormatMetaSuite) TestCheckV2WithMinJujuVersion(c *gc.C) {
+	meta := charm.Meta{
+		MinJujuVersion: version.MustParse("2.0.0"),
+	}
+	err := meta.Check(charm.FormatV2, charm.SelectionManifest, charm.SelectionBases)
+	c.Assert(err, gc.ErrorMatches, `min-juju-version in metadata v2 not valid`)
+}
+
+func (FormatMetaSuite) TestCheckV2WithDeployment(c *gc.C) {
+	meta := charm.Meta{
+		Deployment: &charm.Deployment{},
+	}
+	err := meta.Check(charm.FormatV2, charm.SelectionManifest, charm.SelectionBases)
+	c.Assert(err, gc.ErrorMatches, `deployment in metadata v2 not valid`)
 }
