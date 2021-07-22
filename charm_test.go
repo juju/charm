@@ -133,8 +133,15 @@ func (FormatSuite) TestFormatV1NoManifest(c *gc.C) {
 }
 
 func (FormatSuite) TestFormatV1Manifest(c *gc.C) {
-	_, err := charm.ReadCharm(charmDirPath(c, "format-seriesmanifest"))
-	c.Assert(err, gc.ErrorMatches, `metadata v2 manifest.yaml with series slice not valid`)
+	ch, err := charm.ReadCharm(charmDirPath(c, "format-seriesmanifest"))
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(ch, gc.NotNil)
+
+	err = charm.CheckMeta(ch)
+	c.Assert(err, jc.ErrorIsNil)
+
+	f := charm.MetaFormat(ch)
+	c.Assert(f, gc.Equals, charm.FormatV1)
 }
 
 func (FormatSuite) TestFormatV2ContainersNoManifest(c *gc.C) {

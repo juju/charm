@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 	"github.com/juju/loggo"
 )
@@ -50,7 +51,7 @@ func ReadCharm(path string) (charm Charm, err error) {
 }
 
 // FormatSelectionReason represents the reason for a format version selection.
-type FormatSelectionReason string
+type FormatSelectionReason = string
 
 const (
 	// SelectionManifest states that it found a manifest.
@@ -63,6 +64,11 @@ const (
 	SelectionContainers FormatSelectionReason = "containers"
 )
 
+var (
+	// formatV2Set defines what in reality is a v2 metadata.
+	formatV2Set = set.NewStrings(SelectionBases, SelectionContainers)
+)
+
 // MetaFormatReasons returns the format and why the selection was done. We can
 // then inspect the reasons to understand the reasoning.
 func MetaFormatReasons(ch CharmMeta) (Format, []FormatSelectionReason) {
@@ -70,24 +76,25 @@ func MetaFormatReasons(ch CharmMeta) (Format, []FormatSelectionReason) {
 
 	// To better inform users of why a metadata selection was preferred over
 	// another, we deduce why a format is selected over another.
-	var reasons []FormatSelectionReason
+	reasons := set.NewStrings()
 	if manifest != nil {
-		reasons = append(reasons, SelectionManifest)
+		reasons.Add(SelectionManifest)
 		if len(manifest.Bases) > 0 {
-			reasons = append(reasons, SelectionBases)
+			reasons.Add(SelectionBases)
 		}
 	}
 	if len(ch.Meta().Series) > 0 {
-		reasons = append(reasons, SelectionSeries)
+		reasons.Add(SelectionSeries)
 	}
 
-	// To be a format v1, you must only have series, no manifest or bases.
+	// To be a format v1 you can have no series with no bases or containers, or
+	// just have a series slice.
 	format := FormatV1
-	if len(reasons) > 1 && (hasReason(reasons, SelectionBases) || hasReason(reasons, SelectionContainers)) {
+	if !reasons.Contains(SelectionSeries) && reasons.Intersection(formatV2Set).Size() > 0 {
 		format = FormatV2
 	}
 
-	return format, reasons
+	return format, reasons.SortedValues()
 }
 
 // MetaFormat returns the underlying format from checking the charm for the

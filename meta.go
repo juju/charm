@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 	"github.com/juju/names/v4"
 	"github.com/juju/os/v2"
@@ -888,12 +889,7 @@ func (m Meta) checkV2(reasons []FormatSelectionReason) error {
 }
 
 func hasReason(reasons []FormatSelectionReason, reason FormatSelectionReason) bool {
-	for _, v := range reasons {
-		if v == reason {
-			return true
-		}
-	}
-	return false
+	return set.NewStrings(reasons...).Contains(reason)
 }
 
 func reservedName(name string) (reserved bool, reason string) {
