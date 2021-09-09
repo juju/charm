@@ -319,7 +319,29 @@ applications:
 			},
 		},
 	},
+}, {
+	about: "charm revision and channel",
+	data: `
+applications:
+    wordpress:
+      charm: "wordpress"
+      revision: 5
+      channel: edge
+      num_units: 1
+`,
+	expectedBD: &charm.BundleData{
+		Applications: map[string]*charm.ApplicationSpec{
+			"wordpress": {
+				Charm:    "wordpress",
+				Revision: &wordpressRevisionParseTest,
+				Channel:  "edge",
+				NumUnits: 1,
+			},
+		},
+	},
 }}
+
+var wordpressRevisionParseTest = 5
 
 func (*bundleDataSuite) TestParse(c *gc.C) {
 	for i, test := range parseTests {
@@ -1315,6 +1337,53 @@ machines:
 `,
 	errors: []string{
 		`too many units specified in unit placement for application "test"`,
+	},
+}, {
+	about: "charmhub charm revision and no channel",
+	data: `
+applications:
+    wordpress:
+      charm: "wordpress"
+      revision: 5
+      num_units: 1
+`,
+	errors: []string{
+		`application "wordpress" with a revision requires a channel for future upgrades, please use channel`,
+	},
+}, {
+	about: "charmhub charm revision in charm url",
+	data: `
+applications:
+    wordpress:
+      charm: "wordpress-9"
+      num_units: 1
+`,
+	errors: []string{
+		`cannot specify revision in "ch:wordpress-9", please use revision`,
+	},
+}, {
+	about: "charmstore charm url revision does not match revision",
+	data: `
+applications:
+    wordpress:
+      charm: "cs:wordpress-9"
+      revision: 5
+      num_units: 1
+`,
+	errors: []string{
+		`application "wordpress" has 2 different revisions specified, please choose 1`,
+	},
+}, {
+	about: "charmstore charm url revision value less than 0",
+	data: `
+applications:
+    wordpress:
+      charm: "cs:wordpress"
+      revision: -5
+      num_units: 1
+`,
+	errors: []string{
+		`the revision for application "wordpress" must be zero or greater`,
 	},
 }}
 
