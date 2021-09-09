@@ -197,6 +197,9 @@ type ApplicationSpec struct {
 	// remote charm.
 	Channel string `bson:"channel,omitempty" yaml:"channel,omitempty" json:"channel,omitempty"`
 
+	// Revision describes the revision of the charm to use when deploying.
+	Revision *int `bson:"revision,omitempty" yaml:"revision,omitempty" json:"revision,omitempty"`
+
 	// Series is the series to use when deploying a local charm,
 	// if the charm does not specify a default or the default
 	// is not the desired value.
@@ -652,6 +655,24 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 			}
 		} else if curl, err = ParseURL(app.Charm); err != nil {
 			verifier.addErrorf("invalid charm URL in application %q: %v", name, err)
+		}
+
+		// Check the revision.
+		if curl != nil {
+			if CharmHub.Matches(curl.Schema) && curl.Revision != -1 {
+				verifier.addErrorf("cannot specify revision in %q, please use revision", curl.String())
+			}
+			if app.Revision != nil {
+				if CharmStore.Matches(curl.Schema) && curl.Revision != -1 && curl.Revision != *app.Revision {
+					verifier.addErrorf("application %q has 2 different revisions specified, please choose 1", name)
+				}
+				if CharmHub.Matches(curl.Schema) && app.Channel == "" {
+					verifier.addErrorf("application %q with a revision requires a channel for future upgrades, please use channel", name)
+				}
+				if *app.Revision < 0 {
+					verifier.addErrorf("the revision for application %q must be zero or greater", name)
+				}
+			}
 		}
 
 		// Check the Series.
