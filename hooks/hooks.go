@@ -1,7 +1,7 @@
 // Copyright 2013 Canonical Ltd.
 // Licensed under the LGPLv3, see LICENCE file for details.
 
-// hooks provides types and constants that define the hooks known to Juju.
+// Package hooks provides types and constants that define the hooks known to Juju.
 package hooks
 
 // Kind enumerates the different kinds of hooks that exist.
@@ -11,6 +11,7 @@ const (
 	// None of these hooks are ever associated with a relation; each of them
 	// represents a change to the state of the unit as a whole. The values
 	// themselves are all valid hook names.
+
 	Install               Kind = "install"
 	Start                 Kind = "start"
 	ConfigChanged         Kind = "config-changed"
@@ -26,11 +27,13 @@ const (
 	UpdateStatus          Kind = "update-status"
 	PreSeriesUpgrade      Kind = "pre-series-upgrade"
 	PostSeriesUpgrade     Kind = "post-series-upgrade"
+	SecretRotate          Kind = "secret-rotate"
 
 	// These hooks require an associated relation, and the name of the relation
 	// unit whose change triggered the hook. The hook file names that these
 	// kinds represent will be prefixed by the relation name; for example,
 	// "db-relation-joined".
+
 	RelationCreated  Kind = "relation-created"
 	RelationJoined   Kind = "relation-joined"
 	RelationChanged  Kind = "relation-changed"
@@ -39,11 +42,13 @@ const (
 	// This hook requires an associated relation. The represented hook file name
 	// will be prefixed by the relation name, just like the other Relation* Kind
 	// values.
+
 	RelationBroken Kind = "relation-broken"
 
 	// These hooks require an associated storage. The hook file names that these
 	// kinds represent will be prefixed by the storage name; for example,
 	// "shared-fs-storage-attached".
+
 	StorageAttached  Kind = "storage-attached"
 	StorageDetaching Kind = "storage-detaching"
 
@@ -51,6 +56,7 @@ const (
 	// whose change triggered the hook. The hook file names that these
 	// kinds represent will be prefixed by the workload/container name; for example,
 	// "mycontainer-pebble-ready".
+
 	PebbleReady Kind = "pebble-ready"
 )
 
@@ -105,14 +111,14 @@ func StorageHooks() []Kind {
 	return hooks
 }
 
-var workloadkHooks = []Kind{
+var workloadHooks = []Kind{
 	PebbleReady,
 }
 
 // WorkloadHooks returns all known container hook kinds.
 func WorkloadHooks() []Kind {
-	hooks := make([]Kind, len(workloadkHooks))
-	copy(hooks, workloadkHooks)
+	hooks := make([]Kind, len(workloadHooks))
+	copy(hooks, workloadHooks)
 	return hooks
 }
 
@@ -138,6 +144,19 @@ func (kind Kind) IsStorage() bool {
 func (kind Kind) IsWorkload() bool {
 	switch kind {
 	case PebbleReady:
+		return true
+	}
+	return false
+}
+
+var secretHooks = []Kind{
+	SecretRotate,
+}
+
+// IsSecret returns whether the Kind represents a secret hook.
+func (kind Kind) IsSecret() bool {
+	switch kind {
+	case SecretRotate:
 		return true
 	}
 	return false
