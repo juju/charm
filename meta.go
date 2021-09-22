@@ -904,6 +904,7 @@ func reservedName(charmName, endpointName string) (reserved bool, reason string)
 	}
 	return false, ""
 }
+
 func parseRelations(relations interface{}, role RelationRole) map[string]Relation {
 	if relations == nil {
 		return nil
