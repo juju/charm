@@ -164,6 +164,7 @@ func parseFeatureExpr(exprDecl string) (FeatureExpression, error) {
 			Name:       featName,
 			Constraint: VersionConstraint(constraint),
 			Version:    &ver,
+			rawVersion: versionStr,
 		}, nil
 	}
 

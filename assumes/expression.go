@@ -42,6 +42,9 @@ type FeatureExpression struct {
 	// constraint.
 	Constraint VersionConstraint
 	Version    *version.Number
+
+	// The raw, unprocessed version string for serialization purposes.
+	rawVersion string
 }
 
 // Type implements Expression.
