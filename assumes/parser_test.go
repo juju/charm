@@ -181,6 +181,7 @@ assumes: # test various combinations of whitespace and version formats
 					Minor: 1,
 					Patch: 2,
 				},
+				rawVersion: "2000.1.2",
 			},
 			FeatureExpression{
 				Name:       "chips",
@@ -190,6 +191,7 @@ assumes: # test various combinations of whitespace and version formats
 					Minor: 3,
 					Patch: 4,
 				},
+				rawVersion: "2042.3.4",
 			},
 			FeatureExpression{
 				Name:       "k8s-api",
@@ -198,6 +200,7 @@ assumes: # test various combinations of whitespace and version formats
 					Major: 1,
 					Minor: 8,
 				},
+				rawVersion: "1.8",
 			},
 			FeatureExpression{
 				Name:       "k8s-api",
@@ -205,6 +208,7 @@ assumes: # test various combinations of whitespace and version formats
 				Version: &version.Number{
 					Major: 42,
 				},
+				rawVersion: "42",
 			},
 		},
 	}
