@@ -4,6 +4,7 @@
 package assumes
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 
@@ -287,4 +288,72 @@ func (s *ParserSuite) TestFeatureExprParser(c *gc.C) {
 			c.Assert(err, gc.ErrorMatches, spec.expErr)
 		}
 	}
+}
+
+func (s *ParserSuite) TestMarshalToYAML(c *gc.C) {
+	payload := `
+assumes:
+- chips
+- any-of:
+  - guacamole
+  - salsa
+  - any-of:
+    - good-weather
+    - great-music
+- all-of:
+  - table
+  - lazy-suzan
+`[1:]
+
+	dst := struct {
+		Assumes *ExpressionTree `yaml:"assumes,omitempty"`
+	}{}
+	err := yaml.NewDecoder(strings.NewReader(payload)).Decode(&dst)
+	c.Assert(err, jc.ErrorIsNil)
+
+	var buf bytes.Buffer
+	err = yaml.NewEncoder(&buf).Encode(dst)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(buf.String(), gc.Equals, payload, gc.Commentf("serialized assumes block not matching original input"))
+}
+
+func (s *ParserSuite) TestMarshalToJSON(c *gc.C) {
+	payload := `
+{
+  "assumes": [
+    "chips",
+    {
+      "any-of": [
+        "guacamole",
+        "salsa",
+        {
+          "any-of": [
+            "good-weather",
+            "great-music"
+          ]
+        }
+      ]
+    },
+    {
+      "all-of": [
+        "table",
+        "lazy-suzan"
+      ]
+    }
+  ]
+}
+`[1:]
+
+	dst := struct {
+		Assumes *ExpressionTree `json:"assumes,omitempty"`
+	}{}
+	err := json.NewDecoder(strings.NewReader(payload)).Decode(&dst)
+	c.Assert(err, jc.ErrorIsNil)
+
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetIndent("", "  ")
+	err = enc.Encode(dst)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(buf.String(), gc.Equals, payload, gc.Commentf("serialized assumes block not matching original input"))
 }
