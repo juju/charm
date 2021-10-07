@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/juju/errors"
+	"github.com/juju/mgo/v2/bson"
 	"github.com/juju/version/v2"
 	"gopkg.in/yaml.v2"
 )
@@ -72,6 +73,12 @@ func parseAssumesExpr(exprDecl interface{}) (Expression, error) {
 				return nil, errors.New(`malformed composite expression`)
 			}
 			coercedMap[keyStr] = val
+		}
+		return parseCompositeExpr(coercedMap)
+	} else if exprAsMap, isMap := exprDecl.(bson.M); isMap {
+		coercedMap := make(map[string]interface{})
+		for key, val := range exprAsMap {
+			coercedMap[key] = val
 		}
 		return parseCompositeExpr(coercedMap)
 	} else if exprAsMap, isMap := exprDecl.(map[string]interface{}); isMap {
@@ -205,6 +212,21 @@ func (tree *ExpressionTree) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// SetBSON implements the bson.Setter interface.
+func (tree *ExpressionTree) SetBSON(data bson.Raw) error {
+	var exprTree []interface{}
+	if err := data.Unmarshal(&exprTree); err != nil {
+		return errors.Annotate(err, "decoding assumes block")
+	}
+
+	expr, err := parseAssumesExpressionTree(exprTree)
+	if err != nil {
+		return errors.Trace(err)
+	}
+	tree.Expression = expr
+	return nil
+}
+
 // MarshalYAML implements the yaml.Marshaler interface.
 func (tree *ExpressionTree) MarshalYAML() (interface{}, error) {
 	if tree == nil || tree.Expression == nil {
@@ -225,6 +247,19 @@ func (tree *ExpressionTree) MarshalJSON() ([]byte, error) {
 		return nil, errors.Trace(err)
 	}
 	return json.Marshal(exprList)
+}
+
+// GetBSON implements the bson.Getter interface.
+func (tree *ExpressionTree) GetBSON() (interface{}, error) {
+	if tree == nil || tree.Expression == nil {
+		return nil, nil
+	}
+
+	exprList, err := marshalAssumesExpressionTree(tree)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	return exprList, nil
 }
 
 func marshalAssumesExpressionTree(tree *ExpressionTree) (interface{}, error) {
