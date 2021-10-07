@@ -5,6 +5,7 @@ package assumes
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -202,4 +203,86 @@ func (tree *ExpressionTree) UnmarshalJSON(data []byte) error {
 	}
 	tree.Expression = expr
 	return nil
+}
+
+// MarshalYAML implements the yaml.Marshaler interface.
+func (tree *ExpressionTree) MarshalYAML() (interface{}, error) {
+	if tree == nil || tree.Expression == nil {
+		return nil, nil
+	}
+
+	return marshalAssumesExpressionTree(tree)
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (tree *ExpressionTree) MarshalJSON() ([]byte, error) {
+	if tree == nil || tree.Expression == nil {
+		return nil, nil
+	}
+
+	exprList, err := marshalAssumesExpressionTree(tree)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	return json.Marshal(exprList)
+}
+
+func marshalAssumesExpressionTree(tree *ExpressionTree) (interface{}, error) {
+	// The root of the expression tree (top level of the assumes block) is
+	// always an implicit "any-of".  We need to marshal it into a map and
+	// extract the expression list.
+	root, err := marshalExpr(tree.Expression)
+	if err != nil {
+		return nil, err
+	}
+
+	rootMap, ok := root.(map[string]interface{})
+	if !ok {
+		return nil, errors.New(`unexpected serialized output for top-level "assumes" block`)
+	}
+
+	exprList, ok := rootMap[string(AllOfExpression)]
+	if !ok {
+		return nil, errors.New(`unexpected serialized output for top-level "assumes" block`)
+	}
+
+	return exprList, nil
+}
+
+func marshalExpr(expr Expression) (interface{}, error) {
+	featExpr, ok := expr.(FeatureExpression)
+	if ok {
+		if featExpr.Version == nil {
+			return featExpr.Name, nil
+		}
+
+		// If we retained the raw version use that; otherwise convert
+		// the parsed version to a string.
+		if featExpr.rawVersion != "" {
+			return fmt.Sprintf("%s %s %s", featExpr.Name, featExpr.Constraint, featExpr.rawVersion), nil
+		}
+
+		return fmt.Sprintf("%s %s %s", featExpr.Name, featExpr.Constraint, featExpr.Version.String()), nil
+	}
+
+	// This is a composite expression
+	compExpr, ok := expr.(CompositeExpression)
+	if !ok {
+		return nil, errors.Errorf("unexpected expression type %s", expr.Type())
+	}
+
+	var (
+		exprList = make([]interface{}, len(compExpr.SubExpressions))
+		err      error
+	)
+
+	for i, subExpr := range compExpr.SubExpressions {
+		if exprList[i], err = marshalExpr(subExpr); err != nil {
+			return nil, err
+		}
+	}
+
+	return map[string]interface{}{
+		string(compExpr.ExprType): exprList,
+	}, nil
 }
