@@ -14,7 +14,7 @@ require (
 	github.com/juju/schema v0.0.0-20160301111646-1e25943f8c6f
 	github.com/juju/testing v0.0.0-20210302031854-2c7ee8570c07
 	github.com/juju/utils/v2 v2.0.0-20200923005554-4646bfea2ef1
-	github.com/juju/version/v2 v2.0.0-20210319015800-dcfac8f4f057
+	github.com/juju/version/v2 v2.0.0-20211007103408-2e8da085dc23
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/stretchr/testify v1.6.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c

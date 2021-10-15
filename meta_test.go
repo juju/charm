@@ -18,6 +18,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/juju/charm/v9"
+	"github.com/juju/charm/v9/assumes"
 	"github.com/juju/charm/v9/resource"
 )
 
@@ -1020,6 +1021,24 @@ resources:
         filename: 'y.tgz'
         type: file
 `,
+}, {
+	about: "minimal charm with nested assumes block",
+	yaml: `
+name: minimal-with-assumes
+description: d
+summary: s
+assumes:
+- chips
+- any-of:
+  - guacamole
+  - salsa
+  - any-of:
+    - good-weather
+    - great-music
+- all-of:
+  - table
+  - lazy-suzan
+`,
 }}
 
 func (s *MetaSuite) TestYAMLMarshal(c *gc.C) {
@@ -1910,7 +1929,7 @@ func (FormatMetaSuite) TestCheckV1(c *gc.C) {
 
 func (FormatMetaSuite) TestCheckV1WithAssumes(c *gc.C) {
 	meta := charm.Meta{
-		Assumes: []string{"pebble"},
+		Assumes: new(assumes.ExpressionTree),
 	}
 	err := meta.Check(charm.FormatV1)
 	c.Assert(err, gc.ErrorMatches, `assumes in metadata v1 not valid`)
