@@ -22,6 +22,7 @@ import (
 	"github.com/juju/version/v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/juju/charm/v9/assumes"
 	"github.com/juju/charm/v9/hooks"
 	"github.com/juju/charm/v9/resource"
 )
@@ -277,8 +278,8 @@ type Meta struct {
 	MinJujuVersion version.Number           `bson:"min-juju-version,omitempty" json:"min-juju-version,omitempty"`
 
 	// v2
-	Containers map[string]Container `bson:"containers,omitempty" json:"containers,omitempty" yaml:"containers,omitempty"`
-	Assumes    []string             `bson:"assumes,omitempty" json:"assumes,omitempty" yaml:"assumes,omitempty"`
+	Containers map[string]Container    `bson:"containers,omitempty" json:"containers,omitempty" yaml:"containers,omitempty"`
+	Assumes    *assumes.ExpressionTree `bson:"assumes,omitempty" json:"assumes,omitempty" yaml:"assumes,omitempty"`
 }
 
 // Container specifies the possible systems it supports and mounts it wants.
@@ -512,6 +513,18 @@ func (meta *Meta) UnmarshalYAML(f func(interface{}) error) error {
 	}
 
 	*meta = *meta1
+
+	// Assumes blocks have their own dedicated parser so we need to invoke
+	// it here and attach the resulting expression tree (if any) to the
+	// metadata
+	var assumesBlock = struct {
+		Assumes *assumes.ExpressionTree `yaml:"assumes"`
+	}{}
+	if err := f(&assumesBlock); err != nil {
+		return err
+	}
+	meta.Assumes = assumesBlock.Assumes
+
 	return nil
 }
 
@@ -559,7 +572,6 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	}
 
 	// v2 parsing
-	meta.Assumes = parseStringList(m["assumes"])
 	meta.Containers, err = parseContainers(m["containers"], meta.Resources, meta.Storage)
 	if err != nil {
 		return nil, errors.Annotatef(err, "parsing containers")
@@ -595,7 +607,7 @@ func (m Meta) MarshalYAML() (interface{}, error) {
 		MinJujuVersion string                           `yaml:"min-juju-version,omitempty"`
 		Resources      map[string]marshaledResourceMeta `yaml:"resources,omitempty"`
 		Containers     map[string]marshaledContainer    `yaml:"containers,omitempty"`
-		Assumes        []string                         `yaml:"assumes,omitempty"`
+		Assumes        *assumes.ExpressionTree          `yaml:"assumes,omitempty"`
 	}{
 		Name:           m.Name,
 		Summary:        m.Summary,
@@ -857,7 +869,7 @@ func (m Meta) Check(format Format, reasons ...FormatSelectionReason) error {
 }
 
 func (m Meta) checkV1(reasons []FormatSelectionReason) error {
-	if len(m.Assumes) != 0 {
+	if m.Assumes != nil {
 		return errors.NotValidf("assumes in metadata v1")
 	}
 	if len(m.Containers) != 0 {
@@ -1364,7 +1376,7 @@ var charmSchema = schema.FieldMap(
 		"resources":        schema.StringMap(resourceSchema),
 		"terms":            schema.List(schema.String()),
 		"min-juju-version": schema.String(),
-		"assumes":          schema.List(schema.String()),
+		"assumes":          schema.List(schema.Any()),
 		"containers":       schema.StringMap(containerSchema),
 	},
 	schema.Defaults{
