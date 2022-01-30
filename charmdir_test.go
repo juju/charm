@@ -15,13 +15,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/juju/charm/v8"
 	"github.com/juju/collections/set"
 	"github.com/juju/loggo"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
-	"github.com/juju/utils/v2"
+	"github.com/juju/utils/v3"
 	gc "gopkg.in/check.v1"
+
+	"github.com/juju/charm/v8"
 )
 
 type CharmDirSuite struct {
