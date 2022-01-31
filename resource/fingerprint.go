@@ -8,7 +8,7 @@ import (
 	"io"
 
 	"github.com/juju/errors"
-	"github.com/juju/utils/v2/hash"
+	"github.com/juju/utils/v3/hash"
 )
 
 var newHash, validateSum = hash.SHA384()
