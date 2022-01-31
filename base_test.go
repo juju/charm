@@ -7,12 +7,13 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/juju/charm/v9"
 	"github.com/juju/os/v2"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
-	"github.com/juju/utils/v2/arch"
+	"github.com/juju/utils/v3/arch"
 	gc "gopkg.in/check.v1"
+
+	"github.com/juju/charm/v9"
 )
 
 type baseSuite struct {
