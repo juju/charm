@@ -1,16 +1,16 @@
 module github.com/juju/charm/v8
 
 require (
-	github.com/juju/collections v0.0.0-20200605021417-0d0ec82b7271
-	github.com/juju/errors v0.0.0-20200330140219-3fe23663418f
+	github.com/juju/collections v0.0.0-20220203020748-febd7cad8a7a
+	github.com/juju/errors v0.0.0-20220203013757-bd733f3c86b9
 	github.com/juju/gojsonschema v0.0.0-20150312170016-e1ad140384f2
-	github.com/juju/loggo v0.0.0-20200526014432-9ce3a2e09b5e
-	github.com/juju/mgo/v2 v2.0.0-20210302023703-70d5d206e208
+	github.com/juju/loggo v0.0.0-20210728185423-eebad3a902c4
+	github.com/juju/mgo/v2 v2.0.0-20220111072304-f200228f1090
 	github.com/juju/names/v4 v4.0.0-20200923012352-008effd8611b
-	github.com/juju/os/v2 v2.0.0
-	github.com/juju/schema v0.0.0-20160301111646-1e25943f8c6f
-	github.com/juju/testing v0.0.0-20210302031854-2c7ee8570c07
-	github.com/juju/utils/v3 v3.0.0-20220130232349-cd7ecef0e94a
+	github.com/juju/os/v2 v2.2.1
+	github.com/juju/schema v1.0.1-0.20190814234152-1f8aaeef0989
+	github.com/juju/testing v0.0.0-20220203020004-a0ff61f03494
+	github.com/juju/utils/v3 v3.0.0-20220203023959-c3fbc78a33b0
 	github.com/juju/version/v2 v2.0.0-20211007103408-2e8da085dc23
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
@@ -20,19 +20,19 @@ require (
 
 require (
 	github.com/gobwas/glob v0.2.3 // indirect
-	github.com/juju/clock v0.0.0-20190205081909-9c5c9712527c // indirect
+	github.com/juju/clock v0.0.0-20220203021603-d9deb868a28a // indirect
 	github.com/juju/gojsonpointer v0.0.0-20150204194629-afe8b77aa08f // indirect
 	github.com/juju/gojsonreference v0.0.0-20150204194633-f0d24ac5ee33 // indirect
 	github.com/juju/retry v0.0.0-20180821225755-9058e192b216 // indirect
 	github.com/juju/utils/v2 v2.0.0-20200923005554-4646bfea2ef1 // indirect
-	github.com/juju/version v0.0.0-20191219164919-81c1be00b9a6 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/stretchr/testify v1.6.1 // indirect
-	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110 // indirect
-	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68 // indirect
-	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
+	github.com/xdg-go/stringprep v1.0.2 // indirect
+	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
+	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
+	golang.org/x/sys v0.0.0-20210806184541-e5e7981a1069 // indirect
+	golang.org/x/text v0.3.7 // indirect
 )
 
 go 1.17
