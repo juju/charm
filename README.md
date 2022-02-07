@@ -1,7 +1,7 @@
 Juju charms
 ===========
 
-This package parses juju charms.
+This package parses juju charms..
 
 ## Anatomy of a charm
 
