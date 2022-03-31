@@ -154,7 +154,7 @@ type unsupportedSeriesError struct {
 func (e *unsupportedSeriesError) Error() string {
 	return fmt.Sprintf(
 		"series %q not supported by charm, supported series are: %s",
-		e.requestedSeries, strings.Join(e.supportedSeries, ","),
+		e.requestedSeries, strings.Join(e.supportedSeries, ", "),
 	)
 }
 
