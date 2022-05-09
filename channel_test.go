@@ -28,7 +28,7 @@ func (s channelSuite) TestParseChannelNormalize(c *gc.C) {
 	}{{
 		Name:        "empty",
 		Value:       "",
-		ExpectedErr: "channel cannot be empty",
+		ExpectedErr: "empty channel not valid",
 	}, {
 		Name:        "empty components",
 		Value:       "//",
