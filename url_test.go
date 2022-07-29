@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/juju/mgo/v2/bson"
+	"github.com/juju/mgo/v3/bson"
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
 

@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/juju/charm/v9"
-	"github.com/juju/mgo/v2/bson"
+	"github.com/juju/mgo/v3/bson"
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
