@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/juju/errors"
 	"gopkg.in/yaml.v2"
@@ -45,8 +46,9 @@ func (fpm FieldPresenceMap) forField(fieldName string) FieldPresenceMap {
 // can be used to discriminate between fields that are missing from the data
 // and those that are present but defined to be empty.
 type BundleDataPart struct {
-	Data        *BundleData
-	PresenceMap FieldPresenceMap
+	Data            *BundleData
+	PresenceMap     FieldPresenceMap
+	UnmarshallError error
 }
 
 // BundleDataSource is implemented by types that can parse bundle data into a
@@ -201,8 +203,12 @@ func parseBundleParts(r io.Reader) ([]*BundleDataPart, error) {
 		// Ideally, we would be using a single reader and we would
 		// rewind it to read each block in structured and raw mode.
 		// Unfortunately, the yaml parser seems to parse all documents
-		// at once so we need to use two decoders.
+		// at once so we need to use two decoders. The third is to allow
+		// for validation of the yaml by using strict decoding. However
+		// we still want to return non strict bundle parts so that
+		// force may be used in deploy.
 		structDec = yaml.NewDecoder(bytes.NewReader(b))
+		strictDec = yaml.NewDecoder(bytes.NewReader(b))
 		rawDec    = yaml.NewDecoder(bytes.NewReader(b))
 		parts     []*BundleDataPart
 	)
@@ -213,8 +219,22 @@ func parseBundleParts(r io.Reader) ([]*BundleDataPart, error) {
 		err = structDec.Decode(&part.Data)
 		if err == io.EOF {
 			break
-		} else if err != nil {
+		} else if err != nil && !strings.HasPrefix(err.Error(), "yaml: unmarshal errors:") {
 			return nil, errors.Annotatef(err, "unmarshal document %d", docIdx)
+		}
+
+		var data *BundleData
+		strictDec.SetStrict(true)
+		err = strictDec.Decode(&data)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			if strings.HasPrefix(err.Error(), "yaml: unmarshal errors:") {
+				friendlyErrors := userFriendlyUnmarshalErrors(err)
+				part.UnmarshallError = errors.Annotatef(friendlyErrors, "unmarshal document %d", docIdx)
+			} else {
+				return nil, errors.Annotatef(err, "unmarshal document %d", docIdx)
+			}
 		}
 
 		// We have already checked for errors for the previous unmarshal attempt
@@ -223,4 +243,15 @@ func parseBundleParts(r io.Reader) ([]*BundleDataPart, error) {
 	}
 
 	return parts, nil
+}
+
+func userFriendlyUnmarshalErrors(err error) error {
+	logger.Tracef("developer friendly error message: \n%s", err.Error())
+	friendlyText := err.Error()
+	friendlyText = strings.ReplaceAll(friendlyText, "type charm.ApplicationSpec", "applications")
+	friendlyText = strings.ReplaceAll(friendlyText, "type charm.legacyBundleData", "bundle")
+	friendlyText = strings.ReplaceAll(friendlyText, "type charm.RelationSpec", "relations")
+	friendlyText = strings.ReplaceAll(friendlyText, "type charm.MachineSpec", "machines")
+	friendlyText = strings.ReplaceAll(friendlyText, "type charm.SaasSpec", "saas")
+	return errors.New(friendlyText)
 }
