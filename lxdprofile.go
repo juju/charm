@@ -27,9 +27,13 @@ type LXDProfile struct {
 	Devices     map[string]map[string]string `json:"devices" yaml:"devices"`
 }
 
-// NewLXDProfile creates a LXDProfile
+// NewLXDProfile creates a LXDProfile with the internal data structures
+// initialised  to non nil values.
 func NewLXDProfile() *LXDProfile {
-	return &LXDProfile{}
+	return &LXDProfile{
+		Config:  map[string]string{},
+		Devices: map[string]map[string]string{},
+	}
 }
 
 // ReadLXDProfile reads in a LXDProfile from a charm's lxd-profile.yaml.
@@ -40,11 +44,11 @@ func ReadLXDProfile(r io.Reader) (*LXDProfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	var profile LXDProfile
-	if err := yaml.Unmarshal(data, &profile); err != nil {
+	profile := NewLXDProfile()
+	if err := yaml.Unmarshal(data, profile); err != nil {
 		return nil, errors.Annotate(err, "failed to unmarshall lxd-profile.yaml")
 	}
-	return &profile, nil
+	return profile, nil
 }
 
 // ValidateConfigDevices validates the Config and Devices properties of the LXDProfile.

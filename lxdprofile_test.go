@@ -136,7 +136,7 @@ func (s *ProfileSuite) TestLXDProfileEmptyFile(c *gc.C) {
 	profile, err := charm.ReadLXDProfile(strings.NewReader(`
  
 `))
-	c.Assert(profile, gc.DeepEquals, &charm.LXDProfile{})
+	c.Assert(profile, gc.DeepEquals, charm.NewLXDProfile())
 	c.Assert(err, jc.ErrorIsNil)
 	c.Assert(profile.Empty(), jc.IsTrue)
 	c.Assert(profile.ValidateConfigDevices(), jc.ErrorIsNil)
