@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/juju/testing"
-	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 )
 
@@ -98,49 +97,6 @@ func assertFieldPresent(c *gc.C, part *BundleDataPart, path string) {
 			c.Fatalf("unexpected type %T at path: %s", typ, strings.Join(segments[:segIndex], "."))
 		}
 	}
-}
-
-func (s *BundleDataSourceSuite) TestParseBundlePartsStrict(c *gc.C) {
-	r := strings.NewReader(`
-applications:
-  wordpress:
-    charm: wordpress
-    constrain: "mem=8G"
-  mysql:
-    charm: mysql
-    num_uns: 1
-relations:
-  - ["wordpress:db", "mysql:server"]
---- # overlay.yaml
-applications:
-  wordpress:
-    offers:
-      offer1:
-        endpoints:
-          - "some-endpoint"
---- # overlay2.yaml
-applications:
-  wordpress:
-    offer:
-      offer1:
-        acl:
-          admin: "admin"
-          foo: "consume"
-`)
-
-	parts, err := parseBundleParts(r)
-	c.Assert(err, gc.IsNil)
-	c.Assert(parts, gc.HasLen, 3)
-	c.Assert(parts[0].UnmarshallError, gc.NotNil)
-	c.Assert(parts[0].UnmarshallError.Error(), gc.Matches, ""+
-		"unmarshal document 0: yaml: unmarshal errors:\n"+
-		"  line 5: field constrain not found in applications\n"+
-		"  line 8: field num_uns not found in applications")
-	c.Assert(parts[1].UnmarshallError, jc.ErrorIsNil)
-	c.Assert(parts[2].UnmarshallError, gc.NotNil)
-	c.Assert(parts[2].UnmarshallError.Error(), gc.Matches, ""+
-		"unmarshal document 2: yaml: unmarshal errors:\n"+
-		"  line 21: field offer not found in applications")
 }
 
 func (s *BundleDataSourceSuite) TestResolveAbsoluteFileInclude(c *gc.C) {
