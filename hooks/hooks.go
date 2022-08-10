@@ -27,6 +27,9 @@ const (
 	UpdateStatus          Kind = "update-status"
 	PreSeriesUpgrade      Kind = "pre-series-upgrade"
 	PostSeriesUpgrade     Kind = "post-series-upgrade"
+	SecretChanged         Kind = "secret-changed"
+	SecretExpired         Kind = "secret-expired"
+	SecretRemove          Kind = "secret-remove"
 	SecretRotate          Kind = "secret-rotate"
 
 	// These hooks require an associated relation, and the name of the relation
@@ -156,6 +159,9 @@ var secretHooks = []Kind{
 // IsSecret returns whether the Kind represents a secret hook.
 func (kind Kind) IsSecret() bool {
 	switch kind {
+	case SecretChanged:
+	case SecretExpired:
+	case SecretRemove:
 	case SecretRotate:
 		return true
 	}

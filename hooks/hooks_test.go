@@ -44,9 +44,6 @@ func (s *HooksSuite) TestIsSecret(c *gc.C) {
 		c.Assert(h.IsSecret(), jc.IsTrue)
 	}
 	for _, h := range unitHooks {
-		if h == SecretRotate {
-			continue
-		}
 		c.Assert(h.IsSecret(), jc.IsFalse)
 	}
 }
