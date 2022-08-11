@@ -153,16 +153,13 @@ func (kind Kind) IsWorkload() bool {
 }
 
 var secretHooks = []Kind{
-	SecretRotate,
+	SecretChanged, SecretExpired, SecretRemove, SecretRotate,
 }
 
 // IsSecret returns whether the Kind represents a secret hook.
 func (kind Kind) IsSecret() bool {
 	switch kind {
-	case SecretChanged:
-	case SecretExpired:
-	case SecretRemove:
-	case SecretRotate:
+	case SecretChanged, SecretExpired, SecretRemove, SecretRotate:
 		return true
 	}
 	return false
