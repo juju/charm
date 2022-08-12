@@ -19,7 +19,7 @@ type channelSuite struct {
 var _ = gc.Suite(&channelSuite{})
 
 func (s channelSuite) TestParseChannelNormalize(c *gc.C) {
-	// ParseChannelNoramlize tests ParseChannel as well.
+	// ParseChannelNormalize tests ParseChannel as well.
 	tests := []struct {
 		Name        string
 		Value       string
@@ -101,7 +101,7 @@ func (s channelSuite) TestString(c *gc.C) {
 	}, {
 		Name:     "latest track",
 		Value:    "latest/stable",
-		Expected: "stable",
+		Expected: "latest/stable",
 	}, {
 		Name:     "track",
 		Value:    "1.0",
@@ -117,7 +117,7 @@ func (s channelSuite) TestString(c *gc.C) {
 	}, {
 		Name:     "latest, risk and branch",
 		Value:    "latest/edge/foo",
-		Expected: "edge/foo",
+		Expected: "latest/edge/foo",
 	}}
 	for k, test := range tests {
 		c.Logf("test %q at %d", test.Name, k)
@@ -175,7 +175,7 @@ func (s channelSuite) TestMakePermissiveChannelAndEmpty(c *gc.C) {
 		Name:     "latest track, risk",
 		Track:    "latest",
 		Risk:     "beta",
-		Expected: "beta",
+		Expected: "latest/beta",
 	}, {
 		Name:     "risk not valid",
 		Track:    "",
