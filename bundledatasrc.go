@@ -5,10 +5,12 @@ package charm
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/juju/errors"
@@ -230,8 +232,7 @@ func parseBundleParts(r io.Reader) ([]*BundleDataPart, error) {
 			break
 		} else if err != nil {
 			if strings.HasPrefix(err.Error(), "yaml: unmarshal errors:") {
-				friendlyErrors := userFriendlyUnmarshalErrors(err)
-				part.UnmarshallError = errors.Annotatef(friendlyErrors, "unmarshal document %d", docIdx)
+				part.UnmarshallError = userFriendlyUnmarshalErrors(errors.Annotatef(err, "document %d", docIdx))
 			} else {
 				return nil, errors.Annotatef(err, "unmarshal document %d", docIdx)
 			}
@@ -245,13 +246,18 @@ func parseBundleParts(r io.Reader) ([]*BundleDataPart, error) {
 	return parts, nil
 }
 
+// userFriendlyUnmarshalErrors provides user friendly versions of the
+// yaml unmarshall errors for a bundle.
+// Remove " yaml: unmarshal errors:"
+// Lines such as: `line 1: field name not found in type charm.ApplicationSpec`
+// are converted to: `line 1: unrecognized field "name"`
+// The actual errors for developers can be found with Trace level logging
+// enabled.
 func userFriendlyUnmarshalErrors(err error) error {
 	logger.Tracef("developer friendly error message: \n%s", err.Error())
 	friendlyText := err.Error()
-	friendlyText = strings.ReplaceAll(friendlyText, "type charm.ApplicationSpec", "applications")
-	friendlyText = strings.ReplaceAll(friendlyText, "type charm.legacyBundleData", "bundle")
-	friendlyText = strings.ReplaceAll(friendlyText, "type charm.RelationSpec", "relations")
-	friendlyText = strings.ReplaceAll(friendlyText, "type charm.MachineSpec", "machines")
-	friendlyText = strings.ReplaceAll(friendlyText, "type charm.SaasSpec", "saas")
+	friendlyText = strings.ReplaceAll(friendlyText, " yaml: unmarshal errors:", "")
+	re := regexp.MustCompile(`(  line \d+:) (field) (.*) (not found in type )(charm.\w+)`)
+	friendlyText = fmt.Sprintf("%s", re.ReplaceAllString(friendlyText, "$1 unrecognized $2 \"$3\""))
 	return errors.New(friendlyText)
 }
