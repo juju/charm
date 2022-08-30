@@ -133,14 +133,14 @@ applications:
 	c.Assert(parts, gc.HasLen, 3)
 	c.Assert(parts[0].UnmarshallError, gc.NotNil)
 	c.Assert(parts[0].UnmarshallError.Error(), gc.Matches, ""+
-		"unmarshal document 0: yaml: unmarshal errors:\n"+
-		"  line 5: field constrain not found in applications\n"+
-		"  line 8: field num_uns not found in applications")
+		"document 0:\n"+
+		"  line 5: unrecognized field \"constrain\"\n"+
+		"  line 8: unrecognized field \"num_uns\"")
 	c.Assert(parts[1].UnmarshallError, jc.ErrorIsNil)
 	c.Assert(parts[2].UnmarshallError, gc.NotNil)
 	c.Assert(parts[2].UnmarshallError.Error(), gc.Matches, ""+
-		"unmarshal document 2: yaml: unmarshal errors:\n"+
-		"  line 21: field offer not found in applications")
+		"document 2:\n"+
+		"  line 21: unrecognized field \"offer\"")
 }
 
 func (s *BundleDataSourceSuite) TestResolveAbsoluteFileInclude(c *gc.C) {
