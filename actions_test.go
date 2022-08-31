@@ -577,10 +577,39 @@ snapshot-0-foo:
 	for i, test := range goodActionsYamlTests {
 		c.Logf("test %d: %s", i, test.description)
 		reader := bytes.NewReader([]byte(test.yaml))
-		loadedAction, err := ReadActionsYaml(reader)
+		loadedAction, err := ReadActionsYaml("somecharm", reader)
 		c.Assert(err, gc.IsNil)
 		c.Check(loadedAction, jc.DeepEquals, test.expectedActions)
 	}
+}
+
+func (s *ActionsSuite) TestJujuCharmActionsYaml(c *gc.C) {
+	actionsYaml := `
+juju-snapshot:
+   description: Take a snapshot of the database.
+   params:
+      outfile:
+         description: "The file to write out to."
+         type: string
+   required: ["outfile"]
+`
+	expectedActions := &Actions{map[string]ActionSpec{
+		"juju-snapshot": {
+			Description: "Take a snapshot of the database.",
+			Params: map[string]interface{}{
+				"title":       "juju-snapshot",
+				"description": "Take a snapshot of the database.",
+				"type":        "object",
+				"properties": map[string]interface{}{
+					"outfile": map[string]interface{}{
+						"description": "The file to write out to.",
+						"type":        "string"}},
+				"required": []interface{}{"outfile"}}}}}
+
+	reader := bytes.NewReader([]byte(actionsYaml))
+	loadedAction, err := ReadActionsYaml("juju-charm", reader)
+	c.Assert(err, gc.IsNil)
+	c.Check(loadedAction, jc.DeepEquals, expectedActions)
 }
 
 func (s *ActionsSuite) TestReadBadActionsYaml(c *gc.C) {
@@ -747,7 +776,7 @@ snapshot:
 	for i, test := range badActionsYamlTests {
 		c.Logf("test %d: %s", i, test.description)
 		reader := bytes.NewReader([]byte(test.yaml))
-		_, err := ReadActionsYaml(reader)
+		_, err := ReadActionsYaml("somecharm", reader)
 		c.Check(err, gc.ErrorMatches, test.expectedError)
 	}
 }
@@ -956,7 +985,7 @@ act:
 func getSchemaForAction(c *gc.C, wholeSchema string) ActionSpec {
 	// Load up the YAML schema definition.
 	reader := bytes.NewReader([]byte(wholeSchema))
-	loadedActions, err := ReadActionsYaml(reader)
+	loadedActions, err := ReadActionsYaml("somecharm", reader)
 	c.Assert(err, gc.IsNil)
 	// Same action name for all tests, "act".
 	return loadedActions.ActionSpecs["act"]

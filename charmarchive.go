@@ -117,6 +117,7 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 	}
 
 	if b.actions, err = getActions(
+		b.meta.Name,
 		func(file string) (io.ReadCloser, error) {
 			return zipOpenFile(zipr, file)
 		},
@@ -171,11 +172,11 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 
 type fileOpener func(string) (io.ReadCloser, error)
 
-func getActions(open fileOpener, isNotFound func(error) bool) (actions *Actions, err error) {
+func getActions(charmName string, open fileOpener, isNotFound func(error) bool) (actions *Actions, err error) {
 	reader, err := open("actions.yaml")
 	if err == nil {
 		defer reader.Close()
-		return ReadActionsYaml(reader)
+		return ReadActionsYaml(charmName, reader)
 	} else if !isNotFound(err) {
 		return nil, err
 	}

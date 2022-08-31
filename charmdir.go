@@ -115,6 +115,7 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 	}
 
 	if b.actions, err = getActions(
+		b.meta.Name,
 		func(file string) (io.ReadCloser, error) {
 			return os.Open(b.join(file))
 		},
