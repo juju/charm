@@ -14,6 +14,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/juju/mgo/v3/bson"
 	"github.com/juju/names/v4"
+	"github.com/juju/utils/v3/arch"
 )
 
 // Schema represents the different types of valid schemas.
@@ -195,6 +196,7 @@ func MustParseURL(url string) *URL {
 func ParseURL(url string) (*URL, error) {
 	// Check if we're dealing with a v1 or v2 URL.
 	u, err := gourl.Parse(url)
+
 	if err != nil {
 		return nil, errors.Errorf("cannot parse charm or bundle URL: %q", url)
 	}
@@ -528,7 +530,17 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	case 3:
 		r.Architecture, r.Series, nameRev = parts[0], parts[1], parts[2]
 	case 2:
-		r.Architecture, nameRev = parts[0], parts[1]
+		// Since both the architecture and series are optional,
+		// the first part can be either architecture or series.
+		// To differentiate between them, we use the supported
+		// architecture list defined in juju/utils/arch
+
+		if arch.IsSupportedArch(parts[0]) {
+			r.Architecture, nameRev = parts[0], parts[1]
+		} else {
+			r.Series, nameRev = parts[0], parts[1]
+		}
+
 	default:
 		nameRev = parts[0]
 	}
