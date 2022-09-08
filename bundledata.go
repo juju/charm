@@ -544,9 +544,6 @@ func (bd *BundleData) verifyBundle(
 		verifier.addErrorf("bundle has an invalid type %q", bd.Type)
 	}
 	if bd.Type == kubernetes {
-		if bd.Series != "" {
-			verifier.addErrorf("bundle series not valid for Kubernetes bundles")
-		}
 		if len(bd.Machines) > 0 {
 			verifier.addErrorf("bundle machines not valid for Kubernetes bundles")
 		}
@@ -679,14 +676,8 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 		if curl != nil && curl.Series != "" && app.Series != "" && curl.Series != app.Series {
 			verifier.addErrorf("the charm URL for application %q has a series which does not match, please remove the series from the URL", name)
 		}
-		if verifier.bd.Type == kubernetes {
-			if app.Series != "" && app.Series != kubernetes {
-				verifier.addErrorf("series for application %q not valid for Kubernetes bundles", name)
-			}
-		} else {
-			if app.Series != "" && !IsValidSeries(app.Series) {
-				verifier.addErrorf("application %q declares an invalid series %q", name, app.Series)
-			}
+		if app.Series != "" && !IsValidSeries(app.Series) {
+			verifier.addErrorf("application %q declares an invalid series %q", name, app.Series)
 		}
 		// Check the Constraints.
 		if err := verifier.verifyConstraints(app.Constraints); err != nil {

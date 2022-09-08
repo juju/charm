@@ -920,10 +920,8 @@ applications:
         to: ["foo"]
 `
 	errors := []string{
-		"bundle series not valid for Kubernetes bundles",
 		`expected "key=value", got "foo" for application "hadoop"`,
 		`bundle machines not valid for Kubernetes bundles`,
-		`series for application "mariadb" not valid for Kubernetes bundles`,
 		`too many placement directives for application "casandra"`,
 	}
 
