@@ -554,12 +554,12 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	// Optional
 	if r.Architecture != "" {
 		if err := ValidateArchitecture(r.Architecture); err != nil {
-			return nil, errors.Annotatef(err, "cannot parse architecture in URL %q", url)
+			return nil, errors.Annotatef(err, "cannot parse architecture/series in URL %q", url)
 		}
 	}
 	if r.Series != "" {
 		if err := ValidateSeries(r.Series); err != nil {
-			return nil, errors.Annotatef(err, "cannot parse series in URL %q", url)
+			return nil, errors.Annotatef(err, "cannot parse architecture/series in URL %q", url)
 		}
 	}
 
