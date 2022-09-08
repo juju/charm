@@ -246,9 +246,9 @@ var urlTests = []struct {
 	s:   "ch:amd64/istio-gateway-74",
 	url: &charm.URL{"ch", "", "istio-gateway", 74, "", "amd64"},
 }, {
-	s:     "ch:arch/name",
-	url:   &charm.URL{"ch", "", "name", -1, "", "arch"},
-	exact: "ch:arch/name",
+	s:     "ch:arm64/name",
+	url:   &charm.URL{"ch", "", "name", -1, "", "arm64"},
+	exact: "ch:arm64/name",
 }, {
 	s:   "ch:~user/name",
 	err: `cannot parse architecture in URL "ch:~user/name": architecture name "~user" not valid`,
