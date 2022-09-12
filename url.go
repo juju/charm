@@ -529,13 +529,17 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	switch len(parts) {
 	case 3:
 		r.Architecture, r.Series, nameRev = parts[0], parts[1], parts[2]
+
+		if err := ValidateArchitecture(r.Architecture); err != nil {
+			return nil, errors.Annotatef(err, "in URL %q", url)
+		}
 	case 2:
 		// Since both the architecture and series are optional,
 		// the first part can be either architecture or series.
-		// To differentiate between them, we use the supported
-		// architecture list defined in juju/utils/arch
+		// To differentiate between them, we go ahead and try to
+		// validate the first part as an architecture to decide.
 
-		if arch.IsSupportedArch(parts[0]) {
+		if err := ValidateArchitecture(parts[0]); err == nil {
 			r.Architecture, nameRev = parts[0], parts[1]
 		} else {
 			r.Series, nameRev = parts[0], parts[1]
@@ -552,11 +556,6 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	}
 
 	// Optional
-	if r.Architecture != "" {
-		if err := ValidateArchitecture(r.Architecture); err != nil {
-			return nil, errors.Annotatef(err, "in URL %q", url)
-		}
-	}
 	if r.Series != "" {
 		if err := ValidateSeries(r.Series); err != nil {
 			return nil, errors.Annotatef(err, "in URL %q", url)

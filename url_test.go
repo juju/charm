@@ -224,9 +224,9 @@ var urlTests = []struct {
 	exact: "local:foo",
 	url:   &charm.URL{"local", "", "foo", -1, "", ""},
 }, {
-	s:     "arch/series/bar",
-	url:   &charm.URL{"ch", "", "bar", -1, "series", "arch"},
-	exact: "ch:arch/series/bar",
+	s:     "arm64/series/bar",
+	url:   &charm.URL{"ch", "", "bar", -1, "series", "arm64"},
+	exact: "ch:arm64/series/bar",
 }, {
 	s:   "cs:foo/~blah",
 	err: `cannot parse URL $URL: name "~blah" not valid`,
