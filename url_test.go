@@ -461,6 +461,10 @@ var validTests = []struct {
 	{charm.IsValidSeries, "precise-1", false},
 	{charm.IsValidSeries, "precise1", true},
 	{charm.IsValidSeries, "pre-c1se", false},
+
+	{charm.IsValidArchitecture, "amd64", true},
+	{charm.IsValidArchitecture, "~amd64", false},
+	{charm.IsValidArchitecture, "not-an-arch", false},
 }
 
 func (s *URLSuite) TestValidCheckers(c *gc.C) {

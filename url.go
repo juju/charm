@@ -118,8 +118,8 @@ func ValidateSeries(series string) error {
 
 // IsValidArchitecture reports whether the architecture is a valid architecture
 // in charm or bundle URLs.
-func IsValidArchitecture(arch string) bool {
-	return validArch.MatchString(arch)
+func IsValidArchitecture(architecture string) bool {
+	return validArch.MatchString(architecture) && arch.IsSupportedArch(architecture)
 }
 
 // ValidateArchitecture returns an error if the given architecture is invalid.
