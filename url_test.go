@@ -251,10 +251,10 @@ var urlTests = []struct {
 	exact: "ch:arm64/name",
 }, {
 	s:   "ch:~user/name",
-	err: `cannot parse architecture/series in URL "ch:~user/name": series name "~user" not valid`,
+	err: `in URL "ch:~user/name": series name "~user" not valid`,
 }, {
 	s:   "ch:~user/series/name-0",
-	err: `cannot parse architecture/series in URL "ch:~user/series/name-0": architecture name "~user" not valid`,
+	err: `in URL "ch:~user/series/name-0": architecture name "~user" not valid`,
 }, {
 	s:   "ch:nam-!e",
 	err: `cannot parse name and/or revision in URL "ch:nam-!e": name "nam-!e" not valid`,
