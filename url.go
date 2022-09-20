@@ -196,7 +196,6 @@ func MustParseURL(url string) *URL {
 func ParseURL(url string) (*URL, error) {
 	// Check if we're dealing with a v1 or v2 URL.
 	u, err := gourl.Parse(url)
-
 	if err != nil {
 		return nil, errors.Errorf("cannot parse charm or bundle URL: %q", url)
 	}
