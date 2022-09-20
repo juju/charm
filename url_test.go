@@ -224,9 +224,9 @@ var urlTests = []struct {
 	exact: "local:foo",
 	url:   &charm.URL{"local", "", "foo", -1, "", ""},
 }, {
-	s:     "arch/series/bar",
-	url:   &charm.URL{"ch", "", "bar", -1, "series", "arch"},
-	exact: "ch:arch/series/bar",
+	s:     "arm64/series/bar",
+	url:   &charm.URL{"ch", "", "bar", -1, "series", "arm64"},
+	exact: "ch:arm64/series/bar",
 }, {
 	s:   "cs:foo/~blah",
 	err: `cannot parse URL $URL: name "~blah" not valid`,
@@ -240,15 +240,21 @@ var urlTests = []struct {
 	s:   "ch:name-1",
 	url: &charm.URL{"ch", "", "name", 1, "", ""},
 }, {
-	s:     "ch:arch/name",
-	url:   &charm.URL{"ch", "", "name", -1, "", "arch"},
-	exact: "ch:arch/name",
+	s:   "ch:focal/istio-gateway-74",
+	url: &charm.URL{"ch", "", "istio-gateway", 74, "focal", ""},
+}, {
+	s:   "ch:amd64/istio-gateway-74",
+	url: &charm.URL{"ch", "", "istio-gateway", 74, "", "amd64"},
+}, {
+	s:     "ch:arm64/name",
+	url:   &charm.URL{"ch", "", "name", -1, "", "arm64"},
+	exact: "ch:arm64/name",
 }, {
 	s:   "ch:~user/name",
-	err: `cannot parse architecture in URL "ch:~user/name": architecture name "~user" not valid`,
+	err: `in URL "ch:~user/name": series name "~user" not valid`,
 }, {
 	s:   "ch:~user/series/name-0",
-	err: `cannot parse architecture in URL "ch:~user/series/name-0": architecture name "~user" not valid`,
+	err: `in URL "ch:~user/series/name-0": architecture name "~user" not valid`,
 }, {
 	s:   "ch:nam-!e",
 	err: `cannot parse name and/or revision in URL "ch:nam-!e": name "nam-!e" not valid`,
@@ -455,6 +461,10 @@ var validTests = []struct {
 	{charm.IsValidSeries, "precise-1", false},
 	{charm.IsValidSeries, "precise1", true},
 	{charm.IsValidSeries, "pre-c1se", false},
+
+	{charm.IsValidArchitecture, "amd64", true},
+	{charm.IsValidArchitecture, "~amd64", false},
+	{charm.IsValidArchitecture, "not-an-arch", false},
 }
 
 func (s *URLSuite) TestValidCheckers(c *gc.C) {

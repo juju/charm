@@ -14,6 +14,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/juju/mgo/v3/bson"
 	"github.com/juju/names/v4"
+	"github.com/juju/utils/v3/arch"
 )
 
 // Schema represents the different types of valid schemas.
@@ -117,8 +118,8 @@ func ValidateSeries(series string) error {
 
 // IsValidArchitecture reports whether the architecture is a valid architecture
 // in charm or bundle URLs.
-func IsValidArchitecture(arch string) bool {
-	return validArch.MatchString(arch)
+func IsValidArchitecture(architecture string) bool {
+	return validArch.MatchString(architecture) && arch.IsSupportedArch(architecture)
 }
 
 // ValidateArchitecture returns an error if the given architecture is invalid.
@@ -527,8 +528,22 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	switch len(parts) {
 	case 3:
 		r.Architecture, r.Series, nameRev = parts[0], parts[1], parts[2]
+
+		if err := ValidateArchitecture(r.Architecture); err != nil {
+			return nil, errors.Annotatef(err, "in URL %q", url)
+		}
 	case 2:
-		r.Architecture, nameRev = parts[0], parts[1]
+		// Since both the architecture and series are optional,
+		// the first part can be either architecture or series.
+		// To differentiate between them, we go ahead and try to
+		// validate the first part as an architecture to decide.
+
+		if err := ValidateArchitecture(parts[0]); err == nil {
+			r.Architecture, nameRev = parts[0], parts[1]
+		} else {
+			r.Series, nameRev = parts[0], parts[1]
+		}
+
 	default:
 		nameRev = parts[0]
 	}
@@ -540,14 +555,9 @@ func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	}
 
 	// Optional
-	if r.Architecture != "" {
-		if err := ValidateArchitecture(r.Architecture); err != nil {
-			return nil, errors.Annotatef(err, "cannot parse architecture in URL %q", url)
-		}
-	}
 	if r.Series != "" {
 		if err := ValidateSeries(r.Series); err != nil {
-			return nil, errors.Annotatef(err, "cannot parse series in URL %q", url)
+			return nil, errors.Annotatef(err, "in URL %q", url)
 		}
 	}
 
