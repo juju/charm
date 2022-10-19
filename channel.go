@@ -148,9 +148,6 @@ func ParseChannelNormalize(s string) (Channel, error) {
 // Normalize the channel with normalized track, risk and names.
 func (ch Channel) Normalize() Channel {
 	track := ch.Track
-	if track == "latest" {
-		track = ""
-	}
 
 	risk := ch.Risk
 	if risk == "" {
