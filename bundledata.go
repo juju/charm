@@ -640,9 +640,6 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 				verifier.addErrorf("cannot specify revision in %q, please use revision", curl.String())
 			}
 			if app.Revision != nil {
-				if CharmStore.Matches(curl.Schema) && curl.Revision != -1 && curl.Revision != *app.Revision {
-					verifier.addErrorf("application %q has 2 different revisions specified, please choose 1", name)
-				}
 				if CharmHub.Matches(curl.Schema) && app.Channel == "" {
 					verifier.addErrorf("application %q with a revision requires a channel for future upgrades, please use channel", name)
 				}

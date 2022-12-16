@@ -21,13 +21,10 @@ import (
 type Schema string
 
 const (
-	// CharmStore schema represents the original schema for a charm URL
-	CharmStore Schema = "cs"
-
 	// Local represents a local charm URL, describes as a file system path.
 	Local Schema = "local"
 
-	// CharmHub schema represents the new schema for another unique charm store.
+	// CharmHub schema represents the charmhub charm repository.
 	CharmHub Schema = "ch"
 
 	// HTTP refers to the HTTP schema that is used for the V2 of the charm URL.
@@ -60,16 +57,10 @@ type Location interface {
 
 // URL represents a charm or bundle location:
 //
-//     cs:~joe/oneiric/wordpress
-//     cs:oneiric/wordpress-42
-//     local:oneiric/wordpress
-//     cs:~joe/wordpress
-//     cs:wordpress
-//     cs:precise/wordpress-20
-//     cs:development/precise/wordpress-20
-//     cs:~joe/development/wordpress
-//     ch:wordpress
-//
+//	local:oneiric/wordpress
+//	cs:wordpress
+//	ch:wordpress
+//	ch:amd64/jammy/wordpress-30
 type URL struct {
 	Schema       string // "cs", "ch" or "local".
 	User         string // "joe".
@@ -88,7 +79,6 @@ var (
 // ValidateSchema returns an error if the schema is invalid.
 //
 // Valid schemas for the URL are:
-// - cs: charm store
 // - ch: charm hub
 // - local: local file
 //
@@ -96,7 +86,7 @@ var (
 func ValidateSchema(schema string) error {
 	switch schema {
 	// ignore http/https schemas.
-	case CharmStore.String(), CharmHub.String(), Local.String():
+	case CharmHub.String(), Local.String():
 		return nil
 	}
 	return errors.NotValidf("schema %q", schema)
@@ -179,20 +169,7 @@ func MustParseURL(url string) *URL {
 // ParseURL parses the provided charm URL string into its respective
 // structure.
 //
-// Additionally, fully-qualified charmstore URLs are supported; note that this
-// currently assumes that they will map to jujucharms.com (that is,
-// fully-qualified URLs currently map to the 'cs' schema):
-//
-//    https://jujucharms.com/name
-//    https://jujucharms.com/name/series
-//    https://jujucharms.com/name/revision
-//    https://jujucharms.com/name/series/revision
-//    https://jujucharms.com/u/user/name
-//    https://jujucharms.com/u/user/name/series
-//    https://jujucharms.com/u/user/name/revision
-//    https://jujucharms.com/u/user/name/series/revision
-//
-// A missing schema is assumed to be 'cs'.
+// A missing schema is assumed to be 'ch'.
 func ParseURL(url string) (*URL, error) {
 	// Check if we're dealing with a v1 or v2 URL.
 	u, err := gourl.Parse(url)
@@ -210,10 +187,6 @@ func ParseURL(url string) (*URL, error) {
 	case u.Opaque != "":
 		u.Path = u.Opaque
 		curl, err = parseV1URL(u, url)
-	case CharmStore.Matches(u.Scheme):
-		curl, err = parseV1URL(u, url)
-	case HTTP.Matches(u.Scheme) || HTTPS.Matches(u.Scheme):
-		curl, err = parseHTTPURL(u)
 	default:
 		// Handle the fact that anything without a prefix is now a CharmHub
 		// charm URL.
@@ -229,9 +202,7 @@ func ParseURL(url string) (*URL, error) {
 }
 
 func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
-	r := URL{
-		Schema: CharmStore.String(),
-	}
+	r := URL{}
 	if url.Scheme != "" {
 		r.Schema = url.Scheme
 	}
@@ -413,101 +384,22 @@ func Quote(unsafe string) string {
 	return string(safe)
 }
 
-// RewriteURL turns a HTTP(s) URL into a charm URL.
-//
-// Fully-qualified charmstore URLs are supported; note that this
-// currently assumes that they will map to jujucharms.com (that is,
-// fully-qualified URLs currently map to the 'cs' schema):
-//
-//    https://jujucharms.com/name -> cs:name
-//    https://jujucharms.com/name/series -> cs:series/name
-//    https://jujucharms.com/name/revision -> cs:name-revision
-//    https://jujucharms.com/name/series/revision -> cs:series/name-revision
-//    https://jujucharms.com/u/user/name -> cs:~user/name
-//    https://jujucharms.com/u/user/name/series -> cs:~user/series/name
-//    https://jujucharms.com/u/user/name/revision -> cs:~user/name-revision
-//    https://jujucharms.com/u/user/name/series/revision -> cs:~user/series/name-revision
-//
-// A missing schema is assumed to be 'cs'.
-func RewriteURL(url string) (string, error) {
-	u, err := gourl.Parse(url)
-	if err != nil {
-		return "", errors.Errorf("cannot parse charm or bundle URL: %q", url)
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return "", errors.Errorf("unexpected url schema %q", u.Scheme)
-	}
-	if u.RawQuery != "" || u.Fragment != "" || u.User != nil {
-		return "", errors.Errorf("charm or bundle URL %q has unrecognized parts", url)
-	}
-	httpURL, err := parseHTTPURL(u)
-	if err != nil {
-		return "", errors.Trace(err)
-	}
-	return httpURL.String(), nil
-}
-
-func parseHTTPURL(url *gourl.URL) (*URL, error) {
-	r := URL{
-		Schema: CharmStore.String(),
-	}
-
-	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
-	if parts[0] == "u" {
-		if len(parts) < 3 {
-			return nil, errors.Errorf(`charm or bundle URL %q malformed, expected "/u/<user>/<name>"`, url)
-		}
-		r.User, parts = parts[1], parts[2:]
-	}
-
-	r.Name, parts = parts[0], parts[1:]
-	r.Revision = -1
-	if len(parts) > 0 {
-		revision, err := strconv.Atoi(parts[0])
-		if err == nil {
-			r.Revision = revision
-		} else {
-			r.Series, parts = parts[0], parts[1:]
-			if err := ValidateSeries(r.Series); err != nil {
-				return nil, errors.Annotatef(err, "cannot parse URL %q", url)
-			}
-			if len(parts) == 1 {
-				r.Revision, err = strconv.Atoi(parts[0])
-				if err != nil {
-					return nil, errors.Errorf("charm or bundle URL has malformed revision: %q in %q", parts[0], url)
-				}
-			} else if len(parts) != 0 {
-				return nil, errors.Errorf("charm or bundle URL has invalid form: %q", url)
-			}
-		}
-	}
-
-	if r.User != "" && !names.IsValidUser(r.User) {
-		return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", url)
-	}
-	if err := ValidateName(r.Name); err != nil {
-		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
-	}
-	return &r, nil
-}
-
 // parseIdentifierURL will attempt to parse an identifier URL. The identifier
 // URL is split up into 3 parts, some of which are optional and some are
 // mandatory.
 //
-//  - architecture (optional)
-//  - series (optional)
-//  - name
-//  - revision (optional)
+//   - architecture (optional)
+//   - series (optional)
+//   - name
+//   - revision (optional)
 //
 // Examples are as follows:
 //
-//  - ch:amd64/foo-1
-//  - ch:amd64/focal/foo-1
-//  - ch:foo-1
-//  - ch:foo
-//  - ch:amd64/focal/foo
-//
+//   - ch:amd64/foo-1
+//   - ch:amd64/focal/foo-1
+//   - ch:foo-1
+//   - ch:foo
+//   - ch:amd64/focal/foo
 func parseIdentifierURL(url *gourl.URL) (*URL, error) {
 	r := URL{
 		Schema:   CharmHub.String(),
@@ -573,7 +465,7 @@ func EnsureSchema(url string, defaultSchema Schema) (string, error) {
 		return "", errors.Errorf("cannot parse charm or bundle URL: %q", url)
 	}
 	switch Schema(u.Scheme) {
-	case CharmStore, CharmHub, Local, HTTP, HTTPS:
+	case CharmHub, Local, HTTP, HTTPS:
 		return url, nil
 	case Schema(""):
 		// If the schema is empty, we fall back to the default schema.

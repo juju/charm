@@ -25,18 +25,6 @@ var urlTests = []struct {
 	exact  string
 	url    *charm.URL
 }{{
-	s:   "cs:~user/series/name",
-	url: &charm.URL{"cs", "user", "name", -1, "series", ""},
-}, {
-	s:   "cs:~user/series/name-0",
-	url: &charm.URL{"cs", "user", "name", 0, "series", ""},
-}, {
-	s:   "cs:series/name",
-	url: &charm.URL{"cs", "", "name", -1, "series", ""},
-}, {
-	s:   "cs:series/name-42",
-	url: &charm.URL{"cs", "", "name", 42, "series", ""},
-}, {
 	s:   "local:series/name-1",
 	url: &charm.URL{"local", "", "name", 1, "series", ""},
 }, {
@@ -46,153 +34,14 @@ var urlTests = []struct {
 	s:   "local:series/n0-0n-n0",
 	url: &charm.URL{"local", "", "n0-0n-n0", -1, "series", ""},
 }, {
-	s:   "cs:~user/name",
-	url: &charm.URL{"cs", "user", "name", -1, "", ""},
-}, {
-	s:   "cs:name",
-	url: &charm.URL{"cs", "", "name", -1, "", ""},
-}, {
 	s:   "local:name",
 	url: &charm.URL{"local", "", "name", -1, "", ""},
-}, {
-	s:     "http://jujucharms.com/u/user/name/series/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "series", ""},
-	exact: "cs:~user/series/name-1",
-}, {
-	s:     "http://www.jujucharms.com/u/user/name/series/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "series", ""},
-	exact: "cs:~user/series/name-1",
-}, {
-	s:     "https://www.jujucharms.com/u/user/name/series/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "series", ""},
-	exact: "cs:~user/series/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name/series/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "series", ""},
-	exact: "cs:~user/series/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name/series",
-	url:   &charm.URL{"cs", "user", "name", -1, "series", ""},
-	exact: "cs:~user/series/name",
-}, {
-	s:     "https://jujucharms.com/u/user/name/1",
-	url:   &charm.URL{"cs", "user", "name", 1, "", ""},
-	exact: "cs:~user/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name",
-	url:   &charm.URL{"cs", "user", "name", -1, "", ""},
-	exact: "cs:~user/name",
-}, {
-	s:     "https://jujucharms.com/name",
-	url:   &charm.URL{"cs", "", "name", -1, "", ""},
-	exact: "cs:name",
-}, {
-	s:     "https://jujucharms.com/name/series",
-	url:   &charm.URL{"cs", "", "name", -1, "series", ""},
-	exact: "cs:series/name",
-}, {
-	s:     "https://jujucharms.com/name/1",
-	url:   &charm.URL{"cs", "", "name", 1, "", ""},
-	exact: "cs:name-1",
-}, {
-	s:     "https://jujucharms.com/name/series/1",
-	url:   &charm.URL{"cs", "", "name", 1, "series", ""},
-	exact: "cs:series/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name/series/1/",
-	url:   &charm.URL{"cs", "user", "name", 1, "series", ""},
-	exact: "cs:~user/series/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name/series/",
-	url:   &charm.URL{"cs", "user", "name", -1, "series", ""},
-	exact: "cs:~user/series/name",
-}, {
-	s:     "https://jujucharms.com/u/user/name/1/",
-	url:   &charm.URL{"cs", "user", "name", 1, "", ""},
-	exact: "cs:~user/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name/",
-	url:   &charm.URL{"cs", "user", "name", -1, "", ""},
-	exact: "cs:~user/name",
-}, {
-	s:     "https://jujucharms.com/name/",
-	url:   &charm.URL{"cs", "", "name", -1, "", ""},
-	exact: "cs:name",
-}, {
-	s:     "https://jujucharms.com/name/series/",
-	url:   &charm.URL{"cs", "", "name", -1, "series", ""},
-	exact: "cs:series/name",
-}, {
-	s:     "https://jujucharms.com/name/1/",
-	url:   &charm.URL{"cs", "", "name", 1, "", ""},
-	exact: "cs:name-1",
-}, {
-	s:     "https://jujucharms.com/name/series/1/",
-	url:   &charm.URL{"cs", "", "name", 1, "series", ""},
-	exact: "cs:series/name-1",
-}, {
-	s:   "https://jujucharms.com/",
-	err: `cannot parse URL $URL: name "" not valid`,
-}, {
-	s:   "https://jujucharms.com/bad.wolf",
-	err: `cannot parse URL $URL: name "bad.wolf" not valid`,
-}, {
-	s:   "https://jujucharms.com/u/",
-	err: "charm or bundle URL $URL malformed, expected \"/u/<user>/<name>\"",
-}, {
-	s:   "https://jujucharms.com/u/badwolf",
-	err: "charm or bundle URL $URL malformed, expected \"/u/<user>/<name>\"",
-}, {
-	s:   "https://jujucharms.com/name/series/badwolf",
-	err: "charm or bundle URL has malformed revision: \"badwolf\" in $URL",
-}, {
-	s:   "https://jujucharms.com/name/bad.wolf/42",
-	err: `cannot parse URL $URL: series name "bad.wolf" not valid`,
-}, {
-	s:   "https://badwolf@jujucharms.com/name/series/42",
-	err: `charm or bundle URL $URL has unrecognized parts`,
-}, {
-	s:   "https://jujucharms.com/name/series/42#bad-wolf",
-	err: `charm or bundle URL $URL has unrecognized parts`,
-}, {
-	s:   "https://jujucharms.com/name/series/42?bad=wolf",
-	err: `charm or bundle URL $URL has unrecognized parts`,
 }, {
 	s:   "bs:~user/series/name-1",
 	err: `cannot parse URL $URL: schema "bs" not valid`,
 }, {
 	s:   ":foo",
 	err: `cannot parse charm or bundle URL: $URL`,
-}, {
-	s:   "cs:~1/series/name-1",
-	err: `charm or bundle URL has invalid user name: $URL`,
-}, {
-	s:   "cs:~user",
-	err: `URL without charm or bundle name: $URL`,
-}, {
-	s:   "cs:~user/1/name-1",
-	err: `cannot parse URL $URL: series name "1" not valid`,
-}, {
-	s:   "cs:~user/series/name-1-2",
-	err: `cannot parse URL $URL: name "name-1" not valid`,
-}, {
-	s:   "cs:~user/series/name-1-name-2",
-	err: `cannot parse URL $URL: name "name-1-name" not valid`,
-}, {
-	s:   "cs:~user/series/name--name-2",
-	err: `cannot parse URL $URL: name "name--name" not valid`,
-}, {
-	s:   "cs:foo-1-2",
-	err: `cannot parse URL $URL: name "foo-1" not valid`,
-}, {
-	s:   "cs:~user/series/huh/name-1",
-	err: `charm or bundle URL has invalid form: $URL`,
-}, {
-	s:   "cs:~user/production/series/name-1",
-	err: `charm or bundle URL has invalid form: $URL`,
-}, {
-	s:   "cs:/name",
-	err: `cannot parse URL $URL: series name "" not valid`,
 }, {
 	s:   "local:~user/series/name",
 	err: `local charm or bundle URL with user name: $URL`,
@@ -216,10 +65,6 @@ var urlTests = []struct {
 	exact: "ch:n0-n0-n0",
 	url:   &charm.URL{"ch", "", "n0-n0-n0", -1, "", ""},
 }, {
-	s:     "cs:foo",
-	exact: "cs:foo",
-	url:   &charm.URL{"cs", "", "foo", -1, "", ""},
-}, {
 	s:     "local:foo",
 	exact: "local:foo",
 	url:   &charm.URL{"local", "", "foo", -1, "", ""},
@@ -227,9 +72,6 @@ var urlTests = []struct {
 	s:     "arm64/series/bar",
 	url:   &charm.URL{"ch", "", "bar", -1, "series", "arm64"},
 	exact: "ch:arm64/series/bar",
-}, {
-	s:   "cs:foo/~blah",
-	err: `cannot parse URL $URL: name "~blah" not valid`,
 }, {
 	s:   "ch:name",
 	url: &charm.URL{"ch", "", "name", -1, "", ""},
@@ -258,6 +100,9 @@ var urlTests = []struct {
 }, {
 	s:   "ch:nam-!e",
 	err: `cannot parse name and/or revision in URL "ch:nam-!e": name "nam-!e" not valid`,
+}, {
+	s:   "cs:testme",
+	err: `cannot parse URL "cs:testme": schema "cs" not valid`,
 }}
 
 func (s *URLSuite) TestParseURL(c *gc.C) {
@@ -289,117 +134,6 @@ func (s *URLSuite) TestParseURL(c *gc.C) {
 	}
 }
 
-var rewriteTests = []struct {
-	s, err string
-	exact  string
-}{{
-	s:   "cs:redis",
-	err: `unexpected url schema "cs"`,
-}, {
-	s:   "local:~user/name",
-	err: `unexpected url schema "local"`,
-}, {
-	s:     "http://jujucharms.com/u/user/name/series/1",
-	exact: "cs:~user/series/name-1",
-}, {
-	s:     "http://www.jujucharms.com/u/user/name/series/1",
-	exact: "cs:~user/series/name-1",
-}, {
-	s:     "https://www.jujucharms.com/u/user/name/series/1",
-	exact: "cs:~user/series/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name/series/1",
-	exact: "cs:~user/series/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name/series",
-	exact: "cs:~user/series/name",
-}, {
-	s:     "https://jujucharms.com/u/user/name/1",
-	exact: "cs:~user/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name",
-	exact: "cs:~user/name",
-}, {
-	s:     "https://jujucharms.com/name",
-	exact: "cs:name",
-}, {
-	s:     "https://jujucharms.com/name/series",
-	exact: "cs:series/name",
-}, {
-	s:     "https://jujucharms.com/name/1",
-	exact: "cs:name-1",
-}, {
-	s:     "https://jujucharms.com/name/series/1",
-	exact: "cs:series/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name/series/1/",
-	exact: "cs:~user/series/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name/series/",
-	exact: "cs:~user/series/name",
-}, {
-	s:     "https://jujucharms.com/u/user/name/1/",
-	exact: "cs:~user/name-1",
-}, {
-	s:     "https://jujucharms.com/u/user/name/",
-	exact: "cs:~user/name",
-}, {
-	s:     "https://jujucharms.com/name/",
-	exact: "cs:name",
-}, {
-	s:     "https://jujucharms.com/name/series/",
-	exact: "cs:series/name",
-}, {
-	s:     "https://jujucharms.com/name/1/",
-	exact: "cs:name-1",
-}, {
-	s:     "https://jujucharms.com/name/series/1/",
-	exact: "cs:series/name-1",
-}, {
-	s:   "https://jujucharms.com/",
-	err: `cannot parse URL $URL: name "" not valid`,
-}, {
-	s:   "https://jujucharms.com/bad.wolf",
-	err: `cannot parse URL $URL: name "bad.wolf" not valid`,
-}, {
-	s:   "https://jujucharms.com/u/",
-	err: "charm or bundle URL $URL malformed, expected \"/u/<user>/<name>\"",
-}, {
-	s:   "https://jujucharms.com/u/badwolf",
-	err: "charm or bundle URL $URL malformed, expected \"/u/<user>/<name>\"",
-}, {
-	s:   "https://jujucharms.com/name/series/badwolf",
-	err: "charm or bundle URL has malformed revision: \"badwolf\" in $URL",
-}, {
-	s:   "https://jujucharms.com/name/bad.wolf/42",
-	err: `cannot parse URL $URL: series name "bad.wolf" not valid`,
-}, {
-	s:   "https://badwolf@jujucharms.com/name/series/42",
-	err: `charm or bundle URL $URL has unrecognized parts`,
-}, {
-	s:   "https://jujucharms.com/name/series/42#bad-wolf",
-	err: `charm or bundle URL $URL has unrecognized parts`,
-}, {
-	s:   "https://jujucharms.com/name/series/42?bad=wolf",
-	err: `charm or bundle URL $URL has unrecognized parts`,
-}}
-
-func (s *URLSuite) TestRewriteURL(c *gc.C) {
-	for i, t := range rewriteTests {
-		c.Logf("test %d: %q", i, t.s)
-
-		url, uerr := charm.RewriteURL(t.s)
-		if t.err != "" {
-			t.err = strings.Replace(t.err, "$URL", regexp.QuoteMeta(fmt.Sprintf("%q", t.s)), -1)
-			c.Check(uerr, gc.ErrorMatches, t.err)
-			c.Check(url, gc.Equals, "")
-			continue
-		}
-		c.Assert(uerr, gc.IsNil)
-		c.Check(url, gc.Equals, t.exact)
-	}
-}
-
 var ensureSchemaTests = []struct {
 	input, expected, err string
 }{
@@ -407,10 +141,7 @@ var ensureSchemaTests = []struct {
 	{input: "foo-1", expected: "ch:foo-1"},
 	{input: "~user/foo", expected: "ch:~user/foo"},
 	{input: "series/foo", expected: "ch:series/foo"},
-	{input: "cs:foo", expected: "cs:foo"},
 	{input: "local:foo", expected: "local:foo"},
-	{input: "http:foo", expected: "http:foo"},
-	{input: "https:foo", expected: "https:foo"},
 	{
 		input: "unknown:foo",
 		err:   `schema "unknown" not valid`,
@@ -475,21 +206,17 @@ func (s *URLSuite) TestValidCheckers(c *gc.C) {
 }
 
 func (s *URLSuite) TestMustParseURL(c *gc.C) {
-	url := charm.MustParseURL("cs:series/name")
-	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series", ""})
+	url := charm.MustParseURL("ch:series/name")
+	c.Assert(url, gc.DeepEquals, &charm.URL{"ch", "", "name", -1, "series", ""})
 	f := func() { charm.MustParseURL("local:@@/name") }
 	c.Assert(f, gc.PanicMatches, "cannot parse URL \"local:@@/name\": series name \"@@\" not valid")
-	f = func() { charm.MustParseURL("cs:~user") }
-	c.Assert(f, gc.PanicMatches, "URL without charm or bundle name: .*")
-	f = func() { charm.MustParseURL("cs:~user") }
-	c.Assert(f, gc.PanicMatches, "URL without charm or bundle name: .*")
 }
 
 func (s *URLSuite) TestWithRevision(c *gc.C) {
-	url := charm.MustParseURL("cs:series/name")
+	url := charm.MustParseURL("ch:series/name")
 	other := url.WithRevision(1)
-	c.Assert(url, gc.DeepEquals, &charm.URL{"cs", "", "name", -1, "series", ""})
-	c.Assert(other, gc.DeepEquals, &charm.URL{"cs", "", "name", 1, "series", ""})
+	c.Assert(url, gc.DeepEquals, &charm.URL{"ch", "", "name", -1, "series", ""})
+	c.Assert(other, gc.DeepEquals, &charm.URL{"ch", "", "name", 1, "series", ""})
 
 	// Should always copy. The opposite behavior is error prone.
 	c.Assert(other.WithRevision(1), gc.Not(gc.Equals), other)
@@ -520,7 +247,7 @@ func (s *URLSuite) TestURLCodecs(c *gc.C) {
 		type doc struct {
 			URL *charm.URL `json:",omitempty" bson:",omitempty" yaml:",omitempty"`
 		}
-		url := charm.MustParseURL("cs:series/name")
+		url := charm.MustParseURL("ch:name")
 		v0 := doc{url}
 		data, err := codec.Marshal(v0)
 		c.Assert(err, gc.IsNil)
@@ -536,7 +263,7 @@ func (s *URLSuite) TestURLCodecs(c *gc.C) {
 		var vs strDoc
 		err = codec.Unmarshal(data, &vs)
 		c.Assert(err, gc.IsNil)
-		c.Assert(vs.URL, gc.Equals, "cs:series/name")
+		c.Assert(vs.URL, gc.Equals, "ch:name")
 
 		data, err = codec.Marshal(doc{})
 		c.Assert(err, gc.IsNil)
@@ -549,7 +276,7 @@ func (s *URLSuite) TestURLCodecs(c *gc.C) {
 
 func (s *URLSuite) TestJSONGarbage(c *gc.C) {
 	// unmarshalling json gibberish
-	for _, value := range []string{":{", `"cs:{}+<"`, `"cs:~_~/f00^^&^/baaaar$%-?"`} {
+	for _, value := range []string{":{", `"ch:{}+<"`, `"ch:~_~/f00^^&^/baaaar$%-?"`} {
 		err := json.Unmarshal([]byte(value), new(struct{ URL *charm.URL }))
 		c.Check(err, gc.NotNil)
 	}

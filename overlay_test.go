@@ -45,7 +45,7 @@ func (*bundleDataOverlaySuite) TestExtractBaseAndOverlayParts(c *gc.C) {
 	data := `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     exposed-endpoints:
       www:
         expose-to-spaces:
@@ -72,7 +72,7 @@ series: bionic
 	expBase := `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
 saas:
   apache2:
     url: production:admin/info.apache
@@ -258,7 +258,7 @@ func (*bundleDataOverlaySuite) TestVerifyNoOverlayFieldsPresent(c *gc.C) {
 	data := `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     offers:
       my-offer:
         endpoints:
@@ -328,7 +328,7 @@ func (*bundleDataOverlaySuite) TestOverrideCharmAndSeries(c *gc.C) {
 	testBundleMergeResult(c, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     num_units: 1
 ---
 series: trusty
@@ -351,7 +351,7 @@ func (*bundleDataOverlaySuite) TestOverrideScale(c *gc.C) {
 	testBundleMergeResult(c, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     scale: 1
 ---
 applications:
@@ -360,7 +360,7 @@ applications:
 `, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     num_units: 2
 `,
 	)
@@ -372,7 +372,7 @@ func (*bundleDataOverlaySuite) TestOverrideScaleWithNumUnits(c *gc.C) {
 	testBundleMergeResult(c, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     scale: 1
 ---
 applications:
@@ -381,7 +381,7 @@ applications:
 `, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     num_units: 2
 `,
 	)
@@ -391,7 +391,7 @@ func (*bundleDataOverlaySuite) TestMultipleOverrideScale(c *gc.C) {
 	testBundleMergeResult(c, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     scale: 1
 ---
 applications:
@@ -404,7 +404,7 @@ applications:
 `, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     num_units: 3
 `,
 	)
@@ -414,7 +414,7 @@ func (*bundleDataOverlaySuite) TestOverrideScaleWithZero(c *gc.C) {
 	testBundleMergeResult(c, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     scale: 1
 ---
 applications:
@@ -423,7 +423,7 @@ applications:
 `, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     num_units: 1
 `,
 	)
@@ -433,7 +433,7 @@ func (*bundleDataOverlaySuite) TestAddAndOverrideResourcesStorageDevicesAndBindi
 	testBundleMergeResult(c, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     resources:
       res1: foo
     storage:
@@ -457,7 +457,7 @@ applications:
 `, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     resources:
       res1: bar
       res2: new
@@ -477,7 +477,7 @@ func (*bundleDataOverlaySuite) TestAddAndOverrideOptionsAndAnnotations(c *gc.C) 
 	testBundleMergeResult(c, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     options:
       opt1: foo
       opt1: bar
@@ -495,7 +495,7 @@ applications:
 `, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     options:
       opt1: foo
       opt2: ""
@@ -509,7 +509,7 @@ func (*bundleDataOverlaySuite) TestOverrideUnitsTrustConstraintsAndExposeFlags(c
 	testBundleMergeResult(c, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
 ---
 applications:
   apache2:
@@ -523,7 +523,7 @@ applications:
 `, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
     num_units: 4
     to:
     - lxd/0
@@ -539,18 +539,18 @@ func (*bundleDataOverlaySuite) TestAddModifyAndRemoveApplicationsAndRelations(c 
 	testBundleMergeResult(c, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
   wordpress:
-    charm: cs:wordpress-2
+    charm: wordpress
   dummy:
-    charm: cs:dummy
+    charm: dummy
 relations:
 - - wordpress:www
   - apache2:www
 ---
 applications:
   apache2:
-    charm: cs:apache2-42
+    charm: apache2
   wordpress: 
 relations:
 - - dummy:www
@@ -558,9 +558,9 @@ relations:
 `, `
 applications:
   apache2:
-    charm: cs:apache2-42
+    charm: apache2
   dummy:
-    charm: cs:dummy
+    charm: dummy
 relations:
 - - dummy:www
   - apache2:www
@@ -575,7 +575,7 @@ saas:
     url: jaas:admin/default.postgres
 applications:
   wordpress:
-    charm: cs:wordpress-2
+    charm: wordpress
 relations:
 - - wordpress:db
   - postgres:db
@@ -587,7 +587,7 @@ saas:
 `, `
 applications:
   wordpress:
-    charm: cs:wordpress-2
+    charm: wordpress
 saas:
   cockroachdb:
     url: jaas:admin/default.cockroachdb
@@ -599,7 +599,9 @@ func (*bundleDataOverlaySuite) TestAddAndRemoveOffers(c *gc.C) {
 	testBundleMergeResult(c, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
+    channel: stable
+    revision: 26
 --- # offer blocks are overlay-specific
 applications:
   apache2:
@@ -622,7 +624,9 @@ applications:
 `, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
+    channel: stable
+    revision: 26
     offers:
       my-offer:
         endpoints:
@@ -639,7 +643,9 @@ func (*bundleDataOverlaySuite) TestAddAndRemoveMachines(c *gc.C) {
 	testBundleMergeResult(c, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
+    channel: stable
+    revision: 26
 machines:
   "0": {}
   "1": {}
@@ -649,7 +655,9 @@ machines:
 `, `
 applications:
   apache2:
-    charm: cs:apache2-26
+    charm: apache2
+    channel: stable
+    revision: 26
 machines:
   "2": {}
 `,
@@ -661,7 +669,7 @@ func (*bundleDataOverlaySuite) TestYAMLInterpolation(c *gc.C) {
 applications:
     django:
         expose: true
-        charm: cs:django
+        charm: django
         num_units: 1
         options:
             general: good
@@ -670,7 +678,9 @@ applications:
             key2: value2
         to: [1]
     memcached:
-        charm: xenial/mem-47
+        charm: mem
+        revision: 47
+        series: trusty
         num_units: 1
         options:
             key: value
@@ -688,7 +698,9 @@ applications:
 
 	addWiki := `
 defaultwiki: &DEFAULTWIKI
-    charm: "cs:trusty/mediawiki-5"
+    charm: "mediawiki"
+    revision: 5
+    series: trusty
     num_units: 1
     options: &WIKIOPTS
         debug: false
@@ -719,12 +731,16 @@ relations:
 	exp := `
 applications:
   memcached:
-    charm: xenial/mem-47
+    charm: mem
+    revision: 47
+    series: trusty
     num_units: 1
     options:
       key: value
   wiki:
-    charm: cs:trusty/mediawiki-5
+    charm: mediawiki
+    revision: 5
+    series: trusty
     num_units: 1
     options:
       debug: false

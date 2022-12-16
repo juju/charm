@@ -1,15 +1,15 @@
-series: precise
+series: jammy
 applications:
   mysql:
-    charm: cs:precise/mysql
+    charm: mysql
     constraints: mem=1G
     options:
       dataset-size: 50%
   rabbitmq-server:
-    charm: cs:precise/rabbitmq-server
+    charm: rabbitmq-server
     constraints: mem=1G
   ceph:
-    charm: cs:precise/ceph
+    charm: ceph
     num_units: 3
     constraints: mem=1G
     options:
@@ -20,16 +20,16 @@ applications:
       osd-reformat: "yes"
       ephemeral-unmount: /mnt
   keystone:
-    charm: cs:precise/keystone
+    charm: keystone
     constraints: mem=1G
     options:
       admin-password: openstack
       admin-token: ubuntutesting
   openstack-dashboard:
-    charm: cs:precise/openstack-dashboard
+    charm: openstack-dashboard
     constraints: mem=1G
   nova-compute:
-    charm: cs:precise/nova-compute
+    charm: nova-compute
     num_units: 3
     constraints: mem=4G
     options:
@@ -37,24 +37,24 @@ applications:
       enable-live-migration: False
       virt-type: kvm
   nova-cloud-controller:
-    charm: cs:precise/nova-cloud-controller
+    charm: nova-cloud-controller
     constraints: mem=1G
     options:
       network-manager: Neutron
       quantum-security-groups: "yes"
   neutron-gateway:
-    charm: cs:precise/quantum-gateway
+    charm: quantum-gateway
     constraints: mem=1G
   cinder:
-    charm: cs:precise/cinder
+    charm: cinder
     options:
       block-device: "None"
     constraints": mem=1G
   glance:
-    charm: cs:precise/glance
+    charm: glance
     constraints: mem=1G
   swift-proxy:
-    charm: cs:precise/swift-proxy
+    charm: swift-proxy
     constraints: mem=1G
     options:
       zone-assignment: manual
@@ -62,39 +62,39 @@ applications:
       use-https: 'no'
       swift-hash: fdfef9d4-8b06-11e2-8ac0-531c923c8fae
   swift-storage-z1:
-    charm: cs:precise/swift-storage
+    charm: swift-storage
     constraints: mem=1G
     options:
       zone: 1
       block-device: vdb
       overwrite: "true"
   swift-storage-z2:
-    charm: cs:precise/swift-storage
+    charm: swift-storage
     constraints: mem=1G
     options:
       zone: 2
       block-device: vdb
       overwrite: "true"
   swift-storage-z3:
-    charm: cs:precise/swift-storage
+    charm: swift-storage
     constraints: mem=1G
     options:
       zone: 3
       block-device: vdb
       overwrite: "true"
   ceilometer:
-    charm: cs:precise/ceilometer
+    charm: ceilometer
     constraints: mem=1G
   ceilometer-agent:
-    charm: cs:precise/ceilometer-agent
+    charm: ceilometer-agent
   mongodb:
-    charm: cs:precise/mongodb
+    charm: mongodb
     constraints: mem=1G
   heat:
-    charm: cs:precise/heat
+    charm: heat
     constraints: mem=1G
   ntp:
-    charm: cs:precise/ntp
+    charm: ntp
 relations:
   - - keystone:shared-db
     - mysql:shared-db

@@ -28,7 +28,7 @@ const mediawikiBundle = `
 series: precise
 applications:
     mediawiki:
-        charm: "cs:precise/mediawiki-10"
+        charm: "mediawiki"
         num_units: 1
         expose: true
         options:
@@ -46,7 +46,7 @@ applications:
         resources:
             data: 3
     mysql:
-        charm: "cs:precise/mysql-28"
+        charm: "mysql"
         num_units: 2
         to: [0, mediawiki/0]
         options:
@@ -80,6 +80,13 @@ description: |
     Lovely day.
 `
 
+// Revision are an *int, create a few ints for their addresses used in tests.
+var (
+	five        = 5
+	ten         = 10
+	twentyEight = 28
+)
+
 var parseTests = []struct {
 	about       string
 	data        string
@@ -92,7 +99,7 @@ var parseTests = []struct {
 		Series: "precise",
 		Applications: map[string]*charm.ApplicationSpec{
 			"mediawiki": {
-				Charm:    "cs:precise/mediawiki-10",
+				Charm:    "mediawiki",
 				NumUnits: 1,
 				Expose:   true,
 				Options: map[string]interface{}{
@@ -116,7 +123,7 @@ var parseTests = []struct {
 				},
 			},
 			"mysql": {
-				Charm:    "cs:precise/mysql-28",
+				Charm:    "mysql",
 				NumUnits: 2,
 				To:       []string{"0", "mediawiki/0"},
 				Options: map[string]interface{}{
@@ -191,14 +198,14 @@ applications:
 	data: `
 applications:
     aws-integrator:
-        charm: cs:~containers/aws-integrator
+        charm: aws-integrator
         num_units: 1
         trust: true
 `,
 	expectedBD: &charm.BundleData{
 		Applications: map[string]*charm.ApplicationSpec{
 			"aws-integrator": {
-				Charm:         "cs:~containers/aws-integrator",
+				Charm:         "aws-integrator",
 				NumUnits:      1,
 				RequiresTrust: true,
 			},
@@ -209,7 +216,8 @@ applications:
 	data: `
 applications:
     apache2:
-      charm: "cs:apache2-26"
+      charm: "apache2"
+      revision: 28
       num_units: 1
       offers:
         offer1:
@@ -226,10 +234,11 @@ applications:
 	expectedBD: &charm.BundleData{
 		Applications: map[string]*charm.ApplicationSpec{
 			"apache2": {
-				Charm:    "cs:apache2-26",
+				Charm:    "apache2",
+				Revision: &twentyEight,
 				NumUnits: 1,
 				Offers: map[string]*charm.OfferSpec{
-					"offer1": &charm.OfferSpec{
+					"offer1": {
 						Endpoints: []string{
 							"apache-website",
 							"apache-proxy",
@@ -239,7 +248,7 @@ applications:
 							"foo":   "consume",
 						},
 					},
-					"offer2": &charm.OfferSpec{
+					"offer2": {
 						Endpoints: []string{
 							"apache-website",
 						},
@@ -256,7 +265,8 @@ saas:
         url: production:admin/info.apache
 applications:
     apache2:
-      charm: "cs:apache2-26"
+      charm: "apache2"
+      revision: 10
       num_units: 1
 `,
 	expectedBD: &charm.BundleData{
@@ -267,7 +277,8 @@ applications:
 		},
 		Applications: map[string]*charm.ApplicationSpec{
 			"apache2": {
-				Charm:    "cs:apache2-26",
+				Charm:    "apache2",
+				Revision: &ten,
 				NumUnits: 1,
 			},
 		},
@@ -280,7 +291,9 @@ saas:
         url: production:admin/info.mysql
 applications:
     wordpress:
-      charm: "cs:trusty/wordpress-5"
+      charm: "ch:wordpress"
+      series: "trusty"
+      revision: 10
       num_units: 1
 relations:
 - - wordpress:db
@@ -294,7 +307,9 @@ relations:
 		},
 		Applications: map[string]*charm.ApplicationSpec{
 			"wordpress": {
-				Charm:    "cs:trusty/wordpress-5",
+				Charm:    "ch:wordpress",
+				Series:   "trusty",
+				Revision: &ten,
 				NumUnits: 1,
 			},
 		},
@@ -307,16 +322,20 @@ relations:
 	data: `
 applications:
     wordpress:
-      charm: "cs:trusty/wordpress-5"
+      charm: "wordpress"
+      revision: 10
+      series: trusty
       channel: edge
       num_units: 1
 `,
 	expectedBD: &charm.BundleData{
 		Applications: map[string]*charm.ApplicationSpec{
 			"wordpress": {
-				Charm:    "cs:trusty/wordpress-5",
+				Charm:    "wordpress",
 				Channel:  "edge",
+				Revision: &ten,
 				NumUnits: 1,
+				Series:   "trusty",
 			},
 		},
 	},
@@ -334,15 +353,13 @@ applications:
 		Applications: map[string]*charm.ApplicationSpec{
 			"wordpress": {
 				Charm:    "wordpress",
-				Revision: &wordpressRevisionParseTest,
+				Revision: &five,
 				Channel:  "edge",
 				NumUnits: 1,
 			},
 		},
 	},
 }}
-
-var wordpressRevisionParseTest = 5
 
 func (*bundleDataSuite) TestParse(c *gc.C) {
 	for i, test := range parseTests {
@@ -460,7 +477,7 @@ applications:
     riak:
         charm: "./somepath"
     mysql:
-        charm: "cs:precise/mysql-28"
+        charm: "mysql"
         num_units: 2
         to: [0, mediawiki/0, nowhere/3, 2, "bad placement"]
         options:
@@ -477,10 +494,10 @@ applications:
     wordpress:
           charm: wordpress
     postgres:
-        charm: "cs:xenial/postgres"
+        charm: "postgres"
         series: trusty
     terracotta:
-        charm: "cs:xenial/terracotta"
+        charm: "terracotta"
         series: xenial
     ceph:
           charm: ceph
@@ -517,7 +534,6 @@ relations:
 		`negative number of units specified on application "mediawiki"`,
 		`missing resource name on application "mediawiki"`,
 		`resource revision "mediawiki" is not int or string`,
-		`the charm URL for application "postgres" has a series which does not match, please remove the series from the URL`,
 		`too many units specified in unit placement for application "mysql"`,
 		`placement "nowhere/3" refers to an application not defined in this bundle`,
 		`placement "mediawiki/0" specifies a unit greater than the -4 unit(s) started by the target application`,
@@ -541,7 +557,7 @@ relations:
 	data: `
 applications:
     aws-integrator:
-        charm: cs:~containers/aws-integrator
+        charm: aws-integrator
         num_units: 1
         trust: true
         offers:
@@ -558,7 +574,7 @@ applications:
 	data: `
 applications: 
   aws-integrator: 
-    charm: "cs:~containers/aws-integrator"
+    charm: "aws-integrator"
     expose: true
     exposed-endpoints:
       admin:
@@ -576,7 +592,7 @@ applications:
 	data: `
 applications: 
   aws-integrator: 
-    charm: "cs:~containers/aws-integrator"
+    charm: "aws-integrator"
     exposed-endpoints:
       admin:
         expose-to-spaces:
@@ -648,9 +664,7 @@ func (*bundleDataSuite) TestVerifyCharmURL(c *gc.C) {
 	bd, err := charm.ReadBundleData(strings.NewReader(mediawikiBundle))
 	c.Assert(err, gc.IsNil)
 	for i, u := range []string{
-		"cs:wordpress",
-		"cs:precise/wordpress",
-		"cs:precise/wordpress-2",
+		"ch:wordpress",
 		"local:foo",
 		"local:foo-45",
 	} {
@@ -669,9 +683,7 @@ func (*bundleDataSuite) TestVerifyLocalCharm(c *gc.C) {
 	err = os.MkdirAll(relativeCharmDir, 0700)
 	c.Assert(err, jc.ErrorIsNil)
 	for i, u := range []string{
-		"cs:wordpress",
-		"cs:precise/wordpress",
-		"cs:precise/wordpress-2",
+		"ch:wordpress",
 		"local:foo",
 		"local:foo-45",
 		c.MkDir(),
@@ -694,9 +706,9 @@ func (s *bundleDataSuite) testPrepareAndMutateBeforeVerifyWithCharms(c *gc.C, mu
 	bd := b.Data()
 
 	charms := map[string]charm.Charm{
-		"cs:wordpress": readCharmDir(c, "wordpress"),
-		"cs:mysql":     readCharmDir(c, "mysql"),
-		"cs:logging":   readCharmDir(c, "logging"),
+		"ch:wordpress": readCharmDir(c, "wordpress"),
+		"ch:mysql":     readCharmDir(c, "mysql"),
+		"logging":      readCharmDir(c, "logging"),
 	}
 
 	if mutator != nil {
@@ -740,16 +752,16 @@ bundle: kubernetes
 
 applications:
     mariadb:
-        charm: "cs:mariadb-k8s-10"
+        charm: "mariadb-k8s"
         scale: 2
         placement: foo=bar
     gitlab:
-        charm: "cs:gitlab-k8s-10"
+        charm: "gitlab-k8s"
         num_units: 3
         to: [foo=baz]
         series: kubernetes
     redis:
-        charm: "cs:redis-k8s-10"
+        charm: "redis-k8s"
         scale: 3
         to: [foo=baz]
 `
@@ -761,18 +773,18 @@ applications:
 		Type: "kubernetes",
 		Applications: map[string]*charm.ApplicationSpec{
 			"mariadb": {
-				Charm:    "cs:mariadb-k8s-10",
+				Charm:    "mariadb-k8s",
 				To:       []string{"foo=bar"},
 				NumUnits: 2,
 			},
 			"gitlab": {
-				Charm:    "cs:gitlab-k8s-10",
+				Charm:    "gitlab-k8s",
 				Series:   "kubernetes",
 				To:       []string{"foo=baz"},
 				NumUnits: 3,
 			},
 			"redis": {
-				Charm:    "cs:redis-k8s-10",
+				Charm:    "redis-k8s",
 				To:       []string{"foo=baz"},
 				NumUnits: 3,
 			}},
@@ -785,7 +797,7 @@ bundle: foo
 
 applications:
     mariadb:
-        charm: "cs:mariadb-k8s-10"
+        charm: mariadb-k8s
         scale: 2
 `
 	bd, err := charm.ReadBundleData(strings.NewReader(data))
@@ -800,7 +812,7 @@ bundle: kubernetes
 
 applications:
     mariadb:
-        charm: "cs:mariadb-k8s-10"
+        charm: "mariadb-k8s"
         scale: 2
         num_units: 2
 `
@@ -814,7 +826,7 @@ bundle: kubernetes
 
 applications:
     mariadb:
-        charm: "cs:mariadb-k8s-10"
+        charm: "mariadb-k8s"
         placement: foo=bar
         to: [foo=bar]
 `
@@ -826,7 +838,7 @@ func (s *bundleDataSuite) TestInvalidIAASPlacement(c *gc.C) {
 	data := `
 applications:
     mariadb:
-        charm: "cs:mariadb"
+        charm: "mariadb"
         placement: foo=bar
 `
 	_, err := charm.ReadBundleData(strings.NewReader(data))
@@ -843,14 +855,14 @@ machines:
 
 applications:
     mariadb:
-        charm: "cs:mariadb-k8s-10"
+        charm: "mariadb-k8s"
         series: "xenial"
         scale: 2
     casandra:
-        charm: "cs:casnadra-k8s-6"
+        charm: "casnadra-k8s"
         to: ["foo=bar", "foo=baz"]
     hadoop:
-        charm: "cs:hadoop-k8s-6"
+        charm: "hadoop-k8s"
         to: ["foo"]
 `
 	errors := []string{
@@ -867,7 +879,7 @@ func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	reqCharms := bd.RequiredCharms()
 
-	c.Assert(reqCharms, gc.DeepEquals, []string{"cs:precise/mediawiki-10", "cs:precise/mysql-28"})
+	c.Assert(reqCharms, gc.DeepEquals, []string{"mediawiki", "mysql"})
 }
 
 // testCharm returns a charm with the given name
@@ -878,11 +890,11 @@ func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
 //
 // Within each section, each white-space separated
 // relation is specified as:
-///	<relation-name>:<interface>
+// /	<relation-name>:<interface>
 //
 // So, for example:
 //
-//     testCharm("wordpress", "web:http | db:mysql")
+//	testCharm("wordpress", "web:http | db:mysql")
 //
 // is equivalent to a charm with metadata.yaml containing
 //
@@ -897,7 +909,6 @@ func (*bundleDataSuite) TestRequiredCharms(c *gc.C) {
 //
 // If the charm name has a "-sub" suffix, the
 // returned charm will have Meta.Subordinate = true.
-//
 func testCharm(name string, relations string) charm.Charm {
 	var provides, requires string
 	parts := strings.Split(relations, "|")
@@ -975,8 +986,8 @@ var verifyWithCharmsErrorsTests = []struct {
 	data:   mediawikiBundle,
 	charms: map[string]charm.Charm{},
 	errors: []string{
-		`application "mediawiki" refers to non-existent charm "cs:precise/mediawiki-10"`,
-		`application "mysql" refers to non-existent charm "cs:precise/mysql-28"`,
+		`application "mediawiki" refers to non-existent charm "mediawiki"`,
+		`application "mysql" refers to non-existent charm "mysql"`,
 	},
 }, {
 	about: "all present and correct",
@@ -1361,24 +1372,13 @@ applications:
 		`cannot specify revision in "ch:wordpress-9", please use revision`,
 	},
 }, {
-	about: "charmstore charm url revision does not match revision",
-	data: `
-applications:
-    wordpress:
-      charm: "cs:wordpress-9"
-      revision: 5
-      num_units: 1
-`,
-	errors: []string{
-		`application "wordpress" has 2 different revisions specified, please choose 1`,
-	},
-}, {
 	about: "charmstore charm url revision value less than 0",
 	data: `
 applications:
     wordpress:
-      charm: "cs:wordpress"
+      charm: "wordpress"
       revision: -5
+      channel: edge
       num_units: 1
 `,
 	errors: []string{
@@ -1486,13 +1486,13 @@ func (*bundleDataSuite) TestApplicationEmpty(c *gc.C) {
 applications:
     application1:
     application2:
-        charm: "cs:test"
+        charm: "test"
         plan: "testisv/test2"
 `,
 		`
 applications:
     application1:
-        charm: "cs:test"
+        charm: "test"
         plan: "testisv/test2"
     application2:
 `,
@@ -1518,13 +1518,13 @@ func (*bundleDataSuite) TestApplicationPlans(c *gc.C) {
 	data := `
 applications:
     application1:
-        charm: "cs:test"
+        charm: "test"
         plan: "testisv/test"
     application2:
-        charm: "cs:test"
+        charm: "test"
         plan: "testisv/test2"
     application3:
-        charm: "cs:test"
+        charm: "test"
         plan: "default"
 relations:
     - ["application1:prova", "application2:reqa"]
@@ -1536,16 +1536,16 @@ relations:
 	c.Assert(err, gc.IsNil)
 
 	c.Assert(bd.Applications, jc.DeepEquals, map[string]*charm.ApplicationSpec{
-		"application1": &charm.ApplicationSpec{
-			Charm: "cs:test",
+		"application1": {
+			Charm: "test",
 			Plan:  "testisv/test",
 		},
-		"application2": &charm.ApplicationSpec{
-			Charm: "cs:test",
+		"application2": {
+			Charm: "test",
 			Plan:  "testisv/test2",
 		},
-		"application3": &charm.ApplicationSpec{
-			Charm: "cs:test",
+		"application3": {
+			Charm: "test",
 			Plan:  "default",
 		},
 	})

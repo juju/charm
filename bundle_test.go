@@ -59,21 +59,21 @@ func checkWordpressBundle(c *gc.C, b charm.Bundle, path string) {
 	mysqlCharm := readCharmDir(c, "mysql")
 
 	bd := b.Data()
-	c.Assert(bd.RequiredCharms(), jc.DeepEquals, []string{"cs:mysql", "cs:wordpress"})
+	c.Assert(bd.RequiredCharms(), jc.DeepEquals, []string{"ch:mysql", "ch:wordpress"})
 
 	charms := map[string]charm.Charm{
-		"cs:wordpress": wordpressCharm,
-		"cs:mysql":     mysqlCharm,
+		"ch:wordpress": wordpressCharm,
+		"ch:mysql":     mysqlCharm,
 	}
 	err := bd.VerifyWithCharms(verifyOk, nil, nil, charms)
 	c.Assert(err, gc.IsNil)
 
 	c.Assert(bd.Applications, jc.DeepEquals, map[string]*charm.ApplicationSpec{
 		"wordpress": {
-			Charm: "cs:wordpress",
+			Charm: "ch:wordpress",
 		},
 		"mysql": {
-			Charm:    "cs:mysql",
+			Charm:    "ch:mysql",
 			NumUnits: 1,
 		},
 	})
