@@ -22,9 +22,9 @@ import (
 	"github.com/juju/version/v2"
 	"gopkg.in/yaml.v2"
 
-	"github.com/juju/charm/v9/assumes"
-	"github.com/juju/charm/v9/hooks"
-	"github.com/juju/charm/v9/resource"
+	"github.com/juju/charm/v10/assumes"
+	"github.com/juju/charm/v10/hooks"
+	"github.com/juju/charm/v10/resource"
 )
 
 // RelationScope describes the scope of a relation.
@@ -388,12 +388,13 @@ func (t *TermsId) Validate() error {
 
 // String returns the term in canonical form.
 // This would be one of:
-//   tenant:owner/name/revision
-//   tenant:name
-//   owner/name/revision
-//   owner/name
-//   name/revision
-//   name
+//
+//	tenant:owner/name/revision
+//	tenant:name
+//	owner/name/revision
+//	owner/name
+//	name/revision
+//	name
 func (t *TermsId) String() string {
 	id := make([]byte, 0, len(t.Tenant)+1+len(t.Owner)+1+len(t.Name)+4)
 	if t.Tenant != "" {
@@ -965,17 +966,17 @@ func (m Meta) CombinedRelations() map[string]Relation {
 //
 // Supports the following variants::
 //
-//   provides:
-//     server: riak
-//     admin: http
-//     foobar:
-//       interface: blah
+//	provides:
+//	  server: riak
+//	  admin: http
+//	  foobar:
+//	    interface: blah
 //
-//   provides:
-//     server:
-//       interface: mysql
-//       limit:
-//       optional: false
+//	provides:
+//	  server:
+//	    interface: mysql
+//	    limit:
+//	    optional: false
 //
 // In all input cases, the output is the fully specified interface
 // representation as seen in the mysql interface description above.

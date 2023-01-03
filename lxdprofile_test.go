@@ -9,7 +9,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
-	"github.com/juju/charm/v9"
+	"github.com/juju/charm/v10"
 )
 
 type ProfileSuite struct{}

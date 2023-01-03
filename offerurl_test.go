@@ -7,9 +7,10 @@ import (
 	"regexp"
 	"strings"
 
-	charm "github.com/juju/charm/v9"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
+
+	charm "github.com/juju/charm/v10"
 )
 
 type OfferURLSuite struct{}
