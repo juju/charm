@@ -1,6 +1,6 @@
 applications:
   wordpress:
-    charm: cs:wordpress
+    charm: ch:wordpress
   mysql:
     charm: cs:mysql
     num_units: 1

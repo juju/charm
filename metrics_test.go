@@ -9,7 +9,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"github.com/juju/charm/v9"
+	"github.com/juju/charm/v10"
 )
 
 // Keys returns a list of all defined metrics keys.
