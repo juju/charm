@@ -26,16 +26,16 @@ var urlTests = []struct {
 	url    *charm.URL
 }{{
 	s:   "local:series/name-1",
-	url: &charm.URL{"local", "", "name", 1, "series", ""},
+	url: &charm.URL{"local", "name", 1, "series", ""},
 }, {
 	s:   "local:series/name",
-	url: &charm.URL{"local", "", "name", -1, "series", ""},
+	url: &charm.URL{"local", "name", -1, "series", ""},
 }, {
 	s:   "local:series/n0-0n-n0",
-	url: &charm.URL{"local", "", "n0-0n-n0", -1, "series", ""},
+	url: &charm.URL{"local", "n0-0n-n0", -1, "series", ""},
 }, {
 	s:   "local:name",
-	url: &charm.URL{"local", "", "name", -1, "", ""},
+	url: &charm.URL{"local", "name", -1, "", ""},
 }, {
 	s:   "bs:~user/series/name-1",
 	err: `cannot parse URL $URL: schema "bs" not valid`,
@@ -50,53 +50,53 @@ var urlTests = []struct {
 	err: `local charm or bundle URL with user name: $URL`,
 }, {
 	s:     "amd64/name",
-	url:   &charm.URL{"ch", "", "name", -1, "", "amd64"},
+	url:   &charm.URL{"ch", "name", -1, "", "amd64"},
 	exact: "ch:amd64/name",
 }, {
 	s:     "foo",
-	url:   &charm.URL{"ch", "", "foo", -1, "", ""},
+	url:   &charm.URL{"ch", "foo", -1, "", ""},
 	exact: "ch:foo",
 }, {
 	s:     "foo-1",
 	exact: "ch:foo-1",
-	url:   &charm.URL{"ch", "", "foo", 1, "", ""},
+	url:   &charm.URL{"ch", "foo", 1, "", ""},
 }, {
 	s:     "n0-n0-n0",
 	exact: "ch:n0-n0-n0",
-	url:   &charm.URL{"ch", "", "n0-n0-n0", -1, "", ""},
+	url:   &charm.URL{"ch", "n0-n0-n0", -1, "", ""},
 }, {
 	s:     "local:foo",
 	exact: "local:foo",
-	url:   &charm.URL{"local", "", "foo", -1, "", ""},
+	url:   &charm.URL{"local", "foo", -1, "", ""},
 }, {
 	s:     "arm64/series/bar",
-	url:   &charm.URL{"ch", "", "bar", -1, "series", "arm64"},
+	url:   &charm.URL{"ch", "bar", -1, "series", "arm64"},
 	exact: "ch:arm64/series/bar",
 }, {
 	s:   "ch:name",
-	url: &charm.URL{"ch", "", "name", -1, "", ""},
+	url: &charm.URL{"ch", "name", -1, "", ""},
 }, {
 	s:   "ch:name-suffix",
-	url: &charm.URL{"ch", "", "name-suffix", -1, "", ""},
+	url: &charm.URL{"ch", "name-suffix", -1, "", ""},
 }, {
 	s:   "ch:name-1",
-	url: &charm.URL{"ch", "", "name", 1, "", ""},
+	url: &charm.URL{"ch", "name", 1, "", ""},
 }, {
 	s:   "ch:focal/istio-gateway-74",
-	url: &charm.URL{"ch", "", "istio-gateway", 74, "focal", ""},
+	url: &charm.URL{"ch", "istio-gateway", 74, "focal", ""},
 }, {
 	s:   "ch:amd64/istio-gateway-74",
-	url: &charm.URL{"ch", "", "istio-gateway", 74, "", "amd64"},
+	url: &charm.URL{"ch", "istio-gateway", 74, "", "amd64"},
 }, {
 	s:     "ch:arm64/name",
-	url:   &charm.URL{"ch", "", "name", -1, "", "arm64"},
+	url:   &charm.URL{"ch", "name", -1, "", "arm64"},
 	exact: "ch:arm64/name",
 }, {
 	s:   "ch:~user/name",
-	err: `in URL "ch:~user/name": series name "~user" not valid`,
+	err: `charmhub charm or bundle URL with user name: "ch:~user/name" not valid`,
 }, {
-	s:   "ch:~user/series/name-0",
-	err: `in URL "ch:~user/series/name-0": architecture name "~user" not valid`,
+	s:   "ch:purple/series/name-0",
+	err: `in URL "ch:purple/series/name-0": architecture name "purple" not valid`,
 }, {
 	s:   "ch:nam-!e",
 	err: `cannot parse name and/or revision in URL "ch:nam-!e": name "nam-!e" not valid`,
@@ -207,7 +207,7 @@ func (s *URLSuite) TestValidCheckers(c *gc.C) {
 
 func (s *URLSuite) TestMustParseURL(c *gc.C) {
 	url := charm.MustParseURL("ch:series/name")
-	c.Assert(url, gc.DeepEquals, &charm.URL{"ch", "", "name", -1, "series", ""})
+	c.Assert(url, gc.DeepEquals, &charm.URL{"ch", "name", -1, "series", ""})
 	f := func() { charm.MustParseURL("local:@@/name") }
 	c.Assert(f, gc.PanicMatches, "cannot parse URL \"local:@@/name\": series name \"@@\" not valid")
 }
@@ -215,8 +215,8 @@ func (s *URLSuite) TestMustParseURL(c *gc.C) {
 func (s *URLSuite) TestWithRevision(c *gc.C) {
 	url := charm.MustParseURL("ch:series/name")
 	other := url.WithRevision(1)
-	c.Assert(url, gc.DeepEquals, &charm.URL{"ch", "", "name", -1, "series", ""})
-	c.Assert(other, gc.DeepEquals, &charm.URL{"ch", "", "name", 1, "series", ""})
+	c.Assert(url, gc.DeepEquals, &charm.URL{"ch", "name", -1, "series", ""})
+	c.Assert(other, gc.DeepEquals, &charm.URL{"ch", "name", 1, "series", ""})
 
 	// Should always copy. The opposite behavior is error prone.
 	c.Assert(other.WithRevision(1), gc.Not(gc.Equals), other)

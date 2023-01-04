@@ -13,7 +13,6 @@ import (
 
 	"github.com/juju/errors"
 	"github.com/juju/mgo/v3/bson"
-	"github.com/juju/names/v4"
 	"github.com/juju/utils/v3/arch"
 )
 
@@ -56,7 +55,6 @@ type Location interface {
 //	ch:amd64/jammy/wordpress-30
 type URL struct {
 	Schema       string // "ch" or "local".
-	User         string // "joe".
 	Name         string // "wordpress".
 	Revision     int    // -1 if unset, N otherwise.
 	Series       string // "precise" or "" if unset; "bundle" if it's a bundle.
@@ -224,9 +222,6 @@ func parseLocalURL(url *gourl.URL, originalURL string) (*URL, error) {
 
 	// <name>[-<revision>]
 	r.Name, r.Revision = extractRevision(parts[0])
-	if r.User != "" && !names.IsValidUser(r.User) {
-		return nil, errors.Errorf("charm or bundle URL has invalid user name: %q", originalURL)
-	}
 	if err := ValidateName(r.Name); err != nil {
 		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
 	}
@@ -235,9 +230,6 @@ func parseLocalURL(url *gourl.URL, originalURL string) (*URL, error) {
 
 func (u *URL) path() string {
 	var parts []string
-	if u.User != "" {
-		parts = append(parts, fmt.Sprintf("~%s", u.User))
-	}
 	if u.Architecture != "" {
 		parts = append(parts, u.Architecture)
 	}
@@ -398,6 +390,11 @@ func parseCharmhubURL(url *gourl.URL) (*URL, error) {
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	if len(parts) == 0 || len(parts) > 3 {
 		return nil, errors.Errorf(`charm or bundle URL %q malformed`, url)
+	}
+
+	// ~<username>
+	if strings.HasPrefix(parts[0], "~") {
+		return nil, errors.NotValidf("charmhub charm or bundle URL with user name: %q", url)
 	}
 
 	var nameRev string
