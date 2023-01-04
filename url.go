@@ -26,12 +26,6 @@ const (
 
 	// CharmHub schema represents the charmhub charm repository.
 	CharmHub Schema = "ch"
-
-	// HTTP refers to the HTTP schema that is used for the V2 of the charm URL.
-	HTTP Schema = "http"
-
-	// HTTPS refers to the HTTP schema that is used for the V2 of the charm URL.
-	HTTPS Schema = "https"
 )
 
 // Prefix creates a url with the given prefix, useful for typed schemas.
@@ -58,11 +52,10 @@ type Location interface {
 // URL represents a charm or bundle location:
 //
 //	local:oneiric/wordpress
-//	cs:wordpress
 //	ch:wordpress
 //	ch:amd64/jammy/wordpress-30
 type URL struct {
-	Schema       string // "cs", "ch" or "local".
+	Schema       string // "ch" or "local".
 	User         string // "joe".
 	Name         string // "wordpress".
 	Revision     int    // -1 if unset, N otherwise.
@@ -81,11 +74,9 @@ var (
 // Valid schemas for the URL are:
 // - ch: charm hub
 // - local: local file
-//
-// http and https are not valid schemas, as they compiled to V1 charm URLs.
+
 func ValidateSchema(schema string) error {
 	switch schema {
-	// ignore http/https schemas.
 	case CharmHub.String(), Local.String():
 		return nil
 	}
@@ -171,7 +162,6 @@ func MustParseURL(url string) *URL {
 //
 // A missing schema is assumed to be 'ch'.
 func ParseURL(url string) (*URL, error) {
-	// Check if we're dealing with a v1 or v2 URL.
 	u, err := gourl.Parse(url)
 	if err != nil {
 		return nil, errors.Errorf("cannot parse charm or bundle URL: %q", url)
@@ -183,14 +173,14 @@ func ParseURL(url string) (*URL, error) {
 	switch {
 	case CharmHub.Matches(u.Scheme):
 		// Handle talking to the new style of the schema.
-		curl, err = parseIdentifierURL(u)
+		curl, err = parseCharmhubURL(u)
 	case u.Opaque != "":
 		u.Path = u.Opaque
-		curl, err = parseV1URL(u, url)
+		curl, err = parseLocalURL(u, url)
 	default:
 		// Handle the fact that anything without a prefix is now a CharmHub
 		// charm URL.
-		curl, err = parseIdentifierURL(u)
+		curl, err = parseCharmhubURL(u)
 	}
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -201,14 +191,11 @@ func ParseURL(url string) (*URL, error) {
 	return curl, nil
 }
 
-func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
-	r := URL{}
-	if url.Scheme != "" {
-		r.Schema = url.Scheme
+func parseLocalURL(url *gourl.URL, originalURL string) (*URL, error) {
+	if !Local.Matches(url.Scheme) {
+		return nil, errors.NotValidf("cannot parse URL %q: schema %q", url, url.Scheme)
 	}
-	if err := ValidateSchema(r.Schema); err != nil {
-		return nil, errors.Annotatef(err, "cannot parse URL %q", url)
-	}
+	r := URL{Schema: Local.String()}
 
 	parts := strings.Split(url.Path[0:], "/")
 	if len(parts) < 1 || len(parts) > 4 {
@@ -217,10 +204,7 @@ func parseV1URL(url *gourl.URL, originalURL string) (*URL, error) {
 
 	// ~<username>
 	if strings.HasPrefix(parts[0], "~") {
-		if Local.Matches(r.Schema) {
-			return nil, errors.Errorf("local charm or bundle URL with user name: %q", originalURL)
-		}
-		r.User, parts = parts[0][1:], parts[1:]
+		return nil, errors.Errorf("local charm or bundle URL with user name: %q", originalURL)
 	}
 
 	if len(parts) > 2 {
@@ -384,7 +368,7 @@ func Quote(unsafe string) string {
 	return string(safe)
 }
 
-// parseIdentifierURL will attempt to parse an identifier URL. The identifier
+// parseCharmhubURL will attempt to parse an identifier URL. The identifier
 // URL is split up into 3 parts, some of which are optional and some are
 // mandatory.
 //
@@ -400,7 +384,7 @@ func Quote(unsafe string) string {
 //   - ch:foo-1
 //   - ch:foo
 //   - ch:amd64/focal/foo
-func parseIdentifierURL(url *gourl.URL) (*URL, error) {
+func parseCharmhubURL(url *gourl.URL) (*URL, error) {
 	r := URL{
 		Schema:   CharmHub.String(),
 		Revision: -1,
@@ -465,7 +449,7 @@ func EnsureSchema(url string, defaultSchema Schema) (string, error) {
 		return "", errors.Errorf("cannot parse charm or bundle URL: %q", url)
 	}
 	switch Schema(u.Scheme) {
-	case CharmHub, Local, HTTP, HTTPS:
+	case CharmHub, Local:
 		return url, nil
 	case Schema(""):
 		// If the schema is empty, we fall back to the default schema.
