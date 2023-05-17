@@ -25,7 +25,7 @@ type bundleDataSuite struct {
 var _ = gc.Suite(&bundleDataSuite{})
 
 const mediawikiBundle = `
-series: precise
+default-base: ubuntu/20.04
 applications:
     mediawiki:
         charm: "mediawiki"
@@ -49,6 +49,7 @@ applications:
         charm: "mysql"
         num_units: 2
         to: [0, mediawiki/0]
+        base: ubuntu/22.04
         options:
             "binlog-format": MIXED
             "block-size": 5.3
@@ -96,7 +97,7 @@ var parseTests = []struct {
 	about: "mediawiki",
 	data:  mediawikiBundle,
 	expectedBD: &charm.BundleData{
-		Series: "precise",
+		DefaultBase: "ubuntu/20.04",
 		Applications: map[string]*charm.ApplicationSpec{
 			"mediawiki": {
 				Charm:    "mediawiki",
@@ -126,6 +127,7 @@ var parseTests = []struct {
 				Charm:    "mysql",
 				NumUnits: 2,
 				To:       []string{"0", "mediawiki/0"},
+				Base:     "ubuntu/22.04",
 				Options: map[string]interface{}{
 					"binlog-format": "MIXED",
 					"block-size":    5.3,
@@ -445,6 +447,7 @@ var verifyErrorsTests = []struct {
 	about: "as many errors as possible",
 	data: `
 series: "9wrong"
+default-base: "invalidbase"
 
 saas:
     apache2:
@@ -457,6 +460,7 @@ machines:
         annotations:
             foo: bar
         series: 'bad series'
+        base: 'bad base'
     bogus:
     3:
 applications:
@@ -498,7 +502,7 @@ applications:
         series: trusty
     terracotta:
         charm: "terracotta"
-        series: xenial
+        base: "ubuntu/22.04"
     ceph:
           charm: ceph
           storage:
@@ -521,6 +525,8 @@ relations:
 `,
 	errors: []string{
 		`bundle declares an invalid series "9wrong"`,
+		`bundle declares an invalid base "invalidbase"`,
+		`bundle cannot declare both bases and series`,
 		`invalid offer URL "!some-bogus/url" for SAAS apache2`,
 		`invalid storage name "no_underscores" in application "ceph"`,
 		`invalid storage "invalid-storage" in application "ceph-osd": bad storage constraint`,
@@ -544,7 +550,8 @@ relations:
 		`relation ["mysql:db" "mediawiki:db"] is defined more than once`,
 		`invalid placement syntax "bad placement"`,
 		`invalid relation syntax "mediawiki/db"`,
-		`invalid series bad series for machine "0"`,
+		`invalid series "bad series" for machine "0"`,
+		`invalid base "bad base" for machine "0"`,
 		`ambiguous relation "riak" refers to a application and a SAAS in this bundle`,
 		`SAAS "riak" already exists with application "riak" name`,
 		`application "riak" already exists with SAAS "riak" name`,

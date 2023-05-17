@@ -47,8 +47,15 @@ type BundleData struct {
 	Saas map[string]*SaasSpec `bson:"saas,omitempty" json:"saas,omitempty" yaml:"saas,omitempty"`
 
 	// Series holds the default series to use when
-	// the bundle chooses charms.
+	// the bundle deploys applications. A series defined for an application
+	// takes precedence.
+	// Series and Base cannot be mixed.
 	Series string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+
+	// Base holds the default base to use when the bundle deploys
+	// applications. A base defined for an application takes precedence.
+	// Series and Base cannot be mixed.
+	DefaultBase string `bson:"default-base,omitempty" json:"default-base,omitempty" yaml:"default-base,omitempty"`
 
 	// Relations holds a slice of 2-element slices,
 	// each specifying a relation between two applications.
@@ -79,6 +86,7 @@ type MachineSpec struct {
 	Constraints string            `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 	Annotations map[string]string `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 	Series      string            `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
+	Base        string            `bson:",omitempty" json:",omitempty" yaml:",omitempty"`
 }
 
 // ApplicationSpec represents a single application that will
@@ -95,12 +103,13 @@ type ApplicationSpec struct {
 	// Revision describes the revision of the charm to use when deploying.
 	Revision *int `bson:"revision,omitempty" yaml:"revision,omitempty" json:"revision,omitempty"`
 
-	// Series is the series to use when deploying a local charm,
-	// if the charm does not specify a default or the default
-	// is not the desired value.
-	// Series is not compatible with charm store charms where
-	// the series is specified in the URL.
+	// Series is the series to use when deploying the application.
+	// Series and Base cannot be mixed.
 	Series string `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
+
+	// Base is the base to use when deploying the application.
+	// Series and Base cannot be mixed.
+	Base string `bson:",omitempty" yaml:",omitempty" json:",omitempty"`
 
 	// Resources is the set of resource revisions to deploy for the
 	// application. Bundles only support charm store resources and not ones
@@ -535,6 +544,12 @@ func (bd *BundleData) verifyBundle(
 	if bd.Series != "" && !IsValidSeries(bd.Series) {
 		verifier.addErrorf("bundle declares an invalid series %q", bd.Series)
 	}
+	if bd.DefaultBase != "" {
+		if _, err := ParseBase(bd.DefaultBase); err != nil {
+			verifier.addErrorf("bundle declares an invalid base %q", bd.DefaultBase)
+		}
+	}
+	verifier.verifyBaseAndSeriesNotMixed()
 	verifier.verifySaas()
 	verifier.verifyMachines()
 	verifier.verifyApplications()
@@ -562,6 +577,45 @@ var (
 	validOfferName         = regexp.MustCompile("^" + names.ApplicationSnippet + "$")
 	validOfferEndpointName = regexp.MustCompile("^" + names.RelationSnippet + "$")
 )
+
+func (verifier *bundleDataVerifier) verifyBaseAndSeriesNotMixed() {
+	var (
+		basePresent   bool
+		seriesPresent bool
+	)
+	if verifier.bd.DefaultBase != "" {
+		basePresent = true
+	}
+	if verifier.bd.Series != "" {
+		seriesPresent = true
+	}
+	for _, m := range verifier.bd.Machines {
+		if m == nil {
+			continue
+		}
+		if m.Base != "" {
+			basePresent = true
+		}
+		if m.Series != "" {
+			seriesPresent = true
+		}
+	}
+	for _, app := range verifier.bd.Applications {
+		if app == nil {
+			continue
+		}
+		if app.Base != "" {
+			basePresent = true
+		}
+		if app.Series != "" {
+			seriesPresent = true
+		}
+	}
+
+	if basePresent && seriesPresent {
+		verifier.addErrorf("bundle cannot declare both bases and series")
+	}
+}
 
 func (verifier *bundleDataVerifier) verifySaas() {
 	for name, saas := range verifier.bd.Saas {
@@ -594,7 +648,12 @@ func (verifier *bundleDataVerifier) verifyMachines() {
 			}
 		}
 		if m.Series != "" && !IsValidSeries(m.Series) {
-			verifier.addErrorf("invalid series %s for machine %q", m.Series, id)
+			verifier.addErrorf("invalid series %q for machine %q", m.Series, id)
+		}
+		if m.Base != "" {
+			if _, err := ParseBase(m.Base); err != nil {
+				verifier.addErrorf("invalid base %q for machine %q", m.Base, id)
+			}
 		}
 	}
 }
@@ -655,6 +714,12 @@ func (verifier *bundleDataVerifier) verifyApplications() {
 		}
 		if app.Series != "" && !IsValidSeries(app.Series) {
 			verifier.addErrorf("application %q declares an invalid series %q", name, app.Series)
+		}
+		// Check the Base
+		if app.Base != "" {
+			if _, err := ParseBase(app.Base); err != nil {
+				verifier.addErrorf("application %q declares an invalid base %q", name, app.Base)
+			}
 		}
 		// Check the Constraints.
 		if err := verifier.verifyConstraints(app.Constraints); err != nil {
