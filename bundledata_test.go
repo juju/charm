@@ -25,7 +25,7 @@ type bundleDataSuite struct {
 var _ = gc.Suite(&bundleDataSuite{})
 
 const mediawikiBundle = `
-default-base: ubuntu/20.04
+default-base: ubuntu@20.04
 applications:
     mediawiki:
         charm: "mediawiki"
@@ -49,7 +49,7 @@ applications:
         charm: "mysql"
         num_units: 2
         to: [0, mediawiki/0]
-        base: ubuntu/22.04
+        base: ubuntu@22.04
         options:
             "binlog-format": MIXED
             "block-size": 5.3
@@ -97,7 +97,7 @@ var parseTests = []struct {
 	about: "mediawiki",
 	data:  mediawikiBundle,
 	expectedBD: &charm.BundleData{
-		DefaultBase: "ubuntu/20.04",
+		DefaultBase: "ubuntu@20.04",
 		Applications: map[string]*charm.ApplicationSpec{
 			"mediawiki": {
 				Charm:    "mediawiki",
@@ -127,7 +127,7 @@ var parseTests = []struct {
 				Charm:    "mysql",
 				NumUnits: 2,
 				To:       []string{"0", "mediawiki/0"},
-				Base:     "ubuntu/22.04",
+				Base:     "ubuntu@22.04",
 				Options: map[string]interface{}{
 					"binlog-format": "MIXED",
 					"block-size":    5.3,
@@ -502,7 +502,7 @@ applications:
         series: trusty
     terracotta:
         charm: "terracotta"
-        base: "ubuntu/22.04"
+        base: "ubuntu@22.04"
     ceph:
           charm: ceph
           storage:
