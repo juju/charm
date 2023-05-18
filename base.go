@@ -44,9 +44,12 @@ func (b Base) Validate() error {
 
 // String representation of the Base.
 func (b Base) String() string {
-	str := strings.ToLower(b.Name)
+	if b.Validate() != nil {
+		panic("cannot stringify invalid base. Bases should always be validated before stringifying")
+	}
+	str := b.Name
 	if !b.Channel.Empty() {
-		str += "/" + b.Channel.String()
+		str += "@" + b.Channel.String()
 	}
 	if len(b.Architectures) > 0 {
 		str = fmt.Sprintf("%s on %s", str, strings.Join(b.Architectures, ", "))
@@ -54,20 +57,18 @@ func (b Base) String() string {
 	return str
 }
 
-// ParseBase parses a base as string in the form "os/track/risk/branch"
+// ParseBase parses a base as string in the form "os@track/risk/branch"
 // and an optional list of architectures
 func ParseBase(s string, archs ...string) (Base, error) {
 	var err error
 	base := Base{}
 
-	// Split the first forward-slash to get name and channel.
-	// E.g. "os/track/risk/branch" => ["os", "track/risk/branch"]
-	segments := strings.SplitN(s, "/", 2)
-	base.Name = strings.ToLower(segments[0])
-	channelName := ""
-	if len(segments) == 2 {
-		channelName = segments[1]
+	segments := strings.Split(s, "@")
+	if len(segments) != 2 {
+		return Base{}, errors.NotValidf("base string must contain exactly one @. %q", s)
 	}
+	base.Name = strings.ToLower(segments[0])
+	channelName := segments[1]
 
 	if channelName != "" {
 		base.Channel, err = ParseChannelNormalize(channelName)
