@@ -1,6 +1,6 @@
-module github.com/juju/charm/v10
+module github.com/juju/charm/v11
 
-go 1.18
+go 1.20
 
 require (
 	github.com/juju/collections v1.0.0
