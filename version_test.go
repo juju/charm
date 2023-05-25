@@ -8,7 +8,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"github.com/juju/charm/v10"
+	"github.com/juju/charm/v11"
 )
 
 type VersionSuite struct{}
