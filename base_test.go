@@ -24,45 +24,36 @@ var _ = gc.Suite(&baseSuite{})
 
 func (s *baseSuite) TestParseBase(c *gc.C) {
 	tests := []struct {
-		base       charm.Base
 		str        string
 		parsedBase charm.Base
 		err        string
 	}{
 		{
-			base:       charm.Base{Name: os.Ubuntu.String()},
 			str:        "ubuntu",
 			parsedBase: charm.Base{},
-			err:        `invalid base string "ubuntu": channel not valid`,
+			err:        `base string must contain exactly one @. "ubuntu" not valid`,
 		}, {
-			base:       charm.Base{Name: os.Windows.String()},
 			str:        "windows",
 			parsedBase: charm.Base{},
-			err:        `invalid base string "windows": channel not valid`,
+			err:        `base string must contain exactly one @. "windows" not valid`,
 		}, {
-			base:       charm.Base{Name: "mythicalos"},
-			str:        "mythicalos",
+			str:        "mythicalos@channel",
 			parsedBase: charm.Base{},
-			err:        `invalid base string "mythicalos": os "mythicalos" not valid`,
+			err:        `invalid base string "mythicalos@channel": os "mythicalos" not valid`,
 		}, {
-			base:       charm.Base{Name: os.Ubuntu.String(), Channel: mustParseChannel("20.04/stable")},
-			str:        "ubuntu/20.04/stable",
+			str:        "ubuntu@20.04/stable",
 			parsedBase: charm.Base{Name: strings.ToLower(os.Ubuntu.String()), Channel: mustParseChannel("20.04/stable")},
 		}, {
-			base:       charm.Base{Name: os.Windows.String(), Channel: mustParseChannel("win10/stable")},
-			str:        "windows/win10/stable",
+			str:        "windows@win10/stable",
 			parsedBase: charm.Base{Name: strings.ToLower(os.Windows.String()), Channel: mustParseChannel("win10/stable")},
 		}, {
-			base:       charm.Base{Name: os.Ubuntu.String(), Channel: mustParseChannel("20.04/edge")},
-			str:        "ubuntu/20.04/edge",
+			str:        "ubuntu@20.04/edge",
 			parsedBase: charm.Base{Name: strings.ToLower(os.Ubuntu.String()), Channel: mustParseChannel("20.04/edge")},
 		},
 	}
 	for i, v := range tests {
-		str := v.base.String()
 		comment := gc.Commentf("test %d", i)
-		c.Check(str, gc.Equals, v.str, comment)
-		s, err := charm.ParseBase(str)
+		s, err := charm.ParseBase(v.str)
 		if v.err != "" {
 			c.Check(err, gc.ErrorMatches, v.err, comment)
 		} else {
@@ -74,7 +65,6 @@ func (s *baseSuite) TestParseBase(c *gc.C) {
 
 func (s *baseSuite) TestParseBaseWithArchitectures(c *gc.C) {
 	tests := []struct {
-		base       charm.Base
 		str        string
 		baseString string
 		archs      []string
@@ -82,50 +72,39 @@ func (s *baseSuite) TestParseBaseWithArchitectures(c *gc.C) {
 		err        string
 	}{
 		{
-			base:       charm.Base{Name: os.Ubuntu.String(), Architectures: []string{arch.AMD64}},
-			baseString: "ubuntu",
+			baseString: "ubuntu@",
 			str:        "ubuntu on amd64",
 			archs:      []string{"amd64"},
 			parsedBase: charm.Base{},
-			err:        `invalid base string "ubuntu" with architectures "amd64": channel not valid`,
+			err:        `invalid base string "ubuntu@" with architectures "amd64": channel not valid`,
 		}, {
-			base:       charm.Base{Name: os.Windows.String()},
-			baseString: "windows",
+			baseString: "windows@",
 			str:        "windows",
 			parsedBase: charm.Base{},
-			err:        `invalid base string "windows": channel not valid`,
+			err:        `invalid base string "windows@": channel not valid`,
 		}, {
-			base:       charm.Base{Name: "mythicalos"},
-			baseString: "mythicalos",
+			baseString: "mythicalos@channel",
 			str:        "mythicalos",
 			parsedBase: charm.Base{},
-			err:        `invalid base string "mythicalos": os "mythicalos" not valid`,
+			err:        `invalid base string "mythicalos@channel": os "mythicalos" not valid`,
 		}, {
-			base: charm.Base{
-				Name:          os.Ubuntu.String(),
-				Channel:       mustParseChannel("20.04/stable"),
-				Architectures: []string{arch.AMD64, arch.PPC64EL},
-			},
-			baseString: "ubuntu/20.04/stable",
+			baseString: "ubuntu@20.04/stable",
 			archs:      []string{arch.AMD64, "ppc64"},
-			str:        "ubuntu/20.04/stable on amd64, ppc64el",
+			str:        "ubuntu@20.04/stable on amd64, ppc64el",
 			parsedBase: charm.Base{
 				Name:          strings.ToLower(os.Ubuntu.String()),
 				Channel:       mustParseChannel("20.04/stable"),
 				Architectures: []string{arch.AMD64, arch.PPC64EL}},
 		}, {
-			base:       charm.Base{Name: os.Windows.String(), Channel: mustParseChannel("win10/stable")},
-			baseString: "windows/win10/stable",
+			baseString: "windows@win10/stable",
 			archs:      []string{"testme"},
-			str:        "windows/win10/stable",
+			str:        "windows@win10/stable",
 			parsedBase: charm.Base{},
-			err:        `invalid base string "windows/win10/stable" with architectures "testme": architecture "testme" not valid`,
+			err:        `invalid base string "windows@win10/stable" with architectures "testme": architecture "testme" not valid`,
 		},
 	}
 	for i, v := range tests {
-		str := v.base.String()
 		comment := gc.Commentf("test %d", i)
-		c.Check(str, gc.Equals, v.str, comment)
 		s, err := charm.ParseBase(v.baseString, v.archs...)
 		if v.err != "" {
 			c.Check(err, gc.ErrorMatches, v.err, comment)
@@ -133,6 +112,43 @@ func (s *baseSuite) TestParseBaseWithArchitectures(c *gc.C) {
 			c.Check(err, jc.ErrorIsNil, comment)
 		}
 		c.Check(s, jc.DeepEquals, v.parsedBase, comment)
+	}
+}
+
+func (s *baseSuite) TestStringifyBase(c *gc.C) {
+	tests := []struct {
+		base charm.Base
+		str  string
+	}{
+		{
+			base: charm.Base{Name: strings.ToLower(os.Ubuntu.String()), Channel: mustParseChannel("20.04/stable")},
+			str:  "ubuntu@20.04/stable",
+		}, {
+			base: charm.Base{Name: strings.ToLower(os.Windows.String()), Channel: mustParseChannel("win10/stable")},
+			str:  "windows@win10/stable",
+		}, {
+			base: charm.Base{Name: strings.ToLower(os.Ubuntu.String()), Channel: mustParseChannel("20.04/edge")},
+			str:  "ubuntu@20.04/edge",
+		}, {
+			base: charm.Base{
+				Name:          strings.ToLower(os.Ubuntu.String()),
+				Channel:       mustParseChannel("20.04/stable"),
+				Architectures: []string{arch.AMD64},
+			},
+			str: "ubuntu@20.04/stable on amd64",
+		}, {
+			base: charm.Base{
+				Name:          strings.ToLower(os.Ubuntu.String()),
+				Channel:       mustParseChannel("20.04/stable"),
+				Architectures: []string{arch.AMD64, arch.PPC64EL},
+			},
+			str: "ubuntu@20.04/stable on amd64, ppc64el",
+		},
+	}
+	for i, v := range tests {
+		comment := gc.Commentf("test %d", i)
+		c.Assert(v.base.Validate(), jc.ErrorIsNil)
+		c.Assert(v.base.String(), gc.Equals, v.str, comment)
 	}
 }
 
