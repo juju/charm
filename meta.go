@@ -322,6 +322,10 @@ func (m Meta) Hooks() map[string]bool {
 	for _, hookName := range hooks.UnitHooks() {
 		allHooks[string(hookName)] = true
 	}
+	// Secret hooks
+	for _, hookName := range hooks.SecretHooks() {
+		allHooks[string(hookName)] = true
+	}
 	// Relation hooks
 	for hookName := range m.Provides {
 		generateRelationHooks(hookName, allHooks)

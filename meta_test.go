@@ -763,6 +763,10 @@ func (s *MetaSuite) TestMetaHooks(c *gc.C) {
 		"url-relation-changed":              true,
 		"url-relation-departed":             true,
 		"url-relation-broken":               true,
+		"secret-changed":                    true,
+		"secret-expired":                    true,
+		"secret-remove":                     true,
+		"secret-rotate":                     true,
 	}
 	c.Assert(hooks, jc.DeepEquals, expectedHooks)
 }
