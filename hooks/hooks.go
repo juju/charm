@@ -156,6 +156,13 @@ var secretHooks = []Kind{
 	SecretChanged, SecretExpired, SecretRemove, SecretRotate,
 }
 
+// SecretHooks returns all secret hook kinds.
+func SecretHooks() []Kind {
+	hooks := make([]Kind, len(secretHooks))
+	copy(hooks, secretHooks)
+	return hooks
+}
+
 // IsSecret returns whether the Kind represents a secret hook.
 func (kind Kind) IsSecret() bool {
 	switch kind {
