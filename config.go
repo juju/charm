@@ -55,11 +55,12 @@ var optionTypeCheckers = map[string]schema.Checker{
 	"int":     schema.Int(),
 	"float":   schema.Float(),
 	"boolean": schema.Bool(),
+	"secret":  schema.String(),
 }
 
 func (option Option) parse(name, str string) (val interface{}, err error) {
 	switch option.Type {
-	case "string":
+	case "string", "secret":
 		return str, nil
 	case "int":
 		val, err = strconv.ParseInt(str, 10, 64)
@@ -115,7 +116,7 @@ func ReadConfig(r io.Reader) (*Config, error) {
 	}
 	for name, option := range config.Options {
 		switch option.Type {
-		case "string", "int", "float", "boolean":
+		case "string", "secret", "int", "float", "boolean":
 		case "":
 			// Missing type is valid in python.
 			option.Type = "string"

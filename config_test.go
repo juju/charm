@@ -50,6 +50,9 @@ options:
   reticulate-splines:
     description: Whether to reticulate splines on launch, or not.
     type: boolean
+  secret-foo:
+    description: A secret value.
+    type: secret
 `)))
 	c.Assert(err, gc.IsNil)
 }
@@ -87,6 +90,10 @@ func (s *ConfigSuite) TestReadSample(c *gc.C) {
 			Description: "Whether to reticulate splines on launch, or not.",
 			Type:        "boolean",
 		},
+		"secret-foo": {
+			Description: "A secret value.",
+			Type:        "secret",
+		},
 	})
 }
 
@@ -95,6 +102,7 @@ func (s *ConfigSuite) TestDefaultSettings(c *gc.C) {
 		"title":              "My Title",
 		"subtitle":           "",
 		"username":           "admin001",
+		"secret-foo":         nil,
 		"outlook":            nil,
 		"skill-level":        nil,
 		"agility-ratio":      nil,
@@ -472,7 +480,7 @@ options:
 
 func (s *ConfigSuite) TestErrorOnInvalidOptionTypes(c *gc.C) {
 	cfg := charm.Config{
-		Options: map[string]charm.Option{"testOption": charm.Option{Type: "invalid type"}},
+		Options: map[string]charm.Option{"testOption": {Type: "invalid type"}},
 	}
 	_, err := cfg.ParseSettingsYAML([]byte("testKey:\n  testOption: 12.345"), "testKey")
 	c.Assert(err, gc.ErrorMatches, "option \"testOption\" has unknown type \"invalid type\"")
