@@ -50,6 +50,9 @@ options:
   reticulate-splines:
     description: Whether to reticulate splines on launch, or not.
     type: boolean
+  secret-foo:
+    description: A secret value.
+    type: secret
 `)))
 	c.Assert(err, gc.IsNil)
 }
@@ -87,6 +90,10 @@ func (s *ConfigSuite) TestReadSample(c *gc.C) {
 			Description: "Whether to reticulate splines on launch, or not.",
 			Type:        "boolean",
 		},
+		"secret-foo": {
+			Description: "A secret value.",
+			Type:        "secret",
+		},
 	})
 }
 
@@ -95,6 +102,7 @@ func (s *ConfigSuite) TestDefaultSettings(c *gc.C) {
 		"title":              "My Title",
 		"subtitle":           "",
 		"username":           "admin001",
+		"secret-foo":         nil,
 		"outlook":            nil,
 		"skill-level":        nil,
 		"agility-ratio":      nil,
@@ -125,63 +133,73 @@ func (s *ConfigSuite) TestValidateSettings(c *gc.C) {
 		input  charm.Settings
 		expect charm.Settings
 		err    string
-	}{{
-		info:   "nil settings are valid",
-		expect: charm.Settings{},
-	}, {
-		info:  "empty settings are valid",
-		input: charm.Settings{},
-	}, {
-		info:  "unknown keys are not valid",
-		input: charm.Settings{"foo": nil},
-		err:   `unknown option "foo"`,
-	}, {
-		info: "nil is valid for every value type",
-		input: charm.Settings{
-			"outlook":            nil,
-			"skill-level":        nil,
-			"agility-ratio":      nil,
-			"reticulate-splines": nil,
+	}{
+		{
+			info:   "nil settings are valid",
+			expect: charm.Settings{},
+		}, {
+			info:  "empty settings are valid",
+			input: charm.Settings{},
+		}, {
+			info:  "unknown keys are not valid",
+			input: charm.Settings{"foo": nil},
+			err:   `unknown option "foo"`,
+		}, {
+			info: "nil is valid for every value type",
+			input: charm.Settings{
+				"outlook":            nil,
+				"skill-level":        nil,
+				"agility-ratio":      nil,
+				"reticulate-splines": nil,
+			},
+		}, {
+			info: "correctly-typed values are valid",
+			input: charm.Settings{
+				"outlook":            "stormy",
+				"skill-level":        int64(123),
+				"agility-ratio":      0.5,
+				"reticulate-splines": true,
+			},
+		}, {
+			info:   "empty string-typed values stay empty",
+			input:  charm.Settings{"outlook": ""},
+			expect: charm.Settings{"outlook": ""},
+		}, {
+			info: "almost-correctly-typed values are valid",
+			input: charm.Settings{
+				"skill-level":   123,
+				"agility-ratio": float32(0.5),
+			},
+			expect: charm.Settings{
+				"skill-level":   int64(123),
+				"agility-ratio": 0.5,
+			},
+		}, {
+			info:  "bad string",
+			input: charm.Settings{"outlook": false},
+			err:   `option "outlook" expected string, got false`,
+		}, {
+			info:  "bad int",
+			input: charm.Settings{"skill-level": 123.4},
+			err:   `option "skill-level" expected int, got 123.4`,
+		}, {
+			info:  "bad float",
+			input: charm.Settings{"agility-ratio": "cheese"},
+			err:   `option "agility-ratio" expected float, got "cheese"`,
+		}, {
+			info:  "bad boolean",
+			input: charm.Settings{"reticulate-splines": 101},
+			err:   `option "reticulate-splines" expected boolean, got 101`,
+		}, {
+			info:  "invalid secret",
+			input: charm.Settings{"secret-foo": "cheese"},
+			err:   `option "secret-foo" expected secret, got "cheese"`,
+		}, {
+			info:   "valid secret",
+			input:  charm.Settings{"secret-foo": "secret:cj4v5vm78ohs79o84r4g"},
+			expect: charm.Settings{"secret-foo": "secret:cj4v5vm78ohs79o84r4g"},
 		},
-	}, {
-		info: "correctly-typed values are valid",
-		input: charm.Settings{
-			"outlook":            "stormy",
-			"skill-level":        int64(123),
-			"agility-ratio":      0.5,
-			"reticulate-splines": true,
-		},
-	}, {
-		info:   "empty string-typed values stay empty",
-		input:  charm.Settings{"outlook": ""},
-		expect: charm.Settings{"outlook": ""},
-	}, {
-		info: "almost-correctly-typed values are valid",
-		input: charm.Settings{
-			"skill-level":   123,
-			"agility-ratio": float32(0.5),
-		},
-		expect: charm.Settings{
-			"skill-level":   int64(123),
-			"agility-ratio": 0.5,
-		},
-	}, {
-		info:  "bad string",
-		input: charm.Settings{"outlook": false},
-		err:   `option "outlook" expected string, got false`,
-	}, {
-		info:  "bad int",
-		input: charm.Settings{"skill-level": 123.4},
-		err:   `option "skill-level" expected int, got 123.4`,
-	}, {
-		info:  "bad float",
-		input: charm.Settings{"agility-ratio": "cheese"},
-		err:   `option "agility-ratio" expected float, got "cheese"`,
-	}, {
-		info:  "bad boolean",
-		input: charm.Settings{"reticulate-splines": 101},
-		err:   `option "reticulate-splines" expected boolean, got 101`,
-	}} {
+	} {
 		c.Logf("test %d: %s", i, test.info)
 		result, err := s.config.ValidateSettings(test.input)
 		if test.err != "" {
@@ -472,7 +490,7 @@ options:
 
 func (s *ConfigSuite) TestErrorOnInvalidOptionTypes(c *gc.C) {
 	cfg := charm.Config{
-		Options: map[string]charm.Option{"testOption": charm.Option{Type: "invalid type"}},
+		Options: map[string]charm.Option{"testOption": {Type: "invalid type"}},
 	}
 	_, err := cfg.ParseSettingsYAML([]byte("testKey:\n  testOption: 12.345"), "testKey")
 	c.Assert(err, gc.ErrorMatches, "option \"testOption\" has unknown type \"invalid type\"")
