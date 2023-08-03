@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"strconv"
 
+	"github.com/juju/errors"
 	"github.com/juju/schema"
 	"gopkg.in/yaml.v2"
 )
@@ -33,6 +35,33 @@ func (option Option) error(err *error, name string, value interface{}) {
 	}
 }
 
+const secretScheme = "secret"
+
+type secretC struct{}
+
+// Coerce implements schema.Checker.Coerce for secretC.
+func (c secretC) Coerce(v interface{}, path []string) (interface{}, error) {
+	s, err := schema.String().Coerce(v, path)
+	if err != nil {
+		return nil, err
+	}
+	str := s.(string)
+	if str == "" {
+		return "", nil
+	}
+	u, err := url.Parse(str)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	if u.Scheme == "" {
+		return nil, errors.NotValidf("secret URI scheme missing")
+	}
+	if u.Scheme != secretScheme {
+		return nil, errors.NotValidf("secret URI scheme %q", u.Scheme)
+	}
+	return str, nil
+}
+
 // validate returns an appropriately-typed value for the supplied value, or
 // returns an error if it cannot be converted to the correct type. Nil values
 // are always considered valid.
@@ -55,7 +84,7 @@ var optionTypeCheckers = map[string]schema.Checker{
 	"int":     schema.Int(),
 	"float":   schema.Float(),
 	"boolean": schema.Bool(),
-	"secret":  schema.String(),
+	"secret":  secretC{},
 }
 
 func (option Option) parse(name, str string) (val interface{}, err error) {
@@ -124,7 +153,7 @@ func ReadConfig(r io.Reader) (*Config, error) {
 			return nil, fmt.Errorf("invalid config: option %q has unknown type %q", name, option.Type)
 		}
 		def := option.Default
-		if def == "" && option.Type == "string" {
+		if def == "" && (option.Type == "string" || option.Type == "secret") {
 			// Skip normal validation for compatibility with pyjuju.
 		} else if option.Default, err = option.validate(name, def); err != nil {
 			option.error(&err, name, def)
