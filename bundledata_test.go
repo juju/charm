@@ -526,7 +526,6 @@ relations:
 	errors: []string{
 		`bundle declares an invalid series "9wrong"`,
 		`bundle declares an invalid base "invalidbase"`,
-		`bundle cannot declare both bases and series`,
 		`invalid offer URL "!some-bogus/url" for SAAS apache2`,
 		`invalid storage name "no_underscores" in application "ceph"`,
 		`invalid storage "invalid-storage" in application "ceph-osd": bad storage constraint`,

@@ -549,7 +549,6 @@ func (bd *BundleData) verifyBundle(
 			verifier.addErrorf("bundle declares an invalid base %q", bd.DefaultBase)
 		}
 	}
-	verifier.verifyBaseAndSeriesNotMixed()
 	verifier.verifySaas()
 	verifier.verifyMachines()
 	verifier.verifyApplications()
@@ -577,45 +576,6 @@ var (
 	validOfferName         = regexp.MustCompile("^" + names.ApplicationSnippet + "$")
 	validOfferEndpointName = regexp.MustCompile("^" + names.RelationSnippet + "$")
 )
-
-func (verifier *bundleDataVerifier) verifyBaseAndSeriesNotMixed() {
-	var (
-		basePresent   bool
-		seriesPresent bool
-	)
-	if verifier.bd.DefaultBase != "" {
-		basePresent = true
-	}
-	if verifier.bd.Series != "" {
-		seriesPresent = true
-	}
-	for _, m := range verifier.bd.Machines {
-		if m == nil {
-			continue
-		}
-		if m.Base != "" {
-			basePresent = true
-		}
-		if m.Series != "" {
-			seriesPresent = true
-		}
-	}
-	for _, app := range verifier.bd.Applications {
-		if app == nil {
-			continue
-		}
-		if app.Base != "" {
-			basePresent = true
-		}
-		if app.Series != "" {
-			seriesPresent = true
-		}
-	}
-
-	if basePresent && seriesPresent {
-		verifier.addErrorf("bundle cannot declare both bases and series")
-	}
-}
 
 func (verifier *bundleDataVerifier) verifySaas() {
 	for name, saas := range verifier.bd.Saas {
