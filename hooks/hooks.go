@@ -60,9 +60,9 @@ const (
 	// kinds represent will be prefixed by the workload/container name; for example,
 	// "mycontainer-pebble-ready".
 
-	PebbleChangeUpdate Kind = "pebble-change-update"
-	PebbleClient       Kind = "pebble-client"
-	PebbleReady        Kind = "pebble-ready"
+	PebbleChangeUpdated Kind = "pebble-change-updated"
+	PebbleClientNotice  Kind = "pebble-client-notice"
+	PebbleReady         Kind = "pebble-ready"
 )
 
 var unitHooks = []Kind{
@@ -117,8 +117,8 @@ func StorageHooks() []Kind {
 }
 
 var workloadHooks = []Kind{
-	PebbleChangeUpdate,
-	PebbleClient,
+	PebbleChangeUpdated,
+	PebbleClientNotice,
 	PebbleReady,
 }
 
@@ -150,7 +150,7 @@ func (kind Kind) IsStorage() bool {
 // IsWorkload returns whether the Kind represents a workload hook.
 func (kind Kind) IsWorkload() bool {
 	switch kind {
-	case PebbleChangeUpdate, PebbleClient, PebbleReady:
+	case PebbleChangeUpdated, PebbleClientNotice, PebbleReady:
 		return true
 	}
 	return false
