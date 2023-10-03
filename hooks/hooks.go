@@ -61,7 +61,7 @@ const (
 	// "mycontainer-pebble-ready".
 
 	PebbleChangeUpdated Kind = "pebble-change-updated"
-	PebbleClientNotice  Kind = "pebble-client-notice"
+	PebbleCustomNotice  Kind = "pebble-custom-notice"
 	PebbleReady         Kind = "pebble-ready"
 )
 
@@ -118,7 +118,7 @@ func StorageHooks() []Kind {
 
 var workloadHooks = []Kind{
 	PebbleChangeUpdated,
-	PebbleClientNotice,
+	PebbleCustomNotice,
 	PebbleReady,
 }
 
@@ -150,7 +150,7 @@ func (kind Kind) IsStorage() bool {
 // IsWorkload returns whether the Kind represents a workload hook.
 func (kind Kind) IsWorkload() bool {
 	switch kind {
-	case PebbleChangeUpdated, PebbleClientNotice, PebbleReady:
+	case PebbleChangeUpdated, PebbleCustomNotice, PebbleReady:
 		return true
 	}
 	return false
