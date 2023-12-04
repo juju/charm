@@ -1,4 +1,4 @@
-module github.com/juju/charm/v11
+module github.com/juju/charm/v12
 
 go 1.20
 

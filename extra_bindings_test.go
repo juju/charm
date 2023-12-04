@@ -7,7 +7,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
-	"github.com/juju/charm/v11"
+	"github.com/juju/charm/v12"
 )
 
 var _ = gc.Suite(&extraBindingsSuite{})

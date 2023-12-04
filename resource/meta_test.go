@@ -8,7 +8,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
-	"github.com/juju/charm/v11/resource"
+	"github.com/juju/charm/v12/resource"
 )
 
 var _ = gc.Suite(&MetaSuite{})
