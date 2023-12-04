@@ -2050,3 +2050,48 @@ func (FormatMetaSuite) TestCheckV2WithDeployment(c *gc.C) {
 	err := meta.Check(charm.FormatV2, charm.SelectionManifest, charm.SelectionBases)
 	c.Assert(err, gc.ErrorMatches, `deployment in metadata v2 not valid`)
 }
+
+func (s *MetaSuite) TestCharmUser(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+charm-user: root
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.CharmUser, gc.Equals, charm.RunAsRoot)
+
+	meta, err = charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+charm-user: sudoer
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.CharmUser, gc.Equals, charm.RunAsSudoer)
+
+	meta, err = charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+charm-user: non-root
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.CharmUser, gc.Equals, charm.RunAsNonRoot)
+
+	meta, err = charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.CharmUser, gc.Equals, charm.RunAsDefault)
+
+	_, err = charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+charm-user: barry
+`))
+	c.Assert(err, gc.ErrorMatches, `parsing charm-user: invalid charm-user "barry" expected one of root, sudoer or non-root`)
+}
