@@ -13,7 +13,7 @@ import (
 	"github.com/juju/utils/v3/arch"
 	gc "gopkg.in/check.v1"
 
-	"github.com/juju/charm/v11"
+	"github.com/juju/charm/v12"
 )
 
 type baseSuite struct {

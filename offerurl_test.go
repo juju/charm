@@ -10,7 +10,7 @@ import (
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
 
-	charm "github.com/juju/charm/v11"
+	charm "github.com/juju/charm/v12"
 )
 
 type OfferURLSuite struct{}
