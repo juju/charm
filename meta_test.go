@@ -1733,6 +1733,8 @@ containers:
     mounts:
       - storage: a
         location: /b/
+    uid: 10
+    gid: 10
 resources:
   test-os:
     type: oci-image
@@ -1748,8 +1750,42 @@ storage:
 				Storage:  "a",
 				Location: "/b/",
 			}},
+			Uid: 10,
+			Gid: 10,
 		},
 	})
+}
+
+func (s *MetaSuite) TestInvalidUid(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+containers:
+  foo:
+    resource: test-os
+    uid: 1000
+resources:
+  test-os:
+    type: oci-image
+`))
+	c.Assert(err, gc.ErrorMatches, `parsing containers: container "foo" has invalid uid 1000: uid cannot be in reserved range 1000-9999`)
+}
+
+func (s *MetaSuite) TestInvalidGid(c *gc.C) {
+	_, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+containers:
+  foo:
+    resource: test-os
+    gid: 1000
+resources:
+  test-os:
+    type: oci-image
+`))
+	c.Assert(err, gc.ErrorMatches, `parsing containers: container "foo" has invalid gid 1000: gid cannot be in reserved range 1000-9999`)
 }
 
 func (s *MetaSuite) TestSystemReferencesFileResource(c *gc.C) {
@@ -2013,4 +2049,49 @@ func (FormatMetaSuite) TestCheckV2WithDeployment(c *gc.C) {
 	}
 	err := meta.Check(charm.FormatV2, charm.SelectionManifest, charm.SelectionBases)
 	c.Assert(err, gc.ErrorMatches, `deployment in metadata v2 not valid`)
+}
+
+func (s *MetaSuite) TestCharmUser(c *gc.C) {
+	meta, err := charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+charm-user: root
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.CharmUser, gc.Equals, charm.RunAsRoot)
+
+	meta, err = charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+charm-user: sudoer
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.CharmUser, gc.Equals, charm.RunAsSudoer)
+
+	meta, err = charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+charm-user: non-root
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.CharmUser, gc.Equals, charm.RunAsNonRoot)
+
+	meta, err = charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+`))
+	c.Assert(err, gc.IsNil)
+	c.Assert(meta.CharmUser, gc.Equals, charm.RunAsDefault)
+
+	_, err = charm.ReadMeta(strings.NewReader(`
+name: a
+summary: b
+description: c
+charm-user: barry
+`))
+	c.Assert(err, gc.ErrorMatches, `parsing charm-user: invalid charm-user "barry" expected one of root, sudoer or non-root`)
 }

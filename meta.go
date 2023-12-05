@@ -249,6 +249,16 @@ func (r Relation) IsImplicit() bool {
 		r.Role == RoleProvider)
 }
 
+// RunAs defines which user to run a certain process as.
+type RunAs string
+
+const (
+	RunAsDefault RunAs = ""
+	RunAsRoot    RunAs = "root"
+	RunAsSudoer  RunAs = "sudoer"
+	RunAsNonRoot RunAs = "non-root"
+)
+
 // Meta represents all the known content that may be defined
 // within a charm's metadata.yaml file.
 // Note: Series is serialised for backward compatibility
@@ -280,12 +290,15 @@ type Meta struct {
 	// v2
 	Containers map[string]Container    `bson:"containers,omitempty" json:"containers,omitempty" yaml:"containers,omitempty"`
 	Assumes    *assumes.ExpressionTree `bson:"assumes,omitempty" json:"assumes,omitempty" yaml:"assumes,omitempty"`
+	CharmUser  RunAs                   `bson:"charm-user,omitempty" json:"charm-user,omitempty" yaml:"charm-user,omitempty"`
 }
 
 // Container specifies the possible systems it supports and mounts it wants.
 type Container struct {
 	Resource string  `bson:"resource,omitempty" json:"resource,omitempty" yaml:"resource,omitempty"`
 	Mounts   []Mount `bson:"mounts,omitempty" json:"mounts,omitempty" yaml:"mounts,omitempty"`
+	Uid      int     `bson:"uid,omitempty" json:"uid,omitempty" yaml:"uid,omitempty"`
+	Gid      int     `bson:"gid,omitempty" json:"gid,omitempty" yaml:"gid,omitempty"`
 }
 
 // Mount allows a container to mount a storage filesystem from the storage top-level directive.
@@ -561,13 +574,9 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 		return nil, err
 	}
 	meta.PayloadClasses = parsePayloadClasses(m["payloads"])
-
-	if ver := m["min-juju-version"]; ver != nil {
-		minver, err := version.Parse(ver.(string))
-		if err != nil {
-			return &meta, errors.Annotate(err, "invalid min-juju-version")
-		}
-		meta.MinJujuVersion = minver
+	meta.MinJujuVersion, err = parseMinJujuVersion(m["min-juju-version"])
+	if err != nil {
+		return nil, err
 	}
 	meta.Terms = parseStringList(m["terms"])
 
@@ -580,6 +589,10 @@ func parseMeta(m map[string]interface{}) (*Meta, error) {
 	meta.Containers, err = parseContainers(m["containers"], meta.Resources, meta.Storage)
 	if err != nil {
 		return nil, errors.Annotatef(err, "parsing containers")
+	}
+	meta.CharmUser, err = parseCharmUser(m["charm-user"])
+	if err != nil {
+		return nil, errors.Annotatef(err, "parsing charm-user")
 	}
 	return &meta, nil
 }
@@ -1170,6 +1183,22 @@ func parseContainers(input interface{}, resources map[string]resource.Meta, stor
 		if err != nil {
 			return nil, errors.Annotatef(err, "container %q", name)
 		}
+
+		if value, ok := containerMap["uid"]; ok {
+			container.Uid = int(value.(int64))
+			if container.Uid >= 1000 && container.Uid < 10000 {
+				return nil, errors.Errorf("container %q has invalid uid %d: uid cannot be in reserved range 1000-9999",
+					name, container.Uid)
+			}
+		}
+		if value, ok := containerMap["gid"]; ok {
+			container.Gid = int(value.(int64))
+			if container.Gid >= 1000 && container.Gid < 10000 {
+				return nil, errors.Errorf("container %q has invalid gid %d: gid cannot be in reserved range 1000-9999",
+					name, container.Gid)
+			}
+		}
+
 		containers[name] = container
 	}
 	if len(containers) == 0 {
@@ -1204,6 +1233,31 @@ func parseMounts(input interface{}, storage map[string]Storage) ([]Mount, error)
 		mounts = append(mounts, mount)
 	}
 	return mounts, nil
+}
+
+func parseMinJujuVersion(value any) (version.Number, error) {
+	if value == nil {
+		return version.Zero, nil
+	}
+	ver, err := version.Parse(value.(string))
+	if err != nil {
+		return version.Zero, errors.Annotate(err, "invalid min-juju-version")
+	}
+	return ver, nil
+}
+
+func parseCharmUser(value any) (RunAs, error) {
+	if value == nil {
+		return RunAsDefault, nil
+	}
+	v := RunAs(value.(string))
+	switch v {
+	case RunAsRoot, RunAsSudoer, RunAsNonRoot:
+		return v, nil
+	default:
+		return RunAsDefault, errors.Errorf("invalid charm-user %q expected one of %s, %s or %s", v,
+			RunAsRoot, RunAsSudoer, RunAsNonRoot)
+	}
 }
 
 var storageSchema = schema.FieldMap(
@@ -1345,9 +1399,13 @@ var containerSchema = schema.FieldMap(
 	schema.Fields{
 		"resource": schema.String(),
 		"mounts":   schema.List(mountSchema),
+		"uid":      schema.Int(),
+		"gid":      schema.Int(),
 	}, schema.Defaults{
 		"resource": schema.Omit,
 		"mounts":   schema.Omit,
+		"uid":      schema.Omit,
+		"gid":      schema.Omit,
 	})
 
 var mountSchema = schema.FieldMap(
@@ -1383,6 +1441,7 @@ var charmSchema = schema.FieldMap(
 		"min-juju-version": schema.String(),
 		"assumes":          schema.List(schema.Any()),
 		"containers":       schema.StringMap(containerSchema),
+		"charm-user":       schema.String(),
 	},
 	schema.Defaults{
 		"provides":         schema.Omit,
@@ -1404,6 +1463,7 @@ var charmSchema = schema.FieldMap(
 		"min-juju-version": schema.Omit,
 		"assumes":          schema.Omit,
 		"containers":       schema.Omit,
+		"charm-user":       schema.Omit,
 	},
 )
 
@@ -1427,7 +1487,7 @@ func ensureUnambiguousFormat(raw map[interface{}]interface{}) error {
 	for _, key := range keys {
 		detected := FormatUnknown
 		switch key {
-		case "containers", "assumes":
+		case "containers", "assumes", "charm-user":
 			detected = FormatV2
 		case "series", "deployment", "min-juju-version":
 			detected = FormatV1
