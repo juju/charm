@@ -17,9 +17,9 @@ import (
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
 
-	"github.com/juju/charm/v12"
-	"github.com/juju/charm/v12/assumes"
-	"github.com/juju/charm/v12/resource"
+	"github.com/juju/charm/v13"
+	"github.com/juju/charm/v13/assumes"
+	"github.com/juju/charm/v13/resource"
 )
 
 func repoMeta(c *gc.C, name string) io.Reader {

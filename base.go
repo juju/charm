@@ -10,7 +10,7 @@ import (
 	"github.com/juju/collections/set"
 	"github.com/juju/errors"
 	"github.com/juju/os/v2"
-	"github.com/juju/utils/v3/arch"
+	"github.com/juju/utils/v4/arch"
 )
 
 // Base represents an OS/Channel.

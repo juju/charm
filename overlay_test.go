@@ -14,9 +14,9 @@ import (
 	"github.com/juju/testing"
 	jc "github.com/juju/testing/checkers"
 	gc "gopkg.in/check.v1"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
-	"github.com/juju/charm/v12"
+	"github.com/juju/charm/v13"
 )
 
 type bundleDataOverlaySuite struct {
