@@ -180,7 +180,8 @@ func checkDummy(c *gc.C, f charm.Charm, path string) {
 								"description": "The file to write out to.",
 								"type":        "string",
 								"default":     "foo.bz2",
-							}}}}}})
+							}},
+						"additionalProperties": false}}}})
 	lpc, ok := f.(charm.LXDProfiler)
 	c.Assert(ok, jc.IsTrue)
 	c.Assert(lpc.LXDProfile(), jc.DeepEquals, &charm.LXDProfile{
