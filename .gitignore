@@ -4,5 +4,6 @@ TAGS
 *.test
 *.sw[nop]
 
+.idea
 .vscode
 vendor
