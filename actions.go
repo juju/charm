@@ -127,10 +127,11 @@ func ReadActionsYaml(charmName string, r io.Reader) (*Actions, error) {
 		parallel := false
 		executionGroup := ""
 		thisActionSchema := map[string]interface{}{
-			"description": desc,
-			"type":        "object",
-			"title":       name,
-			"properties":  map[string]interface{}{},
+			"description":          desc,
+			"type":                 "object",
+			"title":                name,
+			"properties":           map[string]interface{}{},
+			"additionalProperties": false,
 		}
 
 		for key, value := range actionSpec {

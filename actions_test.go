@@ -36,7 +36,8 @@ func (s *ActionsSuite) TestValidateOk(c *gc.C) {
 				"properties": map[string]interface{}{
 					"outfile": map[string]interface{}{
 						"description": "The file to write out to.",
-						"type":        "string"}}}},
+						"type":        "string"}},
+				"additionalProperties": false}},
 		objectToValidate: nil,
 	}, {
 		description: "Validation of one required value.",
@@ -50,7 +51,8 @@ func (s *ActionsSuite) TestValidateOk(c *gc.C) {
 					"outfile": map[string]interface{}{
 						"description": "The file to write out to.",
 						"type":        "string"}},
-				"required": []interface{}{"outfile"}}},
+				"additionalProperties": false,
+				"required":             []interface{}{"outfile"}}},
 		objectToValidate: map[string]interface{}{
 			"outfile": "out-2014-06-12.bz2",
 		},
@@ -71,7 +73,8 @@ func (s *ActionsSuite) TestValidateOk(c *gc.C) {
 						"type":        "integer",
 						"minimum":     0,
 						"maximum":     9}},
-				"required": []interface{}{"outfile"}}},
+				"additionalProperties": false,
+				"required":             []interface{}{"outfile"}}},
 		objectToValidate: map[string]interface{}{
 			"outfile": "out-2014-06-12.bz2",
 		},
@@ -92,10 +95,29 @@ func (s *ActionsSuite) TestValidateOk(c *gc.C) {
 						"type":        "integer",
 						"minimum":     0,
 						"maximum":     9}},
-				"required": []interface{}{"outfile"}}},
+				"additionalProperties": false,
+				"required":             []interface{}{"outfile"}}},
 		objectToValidate: map[string]interface{}{
 			"outfile": "out-2014-06-12.bz2",
 			"quality": 5,
+		},
+	}, {
+		description: "Validation of extra params with additionalProperties set to true",
+		actionSpec: &ActionSpec{
+			Description: "Take a snapshot of the database.",
+			Params: map[string]interface{}{
+				"title":       "snapshot",
+				"description": "Take a snapshot of the database.",
+				"type":        "object",
+				"properties": map[string]interface{}{
+					"outfile": map[string]interface{}{
+						"description": "The file to write out to.",
+						"type":        "string"}},
+				"additionalProperties": true}},
+		objectToValidate: map[string]interface{}{
+			"outfile":     "out-2014-06-12.bz2",
+			"extraParam1": 1,
+			"extraParam2": 2,
 		},
 	}} {
 		c.Logf("test %d: %s", i, test.description)
@@ -122,7 +144,8 @@ func (s *ActionsSuite) TestValidateFail(c *gc.C) {
 					"outfile": map[string]interface{}{
 						"description": "The file to write out to.",
 						"type":        "string"}},
-				"required": []interface{}{"outfile"}}},
+				"additionalProperties": false,
+				"required":             []interface{}{"outfile"}}},
 		badActionJson: `{"outfile": 5}`,
 		expectedError: "validation failed: (root).outfile : must be of type string, given 5",
 	}, {
@@ -158,7 +181,8 @@ func (s *ActionsSuite) TestValidateFail(c *gc.C) {
 						"type":        "integer",
 						"minimum":     0,
 						"maximum":     9}},
-				"required": []interface{}{"outfile"}}},
+				"additionalProperties": false,
+				"required":             []interface{}{"outfile"}}},
 		badActionJson: `{"quality": 5}`,
 		expectedError: "validation failed: (root) : \"outfile\" property is missing and required, given {\"quality\":5}",
 	}, {
@@ -178,10 +202,27 @@ func (s *ActionsSuite) TestValidateFail(c *gc.C) {
 						"type":        "integer",
 						"minimum":     0,
 						"maximum":     9}},
-				"required": []interface{}{"outfile"}}},
+				"additionalProperties": false,
+				"required":             []interface{}{"outfile"}}},
 		badActionJson: `
 { "outfile": "out-2014-06-12.bz2", "quality": "two" }`,
 		expectedError: "validation failed: (root).quality : must be of type integer, given \"two\"",
+	}, {
+		description: "Validation of misspelled value.",
+		actionSpec: &ActionSpec{
+			Description: "Take a snapshot of the database.",
+			Params: map[string]interface{}{
+				"title":       "snapshot",
+				"description": "Take a snapshot of the database.",
+				"type":        "object",
+				"properties": map[string]interface{}{
+					"outfile": map[string]interface{}{
+						"description": "The file to write out to.",
+						"type":        "string"}},
+				"additionalProperties": false,
+			}},
+		badActionJson: `{"oufile": 5}`,
+		expectedError: `validation failed: (root) : additional property "oufile" is not allowed, given {"oufile":5}`,
 	}}
 
 	for i, test := range validActionTests {
@@ -349,7 +390,8 @@ snapshot:
 						"outfile": map[string]interface{}{
 							"description": "The file to write out to.",
 							"type":        "string"}},
-					"required": []interface{}{"outfile"}}}}},
+					"additionalProperties": false,
+					"required":             []interface{}{"outfile"}}}}},
 	}, {
 		description: "An empty Actions definition.",
 		yaml:        "",
@@ -404,7 +446,8 @@ remote-sync:
 							"type":             "integer",
 							"minimum":          0,
 							"maximum":          9,
-							"exclusiveMaximum": false}}}},
+							"exclusiveMaximum": false}},
+					"additionalProperties": false}},
 			"remote-sync": {
 				Description: "Sync a file to a remote host.",
 				Params: map[string]interface{}{
@@ -424,7 +467,8 @@ remote-sync:
 							"description": "The util to perform the sync (rsync or scp.)",
 							"type":        "string",
 							"enum":        []interface{}{"rsync", "scp"}}},
-					"required": []interface{}{"file", "remote-uri"}}}}},
+					"additionalProperties": false,
+					"required":             []interface{}{"file", "remote-uri"}}}}},
 	}, {
 		description: "A schema with other keys, e.g. \"definitions\"",
 		yaml: `
@@ -464,6 +508,7 @@ snapshot:
 							"exclusiveMaximum": false,
 						},
 					},
+					"additionalProperties": false,
 					"definitions": map[string]interface{}{
 						"diskdevice":     map[string]interface{}{},
 						"something-else": map[string]interface{}{},
@@ -482,10 +527,11 @@ snapshot:
 			"snapshot": {
 				Description: "Take a snapshot of the database.",
 				Params: map[string]interface{}{
-					"description": "Take a snapshot of the database.",
-					"title":       "snapshot",
-					"type":        "object",
-					"properties":  map[string]interface{}{},
+					"description":          "Take a snapshot of the database.",
+					"title":                "snapshot",
+					"type":                 "object",
+					"properties":           map[string]interface{}{},
+					"additionalProperties": false,
 				}}}},
 	}, {
 		description: "A schema with no values at all, implying no options.",
@@ -497,10 +543,11 @@ snapshot:
 			"snapshot": {
 				Description: "No description",
 				Params: map[string]interface{}{
-					"description": "No description",
-					"title":       "snapshot",
-					"type":        "object",
-					"properties":  map[string]interface{}{},
+					"description":          "No description",
+					"title":                "snapshot",
+					"type":                 "object",
+					"properties":           map[string]interface{}{},
+					"additionalProperties": false,
 				}}}},
 	}, {
 		description: "A simple snapshot actions YAML with names ending characters.",
@@ -524,7 +571,8 @@ snapshot-01:
 						"outfile-01": map[string]interface{}{
 							"description": "The file to write out to.",
 							"type":        "string"}},
-					"required": []interface{}{"outfile"}}}}},
+					"additionalProperties": false,
+					"required":             []interface{}{"outfile"}}}}},
 	}, {
 		description: "A simple snapshot actions YAML with names containing characters.",
 		yaml: `
@@ -547,7 +595,8 @@ snapshot-0-foo:
 						"outfile": map[string]interface{}{
 							"description": "The file to write out to.",
 							"type":        "string"}},
-					"required": []interface{}{"outfile"}}}}},
+					"additionalProperties": false,
+					"required":             []interface{}{"outfile"}}}}},
 	}, {
 		description: "A simple snapshot actions YAML with names starting characters.",
 		yaml: `
@@ -570,7 +619,8 @@ snapshot-0-foo:
 						"01-outfile": map[string]interface{}{
 							"description": "The file to write out to.",
 							"type":        "string"}},
-					"required": []interface{}{"outfile"}}}}},
+					"additionalProperties": false,
+					"required":             []interface{}{"outfile"}}}}},
 	}, {
 		description: "An action with parallel and execution group values set",
 		yaml: `
@@ -585,10 +635,30 @@ snapshot:
 				Parallel:       true,
 				ExecutionGroup: "exec group",
 				Params: map[string]interface{}{
-					"title":       "snapshot",
-					"description": "Take a snapshot of the database.",
-					"type":        "object",
-					"properties":  map[string]interface{}{}},
+					"title":                "snapshot",
+					"description":          "Take a snapshot of the database.",
+					"type":                 "object",
+					"properties":           map[string]interface{}{},
+					"additionalProperties": false},
+			},
+		}},
+	}, {
+		description: "An action with additional properties set to true",
+		yaml: `
+snapshot:
+   description: "Take a snapshot of the database."
+   additionalProperties: true
+`,
+		expectedActions: &Actions{map[string]ActionSpec{
+			"snapshot": {
+				Description: "Take a snapshot of the database.",
+				Params: map[string]interface{}{
+					"title":                "snapshot",
+					"description":          "Take a snapshot of the database.",
+					"type":                 "object",
+					"properties":           map[string]interface{}{},
+					"additionalProperties": true,
+				},
 			},
 		}},
 	}}
@@ -624,7 +694,8 @@ juju-snapshot:
 					"outfile": map[string]interface{}{
 						"description": "The file to write out to.",
 						"type":        "string"}},
-				"required": []interface{}{"outfile"}}}}}
+				"required":             []interface{}{"outfile"},
+				"additionalProperties": false}}}}
 
 	reader := bytes.NewReader([]byte(actionsYaml))
 	loadedAction, err := ReadActionsYaml("juju-charm", reader)
