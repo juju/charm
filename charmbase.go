@@ -8,7 +8,6 @@ package charm
 type charmBase struct {
 	meta       *Meta
 	config     *Config
-	metrics    *Metrics
 	actions    *Actions
 	lxdProfile *LXDProfile
 	manifest   *Manifest
@@ -37,12 +36,6 @@ func (c *charmBase) Meta() *Meta {
 // for the charm expanded in dir.
 func (c *charmBase) Config() *Config {
 	return c.config
-}
-
-// Metrics returns the Metrics representing the metrics.yaml file
-// for the charm expanded in dir.
-func (c *charmBase) Metrics() *Metrics {
-	return c.metrics
 }
 
 // Actions returns the Actions representing the actions.yaml file

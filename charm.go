@@ -26,7 +26,6 @@ type CharmMeta interface {
 type Charm interface {
 	CharmMeta
 	Config() *Config
-	Metrics() *Metrics
 	Actions() *Actions
 	Revision() int
 }

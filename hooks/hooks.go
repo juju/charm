@@ -19,8 +19,6 @@ const (
 	Stop                  Kind = "stop"
 	Remove                Kind = "remove"
 	Action                Kind = "action"
-	CollectMetrics        Kind = "collect-metrics"
-	MeterStatusChanged    Kind = "meter-status-changed"
 	LeaderElected         Kind = "leader-elected"
 	LeaderDeposed         Kind = "leader-deposed"
 	LeaderSettingsChanged Kind = "leader-settings-changed"
@@ -72,8 +70,6 @@ var unitHooks = []Kind{
 	UpgradeCharm,
 	Stop,
 	Remove,
-	CollectMetrics,
-	MeterStatusChanged,
 	LeaderElected,
 	LeaderDeposed,
 	LeaderSettingsChanged,

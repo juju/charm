@@ -63,32 +63,6 @@ func (s *CharmDirSuite) TestReadCharmDirWithoutConfig(c *gc.C) {
 	c.Assert(dir.Config().Options, gc.HasLen, 0)
 }
 
-func (s *CharmDirSuite) TestReadCharmDirWithoutMetrics(c *gc.C) {
-	path := charmDirPath(c, "varnish")
-	dir, err := charm.ReadCharmDir(path)
-	c.Assert(err, gc.IsNil)
-
-	// A lacking metrics.yaml file indicates the unit will not
-	// be metered.
-	c.Assert(dir.Metrics(), gc.IsNil)
-}
-
-func (s *CharmDirSuite) TestReadCharmDirWithEmptyMetrics(c *gc.C) {
-	path := charmDirPath(c, "metered-empty")
-	dir, err := charm.ReadCharmDir(path)
-	c.Assert(err, gc.IsNil)
-	c.Assert(Keys(dir.Metrics()), gc.HasLen, 0)
-}
-
-func (s *CharmDirSuite) TestReadCharmDirWithCustomMetrics(c *gc.C) {
-	path := charmDirPath(c, "metered")
-	dir, err := charm.ReadCharmDir(path)
-	c.Assert(err, gc.IsNil)
-
-	c.Assert(dir.Metrics(), gc.NotNil)
-	c.Assert(Keys(dir.Metrics()), gc.DeepEquals, []string{"juju-unit-time", "pings"})
-}
-
 func (s *CharmDirSuite) TestReadCharmDirWithoutActions(c *gc.C) {
 	path := charmDirPath(c, "wordpress")
 	dir, err := charm.ReadCharmDir(path)
@@ -461,7 +435,7 @@ func (s *CharmDirSuite) assertArchiveTo(c *gc.C, baseDir, charmDir string) {
 
 // Bug #864164: Must complain if charm hooks aren't executable
 func (s *CharmDirSuite) TestArchiveToWithNonExecutableHooks(c *gc.C) {
-	hooks := []string{"install", "start", "config-changed", "upgrade-charm", "stop", "collect-metrics", "meter-status-changed"}
+	hooks := []string{"install", "start", "config-changed", "upgrade-charm", "stop"}
 	for _, relName := range []string{"foo", "bar", "self"} {
 		for _, kind := range []string{"joined", "changed", "departed", "broken"} {
 			hooks = append(hooks, relName+"-relation-"+kind)

@@ -730,8 +730,6 @@ func (s *MetaSuite) TestMetaHooks(c *gc.C) {
 		"upgrade-charm":                     true,
 		"stop":                              true,
 		"remove":                            true,
-		"collect-metrics":                   true,
-		"meter-status-changed":              true,
 		"leader-elected":                    true,
 		"leader-deposed":                    true,
 		"leader-settings-changed":           true,
@@ -1919,10 +1917,6 @@ func (c *dummyCharm) Version() string {
 }
 
 func (c *dummyCharm) Config() *charm.Config {
-	panic("unused")
-}
-
-func (c *dummyCharm) Metrics() *charm.Metrics {
 	panic("unused")
 }
 
