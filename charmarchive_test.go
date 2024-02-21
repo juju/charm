@@ -104,32 +104,6 @@ func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutManifest(c *gc.C) {
 	c.Assert(dir.Manifest(), gc.IsNil)
 }
 
-func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutMetrics(c *gc.C) {
-	path := archivePath(c, readCharmDir(c, "varnish"))
-	dir, err := charm.ReadCharmArchive(path)
-	c.Assert(err, gc.IsNil)
-
-	// A lacking metrics.yaml file indicates the unit will not
-	// be metered.
-	c.Assert(dir.Metrics(), gc.IsNil)
-}
-
-func (s *CharmArchiveSuite) TestReadCharmArchiveWithEmptyMetrics(c *gc.C) {
-	path := archivePath(c, readCharmDir(c, "metered-empty"))
-	dir, err := charm.ReadCharmArchive(path)
-	c.Assert(err, gc.IsNil)
-	c.Assert(Keys(dir.Metrics()), gc.HasLen, 0)
-}
-
-func (s *CharmArchiveSuite) TestReadCharmArchiveWithCustomMetrics(c *gc.C) {
-	path := archivePath(c, readCharmDir(c, "metered"))
-	dir, err := charm.ReadCharmArchive(path)
-	c.Assert(err, gc.IsNil)
-
-	c.Assert(dir.Metrics(), gc.NotNil)
-	c.Assert(Keys(dir.Metrics()), gc.DeepEquals, []string{"juju-unit-time", "pings"})
-}
-
 func (s *CharmArchiveSuite) TestReadCharmArchiveWithoutActions(c *gc.C) {
 	// Wordpress has config but no actions.
 	path := archivePath(c, readCharmDir(c, "wordpress"))

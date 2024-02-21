@@ -7,7 +7,6 @@ package charm
 
 var (
 	IfaceExpander = ifaceExpander
-	ValidateValue = validateValue
 
 	ParsePayloadClass         = parsePayloadClass
 	ResourceSchema            = resourceSchema

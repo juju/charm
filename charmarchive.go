@@ -105,17 +105,6 @@ func readCharmArchive(zopen zipOpener) (archive *CharmArchive, err error) {
 		}
 	}
 
-	reader, err = zipOpenFile(zipr, "metrics.yaml")
-	if err == nil {
-		b.metrics, err = ReadMetrics(reader)
-		_ = reader.Close()
-		if err != nil {
-			return nil, err
-		}
-	} else if _, ok := err.(*noCharmArchiveFile); !ok {
-		return nil, err
-	}
-
 	if b.actions, err = getActions(
 		b.meta.Name,
 		func(file string) (io.ReadCloser, error) {

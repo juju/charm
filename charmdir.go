@@ -103,17 +103,6 @@ func ReadCharmDir(path string) (*CharmDir, error) {
 		}
 	}
 
-	reader, err = os.Open(b.join("metrics.yaml"))
-	if err == nil {
-		b.metrics, err = ReadMetrics(reader)
-		_ = reader.Close()
-		if err != nil {
-			return nil, errors.Annotatef(err, `parsing "metrics.yaml" file`)
-		}
-	} else if !os.IsNotExist(err) {
-		return nil, errors.Annotatef(err, `reading "metrics.yaml" file`)
-	}
-
 	if b.actions, err = getActions(
 		b.meta.Name,
 		func(file string) (io.ReadCloser, error) {

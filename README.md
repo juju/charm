@@ -55,11 +55,6 @@ All the other fields are optional.
 The type can be either a `string`, `int`, `float` or `boolean`. Everything else
 will cause Juju to error out when reading the charm.
 
-### `metrics.yaml`
-
-`metrics.yaml` represents an optional metrics gathering configuration yaml. For
-more information about metrics, read up on [Metric collecting charms](https://discourse.juju.is/t/metric-collecting-charms/1125)
-
 ### `revision`
 
 The `revision` is used to indicate the revision of a charm. It expects that only
