@@ -822,12 +822,6 @@ func (m Meta) Check(format Format, reasons ...FormatSelectionReason) error {
 		}
 	}
 
-	for _, series := range m.Series {
-		if !IsValidSeries(series) {
-			return errors.Errorf("charm %q declares invalid series: %q", m.Name, series)
-		}
-	}
-
 	names = make(map[string]bool)
 	for name, store := range m.Storage {
 		if store.Location != "" && store.Type != StorageFilesystem {
@@ -902,12 +896,6 @@ func (m Meta) checkV1(reasons []FormatSelectionReason) error {
 func (m Meta) checkV2(reasons []FormatSelectionReason) error {
 	if len(reasons) == 0 {
 		return errors.NotValidf("metadata v2 without manifest.yaml")
-	}
-	if len(m.Series) != 0 {
-		if hasReason(reasons, SelectionManifest) {
-			return errors.NotValidf("metadata v2 manifest.yaml with series slice")
-		}
-		return errors.NotValidf("series slice in metadata v2")
 	}
 	if m.MinJujuVersion != version.Zero {
 		return errors.NotValidf("min-juju-version in metadata v2")

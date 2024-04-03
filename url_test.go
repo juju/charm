@@ -180,19 +180,6 @@ var validTests = []struct {
 	{charm.IsValidName, "wordpress-2", false},
 	{charm.IsValidName, "word2-press2", true},
 
-	{charm.IsValidSeries, "", false},
-	{charm.IsValidSeries, "precise", true},
-	{charm.IsValidSeries, "Precise", false},
-	{charm.IsValidSeries, "pre cise", false},
-	{charm.IsValidSeries, "pre-cise", false},
-	{charm.IsValidSeries, "pre^cise", false},
-	{charm.IsValidSeries, "prec1se", true},
-	{charm.IsValidSeries, "-precise", false},
-	{charm.IsValidSeries, "precise-", false},
-	{charm.IsValidSeries, "precise-1", false},
-	{charm.IsValidSeries, "precise1", true},
-	{charm.IsValidSeries, "pre-c1se", false},
-
 	{charm.IsValidArchitecture, "amd64", true},
 	{charm.IsValidArchitecture, "~amd64", false},
 	{charm.IsValidArchitecture, "not-an-arch", false},
@@ -206,8 +193,8 @@ func (s *URLSuite) TestValidCheckers(c *gc.C) {
 }
 
 func (s *URLSuite) TestMustParseURL(c *gc.C) {
-	url := charm.MustParseURL("ch:series/name")
-	c.Assert(url, gc.DeepEquals, &charm.URL{"ch", "name", -1, "series", ""})
+	url := charm.MustParseURL("ch:name")
+	c.Assert(url, gc.DeepEquals, &charm.URL{Schema: "ch", Name: "name", Revision: -1, Architecture: ""})
 	f := func() { charm.MustParseURL("local:@@/name") }
 	c.Assert(f, gc.PanicMatches, "cannot parse URL \"local:@@/name\": series name \"@@\" not valid")
 }
@@ -215,8 +202,8 @@ func (s *URLSuite) TestMustParseURL(c *gc.C) {
 func (s *URLSuite) TestWithRevision(c *gc.C) {
 	url := charm.MustParseURL("ch:series/name")
 	other := url.WithRevision(1)
-	c.Assert(url, gc.DeepEquals, &charm.URL{"ch", "name", -1, "series", ""})
-	c.Assert(other, gc.DeepEquals, &charm.URL{"ch", "name", 1, "series", ""})
+	c.Assert(url, gc.DeepEquals, &charm.URL{Schema: "ch", Name: "name", Revision: -1, Architecture: ""})
+	c.Assert(other, gc.DeepEquals, &charm.URL{Schema: "ch", Name: "name", Revision: -1, Architecture: ""})
 
 	// Should always copy. The opposite behavior is error prone.
 	c.Assert(other.WithRevision(1), gc.Not(gc.Equals), other)
