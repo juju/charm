@@ -17,7 +17,7 @@ import (
 	gc "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
 
-	"github.com/juju/charm/v13"
+	"github.com/juju/charm/v14"
 )
 
 type CharmSuite struct {

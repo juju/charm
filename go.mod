@@ -1,4 +1,4 @@
-module github.com/juju/charm/v13
+module github.com/juju/charm/v14
 
 go 1.21
 
