@@ -7,6 +7,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -219,6 +220,14 @@ func (s *CharmArchiveSuite) TestArchiveMembersSymlink(c *gc.C) {
 	manifest, err := archive.ArchiveMembers()
 	c.Assert(err, gc.IsNil)
 	c.Assert(manifest, gc.DeepEquals, set.NewStrings(expected...))
+}
+
+func (s *CharmArchiveSuite) TestArchiveMembersOmitDirs(c *gc.C) {
+	srcPath := cloneDir(c, charmDirPath(c, "dummy"))
+	archive := archiveDirOnlyFiles(c, srcPath)
+	manifest, err := archive.ArchiveMembers()
+	c.Assert(err, gc.IsNil)
+	c.Assert(manifest, gc.DeepEquals, set.NewStrings(dummyArchiveMembers...))
 }
 
 func (s *CharmArchiveSuite) TestExpandTo(c *gc.C) {
@@ -471,6 +480,41 @@ func archiveDir(c *gc.C, dirpath string) *charm.CharmArchive {
 	buf := new(bytes.Buffer)
 	err = dir.ArchiveTo(buf)
 	c.Assert(err, gc.IsNil)
+	archive, err := charm.ReadCharmArchiveBytes(buf.Bytes())
+	c.Assert(err, gc.IsNil)
+	return archive
+}
+
+func archiveDirOnlyFiles(c *gc.C, dirpath string) *charm.CharmArchive {
+	dir, err := charm.ReadCharmDir(dirpath)
+	c.Assert(err, gc.IsNil)
+	buf := new(bytes.Buffer)
+	err = dir.ArchiveTo(buf)
+	r, err := zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+	c.Assert(err, gc.IsNil)
+	buf = new(bytes.Buffer)
+	w := zip.NewWriter(buf)
+	for _, f := range r.File {
+		if f.FileInfo().IsDir() {
+			continue
+		}
+		rf, err := f.Open()
+		if err != nil {
+			c.Assert(err, gc.IsNil)
+		}
+		wf, err := w.Create(f.Name)
+		if err != nil {
+			c.Assert(err, gc.IsNil)
+		}
+		_, err = io.Copy(wf, rf)
+		if err != nil {
+			c.Assert(err, gc.IsNil)
+		}
+	}
+	err = w.Close()
+	if err != nil {
+		c.Assert(err, gc.IsNil)
+	}
 	archive, err := charm.ReadCharmArchiveBytes(buf.Bytes())
 	c.Assert(err, gc.IsNil)
 	return archive

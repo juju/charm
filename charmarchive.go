@@ -273,7 +273,16 @@ func (a *CharmArchive) ArchiveMembers() (set.Strings, error) {
 	if err != nil {
 		return set.NewStrings(), err
 	}
-	manifest := set.NewStrings(paths...)
+	manifest := set.NewStrings()
+	// Zip archives can omit file's parent directories,
+	// as these are created automatically during extraction.
+	// Ensure that parent directories exist in the member list.
+	for _, path := range paths {
+		for path != "." && path != "/" {
+			manifest.Add(path)
+			path = filepath.Dir(path)
+		}
+	}
 	// We always write out a revision file, even if there isn't one in the
 	// archive; and we always strip ".", because that's sometimes not present.
 	manifest.Add("revision")
